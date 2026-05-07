@@ -238,6 +238,7 @@ function SpinWheel({
   entries,
   isSpinning,
   winner,
+  winnerLabel,
   onSpin,
   isAdmin,
   onSpinComplete,
@@ -245,6 +246,7 @@ function SpinWheel({
   entries: WheelEntry[];
   isSpinning: boolean;
   winner: string | null;
+  winnerLabel?: string;
   onSpin: () => void;
   isAdmin: boolean;
   onSpinComplete?: (winnerName: string) => void;
@@ -350,7 +352,7 @@ function SpinWheel({
       />
       {winner && (
         <div className="text-center">
-          <div className="text-xs text-red-400 uppercase tracking-widest mb-1">Winner</div>
+          <div className="text-xs text-red-400 uppercase tracking-widest mb-1">{winnerLabel ?? "Selected"}</div>
           <div className="font-['Anton'] text-2xl text-white animate-pulse">{winner}</div>
         </div>
       )}
@@ -1105,6 +1107,15 @@ export default function MusicWars() {
   const setSettingsMutation = trpc.wheel.setSettings.useMutation();
   const removeEntryMutation = trpc.wheel.removeEntry.useMutation();
   const resetWarMutation = trpc.wheel.resetCurrentWar.useMutation();
+  const markCalledMutation = trpc.wheel.markCalled.useMutation();
+  const setBattleContestantsMutation = trpc.wheel.setBattleContestants.useMutation({
+    onSuccess: () => { refetchActiveBattle(); refetchVotes(); refetchWheel(); if (isAdmin) refetchAllEntries(); },
+  });
+
+  // Contestant selection state
+  const [spinCount, setSpinCount] = useState(0); // 0 = no spin yet, 1 = c1 picked, 2 = c2 picked
+  const [contestant1Entry, setContestant1Entry] = useState<WheelEntry | null>(null);
+  const [contestant2Entry, setContestant2Entry] = useState<WheelEntry | null>(null);
 
   const { messages, isConnected: chatConnected, sendMessage, wheelWinner, wheelSpinning, broadcastSpin, broadcastWinner, socket: chatSocket } = useChat({
     room: "music_wars",
@@ -1125,6 +1136,10 @@ export default function MusicWars() {
       refetchActiveBattle();
       refetchVotes();
       if (isAdmin) refetchAllEntries();
+      // Reset contestant selection state
+      setSpinCount(0);
+      setContestant1Entry(null);
+      setContestant2Entry(null);
     };
     chatSocket.on("war:reset", handleWarReset);
     return () => { chatSocket.off("war:reset", handleWarReset); };
@@ -1140,17 +1155,46 @@ export default function MusicWars() {
 
   const handleSpin = useCallback(() => {
     if (!isAdmin || !wheelData?.entries.length) return;
+    // Only allow spinning if we have fewer than 2 contestants picked
+    if (spinCount >= 2) return;
     broadcastSpin();
-    // Winner is determined by the actual final rotation position (onSpinComplete callback)
-    // broadcastWinner will be called from SpinWheel's onSpinComplete callback
-  }, [isAdmin, wheelData, broadcastSpin]);
+  }, [isAdmin, wheelData, broadcastSpin, spinCount]);
 
-  const handleSpinComplete = useCallback((winnerName: string) => {
-    // Only the admin's wheel determines the winner — broadcast to all clients
-    if (isAdmin) {
-      broadcastWinner(winnerName);
+  const handleSpinComplete = useCallback(async (winnerName: string) => {
+    // Only the admin's wheel determines the result — broadcast to all clients
+    if (!isAdmin) return;
+    broadcastWinner(winnerName);
+
+    // Find the entry by artist name in the current active entries
+    const currentEntries = (wheelData?.entries ?? []).filter(e => e.status === "active");
+    const entry = currentEntries.find(e => e.artistName === winnerName);
+    if (!entry) return;
+
+    if (spinCount === 0) {
+      // First spin → Contestant 1
+      setContestant1Entry(entry);
+      setSpinCount(1);
+      // Remove from wheel immediately
+      try { await markCalledMutation.mutateAsync({ id: entry.id }); } catch {}
+      refetchWheel();
+      if (isAdmin) refetchAllEntries();
+    } else if (spinCount === 1 && contestant1Entry) {
+      // Second spin → Contestant 2
+      setContestant2Entry(entry);
+      setSpinCount(2);
+      // Auto-call setBattleContestants which removes both from wheel and sets active battle
+      try {
+        await setBattleContestantsMutation.mutateAsync({
+          contestant1Id: contestant1Entry.id,
+          contestant2Id: entry.id,
+        });
+      } catch {}
+      // Reset for next round
+      setSpinCount(0);
+      setContestant1Entry(null);
+      setContestant2Entry(null);
     }
-  }, [isAdmin, broadcastWinner]);
+  }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, markCalledMutation, setBattleContestantsMutation, refetchWheel, refetchAllEntries]);
 
   const handleSubmit = async (data: { songTitle: string; songUrl: string; contactInfo: string }) => {
     try {
@@ -1219,7 +1263,35 @@ export default function MusicWars() {
                 <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-4 self-start">
                   Battle <span className="text-red-600">Wheel</span>
                 </h2>
-                <SpinWheel entries={activeEntries} isSpinning={wheelSpinning} winner={wheelWinner} onSpin={handleSpin} isAdmin={isAdmin} onSpinComplete={handleSpinComplete} />
+                <SpinWheel
+                  entries={activeEntries}
+                  isSpinning={wheelSpinning}
+                  winner={wheelWinner}
+                  winnerLabel={spinCount === 0 ? "Contestant 1" : "Contestant 2"}
+                  onSpin={handleSpin}
+                  isAdmin={isAdmin}
+                  onSpinComplete={handleSpinComplete}
+                />
+                {/* Contestant selection status */}
+                {isAdmin && (contestant1Entry || spinCount > 0) && (
+                  <div className="w-full mt-3 space-y-2">
+                    <div className={`flex items-center gap-2 px-3 py-2 border text-sm ${
+                      contestant1Entry ? "border-red-600/50 bg-red-950/20" : "border-white/10 bg-white/5"
+                    }`}>
+                      <span className="text-red-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 1</span>
+                      <span className="text-white font-semibold">{contestant1Entry?.artistName ?? "—"}</span>
+                    </div>
+                    <div className={`flex items-center gap-2 px-3 py-2 border text-sm ${
+                      contestant2Entry ? "border-red-600/50 bg-red-950/20" : "border-white/10 bg-white/5"
+                    }`}>
+                      <span className="text-red-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 2</span>
+                      <span className="text-white font-semibold">{contestant2Entry?.artistName ?? "—"}</span>
+                    </div>
+                    {spinCount === 1 && (
+                      <p className="text-white/40 text-xs text-center">Spin again to pick Contestant 2</p>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-4">

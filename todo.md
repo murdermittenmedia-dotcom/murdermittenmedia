@@ -312,3 +312,66 @@
 - [x] Fix vote reset on war clear — emit war:reset socket event from resetCurrentWar procedure
 - [x] Add war:reset socket listener in MusicWars to refetch wheel, battle, and votes
 - [x] Add io to tRPC context so procedures can emit socket events
+
+## Session 5 — May 2026
+- [ ] Fix Music Review file upload: default to "Upload File" tab, fix mobile accept attribute
+- [ ] Add missing One Mics to the Mic tab
+- [ ] Add missing One Mics to the Mic tab
+- [ ] Build Latest News feed on home page with Instagram posts (thumbnails, full captions, links)
+
+## Session 6 — Major Feature Sprint
+- [ ] Fix desktop nav: remove ugly horizontal scroll, make clean responsive nav
+- [ ] YouTube in-page player (modal embed) on MurderMittenMic
+- [ ] MP3 player for uploaded audio on all pages
+- [ ] Forum tab: posts, comments, Reddit-style UI
+- [ ] Latest Posts tab: Instagram carousel embeds with individual post pages
+- [ ] Global search: users and songs
+- [ ] Live review active viewer profiles (clickable)
+- [ ] Music Wars wheel: auto-assign Contestant 1 & 2, auto-add to poll, remove from wheel
+
+## Session 7 — Preserve Style Patch Sprint
+- [ ] Fix SiteNav desktop overflow: shorten labels, add More dropdown, no horizontal scroll bar
+- [ ] Music Wars wheel: 1st spin = Contestant 1, 2nd spin = Contestant 2 (no "Winner" label)
+- [ ] Music Wars wheel: auto-call setBattleContestants after 2nd spin (auto-add to poll)
+- [ ] Music Wars wheel: remove picked artist from wheel immediately after each spin
+- [ ] Add Forum page (posts + comments, matching existing dark style)
+- [ ] Add Latest Posts page (Instagram embeds with individual post pages)
+- [ ] Add Search page (users + songs)
+- [ ] Live review active viewer profiles (clickable, shows ArtistStatModal)
+- [ ] YouTube links open in in-page modal on MurderMittenMic
+- [ ] Music Review default to Upload File tab (fix accept attribute for mobile)
+
+## Session 7 Additions
+- [ ] FloatingPlayer: show clickable artist name that opens ArtistStatModal
+- [ ] FloatingPlayer: show Fire/Trash rating buttons for the currently playing submission
+- [ ] MusicReview live queue: Fire/Trash rating buttons on currently playing song (and past played)
+- [ ] Fire/Trash stats tracked on user profile (total fires, total trashes per song and career total)
+- [ ] Site-wide Leaderboard page (/leaderboard): every contestant with W/L record, fire count, trash count, battle stats
+- [ ] Add Leaderboard link to SiteNav More dropdown
+
+## Session 7 — Live Page & Profile Fixes
+- [ ] Fix Live page: smart redirect — if Music Wars is live go to /music-wars, if Music Review is live go to /review, else show live stream embed with chat
+- [ ] Fix UserProfile "Submit Music" button 404 — wire to correct route
+
+## Session 8 — Persistent Audio Player Redesign
+- [ ] Redesign AudioPlayerContext: Personal queue (user-specific, local) + Live Radio mode (shared, admin-controlled)
+- [ ] Add liveRadioState DB table + server procedures (getLiveRadioState, setLiveTrack, addToLiveQueue, skipLive, pauseLive, stopLive)
+- [ ] Rewrite FloatingPlayer: Personal/Live modes, queue display, admin live radio controls panel
+- [ ] Wire addToQueue() across Music Review, Music Wars, ArtistStatModal, profile tracks, search results
+- [ ] Auto-remove finished songs from personal queue (ended event → remove → play next)
+- [ ] Live Radio Mode: poll getLiveRadioState every 5s while in live mode, sync to admin's current track
+- [ ] Admin live radio control area: add tracks, reorder, remove, skip, pause/resume, stop, set current
+- [ ] Personal queue: user-specific or local state, never interrupted by admin changes
+- [ ] FloatingPlayer: show Personal/Live mode indicator, Live button to jump to admin broadcast
+- [ ] Bottom player: fixed viewport bottom, high z-index, enough padding on page wrapper
+
+## Session 5 — New Pages & Features
+- [x] Forum page (/forum) — posts list, category filters, create post modal, upvote/downvote
+- [x] ForumPost page (/forum/:id) — full post body, comments thread, nested replies, upvote/downvote
+- [x] Leaderboard page (/leaderboard) — all-time W/L, fire/trash scores, combined ranking
+- [x] Search page (/search) — debounced search for artists and songs, play songs from results
+- [x] LatestPosts page (/latest-posts) — Instagram feed grid with thumbnails, captions, likes/comments
+- [x] FloatingPlayer redesign — Personal Queue panel (expandable track list), Live Radio mode toggle, prev/next controls
+- [x] Register all new routes in App.tsx
+- [x] Add Search to SiteNav More dropdown
+- [x] TypeScript: 0 errors

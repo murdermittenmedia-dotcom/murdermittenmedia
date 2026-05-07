@@ -13,6 +13,10 @@ import {
   activeBattle, InsertActiveBattle,
   songReactions, InsertSongReaction,
   judgeApplications, InsertJudgeApplication, JudgeApplication,
+  liveRadioState, liveRadioQueue, InsertLiveRadioQueueItem,
+  forumPosts, InsertForumPost,
+  forumComments, InsertForumComment,
+  forumReactions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -724,4 +728,335 @@ export async function getLifetimeStats(artistName: string) {
     totalTrash: subs.reduce((acc, s) => acc + (s.trashCount ?? 0), 0),
     reviewed: subs.filter(s => s.status === "reviewed").length,
   };
+}
+
+// -- Live Radio -----------------------------------------------
+
+export async function getLiveRadioState() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(liveRadioState).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getLiveRadioQueue() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(liveRadioQueue).orderBy(asc(liveRadioQueue.position), asc(liveRadioQueue.addedAt));
+}
+
+export async function addToLiveRadioQueue(data: InsertLiveRadioQueueItem) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Get max position
+  const rows = await db.select().from(liveRadioQueue).orderBy(desc(liveRadioQueue.position)).limit(1);
+  const nextPos = (rows[0]?.position ?? -1) + 1;
+  return db.insert(liveRadioQueue).values({ ...data, position: nextPos });
+}
+
+export async function removeFromLiveRadioQueue(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(liveRadioQueue).where(eq(liveRadioQueue.id, id));
+}
+
+export async function clearLiveRadioQueue() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(liveRadioQueue);
+}
+
+export async function setLiveRadioCurrentTrack(trackId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(liveRadioState).limit(1);
+  const data = {
+    isActive: trackId !== null,
+    isPaused: false,
+    currentTrackId: trackId,
+    currentTrackStartedAt: trackId !== null ? new Date() : null,
+  };
+  if (existing.length === 0) {
+    await db.insert(liveRadioState).values(data);
+  } else {
+    await db.update(liveRadioState).set(data);
+  }
+}
+
+export async function setLiveRadioPaused(isPaused: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(liveRadioState).limit(1);
+  if (existing.length === 0) {
+    await db.insert(liveRadioState).values({ isPaused });
+  } else {
+    await db.update(liveRadioState).set({ isPaused });
+  }
+}
+
+export async function stopLiveRadio() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(liveRadioState).limit(1);
+  const data = { isActive: false, isPaused: false, currentTrackId: null, currentTrackStartedAt: null };
+  if (existing.length === 0) {
+    await db.insert(liveRadioState).values(data);
+  } else {
+    await db.update(liveRadioState).set(data);
+  }
+}
+
+// -- Forum ----------------------------------------------------
+
+export async function getForumPosts(category?: string, limit = 30, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  type ForumCategory = "general" | "music" | "battles" | "news" | "feedback";
+  const validCategories: ForumCategory[] = ["general", "music", "battles", "news", "feedback"];
+  const isValidCategory = category && category !== "all" && validCategories.includes(category as ForumCategory);
+  const conditions = isValidCategory
+    ? [eq(forumPosts.category, category as ForumCategory)]
+    : [];
+  const rows = await db.select({
+    post: forumPosts,
+    author: { id: users.id, name: users.name, artistName: users.artistName, avatarUrl: users.avatarUrl, role: users.role },
+  })
+    .from(forumPosts)
+    .leftJoin(users, eq(forumPosts.userId, users.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(forumPosts.pinned), desc(forumPosts.createdAt))
+    .limit(limit)
+    .offset(offset);
+  return rows;
+}
+
+export async function getForumPostById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select({
+    post: forumPosts,
+    author: { id: users.id, name: users.name, artistName: users.artistName, avatarUrl: users.avatarUrl, role: users.role },
+  })
+    .from(forumPosts)
+    .leftJoin(users, eq(forumPosts.userId, users.id))
+    .where(eq(forumPosts.id, id))
+    .limit(1);
+  if (rows.length === 0) return null;
+  // Increment view count
+  await db.update(forumPosts).set({ viewCount: sql`${forumPosts.viewCount} + 1` }).where(eq(forumPosts.id, id));
+  return rows[0];
+}
+
+export async function createForumPost(data: InsertForumPost) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(forumPosts).values(data);
+  return result;
+}
+
+export async function deleteForumPost(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Delete comments first
+  await db.delete(forumComments).where(eq(forumComments.postId, id));
+  await db.delete(forumReactions).where(and(eq(forumReactions.targetType, "post"), eq(forumReactions.targetId, id)));
+  return db.delete(forumPosts).where(eq(forumPosts.id, id));
+}
+
+export async function getForumComments(postId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    comment: forumComments,
+    author: { id: users.id, name: users.name, artistName: users.artistName, avatarUrl: users.avatarUrl, role: users.role },
+  })
+    .from(forumComments)
+    .leftJoin(users, eq(forumComments.userId, users.id))
+    .where(eq(forumComments.postId, postId))
+    .orderBy(asc(forumComments.createdAt));
+  return rows;
+}
+
+export async function createForumComment(data: InsertForumComment) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(forumComments).values(data);
+}
+
+export async function deleteForumComment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(forumReactions).where(and(eq(forumReactions.targetType, "comment"), eq(forumReactions.targetId, id)));
+  return db.delete(forumComments).where(eq(forumComments.id, id));
+}
+
+export async function reactToForumItem(userId: number, targetType: "post" | "comment", targetId: number, reaction: "upvote" | "downvote") {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Upsert: if same reaction exists, remove it (toggle); if different, update
+  const existing = await db.select().from(forumReactions)
+    .where(and(
+      eq(forumReactions.userId, userId),
+      eq(forumReactions.targetType, targetType),
+      eq(forumReactions.targetId, targetId),
+    )).limit(1);
+  if (existing.length > 0) {
+    if (existing[0].reaction === reaction) {
+      // Toggle off
+      await db.delete(forumReactions).where(eq(forumReactions.id, existing[0].id));
+      return { action: "removed" };
+    } else {
+      await db.update(forumReactions).set({ reaction }).where(eq(forumReactions.id, existing[0].id));
+      return { action: "updated" };
+    }
+  }
+  await db.insert(forumReactions).values({ userId, targetType, targetId, reaction });
+  return { action: "added" };
+}
+
+export async function getForumReactionCounts(targetType: "post" | "comment", targetIds: number[]) {
+  const db = await getDb();
+  if (!db) return {};
+  if (targetIds.length === 0) return {};
+  const rows = await db.select({
+    targetId: forumReactions.targetId,
+    reaction: forumReactions.reaction,
+    count: sql<number>`count(*)`,
+  })
+    .from(forumReactions)
+    .where(and(
+      eq(forumReactions.targetType, targetType),
+      inArray(forumReactions.targetId, targetIds),
+    ))
+    .groupBy(forumReactions.targetId, forumReactions.reaction);
+  const result: Record<number, { upvote: number; downvote: number }> = {};
+  for (const row of rows) {
+    if (!result[row.targetId]) result[row.targetId] = { upvote: 0, downvote: 0 };
+    result[row.targetId][row.reaction] = Number(row.count);
+  }
+  return result;
+}
+
+export async function getUserForumReactions(userId: number, targetType: "post" | "comment", targetIds: number[]) {
+  const db = await getDb();
+  if (!db) return {};
+  if (targetIds.length === 0) return {};
+  const rows = await db.select().from(forumReactions)
+    .where(and(
+      eq(forumReactions.userId, userId),
+      eq(forumReactions.targetType, targetType),
+      inArray(forumReactions.targetId, targetIds),
+    ));
+  return Object.fromEntries(rows.map(r => [r.targetId, r.reaction]));
+}
+
+// -- Search ---------------------------------------------------
+
+export async function searchUsers(query: string, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  const q = `%${query}%`;
+  return db.select({
+    id: users.id,
+    name: users.name,
+    artistName: users.artistName,
+    city: users.city,
+    avatarUrl: users.avatarUrl,
+    instagramHandle: users.instagramHandle,
+    role: users.role,
+  })
+    .from(users)
+    .where(or(
+      sql`${users.artistName} LIKE ${q}`,
+      sql`${users.name} LIKE ${q}`,
+    ))
+    .limit(limit);
+}
+
+export async function searchSongs(query: string, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  const q = `%${query}%`;
+  return db.select({
+    id: userSongs.id,
+    title: userSongs.title,
+    artistName: userSongs.artistName,
+    genre: userSongs.genre,
+    fileKey: userSongs.fileKey,
+    externalUrl: userSongs.externalUrl,
+    isPublic: userSongs.isPublic,
+    userId: userSongs.userId,
+  })
+    .from(userSongs)
+    .where(and(
+      eq(userSongs.isPublic, true),
+      or(
+        sql`${userSongs.title} LIKE ${q}`,
+        sql`${userSongs.artistName} LIKE ${q}`,
+      ),
+    ))
+    .limit(limit);
+}
+
+// -- Combined Leaderboard ------------------------------------
+
+export async function getCombinedLeaderboard() {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all battle records
+  const battles = await db.select().from(battleRecords).orderBy(desc(battleRecords.battleDate));
+
+  // Get all reviewed submissions with fire/trash counts
+  const submissions = await db.select({
+    id: reviewSubmissions.id,
+    artistName: reviewSubmissions.artistName,
+    songTitle: reviewSubmissions.songTitle,
+    fireCount: reviewSubmissions.fireCount,
+    trashCount: reviewSubmissions.trashCount,
+    userId: sql<number | null>`NULL`,
+  }).from(reviewSubmissions)
+    .where(eq(reviewSubmissions.status, "reviewed"));
+
+  // Aggregate by artist name
+  const artistMap: Record<string, {
+    artistName: string;
+    wins: number;
+    losses: number;
+    totalFire: number;
+    totalTrash: number;
+    totalBattles: number;
+    totalReviews: number;
+    score: number;
+  }> = {};
+
+  const ensureArtist = (name: string) => {
+    const key = name.toLowerCase().trim();
+    if (!artistMap[key]) {
+      artistMap[key] = { artistName: name, wins: 0, losses: 0, totalFire: 0, totalTrash: 0, totalBattles: 0, totalReviews: 0, score: 0 };
+    }
+    return artistMap[key];
+  };
+
+  for (const b of battles) {
+    ensureArtist(b.winnerArtistName).wins++;
+    ensureArtist(b.winnerArtistName).totalBattles++;
+    ensureArtist(b.loserArtistName).losses++;
+    ensureArtist(b.loserArtistName).totalBattles++;
+  }
+
+  for (const s of submissions) {
+    const a = ensureArtist(s.artistName);
+    a.totalFire += s.fireCount ?? 0;
+    a.totalTrash += s.trashCount ?? 0;
+    a.totalReviews++;
+  }
+
+  // Score = wins*10 + fire*2 - trash*1
+  for (const key of Object.keys(artistMap)) {
+    const a = artistMap[key];
+    a.score = a.wins * 10 + a.totalFire * 2 - a.totalTrash;
+  }
+
+  return Object.values(artistMap).sort((a, b) => b.score - a.score);
 }

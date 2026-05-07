@@ -15,10 +15,16 @@ import ArtistOfWeek from "./pages/ArtistOfWeek";
 import LiveStream from "./pages/LiveStream";
 import MusicWars from "./pages/MusicWars";
 import UserProfile from "./pages/UserProfile";
+import Forum from "./pages/Forum";
+import ForumPost from "./pages/ForumPost";
+import Leaderboard from "./pages/Leaderboard";
+import Search from "./pages/Search";
+import LatestPosts from "./pages/LatestPosts";
 
 function Router() {
   return (
     <Switch>
+      {/* Core pages */}
       <Route path={"/"} component={Home} />
       <Route path={"/promo"} component={Promo} />
       <Route path={"/mic"} component={MurderMittenMic} />
@@ -27,7 +33,21 @@ function Router() {
       <Route path={"/artist-of-the-week"} component={ArtistOfWeek} />
       <Route path={"/live"} component={LiveStream} />
       <Route path={"/music-wars"} component={MusicWars} />
+
+      {/* User profile */}
       <Route path={"/profile"} component={UserProfile} />
+      <Route path={"/profile/:id"} component={UserProfile} />
+
+      {/* Community */}
+      <Route path={"/forum"} component={Forum} />
+      <Route path={"/forum/:id"}>
+        {(params) => <ForumPost params={params} />}
+      </Route>
+      <Route path={"/leaderboard"} component={Leaderboard} />
+      <Route path={"/search"} component={Search} />
+      <Route path={"/latest-posts"} component={LatestPosts} />
+
+      {/* Fallback */}
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

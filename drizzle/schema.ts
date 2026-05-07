@@ -224,3 +224,70 @@ export const judgeApplications = mysqlTable("judge_applications", {
 
 export type JudgeApplication = typeof judgeApplications.$inferSelect;
 export type InsertJudgeApplication = typeof judgeApplications.$inferInsert;
+
+// Live Radio — admin-controlled shared broadcast queue
+export const liveRadioState = mysqlTable("live_radio_state", {
+  id: int("id").autoincrement().primaryKey(),
+  isActive: boolean("isActive").default(false).notNull(),
+  isPaused: boolean("isPaused").default(false).notNull(),
+  currentTrackId: int("currentTrackId"),   // references liveRadioQueue.id
+  currentTrackStartedAt: timestamp("currentTrackStartedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LiveRadioState = typeof liveRadioState.$inferSelect;
+
+// Live Radio Queue — ordered list of tracks for the live broadcast
+export const liveRadioQueue = mysqlTable("live_radio_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  position: int("position").default(0).notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  artistName: varchar("artistName", { length: 128 }).notNull(),
+  fileKey: varchar("fileKey", { length: 512 }),       // S3 key for re-signing
+  externalUrl: varchar("externalUrl", { length: 512 }), // YouTube/SoundCloud
+  sourceType: mysqlEnum("sourceType", ["upload", "youtube", "external"]).default("upload").notNull(),
+  submissionId: int("submissionId"),   // optional link back to review_submissions
+  addedAt: timestamp("addedAt").defaultNow().notNull(),
+});
+export type LiveRadioQueueItem = typeof liveRadioQueue.$inferSelect;
+export type InsertLiveRadioQueueItem = typeof liveRadioQueue.$inferInsert;
+
+// Forum Posts — community discussion board
+export const forumPosts = mysqlTable("forum_posts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  body: text("body").notNull(),
+  category: mysqlEnum("category", ["general", "music", "battles", "news", "feedback"]).default("general").notNull(),
+  pinned: boolean("pinned").default(false).notNull(),
+  locked: boolean("locked").default(false).notNull(),
+  viewCount: int("viewCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ForumPost = typeof forumPosts.$inferSelect;
+export type InsertForumPost = typeof forumPosts.$inferInsert;
+
+// Forum Comments — replies to forum posts
+export const forumComments = mysqlTable("forum_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  postId: int("postId").notNull(),
+  userId: int("userId").notNull(),
+  body: text("body").notNull(),
+  parentId: int("parentId"),  // null = top-level reply; set = nested reply
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ForumComment = typeof forumComments.$inferSelect;
+export type InsertForumComment = typeof forumComments.$inferInsert;
+
+// Forum Reactions — upvotes on posts and comments
+export const forumReactions = mysqlTable("forum_reactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  targetType: mysqlEnum("targetType", ["post", "comment"]).notNull(),
+  targetId: int("targetId").notNull(),
+  reaction: mysqlEnum("reaction", ["upvote", "downvote"]).default("upvote").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ForumReaction = typeof forumReactions.$inferSelect;
+export type InsertForumReaction = typeof forumReactions.$inferInsert;

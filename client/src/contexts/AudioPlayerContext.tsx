@@ -24,6 +24,8 @@ export type AudioTrack = {
   artist?: string;
   artworkUrl?: string;
   isStream?: boolean; // true for live radio/stream URLs
+  submissionId?: number; // for fire/trash rating
+  artistUserId?: number; // for clicking through to artist profile
 };
 
 type AudioPlayerState = {

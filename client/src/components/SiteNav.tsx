@@ -2,33 +2,56 @@
    Shared site navigation for Murder Mitten Media
    ============================================================ */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
-const NAV_LINKS = [
-  { href: "/live", label: "Live Stream", live: true },
-  { href: "/artist-of-the-week", label: "Artist of the Week" },
+// Primary links — always visible on desktop (kept short so they fit)
+const PRIMARY_LINKS = [
+  { href: "/live", label: "Live", live: true },
   { href: "/music-wars", label: "Music Wars" },
-  { href: "/review", label: "Live Music Reviews" },
-  { href: "/mic", label: "Murder Mitten Mic Performances" },
-  { href: "/podcast", label: "Meeting with the Mitten Podcast" },
+  { href: "/review", label: "Music Review" },
+  { href: "/mic", label: "Mic" },
+  { href: "/forum", label: "Forum" },
+  { href: "/latest-posts", label: "Latest Posts" },
+];
+
+// Secondary links — shown in "More" dropdown
+const MORE_LINKS = [
+  { href: "/search", label: "Search" },
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/artist-of-the-week", label: "Artist of the Week" },
+  { href: "/podcast", label: "Podcast" },
   { href: "/promo", label: "Get Promoted" },
 ];
+
+const ALL_MOBILE_LINKS: Array<{ href: string; label: string; live?: boolean }> = [...PRIMARY_LINKS, ...MORE_LINKS];
 
 export function SiteNav({ transparent = false }: { transparent?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
 
   useEffect(() => {
-    if (!transparent) return;
     const handler = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", handler);
     return () => window.removeEventListener("scroll", handler);
-  }, [transparent]);
+  }, []);
+
+  // Close More dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const bg = transparent && !scrolled
     ? "bg-transparent"
@@ -49,18 +72,44 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
           </span>
         </a>
 
-        {/* Desktop nav — scrollable on medium screens */}
-        <div className="hidden lg:flex items-center gap-5 text-sm text-white/60 font-medium overflow-x-auto">
-          {NAV_LINKS.map(link => (
+        {/* Desktop nav — no overflow, uses More dropdown for extra links */}
+        <div className="hidden lg:flex items-center gap-5 text-sm text-white/60 font-medium">
+          {PRIMARY_LINKS.map(link => (
             <a
               key={link.href}
               href={link.href}
-              className={`hover:text-white transition-colors flex items-center gap-1.5 whitespace-nowrap ${link.live ? "hover:text-red-400" : ""}`}
+              className="hover:text-white transition-colors flex items-center gap-1.5 whitespace-nowrap"
             >
               {link.live && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />}
               {link.label}
             </a>
           ))}
+          {/* More dropdown */}
+          <div className="relative" ref={moreRef}>
+            <button
+              onClick={() => setMoreOpen(v => !v)}
+              className="flex items-center gap-1 hover:text-white transition-colors whitespace-nowrap"
+            >
+              More
+              <svg className={`w-3.5 h-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {moreOpen && (
+              <div className="absolute top-full left-0 mt-2 w-52 bg-[#111] border border-white/10 shadow-xl py-1 z-50">
+                {MORE_LINKS.map(link => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMoreOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right side */}
@@ -152,7 +201,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
               </a>
             )}
 
-            {NAV_LINKS.map(link => (
+            {ALL_MOBILE_LINKS.map(link => (
               <a
                 key={link.href}
                 href={link.href}

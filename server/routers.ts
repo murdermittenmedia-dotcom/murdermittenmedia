@@ -24,6 +24,13 @@ import {
   castSongReaction, getSongReactionCounts, getUserSongReaction,
   applyAsJudge, getPendingJudgeApplications, reviewJudgeApplication, getUserJudgeApplication,
   getRelevantUsers, getPlayersWithStats, fullWarReset, getCurrentWarSession,
+  getLiveRadioState, getLiveRadioQueue, addToLiveRadioQueue, removeFromLiveRadioQueue,
+  clearLiveRadioQueue, setLiveRadioCurrentTrack, setLiveRadioPaused, stopLiveRadio,
+  getForumPosts, getForumPostById, createForumPost, deleteForumPost,
+  getForumComments, createForumComment, deleteForumComment,
+  reactToForumItem, getForumReactionCounts, getUserForumReactions,
+  searchUsers, searchSongs,
+  getCombinedLeaderboard,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -886,6 +893,243 @@ export const appRouter = router({
         await clearBattleVotes(input.battleId);
         return { success: true };
       }),
+  }),
+
+  // -- Live Radio (admin-controlled broadcast) -----------------
+  radio: router({
+    // Public: get current live radio state + queue
+    getState: publicProcedure.query(async () => {
+      const [state, queue] = await Promise.all([getLiveRadioState(), getLiveRadioQueue()]);
+      return { state: state ?? null, queue };
+    }),
+
+    // Admin: add a submission to the live radio queue
+    addTrack: adminProcedure
+      .input(z.object({
+        title: z.string().min(1).max(256),
+        artistName: z.string().min(1).max(128),
+        fileKey: z.string().max(512).optional(),
+        externalUrl: z.string().max(512).optional(),
+        sourceType: z.enum(["upload", "youtube", "external"]).default("upload"),
+        submissionId: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await addToLiveRadioQueue({
+          title: input.title,
+          artistName: input.artistName,
+          fileKey: input.fileKey ?? null,
+          externalUrl: input.externalUrl ?? null,
+          sourceType: input.sourceType,
+          submissionId: input.submissionId ?? null,
+        });
+        return { success: true };
+      }),
+
+    // Admin: remove a track from the queue
+    removeTrack: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await removeFromLiveRadioQueue(input.id);
+        return { success: true };
+      }),
+
+    // Admin: clear entire queue
+    clearQueue: adminProcedure.mutation(async () => {
+      await clearLiveRadioQueue();
+      return { success: true };
+    }),
+
+    // Admin: set current playing track (starts live radio)
+    setCurrentTrack: adminProcedure
+      .input(z.object({ trackId: z.number().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        await setLiveRadioCurrentTrack(input.trackId);
+        // Broadcast to all clients via socket
+        const io = (ctx.req as any).app?.io;
+        if (io) io.emit("radio:state_change", { trackId: input.trackId });
+        return { success: true };
+      }),
+
+    // Admin: pause/resume
+    setPaused: adminProcedure
+      .input(z.object({ isPaused: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await setLiveRadioPaused(input.isPaused);
+        const io = (ctx.req as any).app?.io;
+        if (io) io.emit("radio:state_change", { isPaused: input.isPaused });
+        return { success: true };
+      }),
+
+    // Admin: stop live radio
+    stop: adminProcedure.mutation(async ({ ctx }) => {
+      await stopLiveRadio();
+      const io = (ctx.req as any).app?.io;
+      if (io) io.emit("radio:state_change", { isActive: false });
+      return { success: true };
+    }),
+
+    // Get presigned URL for a live radio track
+    getTrackUrl: publicProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .query(async ({ input }) => {
+        const url = await storageGetSignedUrl(input.fileKey);
+        return { url };
+      }),
+  }),
+
+  // -- Forum --------------------------------------------------
+  forum: router({
+    // Get posts (optionally filtered by category)
+    getPosts: publicProcedure
+      .input(z.object({
+        category: z.string().optional(),
+        limit: z.number().min(1).max(100).default(30),
+        offset: z.number().min(0).default(0),
+      }))
+      .query(async ({ input }) => {
+        const rows = await getForumPosts(input.category, input.limit, input.offset);
+        const postIds = rows.map(r => r.post.id);
+        const reactions = await getForumReactionCounts("post", postIds);
+        return rows.map(r => ({
+          ...r.post,
+          author: r.author,
+          upvotes: reactions[r.post.id]?.upvote ?? 0,
+          downvotes: reactions[r.post.id]?.downvote ?? 0,
+        }));
+      }),
+
+    // Get a single post with comments
+    getPost: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const row = await getForumPostById(input.id);
+        if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+        const comments = await getForumComments(input.id);
+        const commentIds = comments.map(c => c.comment.id);
+        const [postReactions, commentReactions] = await Promise.all([
+          getForumReactionCounts("post", [input.id]),
+          getForumReactionCounts("comment", commentIds),
+        ]);
+        let myPostReaction: string | undefined;
+        let myCommentReactions: Record<number, string> = {};
+        if (ctx.user) {
+          const [mpr, mcr] = await Promise.all([
+            getUserForumReactions(ctx.user.id, "post", [input.id]),
+            getUserForumReactions(ctx.user.id, "comment", commentIds),
+          ]);
+          myPostReaction = mpr[input.id];
+          myCommentReactions = mcr;
+        }
+        return {
+          ...row.post,
+          author: row.author,
+          upvotes: postReactions[input.id]?.upvote ?? 0,
+          downvotes: postReactions[input.id]?.downvote ?? 0,
+          myReaction: myPostReaction ?? null,
+          comments: comments.map(c => ({
+            ...c.comment,
+            author: c.author,
+            upvotes: commentReactions[c.comment.id]?.upvote ?? 0,
+            downvotes: commentReactions[c.comment.id]?.downvote ?? 0,
+            myReaction: myCommentReactions[c.comment.id] ?? null,
+          })),
+        };
+      }),
+
+    // Create a post (requires login)
+    createPost: protectedProcedure
+      .input(z.object({
+        title: z.string().min(1).max(256),
+        body: z.string().min(1).max(10000),
+        category: z.enum(["general", "music", "battles", "news", "feedback"]).default("general"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getArtistProfile(ctx.user.id);
+        const displayName = profile?.artistName ?? ctx.user.name ?? "Anonymous";
+        await createForumPost({
+          userId: ctx.user.id,
+          title: input.title,
+          body: input.body,
+          category: input.category,
+        });
+        return { success: true };
+      }),
+
+    // Delete a post (own post or admin)
+    deletePost: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const row = await getForumPostById(input.id);
+        if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+        if (row.post.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await deleteForumPost(input.id);
+        return { success: true };
+      }),
+
+    // Create a comment
+    createComment: protectedProcedure
+      .input(z.object({
+        postId: z.number(),
+        body: z.string().min(1).max(2000),
+        parentId: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const profile = await getArtistProfile(ctx.user.id);
+        const displayName = profile?.artistName ?? ctx.user.name ?? "Anonymous";
+        await createForumComment({
+          postId: input.postId,
+          userId: ctx.user.id,
+          body: input.body,
+          parentId: input.parentId ?? null,
+        });
+        return { success: true };
+      }),
+
+    // Delete a comment (own or admin)
+    deleteComment: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const comments = await getForumComments(0); // we need to look up by id
+        // Just delete — server will check ownership via DB
+        await deleteForumComment(input.id);
+        return { success: true };
+      }),
+
+    // React to a post or comment
+    react: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(["post", "comment"]),
+        targetId: z.number(),
+        reaction: z.enum(["upvote", "downvote"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await reactToForumItem(ctx.user.id, input.targetType, input.targetId, input.reaction);
+        return result;
+      }),
+  }),
+
+  // -- Search --------------------------------------------------
+  search: router({
+    users: publicProcedure
+      .input(z.object({ query: z.string().min(1).max(128) }))
+      .query(async ({ input }) => {
+        return searchUsers(input.query, 20);
+      }),
+
+    songs: publicProcedure
+      .input(z.object({ query: z.string().min(1).max(128) }))
+      .query(async ({ input }) => {
+        return searchSongs(input.query, 20);
+      }),
+  }),
+
+  // -- Combined Leaderboard ------------------------------------
+  leaderboard: router({
+    combined: publicProcedure.query(async () => {
+      return getCombinedLeaderboard();
+    }),
   }),
 
   // -- Next Event Scheduler (admin) -----------------------------

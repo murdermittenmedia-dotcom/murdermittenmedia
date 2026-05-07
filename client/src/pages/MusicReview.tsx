@@ -413,7 +413,7 @@ function AdminPanel({
 // ── Main page ─────────────────────────────────────────────────
 export default function MusicReview() {
   const [tab, setTab] = useState<SubmitTab>("queue");
-  const [submitType, setSubmitType] = useState<"youtube" | "file">("youtube");
+  const [submitType, setSubmitType] = useState<"youtube" | "file">("file");
   const [form, setForm] = useState({
     songTitle: "",
     youtubeUrl: "",
@@ -562,10 +562,10 @@ export default function MusicReview() {
     if (sub.fileKey) {
       try {
         const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: sub.fileKey });
-        audioPlayer.play({ url, title: sub.songTitle, artist: sub.artistName, isStream: false });
+        audioPlayer.play({ url, title: sub.songTitle, artist: sub.artistName, isStream: false, submissionId: sub.id });
       } catch {
         if (sub.fileUrl) {
-          audioPlayer.play({ url: sub.fileUrl, title: sub.songTitle, artist: sub.artistName, isStream: false });
+          audioPlayer.play({ url: sub.fileUrl, title: sub.songTitle, artist: sub.artistName, isStream: false, submissionId: sub.id });
         } else {
           toast.error("Could not load audio file");
         }
@@ -941,7 +941,7 @@ export default function MusicReview() {
                             </div>
                           )}
                         </div>
-                        <input ref={fileInputRef} type="file" accept="audio/*" className="hidden"
+                        <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,.ogg,.aac,.flac,audio/*" className="hidden"
                           onChange={e => {
                             const f = e.target.files?.[0];
                             if (!f) return;

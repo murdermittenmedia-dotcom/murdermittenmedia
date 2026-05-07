@@ -353,7 +353,7 @@ export default function UserProfile() {
             <div className="border border-white/10 bg-white/[0.03] p-10 text-center">
               <Mic className="w-10 h-10 text-white/20 mx-auto mb-3" />
               <p className="text-white/40 text-sm">No submissions yet.</p>
-              <a href="/music-review" className="text-red-500 text-sm hover:underline mt-2 inline-block">
+              <a href="/review" className="text-red-500 text-sm hover:underline mt-2 inline-block">
                 Submit your first track →
               </a>
             </div>
