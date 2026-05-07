@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { storagePut } from "./storage";
+import { storagePut, storageGetSignedUrl } from "./storage";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, getQueueState, setCurrentPlaying, setLiveStatus,
@@ -457,6 +457,14 @@ export const appRouter = router({
       .input(z.object({ submissionId: z.number() }))
       .query(async ({ ctx, input }) => {
         return getUserSongReaction(input.submissionId, ctx.user.id);
+      }),
+
+    // Get a direct presigned S3 URL for a stored audio file (bypasses redirect)
+    getAudioUrl: publicProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .query(async ({ input }) => {
+        const url = await storageGetSignedUrl(input.fileKey);
+        return { url };
       }),
   }),
   // -- Artist of the Weekk ---------------------------------------

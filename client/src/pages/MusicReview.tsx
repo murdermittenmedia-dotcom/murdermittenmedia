@@ -539,18 +539,25 @@ export default function MusicReview() {
   const liveMessage = data?.state?.liveMessage;
   const streamUrl = data?.state?.streamUrl;
 
-  const playTrack = useCallback((sub: typeof pendingQueue[0]) => {
-    if (sub.fileUrl) {
-      audioPlayer.play({
-        url: sub.fileUrl,
-        title: sub.songTitle,
-        artist: sub.artistName,
-        isStream: false,
-      });
+  const utils = trpc.useUtils();
+  const playTrack = useCallback(async (sub: typeof pendingQueue[0]) => {
+    if (sub.fileKey) {
+      try {
+        const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: sub.fileKey });
+        audioPlayer.play({ url, title: sub.songTitle, artist: sub.artistName, isStream: false });
+      } catch {
+        if (sub.fileUrl) {
+          audioPlayer.play({ url: sub.fileUrl, title: sub.songTitle, artist: sub.artistName, isStream: false });
+        } else {
+          toast.error("Could not load audio file");
+        }
+      }
     } else if (sub.youtubeUrl) {
       window.open(sub.youtubeUrl, "_blank");
+    } else {
+      toast.error("No audio available");
     }
-  }, [audioPlayer]);
+  }, [audioPlayer, utils]);
 
   const playStream = useCallback(() => {
     if (streamUrl) {

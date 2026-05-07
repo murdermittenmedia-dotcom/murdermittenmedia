@@ -21,6 +21,7 @@ type Submission = {
   submissionType: "youtube" | "file";
   youtubeUrl: string | null;
   fileUrl: string | null;
+  fileKey: string | null;
   status: "pending" | "playing" | "reviewed" | "removed";
   fireCount: number;
   trashCount: number;
@@ -109,17 +110,25 @@ export default function UserProfile() {
     });
   };
 
-  const handlePlaySubmission = (sub: Submission) => {
-    const url = sub.submissionType === "youtube" ? sub.youtubeUrl : sub.fileUrl;
-    if (!url) { toast.error("No audio available for this submission"); return; }
-    if (currentTrack?.url === url && isPlaying) {
+  const utils = trpc.useUtils();
+  const handlePlaySubmission = async (sub: Submission) => {
+    if (sub.submissionType === "youtube" && sub.youtubeUrl) {
+      window.open(sub.youtubeUrl, "_blank");
+      return;
+    }
+    if (!sub.fileKey && !sub.fileUrl) { toast.error("No audio available"); return; }
+    let playUrl = sub.fileUrl;
+    if (sub.fileKey) {
+      try {
+        const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: sub.fileKey });
+        playUrl = url;
+      } catch { /* fallback to stored fileUrl */ }
+    }
+    if (!playUrl) { toast.error("Could not load audio"); return; }
+    if (currentTrack?.url === playUrl && isPlaying) {
       pause();
     } else {
-      play({
-        url,
-        title: sub.songTitle,
-        artist: sub.artistName,
-      });
+      play({ url: playUrl, title: sub.songTitle, artist: sub.artistName });
     }
   };
 
