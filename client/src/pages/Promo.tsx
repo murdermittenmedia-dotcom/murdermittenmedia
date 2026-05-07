@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Promo Packages Page
+   MURDER MITTEN MEDIA -- Promo Packages Page
    ============================================================ */
 
 import { useState } from "react";
@@ -105,10 +105,10 @@ export default function Promo() {
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
 
-      {/* ── NAV ─────────────────────────────────────────────── */}
+      {/* -- NAV ----------------------------------------------- */}
       <SiteNav />
 
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* -- HERO ---------------------------------------------- */}
       <section className="pt-32 pb-16 text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 to-transparent" />
         <div className="container relative z-10">
@@ -123,7 +123,7 @@ export default function Promo() {
             PROMO <span className="text-red-600">PACKAGES</span>
           </h1>
           <p className="text-white/50 text-lg max-w-2xl mx-auto mb-6">
-            Reach <span className="text-white font-semibold">45,000+ followers</span> and <span className="text-white font-semibold">4.5M+ monthly views</span> on Murder Mitten Media — Michigan's #1 rap & culture platform.
+            Reach <span className="text-white font-semibold">45,000+ followers</span> and <span className="text-white font-semibold">4.5M+ monthly views</span> on Murder Mitten Media -- Michigan's #1 rap & culture platform.
           </p>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-white/40">
             <span>📍 Detroit, MI</span>
@@ -134,7 +134,7 @@ export default function Promo() {
         </div>
       </section>
 
-      {/* ── PACKAGES ────────────────────────────────────────── */}
+      {/* -- PACKAGES ------------------------------------------ */}
       <section className="py-16">
         <div className="container">
           <div className="text-center mb-12">
@@ -170,14 +170,14 @@ export default function Promo() {
                 </ul>
                 {selectedPackage === pkg.id && (
                   <div className="mt-6 text-center">
-                    <span className="text-xs text-red-400 uppercase tracking-widest">Selected — Pay below ↓</span>
+                    <span className="text-xs text-red-400 uppercase tracking-widest">Selected -- Pay below ↓</span>
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* ── BUNDLES ─────────────────────────────────────── */}
+          {/* -- BUNDLES --------------------------------------- */}
           <div className="text-center mb-8 mt-16">
             <p className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">Save More</p>
             <h2 className="font-['Anton'] text-4xl md:text-5xl uppercase">BUNDLE <span className="text-red-600">DEALS</span></h2>
@@ -208,7 +208,7 @@ export default function Promo() {
         </div>
       </section>
 
-      {/* ── HOW TO ORDER ────────────────────────────────────── */}
+      {/* -- HOW TO ORDER -------------------------------------- */}
       <section className="py-16 border-t border-white/10">
         <div className="container max-w-3xl mx-auto text-center">
           <p className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">How It Works</p>
@@ -229,7 +229,7 @@ export default function Promo() {
         </div>
       </section>
 
-      {/* ── PAYMENT METHODS ─────────────────────────────────── */}
+      {/* -- PAYMENT METHODS ----------------------------------- */}
       <section className="py-16 border-t border-white/10">
         <div className="container">
           <div className="text-center mb-12">
@@ -300,7 +300,7 @@ export default function Promo() {
         </div>
       </section>
 
-      {/* ── FOOTER ──────────────────────────────────────────── */}
+      {/* -- FOOTER -------------------------------------------- */}
       <footer className="border-t border-white/10 py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
@@ -310,7 +310,7 @@ export default function Promo() {
             </span>
           </a>
           <div className="text-white/30 text-xs text-center">
-            © 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
+            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
           </div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>

@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Music Review Submission Queue
+   MURDER MITTEN MEDIA -- Music Review Submission Queue
    ============================================================ */
 
 import { useState, useEffect } from "react";
@@ -89,10 +89,10 @@ export default function MusicReview() {
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
 
-      {/* ── NAV ─────────────────────────────────────────────── */}
+      {/* -- NAV ----------------------------------------------- */}
       <SiteNav />
 
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* -- HERO ---------------------------------------------- */}
       <section className="pt-32 pb-10 text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 to-transparent" />
         <div className="container relative z-10">
@@ -113,7 +113,7 @@ export default function MusicReview() {
 
       <div className="container pb-20 max-w-4xl mx-auto">
 
-        {/* ── CURRENTLY PLAYING ───────────────────────────────── */}
+        {/* -- CURRENTLY PLAYING --------------------------------- */}
         {currentPlaying && (
           <div className="mb-8 border border-red-600/50 bg-red-600/10 p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent" />
@@ -127,7 +127,7 @@ export default function MusicReview() {
           </div>
         )}
 
-        {/* ── TABS ────────────────────────────────────────────── */}
+        {/* -- TABS ---------------------------------------------- */}
         <div className="flex gap-0 mb-8 border border-white/10">
           <button
             onClick={() => setStep("queue")}
@@ -149,7 +149,7 @@ export default function MusicReview() {
           </button>
         </div>
 
-        {/* ── QUEUE VIEW ──────────────────────────────────────── */}
+        {/* -- QUEUE VIEW ---------------------------------------- */}
         {step === "queue" && (
           <div>
             {isLoading ? (
@@ -207,7 +207,7 @@ export default function MusicReview() {
           </div>
         )}
 
-        {/* ── SUBMIT FORM ─────────────────────────────────────── */}
+        {/* -- SUBMIT FORM --------------------------------------- */}
         {step === "submit" && (
           <div>
             {submitted ? (
@@ -343,7 +343,7 @@ export default function MusicReview() {
                       {form.wantsSkip && <span className="text-black text-xs font-bold">✓</span>}
                     </div>
                     <div>
-                      <div className="font-semibold text-sm text-yellow-400">⚡ Skip the Line — $10</div>
+                      <div className="font-semibold text-sm text-yellow-400">⚡ Skip the Line -- $10</div>
                       <div className="text-white/40 text-xs mt-0.5">
                         Move to the front of the queue. Send $10 to {CASHAPP} / PayPal: {PAYPAL} / Apple Pay: {APPLEPAY} after submitting.
                       </div>
@@ -363,7 +363,7 @@ export default function MusicReview() {
           </div>
         )}
 
-        {/* ── SKIP INFO ───────────────────────────────────────── */}
+        {/* -- SKIP INFO ----------------------------------------- */}
         {step === "skip-info" && (
           <div className="border border-yellow-500/30 bg-yellow-500/5 p-8">
             <div className="text-center mb-8">
@@ -390,7 +390,7 @@ export default function MusicReview() {
               <div className="font-semibold text-white/70 mb-2">How it works:</div>
               <ol className="space-y-1 list-decimal list-inside text-xs leading-relaxed">
                 <li>Submit your track using the Submit Track tab and check the "Skip the Line" option</li>
-                <li>Send $10 to any payment method above — include your artist name in the note</li>
+                <li>Send $10 to any payment method above -- include your artist name in the note</li>
                 <li>We confirm your payment and move you to the front of the queue</li>
                 <li>Your track gets reviewed next during the live session</li>
               </ol>
@@ -406,7 +406,7 @@ export default function MusicReview() {
         )}
       </div>
 
-      {/* ── FOOTER ──────────────────────────────────────────── */}
+      {/* -- FOOTER -------------------------------------------- */}
       <footer className="border-t border-white/10 py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
@@ -415,7 +415,7 @@ export default function MusicReview() {
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
           </a>
-          <div className="text-white/30 text-xs">© 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
+          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YouTube</a>

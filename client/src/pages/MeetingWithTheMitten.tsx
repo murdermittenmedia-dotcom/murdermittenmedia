@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Meeting With The Mitten Podcast
+   MURDER MITTEN MEDIA -- Meeting With The Mitten Podcast
    All 15 episodes from the official YouTube playlist
    ============================================================ */
 
@@ -39,7 +39,7 @@ const EPISODES = [
     guest: "Benzino",
     views: "7K",
     duration: "1:23:05",
-    description: "One of the biggest episodes yet. Benzino responds to everything — Snap Dogg, the Eminem beef, Mom's Spaghetti, and his deep love for Detroit.",
+    description: "One of the biggest episodes yet. Benzino responds to everything -- Snap Dogg, the Eminem beef, Mom's Spaghetti, and his deep love for Detroit.",
   },
   {
     id: "6HhioE2Fu7s",
@@ -295,7 +295,7 @@ export default function MeetingWithTheMitten() {
             </span>
           </div>
           <div className="text-white/30 text-xs text-center">
-            © 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
+            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
           </div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">IG</a>

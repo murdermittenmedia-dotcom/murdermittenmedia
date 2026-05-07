@@ -93,7 +93,7 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// ── Review Queue ─────────────────────────────────────────────
+// -- Review Queue ---------------------------------------------
 
 export async function getQueueSubmissions() {
   const db = await getDb();
@@ -153,7 +153,7 @@ export async function setLiveStatus(isLive: boolean, message?: string) {
   }
 }
 
-// ── Artist of the Week ───────────────────────────────────────
+// -- Artist of the Week ---------------------------------------
 
 export async function getActiveArtistOfWeek() {
   const db = await getDb();

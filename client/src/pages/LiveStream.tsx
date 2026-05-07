@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Live Stream Page
+   MURDER MITTEN MEDIA -- Live Stream Page
    Streams via Streamlabs → YouTube
    ============================================================ */
 
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
-// YouTube channel ID for Murder Mitten Media — used for the live embed
+// YouTube channel ID for Murder Mitten Media -- used for the live embed
 const YT_CHANNEL_ID = "UCMurderMittenMedia";
 const YT_CHANNEL_URL = "https://www.youtube.com/@MurderMittenMedia";
 
@@ -36,7 +36,7 @@ export default function LiveStream() {
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
       <SiteNav transparent />
 
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* -- HERO ---------------------------------------------- */}
       <section className="pt-32 pb-8 text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 to-transparent" />
         <div className="container relative z-10">
@@ -75,10 +75,10 @@ export default function LiveStream() {
 
       <div className="container pb-20 max-w-5xl mx-auto">
 
-        {/* ── ADMIN LIVE TOGGLE ───────────────────────────────── */}
+        {/* -- ADMIN LIVE TOGGLE --------------------------------- */}
         {isAdmin && (
           <div className="mb-6 border border-yellow-500/30 bg-yellow-500/5 p-4">
-            <div className="text-yellow-400 text-xs uppercase tracking-widest font-bold mb-3">Admin — Live Controls</div>
+            <div className="text-yellow-400 text-xs uppercase tracking-widest font-bold mb-3">Admin -- Live Controls</div>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
@@ -108,7 +108,7 @@ export default function LiveStream() {
           </div>
         )}
 
-        {/* ── YOUTUBE EMBED ───────────────────────────────────── */}
+        {/* -- YOUTUBE EMBED ------------------------------------- */}
         <div className="mb-8 relative border border-white/10">
           {isLive ? (
             // When live: embed the YouTube live stream directly
@@ -143,11 +143,11 @@ export default function LiveStream() {
           )}
         </div>
 
-        {/* ── INFO CARDS ──────────────────────────────────────── */}
+        {/* -- INFO CARDS ---------------------------------------- */}
         <div className="grid md:grid-cols-3 gap-4 mb-10">
           {[
             { icon: "🎙", title: "Music Reviews", desc: "Live track reviews from Michigan artists. Submit yours at /review" },
-            { icon: "🎤", title: "Artist Interviews", desc: "Real conversations with real artists — no scripts, no filters" },
+            { icon: "🎤", title: "Artist Interviews", desc: "Real conversations with real artists -- no scripts, no filters" },
             { icon: "🔴", title: "Powered by Streamlabs", desc: "We stream live to YouTube using Streamlabs. Subscribe to get notified" },
           ].map(card => (
             <div key={card.title} className="border border-white/10 bg-white/[0.02] p-5 text-center">
@@ -158,7 +158,7 @@ export default function LiveStream() {
           ))}
         </div>
 
-        {/* ── SUBSCRIBE CTA ───────────────────────────────────── */}
+        {/* -- SUBSCRIBE CTA ------------------------------------- */}
         <div className="border border-red-600/30 bg-red-600/5 p-8 text-center">
           <div className="font-['Anton'] text-3xl uppercase mb-2">
             Never Miss a <span className="text-red-600">Live</span>
@@ -177,7 +177,7 @@ export default function LiveStream() {
         </div>
       </div>
 
-      {/* ── FOOTER ──────────────────────────────────────────── */}
+      {/* -- FOOTER -------------------------------------------- */}
       <footer className="border-t border-white/10 py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
@@ -186,7 +186,7 @@ export default function LiveStream() {
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
           </a>
-          <div className="text-white/30 text-xs">© 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
+          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>
             <a href={YT_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YouTube</a>

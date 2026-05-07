@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Music Wars Page
+   MURDER MITTEN MEDIA -- Music Wars Page
    Head-to-head battle competition with spin wheel & bracket
    Discord: https://discord.gg/hZUPZzx7
    ============================================================ */
@@ -19,7 +19,7 @@ const PAST_WARS = [
     badge: "Finale",
   },
   {
-    title: "Music Wars Feat. YSR Gramz — Round 2",
+    title: "Music Wars Feat. YSR Gramz -- Round 2",
     videoId: "vPIdlU0eT-0",
     views: "678",
     duration: "4:14:02",
@@ -33,14 +33,14 @@ const PAST_WARS = [
     badge: "Round 1",
   },
   {
-    title: "Music Wars — Winner Gets a YSR Gramz Feature",
+    title: "Music Wars -- Winner Gets a YSR Gramz Feature",
     videoId: "QgmYCIpZjAE",
     views: "77",
     duration: "3:35:17",
     badge: "Special",
   },
   {
-    title: "Music Wars — Winner Gets a YSR Gramz Feature",
+    title: "Music Wars -- Winner Gets a YSR Gramz Feature",
     videoId: "_ZDcvvO7rI4",
     views: "150",
     duration: "2:20:38",
@@ -57,12 +57,12 @@ const PRIZES = [
 
 const HOW_IT_WORKS = [
   { step: "01", title: "Join the Discord", desc: "Sign up at discord.gg/hZUPZzx7 and register your name for the next Music Wars event." },
-  { step: "02", title: "Names Go on the Wheel", desc: "All registered artists are added to the spin wheel. The wheel decides your matchup — no seeding, pure random." },
+  { step: "02", title: "Names Go on the Wheel", desc: "All registered artists are added to the spin wheel. The wheel decides your matchup -- no seeding, pure random." },
   { step: "03", title: "Head-to-Head Battles", desc: "You and your opponent each submit a track. The audience votes live. Loser is eliminated, winner advances." },
   { step: "04", title: "Last One Standing Wins", desc: "Battles continue until one artist remains. The champion takes home the prize and gets their music heard by thousands." },
 ];
 
-// ─── Spin Wheel Component ─────────────────────────────────────
+// --- Spin Wheel Component -------------------------------------
 function SpinWheel({ names }: { names: string[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [spinning, setSpinning] = useState(false);
@@ -110,7 +110,7 @@ function SpinWheel({ names }: { names: string[] }) {
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffffff";
       ctx.font = `bold ${Math.min(14, 200 / n)}px 'DM Sans', sans-serif`;
-      ctx.fillText(names[i].length > 12 ? names[i].slice(0, 12) + "…" : names[i], r - 12, 5);
+      ctx.fillText(names[i].length > 12 ? names[i].slice(0, 12) + "..." : names[i], r - 12, 5);
       ctx.restore();
     }
 
@@ -189,7 +189,7 @@ function SpinWheel({ names }: { names: string[] }) {
   );
 }
 
-// ─── Demo wheel names ─────────────────────────────────────────
+// --- Demo wheel names -----------------------------------------
 const DEMO_NAMES = ["Artist A", "Artist B", "Artist C", "Artist D", "Artist E", "Artist F", "Artist G", "Artist H"];
 
 export default function MusicWars() {
@@ -199,7 +199,7 @@ export default function MusicWars() {
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
       <SiteNav transparent />
 
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* -- HERO ---------------------------------------------- */}
       <section
         className="relative min-h-[70vh] flex items-center overflow-hidden"
         style={{
@@ -253,7 +253,7 @@ export default function MusicWars() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ────────────────────────────────────── */}
+      {/* -- HOW IT WORKS -------------------------------------- */}
       <section className="py-20 border-t border-white/10">
         <div className="container">
           <div className="text-center mb-14">
@@ -276,7 +276,7 @@ export default function MusicWars() {
         </div>
       </section>
 
-      {/* ── SPIN WHEEL DEMO ─────────────────────────────────── */}
+      {/* -- SPIN WHEEL DEMO ----------------------------------- */}
       <section className="py-20 bg-white/[0.02] border-y border-white/10">
         <div className="container">
           <div className="grid md:grid-cols-2 gap-16 items-center">
@@ -287,10 +287,10 @@ export default function MusicWars() {
               </h2>
               <div className="w-12 h-0.5 bg-red-600 mb-5" />
               <p className="text-white/60 leading-relaxed mb-4">
-                Every Music Wars event starts with the spin wheel. All registered artists' names go on the wheel — no seeding, no favoritism. Pure random matchups.
+                Every Music Wars event starts with the spin wheel. All registered artists' names go on the wheel -- no seeding, no favoritism. Pure random matchups.
               </p>
               <p className="text-white/60 leading-relaxed mb-6">
-                The wheel decides who battles who. Two artists go head-to-head, the audience votes live, and the loser is eliminated. This is a demo of how the wheel works — the real wheel runs live on stream.
+                The wheel decides who battles who. Two artists go head-to-head, the audience votes live, and the loser is eliminated. This is a demo of how the wheel works -- the real wheel runs live on stream.
               </p>
               <a
                 href={DISCORD_URL}
@@ -311,7 +311,7 @@ export default function MusicWars() {
         </div>
       </section>
 
-      {/* ── PRIZES ──────────────────────────────────────────── */}
+      {/* -- PRIZES -------------------------------------------- */}
       <section className="py-20">
         <div className="container">
           <div className="text-center mb-14">
@@ -332,7 +332,7 @@ export default function MusicWars() {
         </div>
       </section>
 
-      {/* ── PAST WARS ───────────────────────────────────────── */}
+      {/* -- PAST WARS ----------------------------------------- */}
       <section id="past-wars" className="py-20 bg-white/[0.02] border-y border-white/10">
         <div className="container">
           <div className="text-center mb-14">
@@ -405,7 +405,7 @@ export default function MusicWars() {
         </div>
       </section>
 
-      {/* ── DISCORD CTA ─────────────────────────────────────── */}
+      {/* -- DISCORD CTA --------------------------------------- */}
       <section className="py-20">
         <div className="container max-w-3xl mx-auto text-center">
           <div className="border border-[#5865F2]/30 bg-[#5865F2]/5 p-10">
@@ -438,7 +438,7 @@ export default function MusicWars() {
         </div>
       </section>
 
-      {/* ── FOOTER ──────────────────────────────────────────── */}
+      {/* -- FOOTER -------------------------------------------- */}
       <footer className="border-t border-white/10 py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
@@ -447,7 +447,7 @@ export default function MusicWars() {
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
           </a>
-          <div className="text-white/30 text-xs">© 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
+          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YouTube</a>

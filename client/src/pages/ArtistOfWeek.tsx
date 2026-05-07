@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Artist of the Week Page
+   MURDER MITTEN MEDIA -- Artist of the Week Page
    This Week: CEO Stew (Money Bag Boys)
    ============================================================ */
 
@@ -8,7 +8,7 @@ import { SiteNav } from "@/components/SiteNav";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
-// ─── CEO Stew Data ────────────────────────────────────────────
+// --- CEO Stew Data --------------------------------------------
 const ARTIST = {
   name: "CEO Stew",
   aka: "Stewop",
@@ -18,64 +18,64 @@ const ARTIST = {
   tiktok: "https://www.tiktok.com/@stewopmbb",
   youtube: "https://www.youtube.com/@moneybagboys_co",
   spotify: "https://open.spotify.com/artist/ceo-stew",
-  imageUrl: "", // placeholder — no public image URL available
+  imageUrl: "", // placeholder -- no public image URL available
   tagline: "Eastside Detroit's Most Consistent Voice",
   article: `
-There's a certain kind of rapper that doesn't need a co-sign to be felt — the type that lets the music do the talking while everyone else is chasing clout. CEO Stew, born and raised on the Eastside of Detroit, is exactly that type of artist. And this week, Murder Mitten Media is putting the city on notice: Stew is the one to watch.
+There's a certain kind of rapper that doesn't need a co-sign to be felt -- the type that lets the music do the talking while everyone else is chasing clout. CEO Stew, born and raised on the Eastside of Detroit, is exactly that type of artist. And this week, Murder Mitten Media is putting the city on notice: Stew is the one to watch.
 
-Repping the Money Bag Boys collective alongside fellow MBB members Big Punch, Lil Don, and 1481 Grungie, CEO Stew has been quietly building one of the most consistent catalogs coming out of Detroit over the past few years. What sets him apart isn't just the bars — it's the authenticity. Every track feels lived-in, like he's rapping from a place most people only hear about.
+Repping the Money Bag Boys collective alongside fellow MBB members Big Punch, Lil Don, and 1481 Grungie, CEO Stew has been quietly building one of the most consistent catalogs coming out of Detroit over the past few years. What sets him apart isn't just the bars -- it's the authenticity. Every track feels lived-in, like he's rapping from a place most people only hear about.
 
-His 2025 EP *STEWOP* — a six-song project that dropped July 14th on all platforms — marked a turning point. The tape showcased a more focused, confident Stew: sharper pen, tighter production choices, and a clear vision of where he's headed. Tracks like "Rush" (featuring DJ Lucas) and "Kitchen Top" with Big Punch showed his range, from street-certified anthems to melodic flexes that hit different on a late night drive through the D.
+His 2025 EP *STEWOP* -- a six-song project that dropped July 14th on all platforms -- marked a turning point. The tape showcased a more focused, confident Stew: sharper pen, tighter production choices, and a clear vision of where he's headed. Tracks like "Rush" (featuring DJ Lucas) and "Kitchen Top" with Big Punch showed his range, from street-certified anthems to melodic flexes that hit different on a late night drive through the D.
 
-What makes Stew's story compelling is the grind behind it. He's been performing on the Murder Mitten Mic stage, dropping official videos through Kash World Productions and 12 Mile Productions, and building a following organically — no industry shortcuts, no manufactured buzz. Just Detroit work ethic applied to music.
+What makes Stew's story compelling is the grind behind it. He's been performing on the Murder Mitten Mic stage, dropping official videos through Kash World Productions and 12 Mile Productions, and building a following organically -- no industry shortcuts, no manufactured buzz. Just Detroit work ethic applied to music.
 
-His recent collab "Don't Crash" with Chuckiii Red, Lil Don, and Ynp Bleed is a testament to the MBB chemistry — four artists from the same city, same struggle, same mission, locking in on a track that sounds like a statement. And with more music reportedly in the works, 2026 is shaping up to be Stew's biggest year yet.
+His recent collab "Don't Crash" with Chuckiii Red, Lil Don, and Ynp Bleed is a testament to the MBB chemistry -- four artists from the same city, same struggle, same mission, locking in on a track that sounds like a statement. And with more music reportedly in the works, 2026 is shaping up to be Stew's biggest year yet.
 
-If you're sleeping on CEO Stew, consider this your wake-up call. The Eastside is talking — and Murder Mitten Media is amplifying the signal.
+If you're sleeping on CEO Stew, consider this your wake-up call. The Eastside is talking -- and Murder Mitten Media is amplifying the signal.
   `.trim(),
 };
 
-// ─── Recent videos ────────────────────────────────────────────
+// --- Recent videos --------------------------------------------
 const VIDEOS = [
   {
-    title: '"Don\'t Crash" — Ceo Stew x Chuckiii Red x Lil Don x Ynp Bleed',
+    title: '"Don\'t Crash" -- Ceo Stew x Chuckiii Red x Lil Don x Ynp Bleed',
     videoId: "1bgjhsoC5AI",
     label: "Latest Drop",
     highlight: true,
   },
   {
-    title: '"Tv Static" — Ceo Stew x Chuckiii Red',
+    title: '"Tv Static" -- Ceo Stew x Chuckiii Red',
     videoId: "5bJS_HG1XyI",
     label: "Official Video",
     highlight: false,
   },
   {
-    title: '"Kitchen Top" — Ceo Stew x Big Punch',
+    title: '"Kitchen Top" -- Ceo Stew x Big Punch',
     videoId: "3E8WSjpXXRo",
     label: "Official Video",
     highlight: false,
   },
   {
-    title: '"Gretzky" — Ceo Stew prod. Fishscale',
+    title: '"Gretzky" -- Ceo Stew prod. Fishscale',
     videoId: "vDTRqccQZvI",
     label: "Official Video",
     highlight: false,
   },
   {
-    title: '"Rush" — Ceo Stew x DJ Lucas',
+    title: '"Rush" -- Ceo Stew x DJ Lucas',
     videoId: "v9PlFHb6Qxg",
     label: "Official Video",
     highlight: false,
   },
   {
-    title: '"Rockout" — Ceo Stew ft. Big Punch',
+    title: '"Rockout" -- Ceo Stew ft. Big Punch',
     videoId: "GZ0YzXP4IBw",
     label: "Official Video",
     highlight: false,
   },
 ];
 
-// ─── Song catalog ─────────────────────────────────────────────
+// --- Song catalog ---------------------------------------------
 const SONGS = [
   { title: "Don't Crash", feat: "Chuckiii Red, Lil Don, Ynp Bleed", year: "2025" },
   { title: "Tv Static", feat: "Chuckiii Red", year: "2025" },
@@ -102,10 +102,10 @@ export default function ArtistOfWeek() {
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
 
-      {/* ── NAV ─────────────────────────────────────────────── */}
+      {/* -- NAV ----------------------------------------------- */}
       <SiteNav />
 
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* -- HERO ---------------------------------------------- */}
       <section className="pt-28 pb-10 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-red-600/8 via-transparent to-transparent" />
         <div className="container relative z-10">
@@ -178,7 +178,7 @@ export default function ArtistOfWeek() {
         </div>
       </section>
 
-      {/* ── ARTICLE ─────────────────────────────────────────── */}
+      {/* -- ARTICLE ------------------------------------------- */}
       <section className="py-16 border-t border-white/10">
         <div className="container">
           <div className="max-w-3xl mx-auto">
@@ -209,7 +209,7 @@ export default function ArtistOfWeek() {
         </div>
       </section>
 
-      {/* ── VIDEOS ──────────────────────────────────────────── */}
+      {/* -- VIDEOS -------------------------------------------- */}
       <section className="py-16 border-t border-white/10">
         <div className="container">
           <p className="text-red-500 text-xs uppercase tracking-[0.3em] mb-4 font-semibold">Visuals</p>
@@ -263,7 +263,7 @@ export default function ArtistOfWeek() {
         </div>
       </section>
 
-      {/* ── SONG CATALOG ────────────────────────────────────── */}
+      {/* -- SONG CATALOG -------------------------------------- */}
       <section className="py-16 border-t border-white/10">
         <div className="container">
           <p className="text-red-500 text-xs uppercase tracking-[0.3em] mb-4 font-semibold">Discography</p>
@@ -304,7 +304,7 @@ export default function ArtistOfWeek() {
         </div>
       </section>
 
-      {/* ── FOLLOW CTA ──────────────────────────────────────── */}
+      {/* -- FOLLOW CTA ---------------------------------------- */}
       <section className="py-16 border-t border-white/10">
         <div className="container text-center">
           <p className="text-white/40 text-sm uppercase tracking-widest mb-4">Support the artist</p>
@@ -332,7 +332,7 @@ export default function ArtistOfWeek() {
         </div>
       </section>
 
-      {/* ── FOOTER ──────────────────────────────────────────── */}
+      {/* -- FOOTER -------------------------------------------- */}
       <footer className="border-t border-white/10 py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
@@ -342,7 +342,7 @@ export default function ArtistOfWeek() {
             </span>
           </a>
           <div className="text-white/30 text-xs text-center">
-            © 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
+            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
           </div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">IG</a>

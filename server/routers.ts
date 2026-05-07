@@ -10,7 +10,7 @@ import {
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
 } from "./db";
 
-// ─── Instagram feed cache (5 min TTL) ────────────────────────
+// --- Instagram feed cache (5 min TTL) ------------------------
 interface IgPost {
   id: string;
   caption: string;
@@ -68,7 +68,7 @@ export const appRouter = router({
     }),
   }),
 
-  // ── Instagram live feed ──────────────────────────────────────
+  // -- Instagram live feed --------------------------------------
   instagram: router({
     feed: publicProcedure.query(async () => {
       const now = Date.now();
@@ -79,7 +79,7 @@ export const appRouter = router({
     }),
   }),
 
-  // ── Review Queue ─────────────────────────────────────────────
+  // -- Review Queue ---------------------------------------------
   queue: router({
     getAll: publicProcedure.query(async () => {
       const [submissions, state] = await Promise.all([
@@ -151,7 +151,7 @@ export const appRouter = router({
       }),
   }),
 
-  // ── Artist of the Week ───────────────────────────────────────
+  // -- Artist of the Week ---------------------------------------
   artistOfWeek: router({
     getCurrent: publicProcedure.query(async () => {
       return getActiveArtistOfWeek();

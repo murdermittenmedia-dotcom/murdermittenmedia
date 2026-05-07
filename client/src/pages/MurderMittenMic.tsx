@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Murder Mitten Mic Page
+   MURDER MITTEN MEDIA -- Murder Mitten Mic Page
    One Mic Performances from YouTube
    ============================================================ */
 
@@ -73,10 +73,10 @@ export default function MurderMittenMic() {
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
 
-      {/* ── NAV ─────────────────────────────────────────────── */}
+      {/* -- NAV ----------------------------------------------- */}
       <SiteNav />
 
-      {/* ── HERO ────────────────────────────────────────────── */}
+      {/* -- HERO ---------------------------------------------- */}
       <section className="pt-32 pb-16 text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 to-transparent" />
         <div className="container relative z-10">
@@ -94,7 +94,7 @@ export default function MurderMittenMic() {
         </div>
       </section>
 
-      {/* ── VIDEO MODAL ─────────────────────────────────────── */}
+      {/* -- VIDEO MODAL --------------------------------------- */}
       {activeVideo && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
@@ -120,7 +120,7 @@ export default function MurderMittenMic() {
         </div>
       )}
 
-      {/* ── VIDEO GRID ──────────────────────────────────────── */}
+      {/* -- VIDEO GRID ---------------------------------------- */}
       <section className="py-12">
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -146,7 +146,7 @@ export default function MurderMittenMic() {
         </div>
       </section>
 
-      {/* ── FOOTER ──────────────────────────────────────────── */}
+      {/* -- FOOTER -------------------------------------------- */}
       <footer className="border-t border-white/10 py-10 mt-8">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function MurderMittenMic() {
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
           </a>
-          <div className="text-white/30 text-xs">© 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
+          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YouTube</a>

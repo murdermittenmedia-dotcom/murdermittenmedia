@@ -1,5 +1,5 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Home Page (Clean Premium Redesign)
+   MURDER MITTEN MEDIA -- Home Page (Clean Premium Redesign)
    Layout: Hero → Artist of the Week → Content Sections → Social
    ============================================================ */
 
@@ -9,7 +9,7 @@ import { SiteNav } from "@/components/SiteNav";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
-// ─── Intersection observer ────────────────────────────────────
+// --- Intersection observer ------------------------------------
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
@@ -24,7 +24,7 @@ function useInView(threshold = 0.15) {
   return { ref, inView };
 }
 
-// ─── Animated counter ─────────────────────────────────────────
+// --- Animated counter -----------------------------------------
 function useCountUp(target: number, duration = 2000, start = false) {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -61,7 +61,7 @@ function Stat({ value, label, delay, started }: { value: number; label: string; 
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────
+// --- Main -----------------------------------------------------
 export default function Home() {
   const { ref: statsRef, inView: statsInView } = useInView(0.2);
   const { ref: sectionsRef, inView: sectionsInView } = useInView(0.1);
@@ -71,7 +71,7 @@ export default function Home() {
       <SiteNav />
 
       {/* ══════════════════════════════════════════════════════
-          HERO — Clean, focused, breathing room
+          HERO -- Clean, focused, breathing room
       ══════════════════════════════════════════════════════ */}
       <section
         className="relative min-h-screen flex items-center"
@@ -137,7 +137,7 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          STATS BAR — Minimal, clean
+          STATS BAR -- Minimal, clean
       ══════════════════════════════════════════════════════ */}
       <section
         ref={statsRef as React.RefObject<HTMLElement>}
@@ -160,7 +160,7 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          ARTIST OF THE WEEK — Full-width feature, top billing
+          ARTIST OF THE WEEK -- Full-width feature, top billing
       ══════════════════════════════════════════════════════ */}
       <section className="py-20 relative overflow-hidden">
         {/* Background image from CEO Stew video */}
@@ -216,7 +216,7 @@ export default function Home() {
               </h2>
               <p className="text-white/50 leading-relaxed mb-8 text-sm">
                 One of Detroit's most consistent voices right now. CEO Stew brings raw Eastside energy with
-                polished delivery — a member of Money Bag Boys who is quickly building his own lane in Michigan rap.
+                polished delivery -- a member of Money Bag Boys who is quickly building his own lane in Michigan rap.
                 This week we put the spotlight on him.
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
@@ -227,7 +227,7 @@ export default function Home() {
                 ))}
               </div>
               <Link
-                href="/artist-of-week"
+                href="/artist-of-the-week"
                 className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_25px_rgba(209,0,0,0.4)] self-start"
               >
                 Read the Full Feature
@@ -239,7 +239,7 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          CONTENT SECTIONS — Clean 2-col grid, no clutter
+          CONTENT SECTIONS -- Clean 2-col grid, no clutter
       ══════════════════════════════════════════════════════ */}
       <section
         ref={sectionsRef as React.RefObject<HTMLElement>}
@@ -257,7 +257,7 @@ export default function Home() {
               {
                 icon: "🎤",
                 title: "Murder Mitten Mic",
-                desc: "Raw one-mic performances from Michigan's hottest artists. No studio tricks — just bars.",
+                desc: "Raw one-mic performances from Michigan's hottest artists. No studio tricks -- just bars.",
                 href: "/mic",
                 cta: "Watch Performances",
                 accent: "border-red-600/30",
@@ -309,7 +309,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Promo — full width CTA */}
+          {/* Promo -- full width CTA */}
           <Link
             href="/promo"
             className={`mt-4 flex items-center justify-between p-6 border border-green-600/20 bg-green-950/10 hover:bg-green-950/20 hover:border-green-600/40 transition-all duration-300 group ${
@@ -324,7 +324,7 @@ export default function Home() {
                   Buy Promo
                 </h3>
                 <p className="text-white/40 text-sm">
-                  Get your music in front of 45K+ followers. Packages from $10 — skip the line for $10.
+                  Get your music in front of 45K+ followers. Packages from $10 -- skip the line for $10.
                 </p>
               </div>
             </div>
@@ -337,7 +337,7 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          MUSIC REVIEW QUEUE — Standalone CTA
+          MUSIC REVIEW QUEUE -- Standalone CTA
       ══════════════════════════════════════════════════════ */}
       <section className="py-16 border-t border-white/10 bg-[#0d0d0d]">
         <div className="container">
@@ -352,10 +352,10 @@ export default function Home() {
               </h2>
               <p className="text-white/50 text-sm leading-relaxed mb-6">
                 Submit your track for a live review on stream. Upload a file or drop a YouTube link.
-                See exactly where you are in line — and skip to the front for just $10.
+                See exactly where you are in line -- and skip to the front for just $10.
               </p>
               <Link
-                href="/music-review"
+                href="/review"
                 className="inline-block bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(209,0,0,0.4)]"
               >
                 Submit Your Track →
@@ -379,7 +379,7 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          CONNECT — Minimal social links
+          CONNECT -- Minimal social links
       ══════════════════════════════════════════════════════ */}
       <section className="py-20 border-t border-white/10">
         <div className="container">
@@ -427,7 +427,7 @@ export default function Home() {
             </span>
           </div>
           <div className="text-white/20 text-xs text-center">
-            © 2022–{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI · All Rights Reserved
+            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI · All Rights Reserved
           </div>
           <div className="flex items-center gap-5 text-xs text-white/25 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">IG</a>
