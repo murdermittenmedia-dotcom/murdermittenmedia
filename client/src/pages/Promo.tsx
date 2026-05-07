@@ -87,15 +87,6 @@ const PAYMENTS = [
     icon: "🍎",
   },
   {
-    name: "Zelle",
-    handle: "(313) 420-9004",
-    link: "tel:3134209004",
-    qr: "/manus-storage/qr_zelle_fddbd298.png",
-    color: "bg-[#6D1ED4]/10 border-[#6D1ED4]/30",
-    textColor: "text-[#a855f7]",
-    icon: "⚡",
-  },
-  {
     name: "Chime",
     handle: "DM for Chime info",
     link: "https://www.instagram.com/murdermittenmedia/",
