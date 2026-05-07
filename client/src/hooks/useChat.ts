@@ -49,6 +49,12 @@ export function useChat({ room, username, userId, isAdmin, initialMessages = [] 
       setWheelWinner(winner);
     });
 
+    // War reset: clear winner and spinning state for all clients
+    socket.on("war:reset", () => {
+      setWheelSpinning(false);
+      setWheelWinner(null);
+    });
+
     return () => {
       socket.disconnect();
     };

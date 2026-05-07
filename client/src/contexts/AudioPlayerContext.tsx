@@ -48,9 +48,14 @@ type AudioPlayerContextType = AudioPlayerState & {
   prev: () => void;
   setVolume: (v: number) => void;
   seek: (time: number) => void;
+  onEnded: (cb: (track: AudioTrack) => void) => () => void;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
+
+// Registry of onEnded callbacks
+type EndedCallback = (track: AudioTrack) => void;
+const endedCallbacks = new Set<EndedCallback>();
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -85,8 +90,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     const onTimeUpdate = () => setState(s => ({ ...s, currentTime: audio.currentTime }));
     const onDurationChange = () => setState(s => ({ ...s, duration: isFinite(audio.duration) ? audio.duration : 0 }));
     const onEnded = () => {
+      // Fire registered onEnded callbacks
+      const { track: currentTrack, playlist, playlistIndex } = stateRef.current;
+      if (currentTrack) {
+        endedCallbacks.forEach(cb => { try { cb(currentTrack); } catch {} });
+      }
       // Auto-advance to next track in playlist
-      const { playlist, playlistIndex } = stateRef.current;
       if (playlist.length > 0 && playlistIndex < playlist.length - 1) {
         const nextIndex = playlistIndex + 1;
         const nextTrack = playlist[nextIndex];
@@ -278,8 +287,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  // Register a callback to fire when any track ends
+  const onEnded = useCallback((cb: (track: AudioTrack) => void) => {
+    endedCallbacks.add(cb);
+    return () => endedCallbacks.delete(cb);
+  }, []);
+
   return (
-    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek }}>
+    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded }}>
       {children}
     </AudioPlayerContext.Provider>
   );

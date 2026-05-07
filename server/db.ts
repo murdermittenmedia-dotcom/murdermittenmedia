@@ -73,7 +73,7 @@ export async function getUserById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateUserProfile(userId: number, data: { artistName?: string; instagramHandle?: string; avatarUrl?: string }) {
+export async function updateUserProfile(userId: number, data: { artistName?: string; instagramHandle?: string; city?: string; avatarUrl?: string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const updateData: Record<string, unknown> = { profileComplete: true };
@@ -82,6 +82,7 @@ export async function updateUserProfile(userId: number, data: { artistName?: str
     // Strip leading @ if present
     updateData.instagramHandle = data.instagramHandle.replace(/^@/, "");
   }
+  if (data.city !== undefined) updateData.city = data.city.trim();
   if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
   return db.update(users).set(updateData).where(eq(users.id, userId));
 }

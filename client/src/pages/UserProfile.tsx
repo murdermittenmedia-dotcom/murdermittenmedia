@@ -1,6 +1,6 @@
 /* ============================================================
    USER PROFILE PAGE
-   - Edit display name & Instagram handle
+   - Edit display name, Instagram handle & city
    - Upload / change profile picture
    - Lifetime stats (submissions, fire, trash, reviewed)
    - All previous submissions (playable)
@@ -12,7 +12,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { SiteNav } from "@/components/SiteNav";
 import { toast } from "sonner";
-import { Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X, Instagram, Trophy, Mic } from "lucide-react";
+import { Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X, Instagram, Trophy, Mic, MapPin } from "lucide-react";
 
 type Submission = {
   id: number;
@@ -36,6 +36,7 @@ export default function UserProfile() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [igInput, setIgInput] = useState("");
+  const [cityInput, setCityInput] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Avatar upload state
@@ -107,6 +108,7 @@ export default function UserProfile() {
     updateProfileMutation.mutate({
       artistName: nameInput.trim(),
       instagramHandle: igInput.trim() || undefined,
+      city: cityInput.trim() || undefined,
     });
   };
 
@@ -133,6 +135,7 @@ export default function UserProfile() {
   };
 
   const displayName = profile?.user.artistName || profile?.artistName || user?.name || "Artist";
+  const userCity = (profile?.user as { city?: string | null } | undefined)?.city;
   const avatarUrl = avatarPreview || profile?.user.avatarUrl || null;
   const initials = displayName.slice(0, 2).toUpperCase();
 
@@ -214,6 +217,19 @@ export default function UserProfile() {
                   />
                 </div>
                 <div>
+                  <label className="text-xs text-white/40 uppercase tracking-widest block mb-1">City / Hometown</label>
+                  <div className="flex items-center border border-white/20 focus-within:border-red-600 bg-white/10 max-w-xs">
+                    <MapPin className="w-4 h-4 text-white/30 ml-3 flex-shrink-0" />
+                    <input
+                      className="flex-1 bg-transparent text-white px-2 py-2 focus:outline-none placeholder-white/30"
+                      value={cityInput}
+                      onChange={e => setCityInput(e.target.value)}
+                      placeholder="Detroit, MI"
+                      maxLength={128}
+                    />
+                  </div>
+                </div>
+                <div>
                   <label className="text-xs text-white/40 uppercase tracking-widest block mb-1">Instagram Handle</label>
                   <input
                     className="bg-white/10 border border-white/20 text-white px-3 py-2 w-full max-w-xs focus:border-red-600 outline-none"
@@ -248,6 +264,7 @@ export default function UserProfile() {
                     onClick={() => {
                       setNameInput(profile?.user.artistName || profile?.artistName || user?.name || "");
                       setIgInput(profile?.user.instagramHandle || "");
+                      setCityInput(userCity || "");
                       setEditingName(true);
                     }}
                     title="Edit profile"
@@ -255,6 +272,28 @@ export default function UserProfile() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* City display */}
+                {userCity ? (
+                  <div className="flex items-center gap-1 text-white/40 text-sm mb-1 justify-center sm:justify-start">
+                    <MapPin className="w-3 h-3" />
+                    <span>{userCity}</span>
+                  </div>
+                ) : (
+                  <button
+                    className="flex items-center gap-1 text-white/20 hover:text-white/50 text-xs transition-colors mt-0.5 mb-1 mx-auto sm:mx-0"
+                    onClick={() => {
+                      setNameInput(profile?.user.artistName || profile?.artistName || user?.name || "");
+                      setIgInput(profile?.user.instagramHandle || "");
+                      setCityInput("");
+                      setEditingName(true);
+                    }}
+                  >
+                    <MapPin className="w-3 h-3" />
+                    + Add your city
+                  </button>
+                )}
+
                 {profile?.user.instagramHandle && (
                   <a
                     href={`https://instagram.com/${profile.user.instagramHandle}`}
@@ -272,6 +311,7 @@ export default function UserProfile() {
                     onClick={() => {
                       setNameInput(profile?.user.artistName || profile?.artistName || user?.name || "");
                       setIgInput("");
+                      setCityInput(userCity || "");
                       setEditingName(true);
                     }}
                   >
@@ -320,9 +360,8 @@ export default function UserProfile() {
           ) : (
             <div className="space-y-3">
               {(submissions as Submission[]).map((sub) => {
-                const trackId = `sub-${sub.id}`;
                 const isThisPlaying = currentTrack?.url === (sub.submissionType === "youtube" ? sub.youtubeUrl : sub.fileUrl) && isPlaying;
-                const hasAudio = sub.submissionType === "youtube" ? !!sub.youtubeUrl : !!sub.fileUrl;
+                const hasAudio = sub.submissionType === "youtube" ? !!sub.youtubeUrl : (!!sub.fileKey || !!sub.fileUrl);
 
                 return (
                   <div

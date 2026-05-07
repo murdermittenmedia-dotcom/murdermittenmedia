@@ -86,16 +86,18 @@ export const appRouter = router({
 
   // -- User Profile ---------------------------------------------
   profile: router({
-    // Update own profile (artist name + IG handle)
+    // Update own profile (artist name + IG handle + city)
     update: protectedProcedure
       .input(z.object({
         artistName: z.string().min(1).max(128),
         instagramHandle: z.string().max(64).optional(),
+        city: z.string().max(128).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         await updateUserProfile(ctx.user.id, {
           artistName: input.artistName,
           instagramHandle: input.instagramHandle,
+          city: input.city,
         });
         return { success: true };
       }),
@@ -234,6 +236,13 @@ export const appRouter = router({
         await updateUserSongVisibility(input.id, ctx.user.id, input.isPublic);
         return { success: true };
       }),
+    // Get a direct presigned S3 URL for a user song file
+    getAudioUrl: publicProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .query(async ({ input }) => {
+        const url = await storageGetSignedUrl(input.fileKey);
+        return { url };
+      }),
   }),
 
   // -- Battle Records -------------------------------------------
@@ -311,18 +320,20 @@ export const appRouter = router({
       return { submissions, state, currentPlaying };
     }),
 
-    submit: publicProcedure
+    submit: protectedProcedure
       .input(z.object({
-        artistName: z.string().min(1).max(128),
         songTitle: z.string().min(1).max(128),
         submissionType: z.enum(["youtube", "file"]),
         youtubeUrl: z.string().optional(),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Auto-resolve artist name from the user's registered profile
+        const profile = await getArtistProfile(ctx.user.id);
+        const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
         await addSubmission({
-          artistName: input.artistName,
+          artistName,
           songTitle: input.songTitle,
           submissionType: input.submissionType,
           youtubeUrl: input.youtubeUrl ?? null,
@@ -396,9 +407,8 @@ export const appRouter = router({
       }),
 
     // Upload audio file bytes (base64) for a queue submission
-    uploadAudio: publicProcedure
+    uploadAudio: protectedProcedure
       .input(z.object({
-        artistName: z.string().min(1).max(128),
         songTitle: z.string().min(1).max(128),
         fileName: z.string(),
         fileBase64: z.string(),
@@ -406,16 +416,19 @@ export const appRouter = router({
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Auto-resolve artist name from the user's registered profile
+        const profile = await getArtistProfile(ctx.user.id);
+        const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
         const buffer = Buffer.from(input.fileBase64, "base64");
         if (buffer.length > 20 * 1024 * 1024) {
           throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 20MB" });
         }
         const ext = input.fileName.split(".").pop() || "mp3";
-        const key = `queue-submissions/${Date.now()}-${input.artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
+        const key = `queue-submissions/${Date.now()}-${artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
         const { url } = await storagePut(key, buffer, input.mimeType);
         await addSubmission({
-          artistName: input.artistName,
+          artistName,
           songTitle: input.songTitle,
           submissionType: "file",
           fileKey: key,
@@ -527,19 +540,20 @@ export const appRouter = router({
       return getAllWheelEntries();
     }),
 
-    submit: publicProcedure
+    submit: protectedProcedure
       .input(z.object({
-        artistName: z.string().min(1).max(128),
         songTitle: z.string().min(1).max(128),
         songUrl: z.string().max(512).optional(),
         contactInfo: z.string().max(256).optional(),
-        userId: z.number().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Auto-resolve artist name from the user's registered profile
+        const profile = await getArtistProfile(ctx.user.id);
+        const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
         const isPaid = (await getSetting("wheel_paid_mode")) === "true";
         await addWheelEntry({
-          userId: input.userId ?? null,
-          artistName: input.artistName,
+          userId: ctx.user.id,
+          artistName,
           songTitle: input.songTitle,
           songUrl: input.songUrl ?? null,
           contactInfo: input.contactInfo ?? null,
@@ -686,8 +700,10 @@ export const appRouter = router({
     }),
 
     // Full war reset: delete ALL wheel entries, votes, and close active battle
-    resetCurrentWar: adminProcedure.mutation(async () => {
+    resetCurrentWar: adminProcedure.mutation(async ({ ctx }) => {
       await fullWarReset();
+      // Broadcast war reset to all connected clients so they clear votes in real-time
+      ctx.io?.to("music_wars").emit("war:reset");
       return { success: true };
     }),
   }),

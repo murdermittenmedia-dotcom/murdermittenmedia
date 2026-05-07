@@ -10,6 +10,7 @@ export const users = mysqlTable("users", {
   // Artist profile fields (collected on first login)
   artistName: varchar("artistName", { length: 128 }),
   instagramHandle: varchar("instagramHandle", { length: 64 }),  // without the @
+  city: varchar("city", { length: 128 }),                        // hometown / city
   avatarUrl: varchar("avatarUrl", { length: 512 }),              // profile picture URL
   profileComplete: boolean("profileComplete").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

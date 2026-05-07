@@ -277,3 +277,38 @@
 - [ ] Build UserProfile page: edit name, profile picture upload, playable submissions history, lifetime stats
 - [ ] Wire SiteNav "My Profile" menu item to /profile route
 - [ ] Add /profile route in App.tsx
+
+## Submission Form Artist Name Auto-Fill
+- [ ] Remove artist name input from MusicReview submission form — auto-use logged-in user's registered name
+- [ ] Remove artist name input from MusicWars SubmissionForm — auto-use logged-in user's registered name
+- [ ] Update queue.submit, queue.uploadAudio, wheel.submit server procedures to accept optional userId and auto-resolve artistName from user profile when userId is present
+
+## Music Wars Bug Fixes
+- [ ] Fix Music Wars wheel winner accuracy — winner determined by pointer position after spin, not random pick
+- [ ] Fix vote reset on war clear — broadcast war:reset socket event so all clients clear local vote state
+- [ ] Add songs.byArtistName tRPC procedure for name-only artists (no userId)
+- [ ] Add clickable wheel slice to show artist profile preview modal
+- [ ] Fix uploaded file playback - use presigned URLs so audio actually loads in player
+- [ ] Fix Music Review file upload to work same as Music Wars (base64 inline upload)
+- [ ] Build pop-out floating audio player that appears when a song loads/plays
+- [ ] Auto-remove song from queue after it finishes playing
+- [ ] Add city field to user DB schema, profile update procedure, onboarding modal, and UserProfile display
+
+## Session 4 — May 2026
+- [x] Remove artist name input from Music Wars submission form — auto-use registered profile name
+- [x] Remove artist name input from Music Review submission form — auto-use registered profile name
+- [x] Remove artist name input from ArtistStatModal song upload — auto-use registered profile name
+- [x] Fix uploaded file playback — use presigned URLs via songs.getAudioUrl for fileKey-based songs
+- [x] Fix Music Review queue play button to show for fileKey OR fileUrl (not just fileUrl)
+- [x] Fix Now Playing banner play button to check fileKey OR fileUrl
+- [x] Add onEnded callback support to AudioPlayerContext for auto-remove feature
+- [x] Auto-mark queue submission as reviewed when admin finishes playing it
+- [x] Add city field to users DB schema and migrate
+- [x] Add city field to profile.update procedure
+- [x] Add city field to OnboardingModal (shown on signup)
+- [x] Add city field to UserProfile edit form and display
+- [x] Show city in ArtistStatModal with MapPin icon
+- [x] Fix wheel winner accuracy — determined by pointer position after spin (getWinnerFromRotation)
+- [x] Fix vote reset on war clear — emit war:reset socket event from resetCurrentWar procedure
+- [x] Add war:reset socket listener in MusicWars to refetch wheel, battle, and votes
+- [x] Add io to tRPC context so procedures can emit socket events

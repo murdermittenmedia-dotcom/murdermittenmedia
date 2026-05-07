@@ -1,12 +1,14 @@
 /* ============================================================
    ArtistStatModal — click any artist name to see their profile
    Shows: W/L battle record, song catalogue with inline player,
-   Instagram link, and (for own profile) song upload form.
+   Instagram link, city, and (for own profile) song upload form.
    ============================================================ */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { Play, Pause, MapPin } from "lucide-react";
 
 interface ArtistStatModalProps {
   artistName: string;
@@ -18,6 +20,7 @@ interface Song {
   id: number;
   title: string;
   artistName: string;
+  fileKey?: string | null;
   fileUrl?: string | null;
   externalUrl?: string | null;
   genre?: string | null;
@@ -36,111 +39,101 @@ interface BattleRecord {
   notes?: string | null;
 }
 
-// ─── Inline Audio Player ──────────────────────────────────────
-function AudioPlayer({ song }: { song: Song }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
+// ─── Song Row with presigned URL playback ─────────────────────
+function SongRow({ song, displayName }: { song: Song; displayName: string }) {
+  const { track: currentTrack, isPlaying, play, pause } = useAudioPlayer();
+  const utils = trpc.useUtils();
+  const [loading, setLoading] = useState(false);
 
-  const isUploadedFile = !!song.fileUrl;
-  const isExternal = !!song.externalUrl;
+  const hasAudio = !!song.fileKey || !!song.fileUrl || !!song.externalUrl;
+  const isThisPlaying = currentTrack?.title === song.title && currentTrack?.artist === displayName && isPlaying;
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (playing) {
-      audioRef.current.pause();
-      setPlaying(false);
-    } else {
-      audioRef.current.play().catch(() => setPlaying(false));
-      setPlaying(true);
+  const handlePlay = async () => {
+    if (isThisPlaying) { pause(); return; }
+    if (!hasAudio) return;
+
+    // External link — open in new tab
+    if (!song.fileKey && !song.fileUrl && song.externalUrl) {
+      window.open(song.externalUrl, "_blank");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let url = song.fileUrl;
+      if (song.fileKey) {
+        // Always get a fresh presigned URL for uploaded files
+        const res = await utils.songs.getAudioUrl.fetch({ fileKey: song.fileKey });
+        url = res.url;
+      }
+      if (url) {
+        play({ url, title: song.title, artist: displayName });
+      }
+    } catch (err) {
+      console.error("Failed to load audio:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (!audioRef.current) return;
-    const pct = (audioRef.current.currentTime / (audioRef.current.duration || 1)) * 100;
-    setProgress(pct);
-  };
-
-  const handleEnded = () => setPlaying(false);
-
-  if (!isUploadedFile && !isExternal) {
-    return <span className="text-white/30 text-xs italic">No audio</span>;
-  }
-
-  // External links (YouTube/SoundCloud) open in new tab
-  if (!isUploadedFile && isExternal) {
-    return (
-      <a
-        href={song.externalUrl!}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors"
-      >
-        <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-        Play on {song.externalUrl!.includes("youtube") ? "YouTube" : "SoundCloud"}
-      </a>
-    );
-  }
-
-  // Uploaded audio file — inline HTML5 player
   return (
-    <div className="flex items-center gap-2">
-      <audio
-        ref={audioRef}
-        src={song.fileUrl!}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={handleEnded}
-        preload="metadata"
-      />
-      <button
-        onClick={togglePlay}
-        className="w-7 h-7 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center flex-shrink-0 transition-colors"
-      >
-        {playing ? (
-          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-          </svg>
-        ) : (
-          <svg className="w-3 h-3 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+    <div className={`bg-white/[0.03] border p-3 transition-all duration-200 ${
+      isThisPlaying ? "border-red-600/40 bg-red-600/5" : "border-white/5"
+    }`}>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handlePlay}
+          disabled={!hasAudio || loading}
+          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+            hasAudio
+              ? "bg-red-600 hover:bg-red-700 text-white"
+              : "bg-white/5 text-white/20 cursor-not-allowed"
+          }`}
+          title={hasAudio ? (song.externalUrl && !song.fileKey ? "Open in new tab" : "Play") : "No audio"}
+        >
+          {loading ? (
+            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+          ) : isThisPlaying ? (
+            <Pause className="w-3 h-3" />
+          ) : (
+            <Play className="w-3 h-3 ml-0.5" />
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm text-white font-semibold truncate">{song.title}</div>
+          {song.genre && <div className="text-xs text-white/30">{song.genre}</div>}
+        </div>
+        {song.externalUrl && !song.fileKey && (
+          <span className="text-xs text-white/30 flex-shrink-0">
+            {song.externalUrl.includes("youtube") ? "YT" : "SC"}
+          </span>
         )}
-      </button>
-      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-red-600 transition-all duration-100"
-          style={{ width: `${progress}%` }}
-        />
       </div>
     </div>
   );
 }
 
 // ─── Song Upload Form ─────────────────────────────────────────
-function SongUploadForm({ onSuccess }: { onSuccess: () => void }) {
+function SongUploadForm({ onSuccess, defaultArtistName }: { onSuccess: () => void; defaultArtistName: string }) {
   const [tab, setTab] = useState<"link" | "file">("link");
   const [title, setTitle] = useState("");
-  const [artistName, setArtistName] = useState("");
   const [genre, setGenre] = useState("");
   const [externalUrl, setExternalUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [error, setError] = useState("");
 
-  const addExternal = trpc.songs.addExternal.useMutation({ onSuccess });
-  const uploadAudio = trpc.songs.uploadAudio.useMutation({ onSuccess });
+  const addExternal = trpc.songs.addExternal.useMutation({ onSuccess: () => { setTitle(""); setExternalUrl(""); setGenre(""); onSuccess(); } });
+  const uploadAudio = trpc.songs.uploadAudio.useMutation({ onSuccess: () => { setTitle(""); setFile(null); setGenre(""); onSuccess(); } });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!title.trim() || !artistName.trim()) { setError("Title and artist name are required."); return; }
+    if (!title.trim()) { setError("Song title is required."); return; }
 
     if (tab === "link") {
       if (!externalUrl.trim()) { setError("Please enter a URL."); return; }
-      await addExternal.mutateAsync({ title, artistName, externalUrl, genre: genre || undefined, isPublic });
+      await addExternal.mutateAsync({ title, artistName: defaultArtistName, externalUrl, genre: genre || undefined, isPublic });
     } else {
       if (!file) { setError("Please select an audio file."); return; }
       if (file.size > 15 * 1024 * 1024) { setError("File must be under 15MB."); return; }
@@ -151,7 +144,7 @@ function SongUploadForm({ onSuccess }: { onSuccess: () => void }) {
         reader.readAsDataURL(file);
       });
       await uploadAudio.mutateAsync({
-        title, artistName, genre: genre || undefined, isPublic,
+        title, artistName: defaultArtistName, genre: genre || undefined, isPublic,
         fileName: file.name,
         fileBase64: base64,
         mimeType: file.type || "audio/mpeg",
@@ -181,18 +174,11 @@ function SongUploadForm({ onSuccess }: { onSuccess: () => void }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          type="text" placeholder="Song Title *" value={title}
-          onChange={e => setTitle(e.target.value)} required maxLength={128}
-          className="bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/30"
-        />
-        <input
-          type="text" placeholder="Artist Name *" value={artistName}
-          onChange={e => setArtistName(e.target.value)} required maxLength={128}
-          className="bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/30"
-        />
-      </div>
+      <input
+        type="text" placeholder="Song Title *" value={title}
+        onChange={e => setTitle(e.target.value)} required maxLength={128}
+        className="w-full bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/30"
+      />
 
       <input
         type="text" placeholder="Genre (optional)" value={genre}
@@ -214,6 +200,9 @@ function SongUploadForm({ onSuccess }: { onSuccess: () => void }) {
             onChange={e => setFile(e.target.files?.[0] || null)}
             className="w-full text-xs text-white/60 file:bg-red-600 file:text-white file:border-0 file:px-3 file:py-1.5 file:text-xs file:cursor-pointer file:mr-3"
           />
+          {file && (
+            <p className="text-white/40 text-xs mt-1">{file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)</p>
+          )}
         </div>
       )}
 
@@ -242,7 +231,7 @@ function SongUploadForm({ onSuccess }: { onSuccess: () => void }) {
 export function ArtistStatModal({ artistName, userId, children }: ArtistStatModalProps) {
   const [open, setOpen] = useState(false);
   const { user: currentUser } = useAuth();
-  const isOwnProfile = currentUser && userId && currentUser.id === userId;
+  const isOwnProfile = !!(currentUser && userId && currentUser.id === userId);
 
   // Fetch profile data when modal opens
   const { data: profile, refetch: refetchProfile } = trpc.profile.getById.useQuery(
@@ -265,10 +254,11 @@ export function ArtistStatModal({ artistName, userId, children }: ArtistStatModa
   });
 
   const stats = profile?.stats ?? nameStats;
-  const songList = songs ?? [];
+  const songList = (songs ?? []) as Song[];
   const igHandle = profile?.user?.instagramHandle;
   const avatarUrl = profile?.user?.avatarUrl;
   const displayName = profile?.artistName ?? artistName;
+  const city = (profile?.user as { city?: string | null } | undefined)?.city;
 
   const handleClose = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).id === "modal-backdrop") setOpen(false);
@@ -350,6 +340,13 @@ export function ArtistStatModal({ artistName, userId, children }: ArtistStatModa
                 </div>
                 <div>
                   <h2 className="font-['Anton'] text-2xl uppercase">{displayName}</h2>
+                  {/* City */}
+                  {city && (
+                    <div className="flex items-center gap-1 text-white/40 text-xs mt-0.5">
+                      <MapPin className="w-3 h-3" />
+                      <span>{city}</span>
+                    </div>
+                  )}
                   {igHandle && (
                     <a
                       href={`https://instagram.com/${igHandle}`}
@@ -435,29 +432,21 @@ export function ArtistStatModal({ artistName, userId, children }: ArtistStatModa
                 {songList.length === 0 ? (
                   <p className="text-white/30 text-xs">No songs added yet.</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {songList.map(song => (
-                      <div key={song.id} className="bg-white/[0.03] border border-white/5 p-3">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="min-w-0">
-                            <div className="text-sm text-white font-semibold truncate">{song.title}</div>
-                            {song.genre && (
-                              <div className="text-xs text-white/30">{song.genre}</div>
-                            )}
-                          </div>
-                          {isOwnProfile && (
-                            <button
-                              onClick={() => deleteSong.mutate({ id: song.id })}
-                              className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0"
-                              title="Remove song"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                        <AudioPlayer song={song} />
+                      <div key={song.id} className="relative">
+                        <SongRow song={song} displayName={displayName} />
+                        {isOwnProfile && (
+                          <button
+                            onClick={() => deleteSong.mutate({ id: song.id })}
+                            className="absolute top-2 right-2 text-white/20 hover:text-red-400 transition-colors"
+                            title="Remove song"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -465,7 +454,10 @@ export function ArtistStatModal({ artistName, userId, children }: ArtistStatModa
 
                 {/* Upload form for own profile */}
                 {isOwnProfile && (
-                  <SongUploadForm onSuccess={() => { refetchSongs(); refetchProfile(); }} />
+                  <SongUploadForm
+                    defaultArtistName={displayName}
+                    onSuccess={() => { refetchSongs(); refetchProfile(); }}
+                  />
                 )}
               </div>
             </div>

@@ -1,16 +1,18 @@
 /* ============================================================
    OnboardingModal — shown after first login
-   Collects: artist name + Instagram handle
+   Collects: artist name + Instagram handle + city
    ============================================================ */
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { MapPin } from "lucide-react";
 
 export function OnboardingModal() {
   const { user, refresh } = useAuth();
   const [artistName, setArtistName] = useState(user?.name || "");
   const [instagramHandle, setInstagramHandle] = useState("");
+  const [city, setCity] = useState("");
   const [skipped, setSkipped] = useState(false);
   const [error, setError] = useState("");
 
@@ -30,6 +32,7 @@ export function OnboardingModal() {
     await updateProfile.mutateAsync({
       artistName: artistName.trim(),
       instagramHandle: instagramHandle.trim() || undefined,
+      city: city.trim() || undefined,
     });
   };
 
@@ -38,6 +41,7 @@ export function OnboardingModal() {
     await updateProfile.mutateAsync({
       artistName: user.name || "Artist",
       instagramHandle: undefined,
+      city: undefined,
     });
     setSkipped(true);
   };
@@ -72,6 +76,26 @@ export function OnboardingModal() {
               maxLength={128}
               className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/30"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs text-white/50 uppercase tracking-widest mb-1.5">
+              City / Hometown
+            </label>
+            <div className="flex items-center border border-white/10 focus-within:border-red-600/50 bg-white/5">
+              <MapPin className="w-4 h-4 text-white/30 ml-3 flex-shrink-0" />
+              <input
+                type="text"
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                placeholder="Detroit, MI"
+                maxLength={128}
+                className="flex-1 bg-transparent text-white px-3 py-3 focus:outline-none placeholder-white/30"
+              />
+            </div>
+            <p className="text-white/30 text-xs mt-1">
+              Your city will be displayed on your artist profile.
+            </p>
           </div>
 
           <div>

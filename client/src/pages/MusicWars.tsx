@@ -240,18 +240,36 @@ function SpinWheel({
   winner,
   onSpin,
   isAdmin,
+  onSpinComplete,
 }: {
   entries: WheelEntry[];
   isSpinning: boolean;
   winner: string | null;
   onSpin: () => void;
   isAdmin: boolean;
+  onSpinComplete?: (winnerName: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotRef = useRef(0);
   const velRef = useRef(0);
   const rafRef = useRef(0);
   const spinningRef = useRef(false);
+
+  // Determine which entry the pointer (at top, angle = -PI/2 in canvas coords) is pointing at
+  const getWinnerFromRotation = useCallback((rot: number): string | null => {
+    if (!entries.length) return null;
+    const slice = (Math.PI * 2) / entries.length;
+    // Pointer is at the top of the canvas (angle = -Math.PI/2 from positive x-axis)
+    // Normalize the pointer angle relative to the wheel rotation
+    const pointerAngle = -Math.PI / 2;
+    // Find which slice the pointer falls in
+    // Each slice i starts at rot + i * slice and ends at rot + (i+1) * slice
+    // Normalize to [0, 2PI)
+    const normalizeAngle = (a: number) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const normalizedPointer = normalizeAngle(pointerAngle - rot);
+    const idx = Math.floor(normalizedPointer / slice) % entries.length;
+    return entries[idx]?.artistName ?? null;
+  }, [entries]);
 
   const draw = useCallback((rot: number) => {
     const canvas = canvasRef.current;
@@ -294,7 +312,7 @@ function SpinWheel({
     ctx.fillStyle = "#D10000"; ctx.font = "bold 9px Anton, sans-serif";
     ctx.textAlign = "center"; ctx.fillText("SPIN", cx, cy + 3);
 
-    // Pointer
+    // Pointer (at top center)
     ctx.beginPath(); ctx.moveTo(cx - 9, 3); ctx.lineTo(cx + 9, 3); ctx.lineTo(cx, 26); ctx.closePath();
     ctx.fillStyle = "#fff"; ctx.fill();
   }, [entries]);
@@ -309,12 +327,20 @@ function SpinWheel({
       rotRef.current += velRef.current;
       velRef.current *= 0.9925;
       draw(rotRef.current);
-      if (velRef.current > 0.003) { rafRef.current = requestAnimationFrame(animate); }
-      else { spinningRef.current = false; }
+      if (velRef.current > 0.003) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        spinningRef.current = false;
+        // Determine winner from actual final rotation position
+        const winnerName = getWinnerFromRotation(rotRef.current);
+        if (winnerName && onSpinComplete) {
+          onSpinComplete(winnerName);
+        }
+      }
     };
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isSpinning, draw]);
+  }, [isSpinning, draw, getWinnerFromRotation, onSpinComplete]);
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -494,13 +520,13 @@ function AudioRoomPanel({
 
 // ─── Submission Form ──────────────────────────────────────────
 function SubmissionForm({
-  isPaid, entryFee, isOpen, onSubmit, isLoading, success, requiresPayment,
+  isPaid, entryFee, isOpen, onSubmit, isLoading, success, requiresPayment, user,
 }: {
   isPaid: boolean; entryFee: string; isOpen: boolean;
-  onSubmit: (d: { artistName: string; songTitle: string; songUrl: string; contactInfo: string; mp3Url?: string }) => void;
+  onSubmit: (d: { songTitle: string; songUrl: string; contactInfo: string; mp3Url?: string }) => void;
   isLoading: boolean; success: boolean; requiresPayment: boolean;
+  user?: { artistName?: string | null; name?: string | null } | null;
 }) {
-  const [artistName, setArtistName] = useState("");
   const [songTitle, setSongTitle] = useState("");
   const [songUrl, setSongUrl] = useState("");
   const [contactInfo, setContactInfo] = useState("");
@@ -508,6 +534,7 @@ function SubmissionForm({
   const [mp3Uploading, setMp3Uploading] = useState(false);
   const [mp3Url, setMp3Url] = useState("");
   const uploadSongMutation = trpc.songs.uploadAudio.useMutation();
+  const displayName = user?.artistName || user?.name || "Unknown Artist";
 
   const handleMp3Change = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -521,7 +548,7 @@ function SubmissionForm({
         const base64 = (ev.target?.result as string).split(",")[1];
         const result = await uploadSongMutation.mutateAsync({
           title: songTitle || file.name.replace(/\.mp3$/i, ""),
-          artistName: artistName || "Unknown",
+          artistName: displayName,
           fileName: file.name,
           fileBase64: base64,
           mimeType: "audio/mpeg",
@@ -575,9 +602,12 @@ function SubmissionForm({
           {isPaid ? `$${entryFee} Entry` : "Free Entry"}
         </span>
       </div>
-      <form onSubmit={e => { e.preventDefault(); onSubmit({ artistName, songTitle, songUrl: mp3Url || songUrl, contactInfo, mp3Url: mp3Url || undefined }); }} className="space-y-3">
-        <input type="text" placeholder="Artist Name *" value={artistName} onChange={e => setArtistName(e.target.value)} required maxLength={128}
-          className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
+      <form onSubmit={e => { e.preventDefault(); onSubmit({ songTitle, songUrl: mp3Url || songUrl, contactInfo, mp3Url: mp3Url || undefined }); }} className="space-y-3">
+        {/* Artist name auto-filled from registered profile */}
+        <div className="bg-white/5 border border-white/10 px-3 py-2.5">
+          <div className="text-white/30 text-[10px] uppercase tracking-wider mb-0.5">Submitting as</div>
+          <div className="text-white font-semibold text-sm">{displayName}</div>
+        </div>
         <input type="text" placeholder="Song Title *" value={songTitle} onChange={e => setSongTitle(e.target.value)} required maxLength={128}
           className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
         <input type="url" placeholder="YouTube / SoundCloud link (optional)" value={songUrl} onChange={e => setSongUrl(e.target.value)}
@@ -604,7 +634,7 @@ function SubmissionForm({
             After submitting, send ${entryFee} to CashApp <span className="text-white">$joyfuljules</span> or PayPal <span className="text-white">MurderMittenPromo</span> with your artist name.
           </div>
         )}
-        <button type="submit" disabled={isLoading || mp3Uploading || !artistName.trim() || !songTitle.trim()}
+        <button type="submit" disabled={isLoading || mp3Uploading || !songTitle.trim()}
           className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 font-['Anton'] uppercase tracking-widest transition-all">
           {mp3Uploading ? "Uploading MP3..." : isLoading ? "Submitting..." : isPaid ? `Submit ($${entryFee})` : "Submit Free Entry"}
         </button>
@@ -1076,7 +1106,7 @@ export default function MusicWars() {
   const removeEntryMutation = trpc.wheel.removeEntry.useMutation();
   const resetWarMutation = trpc.wheel.resetCurrentWar.useMutation();
 
-  const { messages, isConnected: chatConnected, sendMessage, wheelWinner, wheelSpinning, broadcastSpin, broadcastWinner } = useChat({
+  const { messages, isConnected: chatConnected, sendMessage, wheelWinner, wheelSpinning, broadcastSpin, broadcastWinner, socket: chatSocket } = useChat({
     room: "music_wars",
     username,
     userId: user?.id,
@@ -1086,6 +1116,19 @@ export default function MusicWars() {
       room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
     })),
   });
+
+  // Refetch wheel and vote data when war is reset by admin
+  useEffect(() => {
+    if (!chatSocket) return;
+    const handleWarReset = () => {
+      refetchWheel();
+      refetchActiveBattle();
+      refetchVotes();
+      if (isAdmin) refetchAllEntries();
+    };
+    chatSocket.on("war:reset", handleWarReset);
+    return () => { chatSocket.off("war:reset", handleWarReset); };
+  }, [chatSocket, refetchWheel, refetchActiveBattle, refetchVotes, isAdmin, refetchAllEntries]);
 
   const [audioJoined, setAudioJoined] = useState(false);
   const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic } = useAudioRoom({
@@ -1098,20 +1141,22 @@ export default function MusicWars() {
   const handleSpin = useCallback(() => {
     if (!isAdmin || !wheelData?.entries.length) return;
     broadcastSpin();
-    setTimeout(() => {
-      const active = wheelData.entries.filter(e => e.status === "active");
-      if (active.length > 0) {
-        const w = active[Math.floor(Math.random() * active.length)];
-        broadcastWinner(w.artistName);
-      }
-    }, 6500);
-  }, [isAdmin, wheelData, broadcastSpin, broadcastWinner]);
+    // Winner is determined by the actual final rotation position (onSpinComplete callback)
+    // broadcastWinner will be called from SpinWheel's onSpinComplete callback
+  }, [isAdmin, wheelData, broadcastSpin]);
 
-  const handleSubmit = async (data: { artistName: string; songTitle: string; songUrl: string; contactInfo: string }) => {
+  const handleSpinComplete = useCallback((winnerName: string) => {
+    // Only the admin's wheel determines the winner — broadcast to all clients
+    if (isAdmin) {
+      broadcastWinner(winnerName);
+    }
+  }, [isAdmin, broadcastWinner]);
+
+  const handleSubmit = async (data: { songTitle: string; songUrl: string; contactInfo: string }) => {
     try {
       const result = await submitMutation.mutateAsync({
-        artistName: data.artistName, songTitle: data.songTitle,
-        songUrl: data.songUrl || undefined, contactInfo: data.contactInfo || undefined, userId: user?.id,
+        songTitle: data.songTitle,
+        songUrl: data.songUrl || undefined, contactInfo: data.contactInfo || undefined,
       });
       setSubmitSuccess(true);
       setRequiresPayment(result.requiresPayment);
@@ -1174,7 +1219,7 @@ export default function MusicWars() {
                 <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-4 self-start">
                   Battle <span className="text-red-600">Wheel</span>
                 </h2>
-                <SpinWheel entries={activeEntries} isSpinning={wheelSpinning} winner={wheelWinner} onSpin={handleSpin} isAdmin={isAdmin} />
+                <SpinWheel entries={activeEntries} isSpinning={wheelSpinning} winner={wheelWinner} onSpin={handleSpin} isAdmin={isAdmin} onSpinComplete={handleSpinComplete} />
               </div>
               <div>
                 <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-4">
@@ -1188,6 +1233,7 @@ export default function MusicWars() {
                   isLoading={submitMutation.isPending}
                   success={submitSuccess}
                   requiresPayment={requiresPayment}
+                  user={user}
                 />
               </div>
             </div>
