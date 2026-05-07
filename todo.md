@@ -1,0 +1,22 @@
+# Murder Mitten Media — TODO
+
+- [x] Initial dark editorial website with brand identity
+- [x] Hero section with animated stats (4.5M views, 45.8K followers)
+- [x] About section with brand story
+- [x] Stats section with animated counters
+- [x] Recent content section with static posts
+- [x] Connect section with social links
+- [x] Footer
+- [x] Upgrade to full-stack (tRPC + DB + auth)
+- [x] Live Instagram feed via tRPC backend API (auto-refreshes every 5 min)
+- [x] Real post thumbnails from Instagram (carousel covers + reel thumbnails)
+- [x] Fallback static posts if Instagram API not configured
+- [x] Promo pricing page (/promo)
+  - [x] Individual packages: $10 Story, $35 24hr Post+Story, $50 Permanent+3 Stories
+  - [x] Bundle deals: 2 for $75, 4 for $100, 1-Month Unlimited $313
+  - [x] How to order (3-step process)
+  - [x] Payment methods: CashApp $joyfuljules, PayPal MurderMittenPromo, Apple Pay 313-420-9004, Zelle, Chime
+  - [x] QR codes for CashApp, PayPal, Apple Pay, Zelle
+  - [x] "Buy Promo" CTA in navbar and hero
+- [x] Promo CTA section on homepage
+- [ ] Connect Instagram Graph API credentials for live feed (INSTAGRAM_ACCESS_TOKEN + INSTAGRAM_USER_ID)
