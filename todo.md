@@ -268,3 +268,12 @@
 ## Reset War — Battle Records
 - [ ] Reset war also deletes battle_records for the current war session (by warId/roundNumber)
 - [ ] Lifetime all-time battle records are preserved (different roundNumber/warId)
+
+## User Profile Page (Clickable from Nav)
+- [ ] Fix 13 TypeScript errors in MusicReview.tsx (data type, implicit any, onSuccess refetch)
+- [ ] Add profile.updateProfile procedure (name + avatarUrl upload to S3)
+- [ ] Add profile.getUserStats procedure (submission counts, fire/trash totals)
+- [ ] Add profile.getUserSubmissions procedure (all submissions for a user)
+- [ ] Build UserProfile page: edit name, profile picture upload, playable submissions history, lifetime stats
+- [ ] Wire SiteNav "My Profile" menu item to /profile route
+- [ ] Add /profile route in App.tsx

@@ -63,6 +63,7 @@ export const queueState = mysqlTable("queue_state", {
   currentPlayingId: int("currentPlayingId"),
   isLive: boolean("isLive").default(false).notNull(),
   liveMessage: varchar("liveMessage", { length: 256 }),
+  streamUrl: varchar("streamUrl", { length: 512 }),  // YouTube live URL or direct stream URL set by admin
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

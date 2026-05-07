@@ -6,7 +6,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { storagePut } from "./storage";
 import {
-  getQueueSubmissions, addSubmission, updateSubmissionStatus,
+  getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, getQueueState, setCurrentPlaying, setLiveStatus,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
@@ -18,6 +18,7 @@ import {
   addUserSong, getUserSongs, deleteUserSong, updateUserSongVisibility,
   getArtistProfile, updateUserProfile, getUserById,
   getAllUsers, setUserRole,
+  getSubmissionsByArtistName, getLifetimeStats,
   getActiveBattle, setActiveBattle, updateActiveBattleStatus, clearBattleVotes,
   castVote, getVoteResults, getUserVote,
   castSongReaction, getSongReactionCounts, getUserSongReaction,
@@ -117,6 +118,22 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return getArtistStats(input.artistName);
       }),
+
+    // Get all review submissions for the current user (profile history)
+    getSubmissions: protectedProcedure.query(async ({ ctx }) => {
+      const profile = await getArtistProfile(ctx.user.id);
+      const name = profile?.artistName ?? ctx.user.name ?? "";
+      if (!name) return [];
+      return getSubmissionsByArtistName(name);
+    }),
+
+    // Get lifetime stats for the current user
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      const profile = await getArtistProfile(ctx.user.id);
+      const name = profile?.artistName ?? ctx.user.name ?? "";
+      if (!name) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0 };
+      return getLifetimeStats(name);
+    }),
 
     // Upload profile picture (base64 image, max ~4MB)
     uploadAvatar: protectedProcedure
@@ -346,11 +363,76 @@ export const appRouter = router({
       }),
 
     setLive: adminProcedure
-      .input(z.object({ isLive: z.boolean(), message: z.string().optional() }))
+      .input(z.object({ isLive: z.boolean(), message: z.string().optional(), streamUrl: z.string().max(512).optional() }))
       .mutation(async ({ input }) => {
-        await setLiveStatus(input.isLive, input.message);
+        await setLiveStatus(input.isLive, input.message, input.streamUrl);
         return { success: true };
       }),
+
+    // Upload audio file directly for a queue submission
+    uploadTrack: protectedProcedure
+      .input(z.object({
+        artistName: z.string().min(1).max(128),
+        songTitle: z.string().min(1).max(128),
+        fileKey: z.string(),
+        fileUrl: z.string(),
+        contactInfo: z.string().max(256).optional(),
+        wantsSkip: z.boolean().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        await addSubmission({
+          artistName: input.artistName,
+          songTitle: input.songTitle,
+          submissionType: "file",
+          fileKey: input.fileKey,
+          fileUrl: input.fileUrl,
+          contactInfo: input.contactInfo ?? null,
+          skippedLine: input.wantsSkip,
+          skipPaymentConfirmed: false,
+          status: "pending",
+          position: 0,
+        });
+        return { success: true };
+      }),
+
+    // Upload audio file bytes (base64) for a queue submission
+    uploadAudio: publicProcedure
+      .input(z.object({
+        artistName: z.string().min(1).max(128),
+        songTitle: z.string().min(1).max(128),
+        fileName: z.string(),
+        fileBase64: z.string(),
+        mimeType: z.string().default("audio/mpeg"),
+        contactInfo: z.string().max(256).optional(),
+        wantsSkip: z.boolean().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        if (buffer.length > 20 * 1024 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 20MB" });
+        }
+        const ext = input.fileName.split(".").pop() || "mp3";
+        const key = `queue-submissions/${Date.now()}-${input.artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        await addSubmission({
+          artistName: input.artistName,
+          songTitle: input.songTitle,
+          submissionType: "file",
+          fileKey: key,
+          fileUrl: url,
+          contactInfo: input.contactInfo ?? null,
+          skippedLine: input.wantsSkip,
+          skipPaymentConfirmed: false,
+          status: "pending",
+          position: 0,
+        });
+        return { success: true };
+      }),
+
+    // Get past reviewed submissions (history)
+    getReviewed: publicProcedure.query(async () => {
+      return getReviewedSubmissions(50);
+    }),
 
     // 🔥 / 🗑️ reaction on a submission (one per user per submission)
     react: protectedProcedure

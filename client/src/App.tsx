@@ -4,6 +4,8 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
+import FloatingPlayer from "./components/FloatingPlayer";
 import Home from "./pages/Home";
 import Promo from "./pages/Promo";
 import MurderMittenMic from "./pages/MurderMittenMic";
@@ -12,6 +14,7 @@ import MusicReview from "./pages/MusicReview";
 import ArtistOfWeek from "./pages/ArtistOfWeek";
 import LiveStream from "./pages/LiveStream";
 import MusicWars from "./pages/MusicWars";
+import UserProfile from "./pages/UserProfile";
 
 function Router() {
   return (
@@ -24,6 +27,7 @@ function Router() {
       <Route path={"/artist-of-the-week"} component={ArtistOfWeek} />
       <Route path={"/live"} component={LiveStream} />
       <Route path={"/music-wars"} component={MusicWars} />
+      <Route path={"/profile"} component={UserProfile} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -34,10 +38,13 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AudioPlayerProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+            <FloatingPlayer />
+          </TooltipProvider>
+        </AudioPlayerProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

@@ -27,14 +27,24 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-// Track audio room participants: socketId -> { userId, username, role, room }
-const audioRoomParticipants = new Map<string, {
+type RoomParticipant = {
   userId?: number;
   username: string;
   role: "admin" | "judge" | "contestant" | "viewer";
   room: string;
   micActive: boolean;
-}>();
+  cameraActive: boolean;
+  avatarUrl?: string;
+};
+
+// Track audio/video room participants: socketId -> participant
+const roomParticipants = new Map<string, RoomParticipant>();
+
+function getRoomList(room: string) {
+  return Array.from(roomParticipants.entries())
+    .filter(([, p]) => p.room === room)
+    .map(([id, p]) => ({ socketId: id, ...p }));
+}
 
 async function startServer() {
   const app = express();
@@ -100,102 +110,145 @@ async function startServer() {
       io.to("music_wars").emit("wheel:winner", data);
     });
 
-    // ── Audio Battle Room ─────────────────────────────────────
-    socket.on("audio:join", (data: {
+    // ── Audio/Video Room ──────────────────────────────────────
+    socket.on("room:join", (data: {
       username: string;
       role: "admin" | "judge" | "contestant" | "viewer";
       userId?: number;
       room: string;
+      avatarUrl?: string;
     }) => {
-      const participant = {
+      const participant: RoomParticipant = {
         userId: data.userId,
         username: data.username,
         role: data.role,
         room: data.room,
         // judges and admins start with mic active; others start muted
         micActive: data.role === "judge" || data.role === "admin",
+        cameraActive: false,
+        avatarUrl: data.avatarUrl,
       };
-      audioRoomParticipants.set(socket.id, participant);
+      roomParticipants.set(socket.id, participant);
 
-      // Broadcast updated participant list to room
-      const roomParticipants = Array.from(audioRoomParticipants.entries())
-        .filter(([, p]) => p.room === data.room)
-        .map(([id, p]) => ({ socketId: id, ...p }));
-
-      io.to(data.room).emit("audio:participants", roomParticipants);
-
+      const list = getRoomList(data.room);
+      io.to(data.room).emit("room:participants", list);
       // Send existing participants to the new joiner for WebRTC handshake
-      socket.emit("audio:existing_peers", roomParticipants.filter(p => p.socketId !== socket.id));
+      socket.emit("room:existing_peers", list.filter(p => p.socketId !== socket.id));
     });
 
-    // WebRTC signaling: offer/answer/ice-candidate relay
-    socket.on("webrtc:offer", (data: { to: string; offer: RTCSessionDescriptionInit }) => {
-      io.to(data.to).emit("webrtc:offer", { from: socket.id, offer: data.offer });
+    // Legacy audio:join support (backward compat)
+    socket.on("audio:join", (data: {
+      username: string;
+      role: "admin" | "judge" | "contestant" | "viewer";
+      userId?: number;
+      room: string;
+      avatarUrl?: string;
+    }) => {
+      const participant: RoomParticipant = {
+        userId: data.userId,
+        username: data.username,
+        role: data.role,
+        room: data.room,
+        micActive: data.role === "judge" || data.role === "admin",
+        cameraActive: false,
+        avatarUrl: data.avatarUrl,
+      };
+      roomParticipants.set(socket.id, participant);
+      const list = getRoomList(data.room);
+      io.to(data.room).emit("audio:participants", list);
+      io.to(data.room).emit("room:participants", list);
+      socket.emit("audio:existing_peers", list.filter(p => p.socketId !== socket.id));
+      socket.emit("room:existing_peers", list.filter(p => p.socketId !== socket.id));
     });
 
-    socket.on("webrtc:answer", (data: { to: string; answer: RTCSessionDescriptionInit }) => {
-      io.to(data.to).emit("webrtc:answer", { from: socket.id, answer: data.answer });
+    // WebRTC signaling: offer/answer/ice-candidate relay (shared for audio + video)
+    socket.on("webrtc:offer", (data: { to: string; offer: RTCSessionDescriptionInit; kind?: "audio" | "video" }) => {
+      io.to(data.to).emit("webrtc:offer", { from: socket.id, offer: data.offer, kind: data.kind });
     });
 
-    socket.on("webrtc:ice_candidate", (data: { to: string; candidate: RTCIceCandidateInit }) => {
-      io.to(data.to).emit("webrtc:ice_candidate", { from: socket.id, candidate: data.candidate });
+    socket.on("webrtc:answer", (data: { to: string; answer: RTCSessionDescriptionInit; kind?: "audio" | "video" }) => {
+      io.to(data.to).emit("webrtc:answer", { from: socket.id, answer: data.answer, kind: data.kind });
     });
 
-    // Admin activates/deactivates a contestant's mic
+    socket.on("webrtc:ice_candidate", (data: { to: string; candidate: RTCIceCandidateInit; kind?: "audio" | "video" }) => {
+      io.to(data.to).emit("webrtc:ice_candidate", { from: socket.id, candidate: data.candidate, kind: data.kind });
+    });
+
+    // ── Mic controls ──────────────────────────────────────────
+    // Admin force-toggle a participant's mic
     socket.on("audio:set_mic", (data: { targetSocketId: string; active: boolean }) => {
-      const requester = audioRoomParticipants.get(socket.id);
+      const requester = roomParticipants.get(socket.id);
       if (!requester || (requester.role !== "admin" && requester.role !== "judge")) return;
-
-      const target = audioRoomParticipants.get(data.targetSocketId);
+      const target = roomParticipants.get(data.targetSocketId);
       if (target) {
         target.micActive = data.active;
-        // Notify the target that their mic was toggled
         io.to(data.targetSocketId).emit("audio:mic_toggled", { active: data.active });
-        // Broadcast updated participant list
-        const roomParticipants = Array.from(audioRoomParticipants.entries())
-          .filter(([, p]) => p.room === target.room)
-          .map(([id, p]) => ({ socketId: id, ...p }));
-        io.to(target.room).emit("audio:participants", roomParticipants);
+        const list = getRoomList(target.room);
+        io.to(target.room).emit("audio:participants", list);
+        io.to(target.room).emit("room:participants", list);
       }
     });
 
-    // User toggles their own mic (only if they have permission)
-    socket.on("audio:toggle_mic", (data: { active: boolean }) => {
-      const participant = audioRoomParticipants.get(socket.id);
+    // User self-toggles mic
+    socket.on("audio:toggle_mic", (data: { active: boolean; isMuted?: boolean }) => {
+      const participant = roomParticipants.get(socket.id);
       if (!participant) return;
-      // Only judges and admins can self-toggle; contestants need admin approval
-      if (participant.role === "judge" || participant.role === "admin") {
+      if (participant.role === "judge" || participant.role === "admin" || participant.role === "contestant") {
         participant.micActive = data.active;
-        const roomParticipants = Array.from(audioRoomParticipants.entries())
-          .filter(([, p]) => p.room === participant.room)
-          .map(([id, p]) => ({ socketId: id, ...p }));
-        io.to(participant.room).emit("audio:participants", roomParticipants);
+        const list = getRoomList(participant.room);
+        io.to(participant.room).emit("audio:participants", list);
+        io.to(participant.room).emit("room:participants", list);
       }
     });
 
-    socket.on("audio:leave", () => {
-      const participant = audioRoomParticipants.get(socket.id);
-      if (participant) {
-        audioRoomParticipants.delete(socket.id);
-        const roomParticipants = Array.from(audioRoomParticipants.entries())
-          .filter(([, p]) => p.room === participant.room)
-          .map(([id, p]) => ({ socketId: id, ...p }));
-        io.to(participant.room).emit("audio:participants", roomParticipants);
-        io.to(participant.room).emit("webrtc:peer_left", { socketId: socket.id });
+    // ── Camera controls ───────────────────────────────────────
+    // User toggles their own camera
+    socket.on("video:toggle_camera", (data: { active: boolean }) => {
+      const participant = roomParticipants.get(socket.id);
+      if (!participant) return;
+      // Only judges, admins, and contestants can share camera
+      if (participant.role === "viewer") return;
+      participant.cameraActive = data.active;
+      const list = getRoomList(participant.room);
+      io.to(participant.room).emit("room:participants", list);
+      // If turning on camera, trigger WebRTC renegotiation with all peers
+      if (data.active) {
+        const peers = list.filter(p => p.socketId !== socket.id);
+        socket.emit("video:start_stream", { peers: peers.map(p => p.socketId) });
+      } else {
+        io.to(participant.room).emit("video:peer_stopped", { socketId: socket.id });
       }
     });
 
-    socket.on("disconnect", () => {
-      const participant = audioRoomParticipants.get(socket.id);
-      if (participant) {
-        audioRoomParticipants.delete(socket.id);
-        const roomParticipants = Array.from(audioRoomParticipants.entries())
-          .filter(([, p]) => p.room === participant.room)
-          .map(([id, p]) => ({ socketId: id, ...p }));
-        io.to(participant.room).emit("audio:participants", roomParticipants);
-        io.to(participant.room).emit("webrtc:peer_left", { socketId: socket.id });
+    // Admin force-toggle a participant's camera
+    socket.on("video:set_camera", (data: { targetSocketId: string; active: boolean }) => {
+      const requester = roomParticipants.get(socket.id);
+      if (!requester || requester.role !== "admin") return;
+      const target = roomParticipants.get(data.targetSocketId);
+      if (target) {
+        target.cameraActive = data.active;
+        io.to(data.targetSocketId).emit("video:camera_toggled", { active: data.active });
+        const list = getRoomList(target.room);
+        io.to(target.room).emit("room:participants", list);
       }
     });
+
+    // ── Leave / disconnect ────────────────────────────────────
+    const handleLeave = () => {
+      const participant = roomParticipants.get(socket.id);
+      if (participant) {
+        roomParticipants.delete(socket.id);
+        const list = getRoomList(participant.room);
+        io.to(participant.room).emit("audio:participants", list);
+        io.to(participant.room).emit("room:participants", list);
+        io.to(participant.room).emit("webrtc:peer_left", { socketId: socket.id });
+        io.to(participant.room).emit("video:peer_stopped", { socketId: socket.id });
+      }
+    };
+
+    socket.on("audio:leave", handleLeave);
+    socket.on("room:leave", handleLeave);
+    socket.on("disconnect", handleLeave);
   });
 
   app.use(express.json({ limit: "50mb" }));

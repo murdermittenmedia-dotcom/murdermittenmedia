@@ -96,6 +96,15 @@ export async function getQueueSubmissions() {
     .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.createdAt));
 }
 
+export async function getReviewedSubmissions(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviewSubmissions)
+    .where(eq(reviewSubmissions.status, "reviewed"))
+    .orderBy(desc(reviewSubmissions.updatedAt))
+    .limit(limit);
+}
+
 export async function addSubmission(data: InsertReviewSubmission) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -132,14 +141,16 @@ export async function setCurrentPlaying(submissionId: number | null) {
   }
 }
 
-export async function setLiveStatus(isLive: boolean, message?: string) {
+export async function setLiveStatus(isLive: boolean, message?: string, streamUrl?: string) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const existing = await db.select().from(queueState).limit(1);
+  const updateData: Record<string, unknown> = { isLive, liveMessage: message ?? null };
+  if (streamUrl !== undefined) updateData.streamUrl = streamUrl;
   if (existing.length === 0) {
-    await db.insert(queueState).values({ isLive, liveMessage: message ?? null });
+    await db.insert(queueState).values({ isLive, liveMessage: message ?? null, streamUrl: streamUrl ?? null });
   } else {
-    await db.update(queueState).set({ isLive, liveMessage: message ?? null });
+    await db.update(queueState).set(updateData);
   }
 }
 
@@ -688,4 +699,28 @@ export async function fullWarReset() {
 export async function getCurrentWarSession(): Promise<number> {
   const val = await getSetting("current_war_session");
   return parseInt(val ?? "1", 10) || 1;
+}
+
+// -- Profile Page: Submission History & Lifetime Stats --------
+
+export async function getSubmissionsByArtistName(artistName: string, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviewSubmissions)
+    .where(eq(reviewSubmissions.artistName, artistName))
+    .orderBy(desc(reviewSubmissions.createdAt))
+    .limit(limit);
+}
+
+export async function getLifetimeStats(artistName: string) {
+  const db = await getDb();
+  if (!db) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0 };
+  const subs = await db.select().from(reviewSubmissions)
+    .where(eq(reviewSubmissions.artistName, artistName));
+  return {
+    totalSubmissions: subs.length,
+    totalFire: subs.reduce((acc, s) => acc + (s.fireCount ?? 0), 0),
+    totalTrash: subs.reduce((acc, s) => acc + (s.trashCount ?? 0), 0),
+    reviewed: subs.filter(s => s.status === "reviewed").length,
+  };
 }

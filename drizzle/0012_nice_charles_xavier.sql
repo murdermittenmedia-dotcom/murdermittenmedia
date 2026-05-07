@@ -1,0 +1,1 @@
+ALTER TABLE `queue_state` ADD `streamUrl` varchar(512);
