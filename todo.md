@@ -33,11 +33,14 @@
   - [x] Skip the line for $10 (CashApp/PayPal payment + admin confirm)
   - [x] Admin panel to manage queue (mark as playing, approve skips, remove)
 - [x] Update navbar with all new pages
-- [ ] Music Wars page (Discord-linked battle competition with spin wheel and bracket)
-- [ ] Admin queue management panel on Music Review page
-- [ ] Update all pages to use shared SiteNav component
+- [x] Music Wars page (Discord-linked battle competition with spin wheel and bracket)
+- [x] Admin queue management panel on Music Review page
+- [x] Update all pages to use shared SiteNav component
 - [x] Set CEO Stew as Artist of the Week with blog article, recent songs/videos, and social links
-- [ ] Fix TypeScript errors in MeetingWithTheMitten.tsx
-- [ ] Overhaul homepage to be dynamic and showcase all content (Mic, Podcast, Music Wars, Live, Promo, Artist of Week)
-- [ ] Add framer-motion animations, scroll reveals, hover effects across all pages
-- [ ] Make site feel premium and interactive throughout
+- [x] Fix TypeScript errors in MeetingWithTheMitten.tsx
+- [x] Overhaul homepage to be dynamic and showcase all content (Mic, Podcast, Music Wars, Live, Promo, Artist of Week)
+- [x] Add framer-motion animations, scroll reveals, hover effects across all pages
+- [x] Make site feel premium and interactive throughout
+- [ ] Add YouTube preview player to song catalog on Artist of the Week page (click song to preview)
+- [ ] Add Apple Music and Spotify profile links for CEO Stew on Artist of the Week page
+- [ ] Make streaming links standard for all future artist pages

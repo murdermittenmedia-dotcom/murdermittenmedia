@@ -17,7 +17,8 @@ const ARTIST = {
   instagram: "https://www.instagram.com/ceo.stew/",
   tiktok: "https://www.tiktok.com/@stewopmbb",
   youtube: "https://www.youtube.com/@moneybagboys_co",
-  spotify: "https://open.spotify.com/artist/ceo-stew",
+  spotify: "https://open.spotify.com/artist/445wiVeb0kmovnsXj6MqHZ",
+  appleMusic: "https://music.apple.com/us/artist/ceo-stew/1610942961",
   imageUrl: "", // placeholder -- no public image URL available
   tagline: "Eastside Detroit's Most Consistent Voice",
   article: `
@@ -96,8 +97,21 @@ const SONGS = [
 export default function ArtistOfWeek() {
   const [activeVideo, setActiveVideo] = useState(VIDEOS[0]);
   const [showAllSongs, setShowAllSongs] = useState(false);
+  const [previewSong, setPreviewSong] = useState<string | null>(null);
 
   const displayedSongs = showAllSongs ? SONGS : SONGS.slice(0, 6);
+
+  // Map song titles to YouTube video IDs for preview
+  const songVideoMap: Record<string, string> = {
+    "Don't Crash": "1bgjhsoC5AI",
+    "Tv Static": "5bJS_HG1XyI",
+    "Kitchen Top": "3E8WSjpXXRo",
+    "Gretzky": "vDTRqccQZvI",
+    "Rush": "v9PlFHb6Qxg",
+    "Rockout": "GZ0YzXP4IBw",
+    "The Bag Forever": "u166YyEv0AE",
+    "6": "rC2AmsKvz-Y",
+  };
 
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
@@ -156,6 +170,24 @@ export default function ArtistOfWeek() {
                   className="flex items-center gap-2 border border-white/20 text-white/60 hover:border-red-600 hover:text-white px-4 py-2 text-xs uppercase tracking-widest transition-all"
                 >
                   ▶ YouTube (MBB)
+                </a>
+                <a
+                  href={ARTIST.spotify}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 border border-[#1DB954]/40 text-[#1DB954]/80 hover:border-[#1DB954] hover:text-[#1DB954] px-4 py-2 text-xs uppercase tracking-widest transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                  Spotify
+                </a>
+                <a
+                  href={ARTIST.appleMusic}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 border border-[#FC3C44]/40 text-[#FC3C44]/80 hover:border-[#FC3C44] hover:text-[#FC3C44] px-4 py-2 text-xs uppercase tracking-widest transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208a4.93 4.93 0 00-.35 1.49c-.06.5-.087 1-.09 1.501v12.6c.01.5.04 1 .09 1.5.07.73.28 1.42.65 2.05.55.93 1.35 1.6 2.33 2.01.63.27 1.29.4 1.97.44.55.04 1.1.06 1.65.06h11.3c.55 0 1.1-.02 1.65-.06.68-.04 1.34-.17 1.97-.44.98-.41 1.78-1.08 2.33-2.01.37-.63.58-1.32.65-2.05.05-.5.08-1 .09-1.5V6.124zm-6.077 6.29l-4.43 2.56c-.4.23-.9.23-1.3 0l-4.43-2.56c-.4-.23-.65-.66-.65-1.12V7.414c0-.46.25-.89.65-1.12l4.43-2.56c.4-.23.9-.23 1.3 0l4.43 2.56c.4.23.65.66.65 1.12v3.88c0 .46-.25.89-.65 1.12z"/></svg>
+                  Apple Music
                 </a>
               </div>
             </div>
@@ -272,25 +304,64 @@ export default function ArtistOfWeek() {
           </h2>
 
           <div className="max-w-2xl">
-            {displayedSongs.map((song, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between py-3 border-b border-white/10 hover:border-red-600/30 transition-colors group"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-white/20 text-sm w-6 text-right font-mono">{i + 1}</span>
-                  <div>
-                    <p className="text-white/90 font-semibold group-hover:text-white transition-colors">
-                      {song.title}
-                    </p>
-                    {song.feat && (
-                      <p className="text-white/40 text-xs">ft. {song.feat}</p>
-                    )}
+            {displayedSongs.map((song, i) => {
+              const videoId = songVideoMap[song.title];
+              const isPlaying = previewSong === song.title;
+              return (
+                <div key={i}>
+                  <div
+                    className={`flex items-center justify-between py-3 border-b transition-colors group cursor-pointer ${
+                      isPlaying ? "border-red-600/50 bg-red-600/5" : "border-white/10 hover:border-red-600/30"
+                    }`}
+                    onClick={() => setPreviewSong(isPlaying ? null : song.title)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-white/20 text-sm w-6 text-right font-mono">
+                        {videoId ? (
+                          <span className={`text-base ${isPlaying ? "text-red-500" : "group-hover:text-red-500"} transition-colors`}>
+                            {isPlaying ? "■" : "▶"}
+                          </span>
+                        ) : (
+                          i + 1
+                        )}
+                      </span>
+                      <div>
+                        <p className={`font-semibold transition-colors ${isPlaying ? "text-white" : "text-white/90 group-hover:text-white"}`}>
+                          {song.title}
+                        </p>
+                        {song.feat && (
+                          <p className="text-white/40 text-xs">ft. {song.feat}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-white/30 text-xs">{song.year}</span>
+                      {videoId && (
+                        <span className={`text-xs px-2 py-0.5 border transition-colors ${
+                          isPlaying
+                            ? "border-red-600 text-red-500"
+                            : "border-white/10 text-white/30 group-hover:border-red-600/40 group-hover:text-red-500/60"
+                        }`}>
+                          {isPlaying ? "CLOSE" : "PREVIEW"}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  {/* Inline YouTube preview player */}
+                  {isPlaying && videoId && (
+                    <div className="border border-red-600/30 bg-black">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
+                        title={song.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full aspect-video"
+                      />
+                    </div>
+                  )}
                 </div>
-                <span className="text-white/30 text-xs">{song.year}</span>
-              </div>
-            ))}
+              );
+            })}
 
             {!showAllSongs && SONGS.length > 6 && (
               <button
