@@ -190,3 +190,123 @@
     background: linear-gradient(90deg, transparent, #D10000, transparent);
   }
 }
+
+/* ── Dynamic animation utilities ─────────────────────────── */
+
+@layer utilities {
+  /* Fade in from below */
+  .animate-fade-in {
+    animation: fadeInUp 0.6s ease both;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Shimmer effect on text */
+  .shimmer {
+    background: linear-gradient(90deg, #fff 0%, #D10000 50%, #fff 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+
+  @keyframes shimmer {
+    to { background-position: 200% center; }
+  }
+
+  /* Glitch flicker on hover */
+  .glitch:hover {
+    animation: glitch 0.3s steps(2) both;
+  }
+
+  @keyframes glitch {
+    0%   { transform: translate(0); }
+    20%  { transform: translate(-2px, 1px); }
+    40%  { transform: translate(2px, -1px); }
+    60%  { transform: translate(-1px, 2px); }
+    80%  { transform: translate(1px, -2px); }
+    100% { transform: translate(0); }
+  }
+
+  /* Scanline overlay */
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.05) 2px,
+      rgba(0,0,0,0.05) 4px
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Red underline slide animation */
+  .underline-slide {
+    position: relative;
+  }
+  .underline-slide::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: #D10000;
+    transition: width 0.3s ease;
+  }
+  .underline-slide:hover::after {
+    width: 100%;
+  }
+
+  /* Card lift */
+  .card-lift {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(209,0,0,0.15);
+  }
+
+  /* Stagger children animation */
+  .stagger-children > * {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeInUp 0.5s ease forwards;
+  }
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 80ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 160ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 240ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 320ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 400ms; }
+
+  /* Neon red border pulse */
+  .neon-border {
+    border: 1px solid rgba(209,0,0,0.4);
+    box-shadow: 0 0 8px rgba(209,0,0,0.2), inset 0 0 8px rgba(209,0,0,0.05);
+    animation: neonPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes neonPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(209,0,0,0.2), inset 0 0 8px rgba(209,0,0,0.05); }
+    50%       { box-shadow: 0 0 20px rgba(209,0,0,0.4), inset 0 0 12px rgba(209,0,0,0.1); }
+  }
+
+  /* Typewriter cursor blink */
+  .cursor-blink::after {
+    content: '|';
+    animation: blink 1s step-end infinite;
+    color: #D10000;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+}

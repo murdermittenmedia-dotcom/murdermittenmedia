@@ -21,3 +21,23 @@
 - [x] Promo CTA section on homepage
 - [ ] Connect Instagram Graph API credentials for live feed (INSTAGRAM_ACCESS_TOKEN + INSTAGRAM_USER_ID)
 - [x] Add Murder Mitten Media logo to navbar, hero, and footer on all pages
+- [x] Artist of the Week page
+- [x] Live Stream page (YouTube live status - online/offline)
+- [x] Murder Mitten Mic page (all one mic YouTube videos)
+- [x] Meeting with the Mitten podcast page
+- [x] Music Review Submission queue page
+  - [x] DB schema: submissions table (id, artist, song, type, url/fileKey, position, status, skipped, createdAt)
+  - [x] Live queue tracker showing position in line
+  - [x] Current playing song display (admin-controlled)
+  - [x] Submit via YouTube link or file upload
+  - [x] Skip the line for $10 (CashApp/PayPal payment + admin confirm)
+  - [x] Admin panel to manage queue (mark as playing, approve skips, remove)
+- [x] Update navbar with all new pages
+- [ ] Music Wars page (Discord-linked battle competition with spin wheel and bracket)
+- [ ] Admin queue management panel on Music Review page
+- [ ] Update all pages to use shared SiteNav component
+- [x] Set CEO Stew as Artist of the Week with blog article, recent songs/videos, and social links
+- [ ] Fix TypeScript errors in MeetingWithTheMitten.tsx
+- [ ] Overhaul homepage to be dynamic and showcase all content (Mic, Podcast, Music Wars, Live, Promo, Artist of Week)
+- [ ] Add framer-motion animations, scroll reveals, hover effects across all pages
+- [ ] Make site feel premium and interactive throughout

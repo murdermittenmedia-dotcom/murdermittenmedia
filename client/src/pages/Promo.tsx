@@ -3,6 +3,7 @@
    ============================================================ */
 
 import { useState } from "react";
+import { SiteNav } from "@/components/SiteNav";
 
 const PACKAGES = [
   {
@@ -105,19 +106,7 @@ export default function Promo() {
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
 
       {/* ── NAV ─────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/95 backdrop-blur-sm border-b border-white/10">
-        <div className="container flex items-center justify-between h-16">
-          <a href="/" className="flex items-center gap-3">
-            <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media" className="w-10 h-10 rounded-full object-cover" />
-            <span className="font-['Anton'] text-xl tracking-wider">
-              MURDER MITTEN <span className="text-red-600">MEDIA</span>
-            </span>
-          </a>
-          <a href="/" className="text-xs text-white/40 hover:text-white uppercase tracking-widest transition-colors">
-            ← Back to Home
-          </a>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* ── HERO ────────────────────────────────────────────── */}
       <section className="pt-32 pb-16 text-center relative overflow-hidden">

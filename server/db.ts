@@ -1,6 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, asc, desc, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  InsertUser, users,
+  reviewSubmissions, InsertReviewSubmission,
+  queueState, artistOfWeek, InsertArtistOfWeek,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +93,87 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ── Review Queue ─────────────────────────────────────────────
+
+export async function getQueueSubmissions() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviewSubmissions)
+    .where(ne(reviewSubmissions.status, "removed"))
+    .orderBy(
+      desc(reviewSubmissions.skipPaymentConfirmed),
+      asc(reviewSubmissions.createdAt)
+    );
+}
+
+export async function addSubmission(data: InsertReviewSubmission) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(reviewSubmissions).values(data);
+}
+
+export async function updateSubmissionStatus(id: number, status: "pending" | "playing" | "reviewed" | "removed") {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(reviewSubmissions).set({ status }).where(eq(reviewSubmissions.id, id));
+}
+
+export async function confirmSkipPayment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(reviewSubmissions).set({ skipPaymentConfirmed: true }).where(eq(reviewSubmissions.id, id));
+}
+
+export async function getQueueState() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(queueState).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function setCurrentPlaying(submissionId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(queueState).limit(1);
+  if (existing.length === 0) {
+    await db.insert(queueState).values({ currentPlayingId: submissionId, isLive: true });
+  } else {
+    await db.update(queueState).set({ currentPlayingId: submissionId });
+  }
+}
+
+export async function setLiveStatus(isLive: boolean, message?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(queueState).limit(1);
+  if (existing.length === 0) {
+    await db.insert(queueState).values({ isLive, liveMessage: message ?? null });
+  } else {
+    await db.update(queueState).set({ isLive, liveMessage: message ?? null });
+  }
+}
+
+// ── Artist of the Week ───────────────────────────────────────
+
+export async function getActiveArtistOfWeek() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(artistOfWeek)
+    .where(eq(artistOfWeek.isActive, true))
+    .orderBy(desc(artistOfWeek.weekOf))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getAllArtistsOfWeek() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(artistOfWeek).orderBy(desc(artistOfWeek.weekOf));
+}
+
+export async function upsertArtistOfWeek(data: InsertArtistOfWeek) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(artistOfWeek).set({ isActive: false });
+  return db.insert(artistOfWeek).values({ ...data, isActive: true });
+}

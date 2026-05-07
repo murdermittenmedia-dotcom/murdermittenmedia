@@ -1,7 +1,14 @@
+import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import {
+  getQueueSubmissions, addSubmission, updateSubmissionStatus,
+  confirmSkipPayment, getQueueState, setCurrentPlaying, setLiveStatus,
+  getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
+} from "./db";
 
 // ─── Instagram feed cache (5 min TTL) ────────────────────────
 interface IgPost {
@@ -45,21 +52,23 @@ async function fetchInstagramPosts(): Promise<IgPost[]> {
   }
 }
 
+const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+  return next({ ctx });
+});
+
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
-  // ── Instagram live feed ──────────────────────────────────
+  // ── Instagram live feed ──────────────────────────────────────
   instagram: router({
     feed: publicProcedure.query(async () => {
       const now = Date.now();
@@ -68,6 +77,114 @@ export const appRouter = router({
       igCache = { posts, fetchedAt: now };
       return posts;
     }),
+  }),
+
+  // ── Review Queue ─────────────────────────────────────────────
+  queue: router({
+    getAll: publicProcedure.query(async () => {
+      const [submissions, state] = await Promise.all([
+        getQueueSubmissions(),
+        getQueueState(),
+      ]);
+      const currentPlaying = state?.currentPlayingId
+        ? submissions.find(s => s.id === state.currentPlayingId) ?? null
+        : null;
+      return { submissions, state, currentPlaying };
+    }),
+
+    submit: publicProcedure
+      .input(z.object({
+        artistName: z.string().min(1).max(128),
+        songTitle: z.string().min(1).max(128),
+        submissionType: z.enum(["youtube", "file"]),
+        youtubeUrl: z.string().optional(),
+        contactInfo: z.string().max(256).optional(),
+        wantsSkip: z.boolean().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        await addSubmission({
+          artistName: input.artistName,
+          songTitle: input.songTitle,
+          submissionType: input.submissionType,
+          youtubeUrl: input.youtubeUrl ?? null,
+          contactInfo: input.contactInfo ?? null,
+          skippedLine: input.wantsSkip,
+          skipPaymentConfirmed: false,
+          status: "pending",
+          position: 0,
+        });
+        return { success: true };
+      }),
+
+    setPlaying: adminProcedure
+      .input(z.object({ submissionId: z.number().nullable() }))
+      .mutation(async ({ input }) => {
+        if (input.submissionId !== null) {
+          await updateSubmissionStatus(input.submissionId, "playing");
+        }
+        await setCurrentPlaying(input.submissionId);
+        return { success: true };
+      }),
+
+    updateStatus: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["pending", "playing", "reviewed", "removed"]),
+      }))
+      .mutation(async ({ input }) => {
+        await updateSubmissionStatus(input.id, input.status);
+        return { success: true };
+      }),
+
+    confirmSkip: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await confirmSkipPayment(input.id);
+        return { success: true };
+      }),
+
+    setLive: adminProcedure
+      .input(z.object({ isLive: z.boolean(), message: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        await setLiveStatus(input.isLive, input.message);
+        return { success: true };
+      }),
+  }),
+
+  // ── Artist of the Week ───────────────────────────────────────
+  artistOfWeek: router({
+    getCurrent: publicProcedure.query(async () => {
+      return getActiveArtistOfWeek();
+    }),
+
+    getAll: publicProcedure.query(async () => {
+      return getAllArtistsOfWeek();
+    }),
+
+    set: adminProcedure
+      .input(z.object({
+        artistName: z.string().min(1).max(128),
+        bio: z.string().optional(),
+        imageUrl: z.string().optional(),
+        instagramUrl: z.string().optional(),
+        youtubeUrl: z.string().optional(),
+        spotifyUrl: z.string().optional(),
+        featuredVideoId: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await upsertArtistOfWeek({
+          artistName: input.artistName,
+          bio: input.bio ?? null,
+          imageUrl: input.imageUrl ?? null,
+          instagramUrl: input.instagramUrl ?? null,
+          youtubeUrl: input.youtubeUrl ?? null,
+          spotifyUrl: input.spotifyUrl ?? null,
+          featuredVideoId: input.featuredVideoId ?? null,
+          isActive: true,
+          weekOf: new Date(),
+        });
+        return { success: true };
+      }),
   }),
 });
 
