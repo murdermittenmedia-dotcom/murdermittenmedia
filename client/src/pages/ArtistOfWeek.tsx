@@ -3,8 +3,9 @@
    This Week: CEO Stew (Money Bag Boys)
    ============================================================ */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { SiteNav } from "@/components/SiteNav";
+import { trpc } from "@/lib/trpc";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -94,10 +95,94 @@ const SONGS = [
   { title: "Cross The Lake", feat: "Big Punch, 1481 Grungie", year: "2023" },
 ];
 
+// --- Inline Audio Player Component ---------------------------
+function AudioPlayer({ src, title }: { src: string; title: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) { audioRef.current.pause(); setPlaying(false); }
+    else { audioRef.current.play(); setPlaying(true); }
+  };
+
+  const fmt = (s: number) => {
+    if (!isFinite(s)) return "0:00";
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="border border-red-600/40 bg-red-600/5 p-4 rounded">
+      <audio
+        ref={audioRef}
+        src={src}
+        onTimeUpdate={() => {
+          if (audioRef.current) setProgress(audioRef.current.currentTime);
+        }}
+        onLoadedMetadata={() => {
+          if (audioRef.current) setDuration(audioRef.current.duration);
+        }}
+        onEnded={() => setPlaying(false)}
+      />
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggle}
+          className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white text-xl transition-colors flex-shrink-0"
+        >
+          {playing ? "⏸" : "▶"}
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-semibold text-sm truncate mb-2">{title}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-white/40 text-xs font-mono w-10">{fmt(progress)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={progress}
+              onChange={e => {
+                const t = Number(e.target.value);
+                setProgress(t);
+                if (audioRef.current) audioRef.current.currentTime = t;
+              }}
+              className="flex-1 accent-red-600 h-1"
+            />
+            <span className="text-white/40 text-xs font-mono w-10 text-right">{fmt(duration)}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="text-white/40 text-xs">🔊</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={e => {
+              const v = Number(e.target.value);
+              setVolume(v);
+              if (audioRef.current) audioRef.current.volume = v;
+            }}
+            className="w-16 accent-red-600 h-1"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ArtistOfWeek() {
   const [activeVideo, setActiveVideo] = useState(VIDEOS[0]);
   const [showAllSongs, setShowAllSongs] = useState(false);
   const [previewSong, setPreviewSong] = useState<string | null>(null);
+
+  // Fetch live DB artist of week data (for audio track)
+  const { data: dbArtist } = trpc.artistOfWeek.getCurrent.useQuery();
 
   const displayedSongs = showAllSongs ? SONGS : SONGS.slice(0, 6);
 
@@ -190,6 +275,17 @@ export default function ArtistOfWeek() {
                   Apple Music
                 </a>
               </div>
+
+              {/* Audio track player (from DB) */}
+              {dbArtist?.audioTrackUrl && (
+                <div className="mt-6">
+                  <p className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">Featured Track</p>
+                  <AudioPlayer
+                    src={dbArtist.audioTrackUrl}
+                    title={dbArtist.audioTrackTitle ?? dbArtist.artistName ?? "Featured Track"}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Right: featured video */}

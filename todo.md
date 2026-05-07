@@ -104,3 +104,167 @@
 - [x] ArtistStatModal component: W/L record table, song catalogue with inline HTML5 audio player, IG link
 - [x] Clickable artist names in: chat panel, wheel entries, battle history leaderboard
 - [x] Song upload form in modal (own profile only): title, file upload (.mp3/.wav), or external URL
+
+## Role Management & Voting System
+- [ ] DB: extend users.role enum to include "judge" (admin | judge | user)
+- [ ] DB: votes table (id, battleId, voterId, voterRole, candidate, weight, createdAt, battleRound)
+- [ ] DB: active_battle table (id, contestant1, contestant2, round, status, createdAt) for tracking current battle
+- [ ] tRPC: admin.listUsers — paginated list of all users with roles
+- [ ] tRPC: admin.setRole — admin-only promote/demote user to judge/user
+- [ ] tRPC: voting.castVote — authenticated users cast 1 vote per battle; judges cast weighted vote (weight=3)
+- [ ] tRPC: voting.getResults — live vote counts per candidate for current battle
+- [ ] tRPC: voting.setActiveBattle — admin sets current battle matchup (contestant1 vs contestant2)
+- [ ] tRPC: voting.clearVotes — admin resets votes for new battle
+- [ ] Admin panel: User Management tab — list users, search by name, promote/demote judge
+- [ ] Music Wars: Audience vote panel — vote for contestant1 or contestant2, show live bar chart
+- [ ] Music Wars: Judge vote panel — visible only to judges, weighted vote (counts as 3), separate display
+- [ ] Music Wars: Live vote tracker — real-time Socket.io updates, show vote counts + percentages
+- [ ] Judge role auto-grants mic access in audio room (no manual activation needed)
+- [ ] Admin can set active battle matchup from admin panel (names + round number)
+
+## Past Wars Tab Fix
+- [ ] Past Wars tab: replace YouTube playlist embed with battle records from DB (grouped by round, showing winner/loser/songs/date)
+- [ ] Past Wars tab: show "No battles recorded yet" when DB is empty, with note that admin records results after each live battle
+- [ ] Past Wars tab: each battle card shows round #, date, winner (green), loser (red), songs used, clickable artist names opening ArtistStatModal
+
+## Live Stream Offline State & Event Scheduler
+- [ ] DB: add nextEventDate + nextEventTitle fields to site_settings (or reuse key-value store)
+- [ ] tRPC: admin.setNextEvent — admin sets next Music Wars date/time and title
+- [ ] tRPC: public.getNextEvent — returns next event date/time and title
+- [ ] Music Wars stream section: when offline, show "MUSIC WARS OFFLINE" branded screen instead of broken YouTube embed
+- [ ] Offline screen: show countdown timer (days/hours/minutes/seconds) to next scheduled event
+- [ ] Offline screen: show next event title set by admin
+- [ ] Admin panel: "Schedule Next Event" form — date/time picker + event title + YouTube stream URL (for when live)
+- [ ] Admin panel: toggle isLive on/off to switch between live embed and offline screen
+- [ ] When isLive=true: show YouTube embed with the configured stream URL
+- [ ] When isLive=false: show offline screen with countdown
+
+## Music Wars Entry Form MP3 Upload
+- [ ] Wheel entry form: add tab toggle between "Link" (YouTube/SoundCloud URL) and "Upload MP3" (.mp3/.wav file, max 15MB)
+- [ ] tRPC: wheel.submitWithFile — upload audio to S3, store fileUrl on wheel entry
+- [ ] WheelEntry DB: ensure songUrl can store S3 URL from upload (already varchar 512, OK)
+
+## Auto-Link Wheel Entry Songs to Profile
+- [ ] When a logged-in user submits a wheel entry with a song (URL or uploaded MP3), auto-add it to their user_songs catalogue
+- [ ] When admin records a battle result, auto-link the winning/losing songs to the respective user profiles if userId is known
+- [ ] ArtistStatModal: show both catalogue songs AND songs from past battle submissions (deduplicated by title)
+
+## Admin Wheel Controls
+- [ ] Admin panel: X button on each wheel entry to remove/eliminate individual names instantly
+- [ ] Admin panel: "Reset Current War" button — removes all active wheel entries + clears current vote results, but preserves battle_records and all-time leaderboard
+- [ ] tRPC: wheel.removeEntry — admin removes a single wheel entry by id
+- [ ] tRPC: wheel.resetCurrentWar — admin clears all wheel entries (status != 'winner') + clears active battle votes
+
+## Music Review — Fire/Trash Voting & Artist Profiles
+- [ ] DB schema: song_reactions table (id, submissionId, userId, reaction: 'fire'|'trash', createdAt) — one per user per submission
+- [ ] DB: add fireCount + trashCount columns to review_submissions for career totals
+- [ ] tRPC: review.react — cast fire/trash vote on a submission (one per user, locked after voting)
+- [ ] tRPC: review.getReactions — get fire/trash counts for a submission
+- [ ] Music Review page: 🔥 / 🗑️ buttons on currently playing song, disabled after vote cast
+- [ ] Music Review page: show live fire/trash tally updating in real-time (poll every 3s)
+- [ ] Music Review page: clickable artist names in queue → ArtistStatModal popup (W/L record + songs)
+- [ ] ArtistStatModal: show career fire/trash totals on each song in the catalogue
+
+## Live Vote Visibility
+- [ ] Vote results panel visible to ALL viewers (not just logged-in users)
+- [ ] Show individual judge votes with JUDGE badge + their name + which contestant they picked
+- [ ] Show audience vote count separately from judge vote count
+- [ ] tRPC: voting.getDetailedResults — returns vote breakdown with judge names/votes visible to public
+- [ ] DB: store voterName on votes table so judge names can be displayed publicly
+
+## Vote Weight Correction
+- [ ] All votes (judge + audience) carry equal weight = 1
+- [ ] Remove weight=3 for judges in DB and vote calculation logic
+- [ ] Judge votes still shown with JUDGE badge + name for visibility, but counted as 1 vote
+
+## Nav Label & Order Update
+- [ ] Rename "Mic" → "Murder Mitten Mic Performances"
+- [ ] Rename "Review" → "Live Music Reviews"
+- [ ] Rename "Podcast" → "Meeting with the Mitten Podcast"
+- [ ] Swap order: Live Music Reviews before Murder Mitten Mic Performances
+- [ ] Nav order: Live Stream, Artist of the Week, Music Wars, Live Music Reviews, Murder Mitten Mic Performances, Meeting with the Mitten Podcast, Get Promoted
+
+## Detroit → Michigan Text Fix
+- [ ] Replace all "Detroit's hardest" / "Detroit's" / "Detroit" in page descriptions and taglines with "Michigan" throughout the site (not in addresses/history context, only in branding/descriptions)
+
+## My Profile Nav Option
+- [ ] Add "My Profile" link in nav (desktop + mobile) when user is logged in — opens ArtistStatModal for own profile
+- [ ] Show username/artist name next to profile link in nav
+
+## Profile Picture
+- [ ] Add avatarUrl column to users table in schema; push migration
+- [ ] tRPC: profile.uploadAvatar — upload image to S3, save URL to users.avatarUrl
+- [ ] ArtistStatModal: show avatar at top, upload button when viewing own profile
+- [ ] SiteNav: show avatar circle instead of letter initial when avatarUrl is set
+- [ ] Chat messages: show tiny avatar next to username
+- [ ] Leaderboard: show avatar next to artist name
+
+## Wheel Auto-Remove & Queue Notifications
+- [ ] Auto-remove name from wheel after it's spun (mark status "called" on spin)
+- [ ] Winners auto-advance: admin "Start Next War" button copies all battle winners back to wheel as new entries
+- [ ] Song play button on each wheel entry card (judges/viewers can listen inline)
+- [ ] Song play button in active battle matchup panel
+- [ ] Push notification to user when their name is picked: "You've been picked to compete next!"
+- [ ] Queue position display for logged-in users: "There are X people ahead of you"
+- [ ] Fix VotingPanel TypeScript: use contestant1/contestant2 (actual DB field names) not contestant1Votes/contestant2Votes
+
+## Battle Song Playback System
+- [ ] Wheel picks 2 contestants → their songs auto-load into BattlePlayer
+- [ ] BattlePlayer: plays contestant 1 song first, then contestant 2 song back to back
+- [ ] Full playback controls: play/pause, seek/scrub bar, current time / duration, volume slider
+- [ ] Shows which contestant's song is currently playing with their name highlighted
+- [ ] Visible to all viewers (judges + audience) simultaneously
+- [ ] Admin can manually trigger playback or skip to next song
+- [ ] Auto-remove picked contestants from wheel after they are loaded into BattlePlayer
+
+## Battle Player Admin Control Clarification
+- [ ] Admin-only playback controls: play/pause, seek, volume, skip to next song
+- [ ] Viewers see read-only player: song name, artist, progress bar (no interaction)
+- [ ] Admin playback state synced to all viewers via Socket.io (everyone hears same position)
+
+## Admin Role Elevation
+- [ ] Admin panel: User Management tab — list all users, search by name/email
+- [ ] Admin can promote user → contestant → judge (and demote back)
+- [ ] Judge role = full mic access in audio room (no per-session activation needed)
+- [ ] Contestant role = mic access only when admin activates them
+- [ ] Role badge shown next to username in chat and audio room participant list
+
+## Reset War & User Management Fixes
+- [ ] Reset Current War: clears ALL wheel entries (not just non-winners), all votes, active battle, and battle records for current session
+- [ ] Admin User Panel: only shows users on the wheel OR who applied as judge (not all registered users)
+- [ ] "Apply as Judge" button: visible to logged-in users on Music Wars page
+- [ ] Judge application stored in DB (pending/approved/rejected)
+- [ ] Admin can approve/reject judge applications from user panel
+- [ ] Approved judge gets judge role and mic access
+
+## Players Tab (Active vs Eliminated)
+- [ ] Players tab on Music Wars page showing Active and Eliminated sections
+- [ ] Each player card shows: artist name, current war record (W/L this session), lifetime record (all-time W/L)
+- [ ] Active players: still on the wheel, sorted by wheel position
+- [ ] Eliminated players: knocked out this war, sorted by elimination order
+- [ ] Clicking a player name opens ArtistStatModal with full profile
+- [ ] Real-time updates as players get eliminated or win battles
+
+## Profile Picture Edit
+- [ ] Profile picture upload/edit button visible in ArtistStatModal when viewing own profile
+- [ ] Clicking avatar or edit button opens file picker for image upload
+- [ ] Uploaded image stored in S3, URL saved to users.avatarUrl
+- [ ] Avatar shown in nav, chat messages, leaderboard, and artist popup
+
+## Audio Room Speaker Indicators & Mute Controls
+- [ ] 🔊 animated speaker emoji on participant card when actively speaking (Web Audio API voice activity detection)
+- [ ] 🔇 muted speaker emoji when participant is intentionally muted
+- [ ] Self-mute/unmute button for all participants in the audio room
+- [ ] Admin can mute or unmute any participant from the room panel
+- [ ] Mute state synced via Socket.io so all viewers see current mute status
+
+## Artist of the Week — Audio Player
+- [ ] Add audio player to Artist of the Week page for direct in-browser playback
+- [ ] Support MP3/audio file URL (HTML5 audio element with play/pause/scrub/volume)
+- [ ] Support YouTube links (embedded iframe player)
+- [ ] Admin can set both a video URL and a separate audio track URL per artist
+- [ ] Audio player shows artist name, song title, and album art if available
+
+## Reset War — Battle Records
+- [ ] Reset war also deletes battle_records for the current war session (by warId/roundNumber)
+- [ ] Lifetime all-time battle records are preserved (different roundNumber/warId)

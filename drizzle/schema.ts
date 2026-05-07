@@ -10,6 +10,7 @@ export const users = mysqlTable("users", {
   // Artist profile fields (collected on first login)
   artistName: varchar("artistName", { length: 128 }),
   instagramHandle: varchar("instagramHandle", { length: 64 }),  // without the @
+  avatarUrl: varchar("avatarUrl", { length: 512 }),              // profile picture URL
   profileComplete: boolean("profileComplete").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -34,12 +35,27 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   skipPaymentConfirmed: boolean("skipPaymentConfirmed").default(false).notNull(),
   position: int("position").default(0).notNull(),
   notes: text("notes"),
+  // Career reaction totals (incremented on each vote)
+  fireCount: int("fireCount").default(0).notNull(),
+  trashCount: int("trashCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type ReviewSubmission = typeof reviewSubmissions.$inferSelect;
 export type InsertReviewSubmission = typeof reviewSubmissions.$inferInsert;
+
+// Song Reactions — 🔥 or 🗑️ votes on review submissions (one per user per submission)
+export const songReactions = mysqlTable("song_reactions", {
+  id: int("id").autoincrement().primaryKey(),
+  submissionId: int("submissionId").notNull(),   // references reviewSubmissions.id
+  userId: int("userId").notNull(),               // references users.id
+  reaction: mysqlEnum("reaction", ["fire", "trash"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SongReaction = typeof songReactions.$inferSelect;
+export type InsertSongReaction = typeof songReactions.$inferInsert;
 
 // Queue state (singleton row for current playing track + live status)
 export const queueState = mysqlTable("queue_state", {
@@ -62,6 +78,8 @@ export const artistOfWeek = mysqlTable("artist_of_week", {
   youtubeUrl: varchar("youtubeUrl", { length: 512 }),
   spotifyUrl: varchar("spotifyUrl", { length: 512 }),
   featuredVideoId: varchar("featuredVideoId", { length: 64 }),
+  audioTrackUrl: varchar("audioTrackUrl", { length: 512 }),  // direct MP3/audio file URL for in-browser playback
+  audioTrackTitle: varchar("audioTrackTitle", { length: 128 }),  // song title for the audio player
   isActive: boolean("isActive").default(true).notNull(),
   weekOf: timestamp("weekOf").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -119,6 +137,7 @@ export type SiteSetting = typeof siteSettings.$inferSelect;
 export const battleRecords = mysqlTable("battle_records", {
   id: int("id").autoincrement().primaryKey(),
   roundNumber: int("roundNumber").default(1).notNull(),
+  warSessionId: int("warSessionId").default(1).notNull(),  // increments on each war reset
   // Winner info
   winnerId: int("winnerId"),                                    // userId (null = guest)
   winnerArtistName: varchar("winnerArtistName", { length: 128 }).notNull(),
@@ -156,3 +175,50 @@ export const userSongs = mysqlTable("user_songs", {
 
 export type UserSong = typeof userSongs.$inferSelect;
 export type InsertUserSong = typeof userSongs.$inferInsert;
+
+// Active Battle — singleton row tracking the current live battle matchup
+export const activeBattle = mysqlTable("active_battle", {
+  id: int("id").autoincrement().primaryKey(),
+  contestant1Name: varchar("contestant1Name", { length: 128 }).notNull(),
+  contestant1SongTitle: varchar("contestant1SongTitle", { length: 128 }),
+  contestant1SongUrl: varchar("contestant1SongUrl", { length: 512 }),
+  contestant2Name: varchar("contestant2Name", { length: 128 }).notNull(),
+  contestant2SongTitle: varchar("contestant2SongTitle", { length: 128 }),
+  contestant2SongUrl: varchar("contestant2SongUrl", { length: 512 }),
+  roundNumber: int("roundNumber").default(1).notNull(),
+  status: mysqlEnum("status", ["pending", "voting", "closed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ActiveBattle = typeof activeBattle.$inferSelect;
+export type InsertActiveBattle = typeof activeBattle.$inferInsert;
+
+// Votes — one vote per user per battle (all votes equal weight=1, judges shown with JUDGE badge)
+export const votes = mysqlTable("votes", {
+  id: int("id").autoincrement().primaryKey(),
+  battleId: int("battleId").notNull(),          // references activeBattle.id
+  voterId: int("voterId").notNull(),             // references users.id
+  voterName: varchar("voterName", { length: 128 }),  // display name for public judge vote visibility
+  voterRole: mysqlEnum("voterRole", ["user", "judge", "admin"]).default("user").notNull(),
+  candidate: mysqlEnum("candidate", ["contestant1", "contestant2"]).notNull(),
+  weight: int("weight").default(1).notNull(),    // always 1 — all votes equal
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Vote = typeof votes.$inferSelect;
+export type InsertVote = typeof votes.$inferInsert;
+
+// Judge Applications — users who want to become judges (pending admin approval)
+export const judgeApplications = mysqlTable("judge_applications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  artistName: varchar("artistName", { length: 128 }),
+  reason: text("reason"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  appliedAt: timestamp("appliedAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+});
+
+export type JudgeApplication = typeof judgeApplications.$inferSelect;
+export type InsertJudgeApplication = typeof judgeApplications.$inferInsert;

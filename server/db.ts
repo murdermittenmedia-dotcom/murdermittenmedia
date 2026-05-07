@@ -1,7 +1,7 @@
-import { eq, asc, desc, ne, and, or, sql } from "drizzle-orm";
+import { eq, asc, desc, ne, and, or, sql, isNotNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
-  InsertUser, users,
+  InsertUser, User, users,
   reviewSubmissions, InsertReviewSubmission,
   queueState, artistOfWeek, InsertArtistOfWeek,
   wheelEntries, InsertWheelEntry, WheelEntry,
@@ -9,6 +9,10 @@ import {
   siteSettings,
   battleRecords, InsertBattleRecord,
   userSongs, InsertUserSong,
+  votes, InsertVote,
+  activeBattle, InsertActiveBattle,
+  songReactions, InsertSongReaction,
+  judgeApplications, InsertJudgeApplication, JudgeApplication,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -69,7 +73,7 @@ export async function getUserById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateUserProfile(userId: number, data: { artistName?: string; instagramHandle?: string }) {
+export async function updateUserProfile(userId: number, data: { artistName?: string; instagramHandle?: string; avatarUrl?: string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const updateData: Record<string, unknown> = { profileComplete: true };
@@ -78,6 +82,7 @@ export async function updateUserProfile(userId: number, data: { artistName?: str
     // Strip leading @ if present
     updateData.instagramHandle = data.instagramHandle.replace(/^@/, "");
   }
+  if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
   return db.update(users).set(updateData).where(eq(users.id, userId));
 }
 
@@ -373,4 +378,314 @@ export async function getArtistProfile(userId: number) {
     getUserSongs(userId, false),
   ]);
   return { user, artistName, stats, songs };
+}
+
+// -- User Management (admin) -----------------------------------
+
+export async function getAllUsers(limit = 200): Promise<User[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).orderBy(asc(users.createdAt)).limit(limit);
+}
+
+export async function setUserRole(userId: number, role: "user" | "admin" | "judge" | "contestant") {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// -- Active Battle (admin-controlled matchup) ------------------
+
+export async function getActiveBattle() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(activeBattle).orderBy(desc(activeBattle.createdAt)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function setActiveBattle(data: {
+  contestant1Name: string;
+  contestant1SongTitle?: string | null;
+  contestant1SongUrl?: string | null;
+  contestant2Name: string;
+  contestant2SongTitle?: string | null;
+  contestant2SongUrl?: string | null;
+  roundNumber?: number;
+  status?: "pending" | "voting" | "closed";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Always insert a new battle row (each battle is a new record)
+  const result = await db.insert(activeBattle).values({
+    contestant1Name: data.contestant1Name,
+    contestant1SongTitle: data.contestant1SongTitle ?? null,
+    contestant1SongUrl: data.contestant1SongUrl ?? null,
+    contestant2Name: data.contestant2Name,
+    contestant2SongTitle: data.contestant2SongTitle ?? null,
+    contestant2SongUrl: data.contestant2SongUrl ?? null,
+    roundNumber: data.roundNumber ?? 1,
+    status: data.status ?? "pending",
+  });
+  return result;
+}
+
+export async function updateActiveBattleStatus(id: number, status: "pending" | "voting" | "closed") {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(activeBattle).set({ status }).where(eq(activeBattle.id, id));
+}
+
+// -- Votes -----------------------------------------------------
+
+export async function castVote(data: InsertVote & { voterName?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Upsert: one vote per voter per battle — delete existing then insert
+  await db.delete(votes).where(
+    and(eq(votes.battleId, data.battleId), eq(votes.voterId, data.voterId))
+  );
+  return db.insert(votes).values(data);
+}
+
+export async function getUserVote(battleId: number, voterId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(votes)
+    .where(and(eq(votes.battleId, battleId), eq(votes.voterId, voterId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getVoteResults(battleId: number) {
+  const db = await getDb();
+  if (!db) return {
+    contestant1: 0, contestant2: 0, total: 0,
+    judgeVotes: [] as Array<{ name: string; role: string; candidate: string }>,
+    audienceContestant1: 0, audienceContestant2: 0,
+  };
+  const allVotes = await db.select().from(votes).where(eq(votes.battleId, battleId));
+  let c1 = 0, c2 = 0, audienceC1 = 0, audienceC2 = 0;
+  const judgeVotes: Array<{ name: string; role: string; candidate: string }> = [];
+  for (const v of allVotes) {
+    const isJudge = v.voterRole === "judge" || v.voterRole === "admin";
+    if (v.candidate === "contestant1") { c1++; if (!isJudge) audienceC1++; }
+    else { c2++; if (!isJudge) audienceC2++; }
+    if (isJudge) {
+      judgeVotes.push({ name: v.voterName ?? "Judge", role: v.voterRole, candidate: v.candidate });
+    }
+  }
+  return {
+    contestant1: c1,
+    contestant2: c2,
+    total: allVotes.length,
+    judgeVotes,
+    audienceContestant1: audienceC1,
+    audienceContestant2: audienceC2,
+  };
+}
+
+export async function clearBattleVotes(battleId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(votes).where(eq(votes.battleId, battleId));
+}
+
+// -- Song Reactions (🔥 / 🗑️ for Music Review) ----------------
+
+export async function castSongReaction(submissionId: number, userId: number, reaction: "fire" | "trash") {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Check if user already voted on this submission
+  const existing = await db.select().from(songReactions)
+    .where(and(eq(songReactions.submissionId, submissionId), eq(songReactions.userId, userId)))
+    .limit(1);
+  if (existing.length > 0) {
+    throw new Error("Already voted on this submission");
+  }
+  // Insert reaction
+  await db.insert(songReactions).values({ submissionId, userId, reaction });
+  // Increment the career counter on the submission
+  if (reaction === "fire") {
+    await db.update(reviewSubmissions)
+      .set({ fireCount: sql`${reviewSubmissions.fireCount} + 1` })
+      .where(eq(reviewSubmissions.id, submissionId));
+  } else {
+    await db.update(reviewSubmissions)
+      .set({ trashCount: sql`${reviewSubmissions.trashCount} + 1` })
+      .where(eq(reviewSubmissions.id, submissionId));
+  }
+  return { success: true };
+}
+
+export async function getUserSongReaction(submissionId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(songReactions)
+    .where(and(eq(songReactions.submissionId, submissionId), eq(songReactions.userId, userId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getSongReactionCounts(submissionId: number) {
+  const db = await getDb();
+  if (!db) return { fire: 0, trash: 0 };
+  const rows = await db.select().from(reviewSubmissions)
+    .where(eq(reviewSubmissions.id, submissionId))
+    .limit(1);
+  if (!rows.length) return { fire: 0, trash: 0 };
+  return { fire: rows[0].fireCount, trash: rows[0].trashCount };
+}
+
+// ── Judge Applications ────────────────────────────────────────────────────────
+
+export async function applyAsJudge(userId: number, artistName: string | null, reason: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  // Upsert: if already applied, update reason
+  const existing = await db.select().from(judgeApplications).where(eq(judgeApplications.userId, userId)).limit(1);
+  if (existing.length > 0) {
+    await db.update(judgeApplications)
+      .set({ artistName: artistName ?? undefined, reason: reason ?? undefined, status: "pending", reviewedAt: null })
+      .where(eq(judgeApplications.userId, userId));
+  } else {
+    await db.insert(judgeApplications).values({
+      userId,
+      artistName: artistName ?? null,
+      reason: reason ?? null,
+      status: "pending",
+    });
+  }
+}
+
+export async function getPendingJudgeApplications() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(judgeApplications).where(eq(judgeApplications.status, "pending")).orderBy(judgeApplications.appliedAt);
+}
+
+export async function reviewJudgeApplication(applicationId: number, status: "approved" | "rejected") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(judgeApplications)
+    .set({ status, reviewedAt: new Date() })
+    .where(eq(judgeApplications.id, applicationId));
+  // If approved, promote user to judge role
+  if (status === "approved") {
+    const apps = await db.select().from(judgeApplications).where(eq(judgeApplications.id, applicationId)).limit(1);
+    if (apps.length > 0) {
+      await db.update(users).set({ role: "judge" }).where(eq(users.id, apps[0].userId));
+    }
+  }
+}
+
+export async function getUserJudgeApplication(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(judgeApplications).where(eq(judgeApplications.userId, userId)).limit(1);
+  return rows[0] ?? null;
+}
+
+// ── Relevant Users (wheel participants + judge applicants only) ───────────────
+
+export async function getRelevantUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  // Get user IDs from active wheel entries
+  const wheelRows = await db.select({ userId: wheelEntries.userId }).from(wheelEntries)
+    .where(and(
+      isNotNull(wheelEntries.userId),
+      inArray(wheelEntries.status, ["active", "pending", "eliminated", "winner"])
+    ));
+  const wheelUserIds = Array.from(new Set(wheelRows.map(r => r.userId).filter((id): id is number => id !== null)));
+
+  // Get user IDs from judge applications
+  const appRows = await db.select({ userId: judgeApplications.userId }).from(judgeApplications);
+  const appUserIds = appRows.map(r => r.userId);
+
+  const allIds = Array.from(new Set([...wheelUserIds, ...appUserIds]));
+  if (allIds.length === 0) return [];
+
+  const userRows = await db.select().from(users).where(inArray(users.id, allIds));
+
+  // Attach judge application status to each user
+  const appMap = new Map<number, JudgeApplication>();
+  const allApps = await db.select().from(judgeApplications).where(inArray(judgeApplications.userId, allIds));
+  allApps.forEach(a => appMap.set(a.userId, a));
+
+  return userRows.map(u => ({
+    ...u,
+    judgeApplication: appMap.get(u.id) ?? null,
+  }));
+}
+
+// ── Players With Stats (for Players tab) ─────────────────────────────────────
+
+export async function getPlayersWithStats() {
+  const db = await getDb();
+  if (!db) return [];
+
+  const entries = await db.select().from(wheelEntries)
+    .where(inArray(wheelEntries.status, ["active", "pending", "eliminated", "winner"]))
+    .orderBy(wheelEntries.wheelPosition);
+
+  if (entries.length === 0) return [];
+
+  // Get all battle records
+  const allBattles = await db.select().from(battleRecords);
+
+  return entries.map(entry => {
+    const artistName = entry.artistName;
+
+    // Lifetime stats (all battles ever)
+    const lifetimeWins = allBattles.filter(b => b.winnerArtistName === artistName).length;
+    const lifetimeLosses = allBattles.filter(b => b.loserArtistName === artistName).length;
+
+    // Current war stats — battles where this entry's roundNumber matches
+    const currentWar = allBattles.filter(b =>
+      (b.winnerArtistName === artistName || b.loserArtistName === artistName) &&
+      b.roundNumber === (entry.roundNumber ?? 1)
+    );
+    const currentWins = currentWar.filter(b => b.winnerArtistName === artistName).length;
+    const currentLosses = currentWar.filter(b => b.loserArtistName === artistName).length;
+
+    return {
+      ...entry,
+      lifetimeWins,
+      lifetimeLosses,
+      currentWins,
+      currentLosses,
+    };
+  });
+}
+
+// ── Full War Reset (clears current war: wheel entries, votes, active battle, current session battle records) ───
+
+export async function fullWarReset() {
+  const db = await getDb();
+  if (!db) return;
+
+  // Get current war session ID
+  const currentSessionStr = await getSetting("current_war_session");
+  const currentSession = parseInt(currentSessionStr ?? "1", 10) || 1;
+
+  // Delete battle records from the current session only
+  await db.delete(battleRecords).where(eq(battleRecords.warSessionId, currentSession));
+
+  // Remove all wheel entries
+  await db.delete(wheelEntries);
+
+  // Clear all votes
+  await db.delete(votes);
+
+  // Close active battle
+  const battle = await getActiveBattle();
+  if (battle) await updateActiveBattleStatus(battle.id, "closed");
+
+  // Increment war session counter so next war has a new ID
+  await setSetting("current_war_session", String(currentSession + 1));
+}
+
+export async function getCurrentWarSession(): Promise<number> {
+  const val = await getSetting("current_war_session");
+  return parseInt(val ?? "1", 10) || 1;
 }

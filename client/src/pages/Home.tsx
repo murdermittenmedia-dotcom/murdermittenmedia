@@ -393,7 +393,7 @@ export default function Home() {
             {[
               { platform: "Instagram", handle: "@murdermittenmedia", stat: "45.8K followers", url: "https://www.instagram.com/murdermittenmedia/", icon: "📸" },
               { platform: "YouTube", handle: "@MurderMittenMedia", stat: "Videos & Live Streams", url: "https://youtube.com/@MurderMittenMedia", icon: "▶" },
-              { platform: "Discord", handle: "Music Wars Server", stat: "Battles & Community", url: "https://discord.gg/hZUPZzx7", icon: "🎮" },
+              { platform: "Threads", handle: "@murdermittenmedia", stat: "Real-time updates & commentary", url: "https://www.threads.net/@murdermittenmedia", icon: "🧵" },
             ].map(s => (
               <a
                 key={s.platform}
@@ -432,7 +432,7 @@ export default function Home() {
           <div className="flex items-center gap-5 text-xs text-white/25 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">IG</a>
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YT</a>
-            <a href="https://discord.gg/hZUPZzx7" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Discord</a>
+            <a href="https://www.threads.net/@murdermittenmedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Threads</a>
           </div>
         </div>
       </footer>

@@ -1,0 +1,1 @@
+ALTER TABLE `battle_records` ADD `warSessionId` int DEFAULT 1 NOT NULL;

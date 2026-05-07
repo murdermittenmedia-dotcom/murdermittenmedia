@@ -14,8 +14,214 @@ import { OnboardingModal } from "@/components/OnboardingModal";
 import { useChat } from "@/hooks/useChat";
 import { useAudioRoom, type AudioParticipant } from "@/hooks/useAudioRoom";
 import { getLoginUrl } from "@/const";
+// ─── Live Stream Panel (offline-aware) ────────────────────────────────
+interface EventData {
+  title: string | null;
+  date: Date | null;
+  streamUrl: string | null;
+  isLive: boolean;
+}
+function LiveStreamPanel({
+  eventData,
+  isAdmin,
+  onSetLive,
+  onScheduleEvent,
+}: {
+  eventData?: EventData | null;
+  isAdmin: boolean;
+  onSetLive: (isLive: boolean, streamUrl?: string) => Promise<any>;
+  onScheduleEvent: (title: string, date: string, streamUrl?: string) => Promise<any>;
+}) {
+  const isLive = eventData?.isLive ?? false;
+  const streamUrl = eventData?.streamUrl ?? "";
+  const nextDate = eventData?.date ? new Date(eventData.date) : null;
+  const nextTitle = eventData?.title ?? "";
 
-// ─── Spin Wheel ───────────────────────────────────────────────
+  // Countdown state
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  useEffect(() => {
+    if (!nextDate || isLive) return;
+    const tick = () => {
+      const diff = nextDate.getTime() - Date.now();
+      if (diff <= 0) { setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 }); return; }
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setCountdown({ days, hours, minutes, seconds });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [nextDate, isLive]);
+
+  // Admin form state
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [schedTitle, setSchedTitle] = useState(nextTitle);
+  const [schedDate, setSchedDate] = useState("");
+  const [schedUrl, setSchedUrl] = useState(streamUrl);
+  const [liveUrl, setLiveUrl] = useState(streamUrl);
+  const [saving, setSaving] = useState(false);
+
+  const handleGoLive = async () => {
+    setSaving(true);
+    await onSetLive(true, liveUrl || undefined);
+    setSaving(false);
+  };
+  const handleGoOffline = async () => {
+    setSaving(true);
+    await onSetLive(false);
+    setSaving(false);
+  };
+  const handleSchedule = async () => {
+    if (!schedTitle || !schedDate) return;
+    setSaving(true);
+    await onScheduleEvent(schedTitle, schedDate, schedUrl || undefined);
+    setSaving(false);
+    setShowScheduleForm(false);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${isLive ? "bg-red-500 animate-pulse" : "bg-white/20"}`} />
+          <span className="text-xs text-red-400 uppercase tracking-widest font-semibold">
+            {isLive ? "Live Stream" : "Stream Offline"}
+          </span>
+        </div>
+        {isAdmin && (
+          <div className="flex gap-2">
+            {isLive ? (
+              <button onClick={handleGoOffline} disabled={saving}
+                className="text-xs border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-3 py-1 uppercase tracking-widest transition-colors">
+                End Stream
+              </button>
+            ) : (
+              <button onClick={handleGoLive} disabled={saving}
+                className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 uppercase tracking-widest transition-colors">
+                Go Live
+              </button>
+            )}
+            <button onClick={() => setShowScheduleForm(v => !v)}
+              className="text-xs border border-white/20 text-white/50 hover:border-white/50 hover:text-white px-3 py-1 uppercase tracking-widest transition-colors">
+              Schedule
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Admin: Go Live URL input */}
+      {isAdmin && !isLive && (
+        <div className="mb-3 flex gap-2">
+          <input
+            type="url"
+            placeholder="YouTube stream URL (for when going live)"
+            value={liveUrl}
+            onChange={e => setLiveUrl(e.target.value)}
+            className="flex-1 bg-[#0d0d0d] border border-white/10 text-white/80 text-xs px-3 py-2 focus:outline-none focus:border-red-600/50"
+          />
+        </div>
+      )}
+
+      {/* Admin: Schedule form */}
+      {isAdmin && showScheduleForm && (
+        <div className="mb-3 bg-[#0d0d0d] border border-white/10 p-4 space-y-3">
+          <p className="text-xs text-white/40 uppercase tracking-widest">Schedule Next Event</p>
+          <input type="text" placeholder="Event title (e.g. Music Wars Season 3 Ep. 1)"
+            value={schedTitle} onChange={e => setSchedTitle(e.target.value)}
+            className="w-full bg-black border border-white/10 text-white/80 text-xs px-3 py-2 focus:outline-none focus:border-red-600/50" />
+          <input type="datetime-local"
+            value={schedDate} onChange={e => setSchedDate(e.target.value)}
+            className="w-full bg-black border border-white/10 text-white/80 text-xs px-3 py-2 focus:outline-none focus:border-red-600/50" />
+          <input type="url" placeholder="YouTube stream URL (optional, set now or later)"
+            value={schedUrl} onChange={e => setSchedUrl(e.target.value)}
+            className="w-full bg-black border border-white/10 text-white/80 text-xs px-3 py-2 focus:outline-none focus:border-red-600/50" />
+          <button onClick={handleSchedule} disabled={saving || !schedTitle || !schedDate}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs uppercase tracking-widest py-2 transition-colors">
+            {saving ? "Saving..." : "Save Schedule"}
+          </button>
+        </div>
+      )}
+
+      {/* Stream area */}
+      {isLive && streamUrl ? (
+        <div>
+          <div className="relative w-full bg-black border border-white/10" style={{ paddingTop: "56.25%" }}>
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src={streamUrl.includes("youtube.com/watch?v=")
+                ? streamUrl.replace("watch?v=", "embed/") + "?autoplay=1"
+                : streamUrl.includes("youtu.be/")
+                ? `https://www.youtube.com/embed/${streamUrl.split("youtu.be/")[1]}?autoplay=1`
+                : streamUrl}
+              title="Murder Mitten Media Live"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs text-white/30">
+            <span>Murder Mitten Media on YouTube</span>
+            <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer"
+              className="hover:text-red-400 transition-colors">Open on YouTube</a>
+          </div>
+        </div>
+      ) : isLive ? (
+        // Live but no URL set yet
+        <div className="relative w-full bg-black border border-white/10" style={{ paddingTop: "56.25%" }}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+            <p className="font-['Anton'] text-2xl text-white uppercase tracking-widest">LIVE NOW</p>
+            <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer"
+              className="text-xs text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors">
+              Watch on YouTube →
+            </a>
+          </div>
+        </div>
+      ) : (
+        // OFFLINE screen
+        <div className="relative w-full bg-[#080808] border border-white/10" style={{ paddingTop: "56.25%" }}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
+            {/* Offline badge */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-white/20" />
+              <span className="text-xs text-white/30 uppercase tracking-[0.3em]">Offline</span>
+            </div>
+            <p className="font-['Anton'] text-3xl md:text-4xl text-white uppercase tracking-widest text-center">
+              MUSIC WARS <span className="text-red-600">OFFLINE</span>
+            </p>
+            {nextDate && nextDate.getTime() > Date.now() ? (
+              <>
+                <p className="text-white/40 text-xs uppercase tracking-widest text-center">
+                  {nextTitle || "Next Event"}
+                </p>
+                {/* Countdown */}
+                <div className="grid grid-cols-4 gap-3 mt-2">
+                  {[{ v: countdown.days, l: "Days" }, { v: countdown.hours, l: "Hrs" }, { v: countdown.minutes, l: "Min" }, { v: countdown.seconds, l: "Sec" }].map(({ v, l }) => (
+                    <div key={l} className="flex flex-col items-center">
+                      <span className="font-['Anton'] text-3xl text-red-500">{String(v).padStart(2, "0")}</span>
+                      <span className="text-white/30 text-xs uppercase tracking-widest">{l}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-white/30 text-xs text-center">
+                No event scheduled yet. Follow us on Instagram for updates.
+              </p>
+            )}
+            <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer"
+              className="mt-2 text-xs border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 px-4 py-2 uppercase tracking-widest transition-colors">
+              @murdermittenmedia
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Spin Wheel ────────────────────────────────────────────────
 interface WheelEntry {
   id: number;
   artistName: string;
@@ -291,13 +497,45 @@ function SubmissionForm({
   isPaid, entryFee, isOpen, onSubmit, isLoading, success, requiresPayment,
 }: {
   isPaid: boolean; entryFee: string; isOpen: boolean;
-  onSubmit: (d: { artistName: string; songTitle: string; songUrl: string; contactInfo: string }) => void;
+  onSubmit: (d: { artistName: string; songTitle: string; songUrl: string; contactInfo: string; mp3Url?: string }) => void;
   isLoading: boolean; success: boolean; requiresPayment: boolean;
 }) {
   const [artistName, setArtistName] = useState("");
   const [songTitle, setSongTitle] = useState("");
   const [songUrl, setSongUrl] = useState("");
   const [contactInfo, setContactInfo] = useState("");
+  const [mp3File, setMp3File] = useState<File | null>(null);
+  const [mp3Uploading, setMp3Uploading] = useState(false);
+  const [mp3Url, setMp3Url] = useState("");
+  const uploadSongMutation = trpc.songs.uploadAudio.useMutation();
+
+  const handleMp3Change = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15_000_000) { alert("File must be under 15MB"); return; }
+    setMp3File(file);
+    setMp3Uploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = (ev.target?.result as string).split(",")[1];
+        const result = await uploadSongMutation.mutateAsync({
+          title: songTitle || file.name.replace(/\.mp3$/i, ""),
+          artistName: artistName || "Unknown",
+          fileName: file.name,
+          fileBase64: base64,
+          mimeType: "audio/mpeg",
+          isPublic: true,
+        });
+        setMp3Url(result.url);
+        setMp3Uploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      setMp3Uploading(false);
+    }
+  };
 
   if (!isOpen) {
     return (
@@ -337,13 +575,27 @@ function SubmissionForm({
           {isPaid ? `$${entryFee} Entry` : "Free Entry"}
         </span>
       </div>
-      <form onSubmit={e => { e.preventDefault(); onSubmit({ artistName, songTitle, songUrl, contactInfo }); }} className="space-y-3">
+      <form onSubmit={e => { e.preventDefault(); onSubmit({ artistName, songTitle, songUrl: mp3Url || songUrl, contactInfo, mp3Url: mp3Url || undefined }); }} className="space-y-3">
         <input type="text" placeholder="Artist Name *" value={artistName} onChange={e => setArtistName(e.target.value)} required maxLength={128}
           className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
         <input type="text" placeholder="Song Title *" value={songTitle} onChange={e => setSongTitle(e.target.value)} required maxLength={128}
           className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
         <input type="url" placeholder="YouTube / SoundCloud link (optional)" value={songUrl} onChange={e => setSongUrl(e.target.value)}
           className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
+        {/* MP3 upload */}
+        <div>
+          <label className="block text-xs text-white/40 mb-1 uppercase tracking-wider">Or Upload MP3 File (max 15MB)</label>
+          <label className={`flex items-center gap-3 border ${mp3File ? "border-green-600/50 bg-green-900/10" : "border-white/10 bg-white/5"} px-3 py-2.5 cursor-pointer hover:border-red-600/30 transition-colors`}>
+            <svg className="w-4 h-4 text-white/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+            </svg>
+            <span className="text-sm text-white/50 truncate flex-1">
+              {mp3Uploading ? "Uploading..." : mp3File ? mp3File.name : "Choose .mp3 or .wav file"}
+            </span>
+            {mp3Url && <span className="text-green-400 text-xs flex-shrink-0">✓ Ready</span>}
+            <input type="file" accept="audio/mpeg,audio/wav,audio/mp3,.mp3,.wav" className="hidden" onChange={handleMp3Change} />
+          </label>
+        </div>
         <input type="text" placeholder="Email or Instagram handle (optional)" value={contactInfo} onChange={e => setContactInfo(e.target.value)} maxLength={256}
           className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
         {isPaid && (
@@ -352,9 +604,9 @@ function SubmissionForm({
             After submitting, send ${entryFee} to CashApp <span className="text-white">$joyfuljules</span> or PayPal <span className="text-white">MurderMittenPromo</span> with your artist name.
           </div>
         )}
-        <button type="submit" disabled={isLoading || !artistName.trim() || !songTitle.trim()}
+        <button type="submit" disabled={isLoading || mp3Uploading || !artistName.trim() || !songTitle.trim()}
           className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 font-['Anton'] uppercase tracking-widest transition-all">
-          {isLoading ? "Submitting..." : isPaid ? `Submit ($${entryFee})` : "Submit Free Entry"}
+          {mp3Uploading ? "Uploading MP3..." : isLoading ? "Submitting..." : isPaid ? `Submit ($${entryFee})` : "Submit Free Entry"}
         </button>
       </form>
     </div>
@@ -429,9 +681,139 @@ function RecordBattleForm({
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────
+// ─── Voting Panel ─────────────────────────────────────────────
+function VotingPanel({
+  activeBattle, voteResults, myVote, user, isJudge, isAdmin,
+  onVote, onSetActiveBattle, onClearVotes, entries,
+}: {
+  activeBattle: { id: number; contestant1Name: string; contestant2Name: string } | null | undefined;
+  voteResults: { contestant1: number; contestant2: number; total: number; judgeVotes: Array<{ name: string; role: string; candidate: string }>; audienceContestant1: number; audienceContestant2: number; } | null | undefined;
+  myVote: { candidate: string } | null | undefined;
+  user: { id: number; name: string; role: string } | null | undefined;
+  isJudge: boolean; isAdmin: boolean;
+  onVote: (candidate: "contestant1" | "contestant2") => void;
+  onSetActiveBattle: (c1: string, c2: string) => void;
+  onClearVotes: () => void;
+  entries: Array<{ id: number; artistName: string; status: string }>;
+}) {
+  const [c1, setC1] = useState("");
+  const [c2, setC2] = useState("");
+  const activeEntries = entries.filter(e => e.status === "active");
+  const total = (voteResults?.contestant1 ?? 0) + (voteResults?.contestant2 ?? 0);
+  const c1Pct = total > 0 ? Math.round(((voteResults?.contestant1 ?? 0) / total) * 100) : 50;
+  const c2Pct = 100 - c1Pct;
+
+  return (
+    <div className="bg-[#0d0d0d] border border-white/10 p-5">
+      <h3 className="font-['Anton'] text-sm uppercase tracking-widest mb-3">
+        Live <span className="text-red-600">Vote</span>
+      </h3>
+
+      {/* Admin: set active battle */}
+      {isAdmin && (
+        <div className="mb-4 p-3 border border-red-600/20 bg-red-900/10">
+          <div className="text-xs text-red-400 uppercase tracking-widest mb-2 font-semibold">Set Active Battle</div>
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <select value={c1} onChange={e => setC1(e.target.value)}
+              className="bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none">
+              <option value="">Contestant 1...</option>
+              {activeEntries.map(e => <option key={e.id} value={e.artistName}>{e.artistName}</option>)}
+            </select>
+            <select value={c2} onChange={e => setC2(e.target.value)}
+              className="bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none">
+              <option value="">Contestant 2...</option>
+              {activeEntries.map(e => <option key={e.id} value={e.artistName}>{e.artistName}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { if (c1 && c2 && c1 !== c2) onSetActiveBattle(c1, c2); }}
+              disabled={!c1 || !c2 || c1 === c2}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors">
+              Start Voting
+            </button>
+            <button onClick={onClearVotes}
+              className="border border-white/20 text-white/50 hover:border-white/40 px-3 py-1.5 text-xs uppercase tracking-wider transition-colors">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeBattle ? (
+        <div>
+          {/* Vote buttons */}
+          {user && !myVote && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button onClick={() => onVote("contestant1")}
+                className="py-3 border border-green-600/50 text-green-400 hover:bg-green-600/20 font-['Anton'] uppercase tracking-wide text-sm transition-colors">
+                {activeBattle.contestant1Name}
+              </button>
+              <button onClick={() => onVote("contestant2")}
+                className="py-3 border border-red-600/50 text-red-400 hover:bg-red-600/20 font-['Anton'] uppercase tracking-wide text-sm transition-colors">
+                {activeBattle.contestant2Name}
+              </button>
+            </div>
+          )}
+          {myVote && (
+            <div className="text-center text-xs text-white/40 mb-4">
+              You voted: <span className="text-white font-semibold">
+                {myVote.candidate === "contestant1" ? activeBattle.contestant1Name : activeBattle.contestant2Name}
+              </span>
+            </div>
+          )}
+          {!user && (
+            <p className="text-white/30 text-xs text-center mb-4">Login to vote</p>
+          )}
+
+          {/* Live tally */}
+          <div className="space-y-2 mb-4">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-white font-semibold">{activeBattle.contestant1Name}</span>
+                <span className="text-white/60">{voteResults?.contestant1 ?? 0} votes ({c1Pct}%)</span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${c1Pct}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-white font-semibold">{activeBattle.contestant2Name}</span>
+                <span className="text-white/60">{voteResults?.contestant2 ?? 0} votes ({c2Pct}%)</span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${c2Pct}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Judge votes — visible to all viewers */}
+          {voteResults?.judgeVotes && voteResults.judgeVotes.length > 0 && (
+            <div className="border-t border-white/10 pt-3">
+              <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Judge Votes</p>
+              <div className="space-y-1">
+                {voteResults.judgeVotes.map((jv: { name: string; role: string; candidate: string }, i: number) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="border border-yellow-600/50 text-yellow-400 px-1.5 py-0.5 text-[10px] uppercase tracking-wider flex-shrink-0">JUDGE</span>
+                    <span className="text-white/60">{jv.name}</span>
+                    <span className="text-white/30">→</span>
+                    <span className="text-white font-semibold">{jv.candidate === "contestant1" ? activeBattle?.contestant1Name : activeBattle?.contestant2Name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-white/30 text-xs text-center py-4">No active battle. Admin will start voting when ready.</p>
+      )}
+    </div>
+  );
+}
+
 function AdminPanel({
   entries, onConfirmPayment, onUpdateStatus, onTogglePaid, onToggleOpen,
-  isPaid, isOpen, isUpdating, onRecord,
+  isPaid, isOpen, isUpdating, onRecord, onRemoveEntry, onResetWar,
 }: {
   entries: Array<{ id: number; artistName: string; songTitle: string; paid: boolean; paymentConfirmed: boolean; status: string; songUrl?: string | null; userId?: number | null }>;
   onConfirmPayment: (id: number) => void;
@@ -440,7 +822,10 @@ function AdminPanel({
   onToggleOpen: () => void;
   isPaid: boolean; isOpen: boolean; isUpdating: boolean;
   onRecord: () => void;
+  onRemoveEntry: (id: number) => void;
+  onResetWar: () => void;
 }) {
+  const [confirmReset, setConfirmReset] = useState(false);
   return (
     <div className="bg-[#0d0d0d] border border-red-600/20 p-5">
       <h3 className="font-['Anton'] text-sm uppercase tracking-widest text-red-400 mb-4">Admin Controls</h3>
@@ -479,11 +864,44 @@ function AdminPanel({
               <span className={`px-1.5 py-0.5 text-xs uppercase ${entry.status === "active" ? "text-green-400" : entry.status === "winner" ? "text-yellow-400" : entry.status === "eliminated" ? "text-red-400" : "text-white/30"}`}>
                 {entry.status}
               </span>
+              {/* Remove from wheel */}
+              <button
+                onClick={() => onRemoveEntry(entry.id)}
+                className="text-white/20 hover:text-red-500 transition-colors ml-1"
+                title="Remove from wheel"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         ))}
       </div>
       <RecordBattleForm entries={entries} onRecord={onRecord} />
+      {/* Reset current war */}
+      <div className="mt-4 pt-4 border-t border-white/10">
+        {!confirmReset ? (
+          <button onClick={() => setConfirmReset(true)}
+            className="w-full border border-orange-600/40 text-orange-400 hover:bg-orange-600/10 py-2 text-xs font-semibold uppercase tracking-wider transition-colors">
+            Reset Current War
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-orange-400 text-center">This clears all wheel entries and current votes. Battle records are kept.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setConfirmReset(false)}
+                className="border border-white/20 text-white/50 py-2 text-xs uppercase tracking-wider transition-colors hover:border-white/40">
+                Cancel
+              </button>
+              <button onClick={() => { onResetWar(); setConfirmReset(false); }}
+                className="bg-orange-600 hover:bg-orange-700 text-white py-2 text-xs font-semibold uppercase tracking-wider transition-colors">
+                Confirm Reset
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -536,6 +954,94 @@ function Leaderboard() {
   );
 }
 
+// ─── Past Battles ───────────────────────────────────────────
+function PastBattles() {
+  const { data: records, isLoading } = trpc.battles.getAll.useQuery();
+
+  return (
+    <div className="bg-[#0d0d0d] border border-white/10 p-5">
+      <h3 className="font-['Anton'] text-xl uppercase tracking-widest mb-4">
+        Past <span className="text-red-600">Battles</span>
+      </h3>
+
+      {isLoading && (
+        <div className="text-white/30 text-xs text-center py-6">Loading battle history...</div>
+      )}
+
+      {!isLoading && (!records || records.length === 0) && (
+        <div className="text-center py-8">
+          <div className="text-white/20 text-4xl mb-3">🥊</div>
+          <p className="text-white/40 text-sm">No battles recorded yet.</p>
+          <p className="text-white/20 text-xs mt-1">Results are logged by the admin after each live battle.</p>
+        </div>
+      )}
+
+      {records && records.length > 0 && (
+        <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+          {records.map(r => (
+            <div key={r.id} className="border border-white/10 bg-white/[0.02] p-4 hover:border-white/20 transition-colors">
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-white/30 uppercase tracking-widest">Round {r.roundNumber}</span>
+                <span className="text-xs text-white/20">{new Date(r.battleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+
+              {/* Battle matchup */}
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+                {/* Winner */}
+                <div className="text-center">
+                  <div className="text-xs text-green-500 uppercase tracking-widest font-bold mb-1">Winner 🏆</div>
+                  <ArtistStatModal artistName={r.winnerArtistName} userId={r.winnerId ?? undefined}>
+                    <button className="font-['Anton'] text-base text-white hover:text-green-400 transition-colors">{r.winnerArtistName}</button>
+                  </ArtistStatModal>
+                  {r.winnerSongTitle && (
+                    <div className="text-xs text-white/30 mt-1 truncate">
+                      {r.winnerSongUrl ? (
+                        <a href={r.winnerSongUrl} target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">
+                          🎵 {r.winnerSongTitle}
+                        </a>
+                      ) : (
+                        <span>🎵 {r.winnerSongTitle}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* VS divider */}
+                <div className="font-['Anton'] text-red-600 text-lg">VS</div>
+
+                {/* Loser */}
+                <div className="text-center">
+                  <div className="text-xs text-red-400/70 uppercase tracking-widest font-bold mb-1">Eliminated</div>
+                  <ArtistStatModal artistName={r.loserArtistName} userId={r.loserId ?? undefined}>
+                    <button className="font-['Anton'] text-base text-white/60 hover:text-red-400 transition-colors">{r.loserArtistName}</button>
+                  </ArtistStatModal>
+                  {r.loserSongTitle && (
+                    <div className="text-xs text-white/20 mt-1 truncate">
+                      {r.loserSongUrl ? (
+                        <a href={r.loserSongUrl} target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">
+                          🎵 {r.loserSongTitle}
+                        </a>
+                      ) : (
+                        <span>🎵 {r.loserSongTitle}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes */}
+              {r.notes && (
+                <div className="mt-3 pt-3 border-t border-white/5 text-xs text-white/30 italic">"{r.notes}"</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────
 export default function MusicWars() {
   const { user } = useAuth();
@@ -545,14 +1051,30 @@ export default function MusicWars() {
   const username = user?.artistName || user?.name || "Guest";
   const audioRole = isAdmin ? "admin" : isJudge ? "judge" : isContestant ? "contestant" : "viewer";
 
-  const { data: wheelData, refetch: refetchWheel } = trpc.wheel.getEntries.useQuery();
+   const { data: wheelData, refetch: refetchWheel } = trpc.wheel.getEntries.useQuery();
   const { data: allEntries, refetch: refetchAllEntries } = trpc.wheel.getAllEntries.useQuery(undefined, { enabled: isAdmin });
   const { data: chatHistory } = trpc.chat.getHistory.useQuery({ room: "music_wars" });
-
+  const { data: eventData, refetch: refetchEvent } = trpc.events.getNext.useQuery();
+  const { data: activeBattle, refetch: refetchActiveBattle } = trpc.voting.getActiveBattle.useQuery();
+  const { data: voteResults, refetch: refetchVotes } = trpc.voting.getResults.useQuery(
+    { battleId: activeBattle?.id ?? 0 },
+    { enabled: !!activeBattle?.id, refetchInterval: 3000 }
+  );
+  const { data: myVote } = trpc.voting.getMyVote.useQuery(
+    { battleId: activeBattle?.id ?? 0 },
+    { enabled: !!activeBattle?.id && !!user }
+  );
+  const castVoteMutation = trpc.voting.cast.useMutation({ onSuccess: () => { refetchVotes(); } });
+  const setActiveBattleMutation = trpc.voting.setActiveBattle.useMutation({ onSuccess: () => { refetchActiveBattle(); refetchVotes(); } });
+  const clearVotesMutation = trpc.voting.clearVotes.useMutation({ onSuccess: () => refetchVotes() });
+  const setEventMutation = trpc.events.setNext.useMutation({ onSuccess: () => refetchEvent() });
+  const setLiveMutation = trpc.events.setLive.useMutation({ onSuccess: () => refetchEvent() });
   const submitMutation = trpc.wheel.submit.useMutation();
   const updateStatusMutation = trpc.wheel.updateStatus.useMutation();
   const confirmPaymentMutation = trpc.wheel.confirmPayment.useMutation();
   const setSettingsMutation = trpc.wheel.setSettings.useMutation();
+  const removeEntryMutation = trpc.wheel.removeEntry.useMutation();
+  const resetWarMutation = trpc.wheel.resetCurrentWar.useMutation();
 
   const { messages, isConnected: chatConnected, sendMessage, wheelWinner, wheelSpinning, broadcastSpin, broadcastWinner } = useChat({
     room: "music_wars",
@@ -616,12 +1138,12 @@ export default function MusicWars() {
             MUSIC <span className="text-red-600">WARS</span>
           </h1>
           <p className="text-white/50 text-sm max-w-xl">
-            Detroit's hardest rap battle competition. Spin the wheel, battle live, get judged by the culture. Presented by Murder Mitten Media.
+            Michigan's hardest rap battle competition. Spin the wheel, battle live, get judged by the culture. Presented by Murder Mitten Media.
           </p>
           <div className="flex flex-wrap gap-3 mt-4">
-            <a href="https://discord.gg/hZUPZzx7" target="_blank" rel="noopener noreferrer"
+            <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer"
               className="text-xs border border-white/20 text-white/50 hover:border-white/50 hover:text-white px-4 py-2 uppercase tracking-widest transition-colors">
-              Discord Community
+              @murdermittenmedia
             </a>
             {!user && (
               <a href={getLoginUrl()}
@@ -640,27 +1162,11 @@ export default function MusicWars() {
           {/* LEFT: Stream + Wheel + Submission */}
           <div className="xl:col-span-2 space-y-6">
 
-            {/* Live Stream */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-xs text-red-400 uppercase tracking-widest font-semibold">Live Stream</span>
-              </div>
-              <div className="relative w-full bg-black border border-white/10" style={{ paddingTop: "56.25%" }}>
-                <iframe
-                  className="absolute inset-0 w-full h-full"
-                  src="https://www.youtube.com/embed/live_stream?channel=UCmurdermitten&autoplay=1"
-                  title="Murder Mitten Media Live"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-white/30">
-                <span>Murder Mitten Media on YouTube</span>
-                <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer"
-                  className="hover:text-red-400 transition-colors">Open on YouTube</a>
-              </div>
-            </div>
+            {/* Live Stream — offline-aware */}
+            <LiveStreamPanel eventData={eventData} isAdmin={isAdmin}
+              onSetLive={(isLive: boolean, streamUrl?: string) => setLiveMutation.mutateAsync({ isLive, streamUrl })}
+              onScheduleEvent={(title: string, date: string, streamUrl?: string) => setEventMutation.mutateAsync({ title, date, streamUrl })}
+            />
 
             {/* Wheel + Submission */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -690,37 +1196,7 @@ export default function MusicWars() {
             <Leaderboard />
 
             {/* Past Battles */}
-            <div>
-              <h2 className="font-['Anton'] text-xl uppercase tracking-widest mb-4">
-                Past <span className="text-red-600">Battles</span>
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { id: "PLiW5X02rswZu7CaiF9liCbIMpxrsPkzvc", title: "Murder Mitten Mic — One Mic Sessions" },
-                ].map((video, i) => (
-                  <div key={i} className="border border-white/10 bg-[#0d0d0d]">
-                    <div className="relative" style={{ paddingTop: "56.25%" }}>
-                      <iframe
-                        className="absolute inset-0 w-full h-full"
-                        src={`https://www.youtube.com/embed/videoseries?list=${video.id}`}
-                        title={video.title}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm text-white/70 font-semibold">{video.title}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 text-center">
-                <a href="https://www.youtube.com/@MurderMittenMedia/search?query=music+wars" target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-white/40 hover:text-red-400 uppercase tracking-widest transition-colors">
-                  View All Past Battles on YouTube
-                </a>
-              </div>
-            </div>
+            <PastBattles />
           </div>
 
           {/* RIGHT: Chat + Audio Room + Admin */}
@@ -737,6 +1213,24 @@ export default function MusicWars() {
               )}
             </div>
 
+            {/* Live Voting Panel */}
+            <div>
+              <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
+                Live <span className="text-red-600">Voting</span>
+              </h2>
+              <VotingPanel
+                activeBattle={activeBattle}
+                voteResults={voteResults}
+                myVote={myVote}
+                user={user ? { id: user.id, name: user.name ?? "Anonymous", role: user.role } : undefined}
+                isJudge={isJudge}
+                isAdmin={isAdmin}
+                onVote={async (candidate) => { if (activeBattle?.id) await castVoteMutation.mutateAsync({ battleId: activeBattle.id, candidate }); }}
+                onSetActiveBattle={async (c1, c2) => { await setActiveBattleMutation.mutateAsync({ contestant1Name: c1, contestant2Name: c2 }); }}
+                onClearVotes={async () => { if (activeBattle?.id) await clearVotesMutation.mutateAsync({ battleId: activeBattle.id }); }}
+                entries={allEntries ?? []}
+              />
+            </div>
             <div>
               <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
                 Audio <span className="text-red-600">Room</span>
@@ -771,6 +1265,8 @@ export default function MusicWars() {
                   isOpen={wheelData?.isOpen ?? true}
                   isUpdating={setSettingsMutation.isPending}
                   onRecord={() => { refetchAllEntries(); }}
+                  onRemoveEntry={async (id) => { await removeEntryMutation.mutateAsync({ id }); refetchAllEntries(); refetchWheel(); }}
+                  onResetWar={async () => { await resetWarMutation.mutateAsync(); refetchAllEntries(); refetchWheel(); }}
                 />
               </div>
             )}
@@ -800,9 +1296,9 @@ export default function MusicWars() {
 
       <footer className="border-t border-white/10 py-8 mt-8">
         <div className="container text-center text-white/30 text-xs">
-          <p>Murder Mitten Media Music Wars &copy; {new Date().getFullYear()} &middot; Detroit, MI</p>
+          <p>Murder Mitten Media Music Wars &copy; {new Date().getFullYear()} &middot; Michigan</p>
           <p className="mt-1">
-            <a href="https://discord.gg/hZUPZzx7" target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">Discord</a>
+            <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">Instagram</a>
             {" "}&middot;{" "}
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">YouTube</a>
           </p>

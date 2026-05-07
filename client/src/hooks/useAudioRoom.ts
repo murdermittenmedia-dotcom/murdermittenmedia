@@ -8,6 +8,8 @@ export interface AudioParticipant {
   username: string;
   role: AudioRole;
   micActive: boolean;
+  isSpeaking: boolean;   // voice activity detected
+  isMuted: boolean;      // intentionally muted by self or admin
   userId?: number;
 }
 
@@ -24,11 +26,53 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const vadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [participants, setParticipants] = useState<AudioParticipant[]>([]);
+  // Judges and admins start with mic on; contestants and viewers start muted
   const [micActive, setMicActive] = useState(role === "judge" || role === "admin");
+  const [isMuted, setIsMuted] = useState(!(role === "judge" || role === "admin"));
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Voice activity detection using Web Audio API
+  const startVAD = useCallback((stream: MediaStream) => {
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.3;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      vadIntervalRef.current = setInterval(() => {
+        analyser.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+        const speaking = avg > 12; // threshold — adjust if too sensitive
+        setIsSpeaking(prev => {
+          if (prev !== speaking) {
+            socketRef.current?.emit("audio:speaking", { speaking });
+          }
+          return speaking;
+        });
+      }, 100);
+    } catch {
+      // VAD not critical — silently fail
+    }
+  }, []);
+
+  const stopVAD = useCallback(() => {
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    analyserRef.current = null;
+    setIsSpeaking(false);
+  }, []);
 
   const createPeerConnection = useCallback((targetSocketId: string, initiator: boolean) => {
     const pc = new RTCPeerConnection({
@@ -38,14 +82,12 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
       ],
     });
 
-    // Add local audio tracks
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
         pc.addTrack(track, localStreamRef.current!);
       });
     }
 
-    // Handle incoming audio
     pc.ontrack = (event) => {
       let audio = audioElementsRef.current.get(targetSocketId);
       if (!audio) {
@@ -56,7 +98,6 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
       audio.srcObject = event.streams[0];
     };
 
-    // ICE candidate relay
     pc.onicecandidate = (event) => {
       if (event.candidate && socketRef.current) {
         socketRef.current.emit("webrtc:ice_candidate", {
@@ -79,6 +120,7 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
   }, []);
 
   const cleanup = useCallback(() => {
+    stopVAD();
     peersRef.current.forEach(pc => pc.close());
     peersRef.current.clear();
     audioElementsRef.current.forEach(audio => { audio.srcObject = null; });
@@ -91,7 +133,7 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
     socketRef.current = null;
     setIsConnected(false);
     setParticipants([]);
-  }, []);
+  }, [stopVAD]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -100,14 +142,13 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
 
     const init = async () => {
       try {
-        // Get microphone access for judges/admins/contestants
+        // All non-viewers get mic access (contestants start muted)
         if (role !== "viewer") {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
           localStreamRef.current = stream;
-          // Start muted unless judge/admin
-          stream.getAudioTracks().forEach(t => {
-            t.enabled = role === "judge" || role === "admin";
-          });
+          const startEnabled = role === "judge" || role === "admin";
+          stream.getAudioTracks().forEach(t => { t.enabled = startEnabled; });
+          if (startEnabled) startVAD(stream);
         }
 
         const socket = io(window.location.origin, {
@@ -119,7 +160,13 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
         socket.on("connect", () => {
           if (!mounted) return;
           setIsConnected(true);
-          socket.emit("audio:join", { username, role, userId, room });
+          socket.emit("audio:join", {
+            username,
+            role,
+            userId,
+            room,
+            isMuted: !(role === "judge" || role === "admin"),
+          });
         });
 
         socket.on("audio:participants", (list: AudioParticipant[]) => {
@@ -127,7 +174,6 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
           setParticipants(list);
         });
 
-        // Existing peers — we initiate connections to them
         socket.on("audio:existing_peers", (peers: AudioParticipant[]) => {
           peers.forEach(peer => {
             if (!peersRef.current.has(peer.socketId)) {
@@ -136,7 +182,6 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
           });
         });
 
-        // New peer joined — they will initiate, we wait for offer
         socket.on("webrtc:offer", async ({ from, offer }: { from: string; offer: RTCSessionDescriptionInit }) => {
           let pc = peersRef.current.get(from);
           if (!pc) pc = createPeerConnection(from, false);
@@ -163,21 +208,40 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
           if (audio) { audio.srcObject = null; audioElementsRef.current.delete(socketId); }
         });
 
-        // Admin toggled our mic
+        // Admin toggled our mic (forced mute/unmute)
         socket.on("audio:mic_toggled", ({ active }: { active: boolean }) => {
           if (!mounted) return;
           setMicActive(active);
+          setIsMuted(!active);
           if (localStreamRef.current) {
             localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = active; });
           }
+          if (active && localStreamRef.current) startVAD(localStreamRef.current);
+          else stopVAD();
+        });
+
+        // Another participant's speaking state changed
+        socket.on("audio:participant_speaking", ({ socketId, speaking }: { socketId: string; speaking: boolean }) => {
+          if (!mounted) return;
+          setParticipants(prev => prev.map(p =>
+            p.socketId === socketId ? { ...p, isSpeaking: speaking } : p
+          ));
+        });
+
+        // Another participant's mute state changed
+        socket.on("audio:participant_muted", ({ socketId, isMuted: muted }: { socketId: string; isMuted: boolean }) => {
+          if (!mounted) return;
+          setParticipants(prev => prev.map(p =>
+            p.socketId === socketId ? { ...p, isMuted: muted, micActive: !muted } : p
+          ));
         });
 
         socket.on("disconnect", () => {
           if (mounted) setIsConnected(false);
         });
 
-      } catch (err: any) {
-        if (mounted) setError(err.message || "Failed to access microphone");
+      } catch (err: unknown) {
+        if (mounted) setError(err instanceof Error ? err.message : "Failed to access microphone");
       }
     };
 
@@ -187,29 +251,40 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
       mounted = false;
       cleanup();
     };
-  }, [enabled, room, username, role, userId, createPeerConnection, cleanup]);
+  }, [enabled, room, username, role, userId, createPeerConnection, cleanup, startVAD, stopVAD]);
 
+  // Self-mute/unmute — available to ALL roles (not just judges/admins)
   const toggleMic = useCallback(() => {
-    if (role !== "judge" && role !== "admin") return; // only judges/admins can self-toggle
-    const newState = !micActive;
-    setMicActive(newState);
+    if (role === "viewer") return; // viewers have no mic
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    setMicActive(!newMuted);
     if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = newState; });
+      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !newMuted; });
     }
-    socketRef.current?.emit("audio:toggle_mic", { active: newState });
-  }, [micActive, role]);
+    if (!newMuted && localStreamRef.current) startVAD(localStreamRef.current);
+    else stopVAD();
+    socketRef.current?.emit("audio:toggle_mic", { active: !newMuted, isMuted: newMuted });
+  }, [isMuted, role, startVAD, stopVAD]);
 
-  const activateContestantMic = useCallback((targetSocketId: string, active: boolean) => {
+  // Admin force-mute or unmute any participant by their socket ID
+  const adminToggleParticipantMic = useCallback((targetSocketId: string, active: boolean) => {
     socketRef.current?.emit("audio:set_mic", { targetSocketId, active });
   }, []);
+
+  // Legacy name kept for backward compat
+  const activateContestantMic = adminToggleParticipantMic;
 
   return {
     participants,
     micActive,
+    isMuted,
+    isSpeaking,
     isConnected,
     error,
     toggleMic,
     activateContestantMic,
+    adminToggleParticipantMic,
     socket: socketRef.current,
   };
 }
