@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageSquare, ThumbsUp, ThumbsDown, Eye, Plus, Flame, Pin, Music, X, Upload } from "lucide-react";
+import { SiteNav } from "@/components/SiteNav";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -208,8 +209,9 @@ export default function Forum() {
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
+      <SiteNav />
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-0 z-10 backdrop-blur-sm">
+      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-16 z-10 backdrop-blur-sm">
         <div className="container py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="font-['Anton'] text-2xl tracking-wider">

@@ -11,6 +11,7 @@ import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ThumbsUp, ThumbsDown, MessageSquare, Trash2, Reply, Music, X, Upload, Play } from "lucide-react";
+import { SiteNav } from "@/components/SiteNav";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -287,7 +288,8 @@ export default function ForumPost({ params }: ForumPostProps) {
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
-      <div className="container py-6 max-w-4xl">
+      <SiteNav />
+      <div className="container py-6 max-w-4xl pt-24">
         {/* Back link */}
         <Link href="/forum">
           <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm mb-6">

@@ -242,6 +242,7 @@ function SpinWheel({
   onSpin,
   isAdmin,
   onSpinComplete,
+  spinCount,
 }: {
   entries: WheelEntry[];
   isSpinning: boolean;
@@ -250,6 +251,7 @@ function SpinWheel({
   onSpin: () => void;
   isAdmin: boolean;
   onSpinComplete?: (winnerName: string) => void;
+  spinCount?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotRef = useRef(0);
@@ -357,13 +359,25 @@ function SpinWheel({
         </div>
       )}
       {isAdmin && (
-        <button
-          onClick={onSpin}
-          disabled={isSpinning || entries.length < 2}
-          className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-8 py-3 font-['Anton'] text-base uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(209,0,0,0.5)]"
-        >
-          {isSpinning ? "Spinning..." : "SPIN THE WHEEL"}
-        </button>
+        <>
+          {entries.length === 0 ? (
+            <p className="text-white/40 text-xs uppercase tracking-widest text-center">
+              All contestants have been picked.
+            </p>
+          ) : (
+            <button
+              onClick={onSpin}
+              disabled={isSpinning || (entries.length < 2 && (spinCount ?? 0) === 0)}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-8 py-3 font-['Anton'] text-base uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(209,0,0,0.5)]"
+            >
+              {isSpinning
+                ? "Spinning..."
+                : entries.length === 1 && (spinCount ?? 0) === 1
+                ? "SPIN FOR CONTESTANT 2"
+                : "SPIN THE WHEEL"}
+            </button>
+          )}
+        </>
       )}
       {!isAdmin && (
         <p className="text-white/30 text-xs uppercase tracking-widest">
@@ -1297,6 +1311,7 @@ export default function MusicWars() {
                   onSpin={handleSpin}
                   isAdmin={isAdmin}
                   onSpinComplete={handleSpinComplete}
+                  spinCount={spinCount}
                 />
                 {/* Contestant selection status */}
                 {isAdmin && (contestant1Entry || spinCount > 0) && (

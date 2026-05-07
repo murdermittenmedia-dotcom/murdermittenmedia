@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Trash2, Shield, AlertTriangle, Clock, User, FileText, MessageSquare, Radio, Disc } from "lucide-react";
+import { SiteNav } from "@/components/SiteNav";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -124,8 +125,9 @@ export default function AdminModeration() {
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
+      <SiteNav />
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-0 z-10 backdrop-blur-sm">
+      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-16 z-10 backdrop-blur-sm">
         <div className="container py-4">
           <div className="flex items-center gap-3 mb-4">
             <Shield className="w-6 h-6 text-red-600" />

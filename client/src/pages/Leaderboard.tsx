@@ -5,6 +5,7 @@
 
 import { trpc } from "@/lib/trpc";
 import { Trophy, Flame, Trash2, Swords, Mic } from "lucide-react";
+import { SiteNav } from "@/components/SiteNav";
 
 const RANK_COLORS = [
   "text-yellow-400", // 1st
@@ -24,8 +25,9 @@ export default function Leaderboard() {
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
+      <SiteNav />
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-0 z-10 backdrop-blur-sm">
+      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-16 z-10 backdrop-blur-sm">
         <div className="container py-4">
           <h1 className="font-['Anton'] text-2xl tracking-wider">
             LEADERBOARD <span className="text-red-600">ALL-TIME</span>

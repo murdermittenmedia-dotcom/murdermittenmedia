@@ -104,7 +104,7 @@ function VideoTile({
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated, playTrack,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -113,6 +113,7 @@ function AdminPanel({
   broadcastReviewActive: (item: { submissionId: number | null; artistName?: string; songTitle?: string; audioUrl?: string | null; youtubeUrl?: string | null; submissionType?: string }) => void;
   broadcastReviewPlayback: (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => void;
   broadcastReviewQueueUpdated: () => void;
+  playTrack: (sub: ReviewSubmission) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -138,6 +139,8 @@ function AdminPanel({
     setPlaying.mutate({ submissionId: id }, {
       onSuccess: () => {
         if (sub) {
+          // Actually start audio playback in the global player
+          playTrack(sub);
           broadcastReviewActive({
             submissionId: sub.id,
             artistName: sub.artistName,
@@ -787,6 +790,7 @@ export default function MusicReview() {
                   broadcastReviewActive={broadcastReviewActive}
                   broadcastReviewPlayback={broadcastReviewPlayback}
                   broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
+                  playTrack={playTrack}
                 />
               </div>
             )}

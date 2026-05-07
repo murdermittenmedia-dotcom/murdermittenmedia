@@ -424,3 +424,12 @@
 - [x] Show uploader name in player
 - [x] Show queue status (e.g. "2 / 5 in queue")
 - [x] Fix all sync issues between embedded players and global player
+
+## Session 7 — Critical Bug Fixes
+- [x] Fix Battle Wheel: allow spin when only 1 contestant remains (auto-select as winner)
+- [x] Fix all audio play buttons sitewide — none are working
+- [x] Fix Music Review: admin can select submission to broadcast live to all viewers
+- [x] Fix Music Review: admin play button actually plays audio in global player
+- [x] Fix Music Review: live "Now Being Reviewed" banner visible to all viewers with working audio
+- [x] Fix forum audio upload: invalid_format error — audioUrl validation rejects S3 path, must store fileKey and serve via /manus-storage/ URL
+- [x] Add logo as home button to all pages missing it (pages that don't use SiteNav or have no back navigation)

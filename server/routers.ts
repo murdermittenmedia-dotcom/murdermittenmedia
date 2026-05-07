@@ -1121,7 +1121,7 @@ export const appRouter = router({
         title: z.string().min(1).max(256),
         body: z.string().min(1).max(10000),
         category: z.enum(["general", "music", "battles", "news", "feedback"]).default("general"),
-        audioUrl: z.string().url().max(1024).optional(),
+        audioUrl: z.string().max(1024).optional(),
         audioTitle: z.string().max(256).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -1155,7 +1155,7 @@ export const appRouter = router({
         postId: z.number(),
         body: z.string().min(1).max(2000),
         parentId: z.number().optional(),
-        audioUrl: z.string().url().max(1024).optional(),
+        audioUrl: z.string().max(1024).optional(),
         audioTitle: z.string().max(256).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
