@@ -4,10 +4,19 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { storagePut } from "./storage";
 import {
   getQueueSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, getQueueState, setCurrentPlaying, setLiveStatus,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
+  getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
+  updateWheelEntryStatus, confirmWheelPayment, getUserWheelEntries,
+  getSetting, setSetting, getAllSettings,
+  getChatMessages, deleteChatMessage,
+  createBattleRecord, getAllBattleRecords, getArtistStats,
+  getBattleLeaderboard, getBattleRecordsByArtistName,
+  addUserSong, getUserSongs, deleteUserSong, updateUserSongVisibility,
+  getArtistProfile, updateUserProfile, getUserById,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -66,6 +75,177 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  // -- User Profile ---------------------------------------------
+  profile: router({
+    // Update own profile (artist name + IG handle)
+    update: protectedProcedure
+      .input(z.object({
+        artistName: z.string().min(1).max(128),
+        instagramHandle: z.string().max(64).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateUserProfile(ctx.user.id, {
+          artistName: input.artistName,
+          instagramHandle: input.instagramHandle,
+        });
+        return { success: true };
+      }),
+
+    // Get own full profile
+    me: protectedProcedure.query(async ({ ctx }) => {
+      return getArtistProfile(ctx.user.id);
+    }),
+
+    // Get any artist's public profile by userId
+    getById: publicProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getArtistProfile(input.userId);
+      }),
+
+    // Get artist stats + battles by artist name (for non-registered artists)
+    getByName: publicProcedure
+      .input(z.object({ artistName: z.string() }))
+      .query(async ({ input }) => {
+        return getArtistStats(input.artistName);
+      }),
+  }),
+
+  // -- Song Catalogue -------------------------------------------
+  songs: router({
+    // Get own songs (including private)
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      return getUserSongs(ctx.user.id, true);
+    }),
+
+    // Get public songs for any user
+    byUser: publicProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getUserSongs(input.userId, false);
+      }),
+
+    // Add a song via external URL (YouTube/SoundCloud)
+    addExternal: protectedProcedure
+      .input(z.object({
+        title: z.string().min(1).max(128),
+        artistName: z.string().min(1).max(128),
+        externalUrl: z.string().url().max(512),
+        genre: z.string().max(64).optional(),
+        isPublic: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await addUserSong({
+          userId: ctx.user.id,
+          title: input.title,
+          artistName: input.artistName,
+          externalUrl: input.externalUrl,
+          genre: input.genre ?? null,
+          isPublic: input.isPublic,
+        });
+        return { success: true };
+      }),
+
+    // Upload audio file (base64 encoded, max ~10MB)
+    uploadAudio: protectedProcedure
+      .input(z.object({
+        title: z.string().min(1).max(128),
+        artistName: z.string().min(1).max(128),
+        genre: z.string().max(64).optional(),
+        isPublic: z.boolean().default(true),
+        fileName: z.string(),
+        fileBase64: z.string(), // base64 encoded audio
+        mimeType: z.string().default("audio/mpeg"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Decode base64 and upload to S3
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        if (buffer.length > 15 * 1024 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 15MB" });
+        }
+        const ext = input.fileName.split(".").pop() || "mp3";
+        const key = `songs/${ctx.user.id}/${Date.now()}-${input.title.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        await addUserSong({
+          userId: ctx.user.id,
+          title: input.title,
+          artistName: input.artistName,
+          fileKey: key,
+          fileUrl: url,
+          genre: input.genre ?? null,
+          isPublic: input.isPublic,
+        });
+        return { success: true, url };
+      }),
+
+    // Delete own song
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteUserSong(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    // Toggle visibility
+    setVisibility: protectedProcedure
+      .input(z.object({ id: z.number(), isPublic: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await updateUserSongVisibility(input.id, ctx.user.id, input.isPublic);
+        return { success: true };
+      }),
+  }),
+
+  // -- Battle Records -------------------------------------------
+  battles: router({
+    // All battles (public leaderboard)
+    getAll: publicProcedure.query(async () => {
+      return getAllBattleRecords(100);
+    }),
+
+    // Leaderboard ranked by wins
+    leaderboard: publicProcedure.query(async () => {
+      return getBattleLeaderboard();
+    }),
+
+    // Battles for a specific artist name
+    byArtist: publicProcedure
+      .input(z.object({ artistName: z.string() }))
+      .query(async ({ input }) => {
+        return getBattleRecordsByArtistName(input.artistName);
+      }),
+
+    // Record a battle result (admin only)
+    record: adminProcedure
+      .input(z.object({
+        roundNumber: z.number().default(1),
+        winnerArtistName: z.string().min(1).max(128),
+        winnerSongTitle: z.string().min(1).max(128),
+        winnerSongUrl: z.string().optional(),
+        winnerId: z.number().optional(),
+        loserArtistName: z.string().min(1).max(128),
+        loserSongTitle: z.string().min(1).max(128),
+        loserSongUrl: z.string().optional(),
+        loserId: z.number().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await createBattleRecord({
+          roundNumber: input.roundNumber,
+          winnerArtistName: input.winnerArtistName,
+          winnerSongTitle: input.winnerSongTitle,
+          winnerSongUrl: input.winnerSongUrl ?? null,
+          winnerId: input.winnerId ?? null,
+          loserArtistName: input.loserArtistName,
+          loserSongTitle: input.loserSongTitle,
+          loserSongUrl: input.loserSongUrl ?? null,
+          loserId: input.loserId ?? null,
+          notes: input.notes ?? null,
+          battleDate: new Date(),
+        });
+        return { success: true };
+      }),
   }),
 
   // -- Instagram live feed --------------------------------------
@@ -183,6 +363,118 @@ export const appRouter = router({
           isActive: true,
           weekOf: new Date(),
         });
+        return { success: true };
+      }),
+  }),
+
+  // -- Music Wars Wheel -----------------------------------------
+  wheel: router({
+    getEntries: publicProcedure.query(async () => {
+      const [entries, settings] = await Promise.all([
+        getActiveWheelEntries(),
+        getAllSettings(),
+      ]);
+      return {
+        entries,
+        isPaid: settings["wheel_paid_mode"] === "true",
+        isOpen: settings["wheel_open"] !== "false",
+        entryFee: settings["wheel_entry_fee"] ?? "10",
+        currentRound: parseInt(settings["wheel_current_round"] ?? "1"),
+      };
+    }),
+
+    getAllEntries: adminProcedure.query(async () => {
+      return getAllWheelEntries();
+    }),
+
+    submit: publicProcedure
+      .input(z.object({
+        artistName: z.string().min(1).max(128),
+        songTitle: z.string().min(1).max(128),
+        songUrl: z.string().max(512).optional(),
+        contactInfo: z.string().max(256).optional(),
+        userId: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const isPaid = (await getSetting("wheel_paid_mode")) === "true";
+        await addWheelEntry({
+          userId: input.userId ?? null,
+          artistName: input.artistName,
+          songTitle: input.songTitle,
+          songUrl: input.songUrl ?? null,
+          contactInfo: input.contactInfo ?? null,
+          paid: isPaid,
+          paymentConfirmed: !isPaid,
+          status: isPaid ? "pending" : "active",
+          wheelPosition: 0,
+          roundNumber: 1,
+        });
+        return { success: true, requiresPayment: isPaid };
+      }),
+
+    updateStatus: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["pending", "active", "eliminated", "winner", "removed"]),
+      }))
+      .mutation(async ({ input }) => {
+        await updateWheelEntryStatus(input.id, input.status);
+        return { success: true };
+      }),
+
+    confirmPayment: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await confirmWheelPayment(input.id);
+        return { success: true };
+      }),
+
+    getUserEntries: protectedProcedure.query(async ({ ctx }) => {
+      return getUserWheelEntries(ctx.user.id);
+    }),
+
+    setSettings: adminProcedure
+      .input(z.object({
+        isPaid: z.boolean().optional(),
+        isOpen: z.boolean().optional(),
+        entryFee: z.string().optional(),
+        currentRound: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        if (input.isPaid !== undefined) await setSetting("wheel_paid_mode", String(input.isPaid));
+        if (input.isOpen !== undefined) await setSetting("wheel_open", String(input.isOpen));
+        if (input.entryFee !== undefined) await setSetting("wheel_entry_fee", input.entryFee);
+        if (input.currentRound !== undefined) await setSetting("wheel_current_round", String(input.currentRound));
+        return { success: true };
+      }),
+  }),
+
+  // -- Live Chat ------------------------------------------------
+  chat: router({
+    getHistory: publicProcedure
+      .input(z.object({ room: z.enum(["music_wars", "music_review"]) }))
+      .query(async ({ input }) => {
+        return getChatMessages(input.room, 50);
+      }),
+
+    deleteMessage: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteChatMessage(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // -- Site Settings (admin) ------------------------------------
+  settings: router({
+    getAll: publicProcedure.query(async () => {
+      return getAllSettings();
+    }),
+
+    set: adminProcedure
+      .input(z.object({ key: z.string(), value: z.string() }))
+      .mutation(async ({ input }) => {
+        await setSetting(input.key, input.value);
         return { success: true };
       }),
   }),

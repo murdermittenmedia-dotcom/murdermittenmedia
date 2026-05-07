@@ -41,6 +41,66 @@
 - [x] Overhaul homepage to be dynamic and showcase all content (Mic, Podcast, Music Wars, Live, Promo, Artist of Week)
 - [x] Add framer-motion animations, scroll reveals, hover effects across all pages
 - [x] Make site feel premium and interactive throughout
-- [ ] Add YouTube preview player to song catalog on Artist of the Week page (click song to preview)
-- [ ] Add Apple Music and Spotify profile links for CEO Stew on Artist of the Week page
-- [ ] Make streaming links standard for all future artist pages
+- [x] Add YouTube preview player to song catalog on Artist of the Week page (click song to preview)
+- [x] Add Apple Music and Spotify profile links for CEO Stew on Artist of the Week page
+- [x] Make streaming links standard for all future artist pages
+
+## Music Wars Live Hub
+- [x] DB schema: wheel_entries table (id, userId, artistName, songTitle, songUrl, paid, status, createdAt)
+- [x] DB schema: chat_messages table (id, userId, username, message, room, createdAt)
+- [x] DB schema: site_settings table (key, value) for free/paid toggle, live status
+- [x] tRPC routers: wheel entries CRUD, chat messages, admin settings
+- [x] Real-time chat with Socket.io (WebSocket)
+- [x] Animated canvas spin wheel that reads names from DB
+- [x] Free vs Paid entry toggle (admin panel) - existing entries stay free
+- [x] User registration/login with username + email
+- [x] User dashboard: submission history, current wheel position
+- [x] Live YouTube stream embed on Music Wars page
+- [x] Live chat alongside stream on Music Wars page
+- [x] Admin spin wheel control + winner announcement
+
+## Music Review Live Room
+- [x] Live YouTube stream embed on Music Review page
+- [x] Radio mode: audio-only player (YouTube audio stream) with station-style UI
+- [x] Toggle between video and radio mode
+- [x] Live chat on Music Review page (shared chat system)
+
+## Music Wars Audio Battle Room
+- [x] Extend user roles: add "judge" and "contestant" roles to DB schema
+- [x] WebRTC peer-to-peer audio room (judges always on, contestants called up by admin)
+- [x] Socket.io signaling server for WebRTC peer connections
+- [x] Role-based mic access: judges = always on, contestants = when activated, viewers = listen only
+- [x] Admin can activate/deactivate contestant mic from panel
+- [x] Audio room participant list showing who is live
+- [x] Mute/unmute controls per role
+- [x] Music Review page: live YouTube stream embed + radio mode (audio-only toggle)
+
+## Battle History & Records
+- [x] DB schema: battle_records table (id, round, winnerId, loserId, winnerSong, loserSong, winnerArtist, loserArtist, battleDate, notes)
+- [x] tRPC router: battle records CRUD (create, getAll, getByArtist)
+- [x] Admin panel: record battle result (select winner/loser from wheel entries, auto-fill song info)
+- [x] Battle history leaderboard on Music Wars page (wins, losses, songs)
+- [x] Per-artist battle record card (W/L record + song history)
+
+## User Profiles & Song Catalogue
+- [x] DB schema: battle_records table (winnerId, loserId, winnerSong, loserSong, winnerArtist, loserArtist, roundNumber, battleDate, notes)
+- [x] DB schema: user_songs table (userId, title, artistName, fileKey, fileUrl, duration, genre, uploadedAt, isPublic)
+- [x] tRPC: getUserProfile (public - battle record + song list by userId)
+- [x] tRPC: uploadSong (protected - upload audio file to S3, save metadata)
+- [x] tRPC: deleteSong (protected - owner only)
+- [x] tRPC: getBattleRecord (public - W/L/draws per user)
+- [x] tRPC: recordBattleResult (admin - log winner/loser with songs used)
+- [x] UserProfile page — ArtistStatModal popup (click any artist name)
+- [x] MyProfile — own song upload form inside popup
+- [x] Song catalogue: audio player inline (HTML5 audio)
+- [x] Battle record table: opponent, song used, result, date
+- [x] Leaderboard on Music Wars page (top W/L records)
+
+## Artist Stat Popup Modal (click username anywhere on site)
+- [x] Add instagramHandle + artistName fields to users table; push migration
+- [x] Onboarding modal: shown after first login, asks for artist name + Instagram handle
+- [x] tRPC: updateProfile (protected - save artistName, instagramHandle)
+- [x] tRPC: getArtistStats (public - W/L record + songs by userId or artistName)
+- [x] ArtistStatModal component: W/L record table, song catalogue with inline HTML5 audio player, IG link
+- [x] Clickable artist names in: chat panel, wheel entries, battle history leaderboard
+- [x] Song upload form in modal (own profile only): title, file upload (.mp3/.wav), or external URL

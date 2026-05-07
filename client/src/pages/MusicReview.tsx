@@ -2,10 +2,13 @@
    MURDER MITTEN MEDIA -- Music Review Submission Queue
    ============================================================ */
 
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { OnboardingModal } from "@/components/OnboardingModal";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 const CASHAPP = "$joyfuljules";
@@ -86,11 +89,36 @@ export default function MusicReview() {
   const isLive = data?.state?.isLive ?? false;
   const liveMessage = data?.state?.liveMessage;
 
+  // Live stream + radio mode
+  const [streamMode, setStreamMode] = useState<"video" | "radio">("video");
+  const [chatInput, setChatInput] = useState("");
+  const { user } = useAuth();
+  const chatUsername = user?.artistName || user?.name || "Guest";
+  const { data: chatHistory } = trpc.chat.getHistory.useQuery({ room: "music_review" });
+  const { messages: chatMessages, isConnected: chatConnected, sendMessage } = useChat({
+    room: "music_review",
+    username: chatUsername,
+    userId: user?.id,
+    isAdmin: user?.role === "admin",
+    initialMessages: (chatHistory || []).map(m => ({
+      id: m.id, username: m.username, message: m.message,
+      room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
+    })),
+  });
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  const handleSendChat = () => {
+    if (!chatInput.trim() || !user) return;
+    sendMessage(chatInput.trim());
+    setChatInput("");
+  };
+
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
 
       {/* -- NAV ----------------------------------------------- */}
       <SiteNav />
+      <OnboardingModal />
 
       {/* -- HERO ---------------------------------------------- */}
       <section className="pt-32 pb-10 text-center relative overflow-hidden">
@@ -110,6 +138,108 @@ export default function MusicReview() {
           </p>
         </div>
       </section>
+
+      {/* -- LIVE STREAM + CHAT --------------------------------- */}
+      <div className="container py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Stream / Radio */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${isLive ? "bg-red-500 animate-pulse" : "bg-white/20"}`} />
+                <span className={`text-xs uppercase tracking-widest font-semibold ${isLive ? "text-red-400" : "text-white/30"}`}>
+                  {isLive ? "Live Now" : "Stream Offline"}
+                </span>
+              </div>
+              <div className="flex gap-1">
+                {(["video", "radio"] as const).map(mode => (
+                  <button key={mode} onClick={() => setStreamMode(mode)}
+                    className={`px-3 py-1 text-xs uppercase tracking-wider border transition-colors ${
+                      streamMode === mode ? "bg-red-600 border-red-600 text-white" : "border-white/20 text-white/40 hover:text-white"
+                    }`}>
+                    {mode === "video" ? "📺 Video" : "📻 Radio"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {streamMode === "video" ? (
+              <div className="relative w-full bg-black border border-white/10" style={{ paddingTop: "56.25%" }}>
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src="https://www.youtube.com/embed/live_stream?channel=UCmurdermitten&autoplay=1"
+                  title="Murder Mitten Media Music Review Live"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <div className="bg-[#0d0d0d] border border-white/10 flex flex-col items-center justify-center" style={{ minHeight: "240px" }}>
+                <div className="text-center">
+                  <div className="font-['Anton'] text-4xl text-red-600 mb-2">📻</div>
+                  <div className="font-['Anton'] text-xl uppercase mb-1">Murder Mitten Radio</div>
+                  <p className="text-white/40 text-xs mb-4">Audio-only stream — music review session</p>
+                  <div className={`flex items-center gap-2 justify-center mb-4 ${isLive ? "text-green-400" : "text-white/30"}`}>
+                    <span className={`w-2 h-2 rounded-full ${isLive ? "bg-green-500 animate-pulse" : "bg-white/20"}`} />
+                    <span className="text-xs uppercase tracking-widest">{isLive ? "On Air" : "Off Air"}</span>
+                  </div>
+                  {isLive ? (
+                    <audio
+                      controls autoPlay
+                      src="https://www.youtube.com/embed/live_stream?channel=UCmurdermitten"
+                      className="w-full max-w-xs"
+                    />
+                  ) : (
+                    <p className="text-white/30 text-xs">Tune in when the session goes live</p>
+                  )}
+                </div>
+              </div>
+            )}
+            <p className="text-white/20 text-xs mt-1 text-right">
+              <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">Open on YouTube ↗</a>
+            </p>
+          </div>
+
+          {/* Live Chat */}
+          <div className="flex flex-col bg-[#0d0d0d] border border-white/10" style={{ height: "340px" }}>
+            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 flex-shrink-0">
+              <span className="font-['Anton'] text-xs uppercase tracking-widest">Live Chat</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${chatConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+                <span className="text-xs text-white/30">{chatConnected ? "Live" : "Connecting"}</span>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
+              {chatMessages.length === 0 && (
+                <p className="text-white/20 text-xs text-center py-6">No messages yet</p>
+              )}
+              {chatMessages.map(msg => (
+                <div key={msg.id} className="text-xs flex gap-1.5 flex-wrap">
+                  <span className={`font-semibold flex-shrink-0 ${msg.isAdmin ? "text-red-400" : "text-white/60"}`}>
+                    {msg.isAdmin && "[ADMIN] "}{msg.username}:
+                  </span>
+                  <span className="text-white/70 break-words min-w-0">{msg.message}</span>
+                </div>
+              ))}
+              <div ref={chatBottomRef} />
+            </div>
+            <div className="p-2 border-t border-white/10 flex gap-1.5 flex-shrink-0">
+              <input
+                type="text" value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSendChat()}
+                placeholder={user ? "Chat..." : "Login to chat"}
+                disabled={!user} maxLength={500}
+                className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none focus:border-red-600/50 placeholder-white/20 disabled:opacity-40"
+              />
+              <button onClick={handleSendChat} disabled={!user || !chatInput.trim()}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-3 py-1.5 text-xs font-semibold uppercase transition-colors">
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="container pb-20 max-w-4xl mx-auto">
 

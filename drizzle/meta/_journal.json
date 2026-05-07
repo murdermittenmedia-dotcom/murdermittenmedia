@@ -15,6 +15,27 @@
       "when": 1778123633417,
       "tag": "0001_careless_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1778126037674,
+      "tag": "0002_high_virginia_dare",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1778126427334,
+      "tag": "0003_damp_morg",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1778126973496,
+      "tag": "0004_narrow_nomad",
+      "breakpoints": true
     }
   ]
 }
