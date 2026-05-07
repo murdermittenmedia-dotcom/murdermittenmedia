@@ -12,8 +12,9 @@
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import {
   Pause, Play, Square, Volume2, VolumeX, Radio, Flame, Trash2, User,
-  ChevronUp, ChevronDown, List, X, SkipBack, SkipForward
+  ChevronUp, ChevronDown, List, X, SkipBack, SkipForward, ExternalLink
 } from "lucide-react";
+import { Link } from "wouter";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -250,8 +251,18 @@ export default function FloatingPlayer() {
 
           {/* Track info */}
           <div className="flex-1 min-w-0">
-            <div className="text-white text-sm font-semibold truncate leading-tight">{track.title}</div>
-            <div className="text-white/40 text-xs truncate">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="text-white text-sm font-semibold truncate leading-tight">{track.title}</div>
+              {track.sourcePage && track.sourceUrl && (
+                <Link href={track.sourceUrl}>
+                  <span className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0 text-[10px] uppercase tracking-widest border border-white/10 px-1 py-0.5 rounded hidden sm:inline-flex items-center gap-0.5">
+                    <ExternalLink className="w-2.5 h-2.5" />
+                    {track.sourcePage}
+                  </span>
+                </Link>
+              )}
+            </div>
+            <div className="text-white/40 text-xs truncate flex items-center gap-1.5">
               {track.isStream ? (
                 <span className="text-red-500 font-medium">● LIVE</span>
               ) : track.artist ? (
@@ -267,10 +278,16 @@ export default function FloatingPlayer() {
               ) : (
                 <span>Murder Mitten Media</span>
               )}
+              {track.uploaderName && track.uploaderName !== track.artist && (
+                <span className="text-white/20 hidden sm:inline">· uploaded by {track.uploaderName}</span>
+              )}
+              {track.queuePosition != null && track.queueTotal != null && (
+                <span className="text-white/20 hidden sm:inline">· #{track.queuePosition}/{track.queueTotal} in queue</span>
+              )}
             </div>
           </div>
 
-          {/* Time (non-streams only, hidden on mobile) */}
+          {/* Time display, hidden on mobile */}
           {!track.isStream && duration > 0 && (
             <div className="text-white/30 text-xs hidden md:block flex-shrink-0">
               {formatTime(currentTime)} / {formatTime(duration)}

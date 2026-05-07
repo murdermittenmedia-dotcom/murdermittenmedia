@@ -7,7 +7,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
-import { useChat } from "@/hooks/useChat";
+import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/hooks/useChat";
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -104,12 +104,15 @@ function VideoTile({
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
   audioRoom: ReturnType<typeof useAudioRoom>;
   videoRoom: ReturnType<typeof useVideoRoom>;
+  broadcastReviewActive: (item: { submissionId: number | null; artistName?: string; songTitle?: string; audioUrl?: string | null; youtubeUrl?: string | null; submissionType?: string }) => void;
+  broadcastReviewPlayback: (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => void;
+  broadcastReviewQueueUpdated: () => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -131,7 +134,22 @@ function AdminPanel({
   };
 
   const handleSetPlaying = (id: number) => {
-    setPlaying.mutate({ submissionId: id });
+    const sub = queue.find(s => s.id === id);
+    setPlaying.mutate({ submissionId: id }, {
+      onSuccess: () => {
+        if (sub) {
+          broadcastReviewActive({
+            submissionId: sub.id,
+            artistName: sub.artistName,
+            songTitle: sub.songTitle,
+            audioUrl: sub.fileUrl ?? null,
+            youtubeUrl: sub.youtubeUrl ?? null,
+            submissionType: sub.submissionType,
+          });
+          broadcastReviewQueueUpdated();
+        }
+      }
+    });
     toast.success("Now playing track");
   };
 
@@ -140,10 +158,25 @@ function AdminPanel({
     updateStatus.mutate({ id: currentPlaying.id, status: "reviewed" });
     const next = queue.find(s => s.status === "pending" && s.id !== currentPlaying.id);
     if (next) {
-      setTimeout(() => setPlaying.mutate({ submissionId: next.id }), 300);
+      setTimeout(() => {
+        setPlaying.mutate({ submissionId: next.id }, {
+          onSuccess: () => {
+            broadcastReviewActive({
+              submissionId: next.id,
+              artistName: next.artistName,
+              songTitle: next.songTitle,
+              audioUrl: next.fileUrl ?? null,
+              youtubeUrl: next.youtubeUrl ?? null,
+              submissionType: next.submissionType,
+            });
+            broadcastReviewQueueUpdated();
+          }
+        });
+      }, 300);
     } else {
-      setPlaying.mutate({ submissionId: null });
+      setPlaying.mutate({ submissionId: null }, { onSuccess: () => { broadcastReviewActive({ submissionId: null }); broadcastReviewQueueUpdated(); } });
     }
+    broadcastReviewPlayback({ action: "skip" });
     toast.success("Skipped to next track");
   };
 
@@ -485,7 +518,11 @@ export default function MusicReview() {
   });
 
   const { data: chatHistory } = trpc.chat.getHistory.useQuery({ room: "music_review" });
-  const { messages: chatMessages, isConnected: chatConnected, sendMessage } = useChat({
+  // Live review state — synced via socket for all viewers
+  const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
+  const liveAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated } = useChat({
     room: "music_review",
     username: chatUsername,
     userId: user?.id,
@@ -494,6 +531,16 @@ export default function MusicReview() {
       id: m.id, username: m.username, message: m.message,
       room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
     })),
+    onReviewActiveChanged: (item: LiveReviewActiveItem) => {
+      setLiveReviewActive(item.submissionId === null ? null : item);
+    },
+    onReviewPlayback: (data: LiveReviewPlayback) => {
+      if (!liveAudioRef.current) return;
+      if (data.action === "play") liveAudioRef.current.play().catch(() => {});
+      else if (data.action === "pause") liveAudioRef.current.pause();
+      else if (data.action === "replay") { liveAudioRef.current.currentTime = 0; liveAudioRef.current.play().catch(() => {}); }
+    },
+    onReviewQueueUpdated: () => { refetch(); },
   });
 
   useEffect(() => {
@@ -737,12 +784,48 @@ export default function MusicReview() {
                   refetch={refetch}
                   audioRoom={audioRoom}
                   videoRoom={videoRoom}
+                  broadcastReviewActive={broadcastReviewActive}
+                  broadcastReviewPlayback={broadcastReviewPlayback}
+                  broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
                 />
               </div>
             )}
 
-            {/* Currently playing banner */}
-            {currentPlaying && (
+            {/* Live Review Banner — shown to all viewers when admin is reviewing a track */}
+            {liveReviewActive && liveReviewActive.submissionId !== null && (
+              <div className="mb-6 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent animate-pulse" />
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Being Reviewed</span>
+                </div>
+                <div className="font-['Anton'] text-2xl uppercase">{liveReviewActive.songTitle}</div>
+                <div className="text-white/60 text-sm mb-3">by {liveReviewActive.artistName}</div>
+                {liveReviewActive.audioUrl && (
+                  <audio
+                    ref={liveAudioRef}
+                    src={liveReviewActive.audioUrl}
+                    controls
+                    className="w-full h-8 mt-1"
+                    style={{ accentColor: "#dc2626" }}
+                  />
+                )}
+                {liveReviewActive.youtubeUrl && (
+                  <a
+                    href={liveReviewActive.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open on YouTube
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Currently playing banner (fallback when no live socket active) */}
+            {!liveReviewActive && currentPlaying && (
               <div className="mb-6 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent" />
                 <div className="flex items-center gap-3 mb-1">

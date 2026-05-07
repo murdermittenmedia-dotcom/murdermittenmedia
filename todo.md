@@ -375,3 +375,52 @@
 - [x] Register all new routes in App.tsx
 - [x] Add Search to SiteNav More dropdown
 - [x] TypeScript: 0 errors
+
+## Session 6 — Platform Improvements
+
+### Nav Tab Renames
+- [x] Rename nav: Home, Live Now, Music Review, Murder Mitten Mic Drops, Forum, Latest News, Explore, Leaderboards, Artist of the Week, Meeting With The Mitten Podcast, Get Promoted
+- [x] Update routes if needed (e.g. /latest-posts → /latest-news, /search → /explore)
+- [x] Update all internal links and SiteNav
+
+### Battle Wheel Fixes
+- [x] Persist wheel state in DB (current order, remaining, picked, last selected)
+- [x] Restore wheel state on page load (no reset on refresh)
+- [x] Add "Reset Wheel" admin button (only manual reset)
+- [x] Live sync via Socket.io: new names, removals, edits appear instantly for all viewers
+- [x] Prevent duplicate picks unless wheel is reset
+- [x] Allow spinning when only 1 contestant remains; auto-select final contestant
+- [x] Show "All contestants have been picked." after final pick
+- [x] Only disable wheel when 0 contestants remain
+
+### Forum Audio Uploads
+- [x] Allow attaching MP3/WAV/M4A/AAC to forum posts and replies
+- [x] Display uploaded audio as embedded playable attachments in posts
+- [x] Sync forum audio with global audio player (title, uploader, source page)
+- [x] Upload progress indicators, file size limits (15MB), unsupported file handling
+- [x] Secure uploads against unsafe file types
+
+### Admin Moderation Controls
+- [x] Admins can delete any forum post, reply, audio upload, comment, submission, or user content
+- [x] Visible admin moderation controls only for admin accounts
+- [x] Confirmation prompts before deleting content
+- [x] Deleted content instantly disappears sitewide (optimistic update + socket)
+- [x] Optional moderation log for deleted content and admin actions
+
+### Music Review Rebuild
+- [x] Rebuild Music Review into one complete live review page
+- [x] Show live submission queue on same page as review controls
+- [x] Each submission shows: artist name, song title, file/video link, submission message, user profile
+- [x] Admin can instantly play audio submissions from queue (global player)
+- [x] Admin can instantly watch submitted videos on same page (inline video player)
+- [x] Admin can select which submission is "currently being reviewed live"
+- [x] Selected submission becomes active live review item for all viewers (Socket.io)
+- [x] Live synced audio feed: admin controls play/pause/replay/skip/next
+- [x] All connected users stay synced to same active review content in realtime
+- [x] Playback state, current song, queue updates sync live without refresh
+
+### Global Audio Player Enhancements
+- [x] Show source page (e.g. "Forum > Post Title", "Music Review") in player
+- [x] Show uploader name in player
+- [x] Show queue status (e.g. "2 / 5 in queue")
+- [x] Fix all sync issues between embedded players and global player

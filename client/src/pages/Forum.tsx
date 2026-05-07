@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare, ThumbsUp, ThumbsDown, Eye, Plus, Flame, Pin } from "lucide-react";
+import { MessageSquare, ThumbsUp, ThumbsDown, Eye, Plus, Flame, Pin, Music, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -49,7 +49,11 @@ function CreatePostModal({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState<"general" | "music" | "battles" | "news" | "feedback">("general");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [uploadedAudio, setUploadedAudio] = useState<{ url: string; title: string } | null>(null);
 
+  const uploadAudio = trpc.forum.uploadAudio.useMutation();
   const createPost = trpc.forum.createPost.useMutation({
     onSuccess: () => {
       toast.success("Post created!");
@@ -57,10 +61,43 @@ function CreatePostModal({ onCreated }: { onCreated: () => void }) {
       setTitle("");
       setBody("");
       setCategory("general");
+      setAudioFile(null);
+      setUploadedAudio(null);
       onCreated();
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const handleAudioSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/m4a", "audio/aac", "audio/x-m4a"];
+    if (!allowed.includes(file.type) && !file.name.match(/\.(mp3|wav|m4a|aac)$/i)) {
+      toast.error("Only MP3, WAV, M4A, or AAC files allowed");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) { toast.error("File must be under 15MB"); return; }
+    setAudioFile(file);
+    setAudioUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = (ev.target?.result as string).split(",")[1];
+        const result = await uploadAudio.mutateAsync({
+          fileName: file.name,
+          fileBase64: base64,
+          mimeType: file.type || "audio/mpeg",
+          title: file.name.replace(/\.[^.]+$/, ""),
+        });
+        setUploadedAudio(result);
+        setAudioUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error("Audio upload failed");
+      setAudioUploading(false);
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -118,9 +155,32 @@ function CreatePostModal({ onCreated }: { onCreated: () => void }) {
             />
             <div className="text-right text-xs text-white/30 mt-1">{body.length}/10000</div>
           </div>
+          {/* Audio attachment */}
+          <div>
+            <label className="text-xs text-white/50 uppercase tracking-widest mb-1 block">Attach Audio (optional)</label>
+            {uploadedAudio ? (
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2">
+                <Music className="w-4 h-4 text-red-400 shrink-0" />
+                <span className="text-xs text-white/80 truncate flex-1">{uploadedAudio.title}</span>
+                <button onClick={() => { setUploadedAudio(null); setAudioFile(null); }} className="text-white/40 hover:text-red-400">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : audioUploading ? (
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 text-xs text-white/40">
+                <Upload className="w-4 h-4 animate-pulse" /> Uploading...
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 bg-white/5 border border-dashed border-white/20 px-3 py-2 cursor-pointer hover:border-red-600/50 transition-colors">
+                <Music className="w-4 h-4 text-white/40" />
+                <span className="text-xs text-white/40">MP3, WAV, M4A, AAC — max 15MB</span>
+                <input type="file" accept=".mp3,.wav,.m4a,.aac,audio/*" className="hidden" onChange={handleAudioSelect} />
+              </label>
+            )}
+          </div>
           <Button
-            onClick={() => createPost.mutate({ title, body, category })}
-            disabled={!title.trim() || !body.trim() || createPost.isPending}
+            onClick={() => createPost.mutate({ title, body, category, audioUrl: uploadedAudio?.url, audioTitle: uploadedAudio?.title })}
+            disabled={!title.trim() || !body.trim() || createPost.isPending || audioUploading}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold uppercase tracking-widest"
           >
             {createPost.isPending ? "Posting..." : "Post"}
@@ -234,6 +294,13 @@ export default function Forum() {
 
                       {/* Body preview */}
                       <p className="text-white/50 text-sm line-clamp-2 mb-2">{post.body}</p>
+                      {/* Audio attachment badge */}
+                      {'audioUrl' in post && post.audioUrl && (
+                        <div className="flex items-center gap-1.5 text-xs text-red-400 mb-2">
+                          <Music className="w-3 h-3" />
+                          <span className="truncate max-w-[200px]">{('audioTitle' in post && post.audioTitle) || "Audio attached"}</span>
+                        </div>
+                      )}
 
                       {/* Meta row */}
                       <div className="flex items-center gap-4 text-xs text-white/40">

@@ -17,6 +17,7 @@ import {
   forumPosts, InsertForumPost,
   forumComments, InsertForumComment,
   forumReactions,
+  moderationLogs,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1059,4 +1060,58 @@ export async function getCombinedLeaderboard() {
   }
 
   return Object.values(artistMap).sort((a, b) => b.score - a.score);
+}
+
+// -- Wheel Spin State Persistence ----------------------------
+// Persists which contestant has been picked (spin 1) so state survives page refreshes.
+// Key: "wheel_spin_state"
+// Value: JSON { spinCount: 0|1, contestant1Id: number|null, contestant1Name: string|null }
+export interface WheelSpinState {
+  spinCount: 0 | 1;
+  contestant1Id: number | null;
+  contestant1Name: string | null;
+}
+export async function getWheelSpinState(): Promise<WheelSpinState> {
+  const raw = await getSetting("wheel_spin_state");
+  if (!raw) return { spinCount: 0, contestant1Id: null, contestant1Name: null };
+  try { return JSON.parse(raw) as WheelSpinState; }
+  catch { return { spinCount: 0, contestant1Id: null, contestant1Name: null }; }
+}
+export async function setWheelSpinState(state: WheelSpinState): Promise<void> {
+  await setSetting("wheel_spin_state", JSON.stringify(state));
+}
+export async function clearWheelSpinState(): Promise<void> {
+  await setSetting("wheel_spin_state", JSON.stringify({ spinCount: 0, contestant1Id: null, contestant1Name: null }));
+}
+
+
+// -- Moderation Logs -----------------------------------------
+export async function createModerationLog(data: {
+  adminId: number;
+  adminName: string;
+  action: string;
+  targetType: string;
+  targetId: number;
+  targetPreview?: string;
+  reason?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(moderationLogs).values({
+    adminId: data.adminId,
+    adminName: data.adminName,
+    action: data.action,
+    targetType: data.targetType,
+    targetId: data.targetId,
+    targetPreview: data.targetPreview ?? null,
+    reason: data.reason ?? null,
+  });
+}
+
+export async function getModerationLogs(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(moderationLogs)
+    .orderBy(desc(moderationLogs.createdAt))
+    .limit(limit);
 }

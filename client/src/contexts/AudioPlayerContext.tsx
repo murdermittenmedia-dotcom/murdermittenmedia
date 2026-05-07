@@ -26,6 +26,11 @@ export type AudioTrack = {
   isStream?: boolean; // true for live radio/stream URLs
   submissionId?: number; // for fire/trash rating
   artistUserId?: number; // for clicking through to artist profile
+  sourcePage?: string; // e.g. "Music Review", "Forum", "Radio"
+  sourceUrl?: string; // URL to navigate back to the source page
+  uploaderName?: string; // username of who uploaded/posted the track
+  queuePosition?: number; // position in the review queue (1-based)
+  queueTotal?: number; // total items in the review queue
 };
 
 type AudioPlayerState = {

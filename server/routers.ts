@@ -31,6 +31,8 @@ import {
   reactToForumItem, getForumReactionCounts, getUserForumReactions,
   searchUsers, searchSongs,
   getCombinedLeaderboard,
+  getWheelSpinState, setWheelSpinState, clearWheelSpinState,
+  createModerationLog, getModerationLogs,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -709,10 +711,68 @@ export const appRouter = router({
     // Full war reset: delete ALL wheel entries, votes, and close active battle
     resetCurrentWar: adminProcedure.mutation(async ({ ctx }) => {
       await fullWarReset();
+      await clearWheelSpinState();
       // Broadcast war reset to all connected clients so they clear votes in real-time
       ctx.io?.to("music_wars").emit("war:reset");
       return { success: true };
     }),
+
+    // Get persistent wheel spin state (survives page refresh)
+    getSpinState: publicProcedure.query(async () => {
+      return getWheelSpinState();
+    }),
+
+    // Admin: save contestant 1 pick to DB (spin 1 complete)
+    saveSpinState: adminProcedure
+      .input(z.object({
+        spinCount: z.union([z.literal(0), z.literal(1)]),
+        contestant1Id: z.number().nullable(),
+        contestant1Name: z.string().nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await setWheelSpinState({
+          spinCount: input.spinCount,
+          contestant1Id: input.contestant1Id,
+          contestant1Name: input.contestant1Name,
+        });
+        // Broadcast to all clients so they sync immediately
+        ctx.io?.to("music_wars").emit("wheel:spin_state", {
+          spinCount: input.spinCount,
+          contestant1Id: input.contestant1Id,
+          contestant1Name: input.contestant1Name,
+        });
+        return { success: true };
+      }),
+
+    // Admin: reset only the spin state (not the full war)
+    resetSpinState: adminProcedure.mutation(async ({ ctx }) => {
+      await clearWheelSpinState();
+      ctx.io?.to("music_wars").emit("wheel:spin_state", {
+        spinCount: 0, contestant1Id: null, contestant1Name: null,
+      });
+      return { success: true };
+    }),
+
+    // Mark an entry as "called" with spin state update (admin picks contestant 1)
+    markCalledAndSaveState: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        artistName: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateWheelEntryStatus(input.id, "eliminated");
+        await setWheelSpinState({
+          spinCount: 1,
+          contestant1Id: input.id,
+          contestant1Name: input.artistName,
+        });
+        ctx.io?.to("music_wars").emit("wheel:spin_state", {
+          spinCount: 1,
+          contestant1Id: input.id,
+          contestant1Name: input.artistName,
+        });
+        return { success: true };
+      }),
   }),
 
   // -- Live Chat ------------------------------------------------
@@ -1036,21 +1096,42 @@ export const appRouter = router({
         };
       }),
 
+    // Upload audio attachment for a forum post or comment
+    uploadAudio: protectedProcedure
+      .input(z.object({
+        fileName: z.string(),
+        fileBase64: z.string(),
+        mimeType: z.string().default("audio/mpeg"),
+        title: z.string().max(256).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        if (buffer.length > 15 * 1024 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 15MB" });
+        }
+        const ext = input.fileName.split(".").pop() || "mp3";
+        const key = `forum-audio/${ctx.user.id}/${Date.now()}.${ext}`;
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        return { url, title: input.title ?? input.fileName };
+      }),
+
     // Create a post (requires login)
     createPost: protectedProcedure
       .input(z.object({
         title: z.string().min(1).max(256),
         body: z.string().min(1).max(10000),
         category: z.enum(["general", "music", "battles", "news", "feedback"]).default("general"),
+        audioUrl: z.string().url().max(1024).optional(),
+        audioTitle: z.string().max(256).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const profile = await getArtistProfile(ctx.user.id);
-        const displayName = profile?.artistName ?? ctx.user.name ?? "Anonymous";
         await createForumPost({
           userId: ctx.user.id,
           title: input.title,
           body: input.body,
           category: input.category,
+          audioUrl: input.audioUrl ?? null,
+          audioTitle: input.audioTitle ?? null,
         });
         return { success: true };
       }),
@@ -1074,15 +1155,17 @@ export const appRouter = router({
         postId: z.number(),
         body: z.string().min(1).max(2000),
         parentId: z.number().optional(),
+        audioUrl: z.string().url().max(1024).optional(),
+        audioTitle: z.string().max(256).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const profile = await getArtistProfile(ctx.user.id);
-        const displayName = profile?.artistName ?? ctx.user.name ?? "Anonymous";
         await createForumComment({
           postId: input.postId,
           userId: ctx.user.id,
           body: input.body,
           parentId: input.parentId ?? null,
+          audioUrl: input.audioUrl ?? null,
+          audioTitle: input.audioTitle ?? null,
         });
         return { success: true };
       }),
@@ -1164,7 +1247,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Admin: toggle live status for Music Wars stream
+     // Admin: toggle live status for Music Wars stream
     setLive: adminProcedure
       .input(z.object({ isLive: z.boolean(), streamUrl: z.string().max(512).optional() }))
       .mutation(async ({ input }) => {
@@ -1173,6 +1256,97 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
-});
 
+  // -- Admin Moderation ----------------------------------------
+  moderation: router({
+    // Get moderation logs
+    getLogs: adminProcedure
+      .input(z.object({ limit: z.number().min(1).max(500).default(100) }))
+      .query(async ({ input }) => getModerationLogs(input.limit)),
+
+    // Delete a forum post (admin override, with log)
+    deleteForumPost: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string().max(256).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const row = await getForumPostById(input.id);
+        if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "delete_forum_post",
+          targetType: "forum_post",
+          targetId: input.id,
+          targetPreview: row.post.title.slice(0, 256),
+          reason: input.reason,
+        });
+        await deleteForumPost(input.id);
+        return { success: true };
+      }),
+
+    // Delete a forum comment (admin override, with log)
+    deleteForumComment: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string().max(256).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "delete_forum_comment",
+          targetType: "forum_comment",
+          targetId: input.id,
+          targetPreview: undefined,
+          reason: input.reason,
+        });
+        await deleteForumComment(input.id);
+        return { success: true };
+      }),
+
+    // Delete a chat message (admin override, with log)
+    deleteChatMessage: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string().max(256).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "delete_chat_message",
+          targetType: "chat_message",
+          targetId: input.id,
+          reason: input.reason,
+        });
+        await deleteChatMessage(input.id);
+        return { success: true };
+      }),
+
+    // Remove a review submission (admin override, with log)
+    removeSubmission: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string().max(256).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "remove_submission",
+          targetType: "review_submission",
+          targetId: input.id,
+          reason: input.reason,
+        });
+        await updateSubmissionStatus(input.id, "removed");
+        return { success: true };
+      }),
+
+    // Remove a wheel entry (admin override, with log)
+    removeWheelEntry: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string().max(256).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "remove_wheel_entry",
+          targetType: "wheel_entry",
+          targetId: input.id,
+          reason: input.reason,
+        });
+        await updateWheelEntryStatus(input.id, "removed");
+        return { success: true };
+      }),
+  }),
+});
 export type AppRouter = typeof appRouter;

@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
@@ -20,6 +20,7 @@ import ForumPost from "./pages/ForumPost";
 import Leaderboard from "./pages/Leaderboard";
 import Search from "./pages/Search";
 import LatestPosts from "./pages/LatestPosts";
+import AdminModeration from "./pages/AdminModeration";
 
 function Router() {
   return (
@@ -44,8 +45,21 @@ function Router() {
         {(params) => <ForumPost params={params} />}
       </Route>
       <Route path={"/leaderboard"} component={Leaderboard} />
-      <Route path={"/search"} component={Search} />
-      <Route path={"/latest-posts"} component={LatestPosts} />
+
+      {/* Latest News — new canonical route (old /latest-posts redirects here) */}
+      <Route path={"/latest-news"} component={LatestPosts} />
+      <Route path={"/latest-posts"}>
+        <Redirect to="/latest-news" />
+      </Route>
+
+      {/* Explore — new canonical route (old /search redirects here) */}
+      <Route path={"/explore"} component={Search} />
+      <Route path={"/search"}>
+        <Redirect to="/explore" />
+      </Route>
+
+      {/* Admin */}
+      <Route path={"/admin/moderation"} component={AdminModeration} />
 
       {/* Fallback */}
       <Route path={"/404"} component={NotFound} />

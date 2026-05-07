@@ -109,6 +109,10 @@ async function startServer() {
     socket.on("wheel:result", (data: { winner: string }) => {
       io.to("music_wars").emit("wheel:winner", data);
     });
+    // Relay spin state changes (contestant 1 picked, reset, etc.)
+    socket.on("wheel:spin_state", (data: { spinCount: number; contestant1Id: number | null; contestant1Name: string | null }) => {
+      io.to("music_wars").emit("wheel:spin_state", data);
+    });
 
     // ── Audio/Video Room ──────────────────────────────────────
     socket.on("room:join", (data: {
@@ -231,6 +235,27 @@ async function startServer() {
         const list = getRoomList(target.room);
         io.to(target.room).emit("room:participants", list);
       }
+    });
+
+    // ── Live Review Controls (admin → all viewers) ────────────
+    // Admin selects a submission to review live — broadcasts to all in music_review room
+    socket.on("review:set_active", (data: {
+      submissionId: number | null;
+      artistName?: string;
+      songTitle?: string;
+      audioUrl?: string | null;
+      youtubeUrl?: string | null;
+      submissionType?: string;
+    }) => {
+      io.to("music_review").emit("review:active_changed", data);
+    });
+    // Admin broadcasts playback state (play/pause/seek)
+    socket.on("review:playback", (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => {
+      io.to("music_review").emit("review:playback", data);
+    });
+    // Admin broadcasts queue update (new submission, status change)
+    socket.on("review:queue_updated", () => {
+      io.to("music_review").emit("review:queue_updated");
     });
 
     // ── Leave / disconnect ────────────────────────────────────

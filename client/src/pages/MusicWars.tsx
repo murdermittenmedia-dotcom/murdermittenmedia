@@ -1108,14 +1108,35 @@ export default function MusicWars() {
   const removeEntryMutation = trpc.wheel.removeEntry.useMutation();
   const resetWarMutation = trpc.wheel.resetCurrentWar.useMutation();
   const markCalledMutation = trpc.wheel.markCalled.useMutation();
+  const markCalledAndSaveStateMutation = trpc.wheel.markCalledAndSaveState.useMutation();
+  const saveSpinStateMutation = trpc.wheel.saveSpinState.useMutation();
+  const resetSpinStateMutation = trpc.wheel.resetSpinState.useMutation();
   const setBattleContestantsMutation = trpc.wheel.setBattleContestants.useMutation({
     onSuccess: () => { refetchActiveBattle(); refetchVotes(); refetchWheel(); if (isAdmin) refetchAllEntries(); },
   });
 
-  // Contestant selection state
-  const [spinCount, setSpinCount] = useState(0); // 0 = no spin yet, 1 = c1 picked, 2 = c2 picked
+  // Persistent wheel spin state — loaded from DB on mount, synced via socket
+  const { data: persistedSpinState, refetch: refetchSpinState } = trpc.wheel.getSpinState.useQuery();
+  const [spinCount, setSpinCount] = useState<0 | 1>(0);
   const [contestant1Entry, setContestant1Entry] = useState<WheelEntry | null>(null);
-  const [contestant2Entry, setContestant2Entry] = useState<WheelEntry | null>(null);
+
+  // Helper to restore contestant1 from entry list
+  const restoreContestant1 = useCallback((id: number, name: string, entries: WheelEntry[]) => {
+    const found = entries.find(e => e.id === id);
+    if (found) setContestant1Entry(found);
+    else setContestant1Entry({ id, artistName: name, songTitle: "", status: "eliminated", wheelPosition: 0, roundNumber: 1, createdAt: new Date(), updatedAt: new Date(), userId: null, songUrl: null, contactInfo: null, paid: false, paymentConfirmed: false } as WheelEntry);
+  }, []);
+
+  // Hydrate spin state from DB on load
+  useEffect(() => {
+    if (!persistedSpinState) return;
+    setSpinCount(persistedSpinState.spinCount);
+    if (persistedSpinState.spinCount === 1 && persistedSpinState.contestant1Id) {
+      restoreContestant1(persistedSpinState.contestant1Id, persistedSpinState.contestant1Name ?? "", wheelData?.entries ?? []);
+    } else {
+      setContestant1Entry(null);
+    }
+  }, [persistedSpinState, wheelData?.entries, restoreContestant1]);
 
   const { messages, isConnected: chatConnected, sendMessage, wheelWinner, wheelSpinning, broadcastSpin, broadcastWinner, socket: chatSocket } = useChat({
     room: "music_wars",
@@ -1126,6 +1147,14 @@ export default function MusicWars() {
       id: m.id, username: m.username, message: m.message,
       room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
     })),
+    onSpinStateChange: (state) => {
+      setSpinCount(state.spinCount);
+      if (state.spinCount === 1 && state.contestant1Id) {
+        restoreContestant1(state.contestant1Id, state.contestant1Name ?? "", wheelData?.entries ?? []);
+      } else {
+        setContestant1Entry(null);
+      }
+    },
   });
 
   // Refetch wheel and vote data when war is reset by admin
@@ -1135,15 +1164,14 @@ export default function MusicWars() {
       refetchWheel();
       refetchActiveBattle();
       refetchVotes();
+      refetchSpinState();
       if (isAdmin) refetchAllEntries();
-      // Reset contestant selection state
       setSpinCount(0);
       setContestant1Entry(null);
-      setContestant2Entry(null);
     };
     chatSocket.on("war:reset", handleWarReset);
     return () => { chatSocket.off("war:reset", handleWarReset); };
-  }, [chatSocket, refetchWheel, refetchActiveBattle, refetchVotes, isAdmin, refetchAllEntries]);
+  }, [chatSocket, refetchWheel, refetchActiveBattle, refetchVotes, isAdmin, refetchAllEntries, refetchSpinState]);
 
   const [audioJoined, setAudioJoined] = useState(false);
   const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic } = useAudioRoom({
@@ -1171,30 +1199,28 @@ export default function MusicWars() {
     if (!entry) return;
 
     if (spinCount === 0) {
-      // First spin → Contestant 1
+      // First spin → Contestant 1: persist to DB and broadcast via socket
       setContestant1Entry(entry);
       setSpinCount(1);
-      // Remove from wheel immediately
-      try { await markCalledMutation.mutateAsync({ id: entry.id }); } catch {}
+      try {
+        await markCalledAndSaveStateMutation.mutateAsync({ id: entry.id, artistName: entry.artistName });
+      } catch {}
       refetchWheel();
       if (isAdmin) refetchAllEntries();
     } else if (spinCount === 1 && contestant1Entry) {
-      // Second spin → Contestant 2
-      setContestant2Entry(entry);
-      setSpinCount(2);
-      // Auto-call setBattleContestants which removes both from wheel and sets active battle
+      // Second spin → Contestant 2: set battle and clear spin state
       try {
         await setBattleContestantsMutation.mutateAsync({
           contestant1Id: contestant1Entry.id,
           contestant2Id: entry.id,
         });
+        // Clear spin state in DB after battle is set
+        await resetSpinStateMutation.mutateAsync();
       } catch {}
-      // Reset for next round
       setSpinCount(0);
       setContestant1Entry(null);
-      setContestant2Entry(null);
     }
-  }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, markCalledMutation, setBattleContestantsMutation, refetchWheel, refetchAllEntries]);
+  }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, markCalledAndSaveStateMutation, setBattleContestantsMutation, resetSpinStateMutation, refetchWheel, refetchAllEntries]);
 
   const handleSubmit = async (data: { songTitle: string; songUrl: string; contactInfo: string }) => {
     try {
@@ -1282,10 +1308,10 @@ export default function MusicWars() {
                       <span className="text-white font-semibold">{contestant1Entry?.artistName ?? "—"}</span>
                     </div>
                     <div className={`flex items-center gap-2 px-3 py-2 border text-sm ${
-                      contestant2Entry ? "border-red-600/50 bg-red-950/20" : "border-white/10 bg-white/5"
+                      spinCount === 0 && contestant1Entry ? "border-white/10 bg-white/5" : "border-white/10 bg-white/5"
                     }`}>
                       <span className="text-red-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 2</span>
-                      <span className="text-white font-semibold">{contestant2Entry?.artistName ?? "—"}</span>
+                      <span className="text-white font-semibold">{spinCount === 1 ? "Pending spin…" : "—"}</span>
                     </div>
                     {spinCount === 1 && (
                       <p className="text-white/40 text-xs text-center">Spin again to pick Contestant 2</p>

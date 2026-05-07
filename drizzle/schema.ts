@@ -261,6 +261,8 @@ export const forumPosts = mysqlTable("forum_posts", {
   pinned: boolean("pinned").default(false).notNull(),
   locked: boolean("locked").default(false).notNull(),
   viewCount: int("viewCount").default(0).notNull(),
+  audioUrl: varchar("audioUrl", { length: 1024 }),
+  audioTitle: varchar("audioTitle", { length: 256 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -274,6 +276,8 @@ export const forumComments = mysqlTable("forum_comments", {
   userId: int("userId").notNull(),
   body: text("body").notNull(),
   parentId: int("parentId"),  // null = top-level reply; set = nested reply
+  audioUrl: varchar("audioUrl", { length: 1024 }),
+  audioTitle: varchar("audioTitle", { length: 256 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -291,3 +295,18 @@ export const forumReactions = mysqlTable("forum_reactions", {
 });
 export type ForumReaction = typeof forumReactions.$inferSelect;
 export type InsertForumReaction = typeof forumReactions.$inferInsert;
+
+// Moderation Logs — admin action audit trail
+export const moderationLogs = mysqlTable("moderation_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  adminId: int("adminId").notNull(),
+  adminName: varchar("adminName", { length: 128 }).notNull(),
+  action: varchar("action", { length: 64 }).notNull(),  // e.g. "delete_post", "delete_comment"
+  targetType: varchar("targetType", { length: 64 }).notNull(),
+  targetId: int("targetId").notNull(),
+  targetPreview: varchar("targetPreview", { length: 512 }),  // snippet of deleted content
+  reason: varchar("reason", { length: 256 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ModerationLog = typeof moderationLogs.$inferSelect;
+export type InsertModerationLog = typeof moderationLogs.$inferInsert;

@@ -10,7 +10,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, ThumbsUp, ThumbsDown, MessageSquare, Trash2, Reply } from "lucide-react";
+import { ChevronLeft, ThumbsUp, ThumbsDown, MessageSquare, Trash2, Reply, Music, X, Upload, Play } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -36,6 +36,8 @@ interface CommentItemProps {
     body: string;
     createdAt: Date;
     parentId: number | null;
+    audioUrl?: string | null;
+    audioTitle?: string | null;
     author: { id: number; name: string | null; artistName: string | null; avatarUrl: string | null } | null;
     upvotes: number;
     downvotes: number;
@@ -80,6 +82,16 @@ function CommentItem({ comment, currentUserId, isAdmin, onReply, onDelete, onRea
 
             {/* Body */}
             <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">{comment.body}</p>
+            {/* Audio attachment */}
+            {comment.audioUrl && (
+              <div className="mt-2 border border-red-600/20 bg-red-950/10 p-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Music className="w-3 h-3 text-red-400" />
+                  <span className="text-xs text-red-400">{comment.audioTitle || "Audio"}</span>
+                </div>
+                <audio controls className="w-full h-7" src={comment.audioUrl} preload="none" style={{ accentColor: '#D10000' }} />
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex items-center gap-3 mt-2 text-xs text-white/40">
@@ -129,7 +141,33 @@ export default function ForumPost({ params }: ForumPostProps) {
   const [, navigate] = useLocation();
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [commentBody, setCommentBody] = useState("");
+  const [commentAudioUploading, setCommentAudioUploading] = useState(false);
+  const [commentUploadedAudio, setCommentUploadedAudio] = useState<{ url: string; title: string } | null>(null);
   const utils = trpc.useUtils();
+  const uploadAudio = trpc.forum.uploadAudio.useMutation();
+
+  const handleCommentAudioSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.match(/\.(mp3|wav|m4a|aac)$/i)) { toast.error("Only MP3, WAV, M4A, or AAC files allowed"); return; }
+    if (file.size > 15 * 1024 * 1024) { toast.error("File must be under 15MB"); return; }
+    setCommentAudioUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = (ev.target?.result as string).split(",")[1];
+        const result = await uploadAudio.mutateAsync({
+          fileName: file.name,
+          fileBase64: base64,
+          mimeType: file.type || "audio/mpeg",
+          title: file.name.replace(/\.[^.]+$/, ""),
+        });
+        setCommentUploadedAudio(result);
+        setCommentAudioUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch { toast.error("Audio upload failed"); setCommentAudioUploading(false); }
+  };
 
   const { data: post, isLoading, error } = trpc.forum.getPost.useQuery(
     { id: postId },
@@ -141,6 +179,7 @@ export default function ForumPost({ params }: ForumPostProps) {
       toast.success("Comment posted!");
       setCommentBody("");
       setReplyTo(null);
+      setCommentUploadedAudio(null);
       utils.forum.getPost.invalidate({ id: postId });
     },
     onError: (err) => toast.error(err.message),
@@ -173,6 +212,8 @@ export default function ForumPost({ params }: ForumPostProps) {
       postId,
       body: commentBody.trim(),
       parentId: replyTo ?? undefined,
+      audioUrl: commentUploadedAudio?.url,
+      audioTitle: commentUploadedAudio?.title,
     });
   };
 
@@ -302,6 +343,17 @@ export default function ForumPost({ params }: ForumPostProps) {
               {post.body}
             </div>
 
+            {/* Audio attachment */}
+            {post.audioUrl && (
+              <div className="mt-4 border border-red-600/30 bg-red-950/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Music className="w-4 h-4 text-red-400" />
+                  <span className="text-xs text-red-400 font-semibold uppercase tracking-widest">{post.audioTitle || "Audio"}</span>
+                </div>
+                <audio controls className="w-full h-8" src={post.audioUrl} preload="none" style={{ accentColor: '#D10000' }} />
+              </div>
+            )}
+
             {/* Reactions */}
             <div className="flex items-center gap-4 mt-5 pt-4 border-t border-white/10">
               <button
@@ -356,11 +408,32 @@ export default function ForumPost({ params }: ForumPostProps) {
                 className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[80px] resize-none mb-3"
                 maxLength={2000}
               />
+              {/* Audio attachment for comment */}
+              <div className="mb-3">
+                {commentUploadedAudio ? (
+                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5">
+                    <Music className="w-3 h-3 text-red-400 shrink-0" />
+                    <span className="text-xs text-white/70 truncate flex-1">{commentUploadedAudio.title}</span>
+                    <button onClick={() => setCommentUploadedAudio(null)} className="text-white/30 hover:text-red-400">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : commentAudioUploading ? (
+                  <div className="flex items-center gap-2 text-xs text-white/30">
+                    <Upload className="w-3 h-3 animate-pulse" /> Uploading audio...
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 text-xs text-white/30 cursor-pointer hover:text-white/50 transition-colors">
+                    <Music className="w-3 h-3" /> Attach audio (MP3/WAV/M4A/AAC, max 15MB)
+                    <input type="file" accept=".mp3,.wav,.m4a,.aac,audio/*" className="hidden" onChange={handleCommentAudioSelect} />
+                  </label>
+                )}
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/30">{commentBody.length}/2000</span>
                 <Button
                   onClick={handleSubmitComment}
-                  disabled={!commentBody.trim() || createComment.isPending}
+                  disabled={!commentBody.trim() || createComment.isPending || commentAudioUploading}
                   className="bg-red-600 hover:bg-red-700 text-white text-xs uppercase tracking-widest px-5"
                 >
                   {createComment.isPending ? "Posting..." : replyTo ? "Reply" : "Comment"}

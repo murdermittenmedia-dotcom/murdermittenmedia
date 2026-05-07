@@ -1,5 +1,9 @@
 /* ============================================================
    Shared site navigation for Murder Mitten Media
+   Tab order per spec:
+   1. Home  2. Live Now  3. Music Review  4. Murder Mitten Mic Drops
+   5. Forum  6. Latest News  7. Explore  8. Leaderboards
+   9. Artist of the Week  10. Meeting With The Mitten Podcast  11. Get Promoted
    ============================================================ */
 
 import { useState, useEffect, useRef } from "react";
@@ -10,20 +14,19 @@ const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
 // Primary links — always visible on desktop (kept short so they fit)
 const PRIMARY_LINKS = [
-  { href: "/live", label: "Live", live: true },
-  { href: "/music-wars", label: "Music Wars" },
+  { href: "/live", label: "Live Now", live: true },
   { href: "/review", label: "Music Review" },
-  { href: "/mic", label: "Mic" },
+  { href: "/mic", label: "Mic Drops" },
   { href: "/forum", label: "Forum" },
-  { href: "/latest-posts", label: "Latest Posts" },
+  { href: "/latest-news", label: "Latest News" },
+  { href: "/explore", label: "Explore" },
 ];
 
 // Secondary links — shown in "More" dropdown
 const MORE_LINKS = [
-  { href: "/search", label: "Search" },
-  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/leaderboard", label: "Leaderboards" },
   { href: "/artist-of-the-week", label: "Artist of the Week" },
-  { href: "/podcast", label: "Podcast" },
+  { href: "/podcast", label: "Meeting With The Mitten" },
   { href: "/promo", label: "Get Promoted" },
 ];
 
@@ -58,7 +61,6 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
     : "bg-[#080808]/95 backdrop-blur-sm border-b border-white/10";
 
   const displayName = user?.artistName || user?.name || user?.email || "";
-  // Show profile picture if available
   const avatarUrl = (user as any)?.avatarUrl as string | null | undefined;
 
   return (
@@ -72,8 +74,8 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
           </span>
         </a>
 
-        {/* Desktop nav — no overflow, uses More dropdown for extra links */}
-        <div className="hidden lg:flex items-center gap-5 text-sm text-white/60 font-medium">
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-4 text-sm text-white/60 font-medium">
           {PRIMARY_LINKS.map(link => (
             <a
               key={link.href}
@@ -96,7 +98,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
               </svg>
             </button>
             {moreOpen && (
-              <div className="absolute top-full left-0 mt-2 w-52 bg-[#111] border border-white/10 shadow-xl py-1 z-50">
+              <div className="absolute top-full left-0 mt-2 w-56 bg-[#111] border border-white/10 shadow-xl py-1 z-50">
                 {MORE_LINKS.map(link => (
                   <a
                     key={link.href}
@@ -123,7 +125,6 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 
           {user ? (
             <>
-              {/* My Profile button → navigates to /profile */}
               <a
                 href="/profile"
                 className="hidden sm:flex items-center gap-2 text-xs uppercase tracking-widest border border-white/20 text-white/60 px-3 py-2 hover:border-red-600 hover:text-red-400 transition-all duration-200"
@@ -183,7 +184,6 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
       {menuOpen && (
         <div className="lg:hidden bg-[#080808] border-t border-white/10 py-4">
           <div className="container flex flex-col gap-1">
-            {/* My Profile in mobile menu */}
             {user && (
               <a
                 href="/profile"
@@ -213,7 +213,6 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
               </a>
             ))}
 
-            {/* Login / Logout */}
             {user ? (
               <button
                 onClick={() => { logout(); setMenuOpen(false); }}
