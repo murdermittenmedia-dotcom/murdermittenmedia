@@ -148,7 +148,7 @@ export default function Home() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navScrolled ? "bg-[#080808]/95 backdrop-blur-sm border-b border-white/10" : "bg-transparent"}`}>
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+            <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media" className="w-10 h-10 rounded-full object-cover" />
             <span className="font-['Anton'] text-xl tracking-wider">
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
@@ -183,7 +183,7 @@ export default function Home() {
         <div className="container relative z-10 pt-24 pb-16">
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+              <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media Logo" className="w-16 h-16 rounded-full object-cover border-2 border-red-600/50" />
               <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">Detroit, MI · Est. 2022</span>
             </div>
             <h1 className="font-['Anton'] text-6xl md:text-8xl lg:text-[110px] leading-none mb-6 uppercase" style={{ textShadow: "0 0 60px rgba(209,0,0,0.2)" }}>
@@ -360,7 +360,7 @@ export default function Home() {
       <footer className="border-t border-white/10 py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+            <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media" className="w-8 h-8 rounded-full object-cover" />
             <span className="font-['Anton'] text-lg tracking-wider">
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>

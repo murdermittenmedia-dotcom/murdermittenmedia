@@ -20,3 +20,4 @@
   - [x] "Buy Promo" CTA in navbar and hero
 - [x] Promo CTA section on homepage
 - [ ] Connect Instagram Graph API credentials for live feed (INSTAGRAM_ACCESS_TOKEN + INSTAGRAM_USER_ID)
+- [x] Add Murder Mitten Media logo to navbar, hero, and footer on all pages

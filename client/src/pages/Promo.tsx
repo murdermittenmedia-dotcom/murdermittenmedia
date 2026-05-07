@@ -117,7 +117,7 @@ export default function Promo() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/95 backdrop-blur-sm border-b border-white/10">
         <div className="container flex items-center justify-between h-16">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+            <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media" className="w-10 h-10 rounded-full object-cover" />
             <span className="font-['Anton'] text-xl tracking-wider">
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
@@ -132,9 +132,12 @@ export default function Promo() {
       <section className="pt-32 pb-16 text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 to-transparent" />
         <div className="container relative z-10">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-            <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">Detroit, MI · Est. 2022</span>
+          <div className="flex flex-col items-center gap-4 mb-6">
+            <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media Logo" className="w-24 h-24 rounded-full object-cover border-2 border-red-600/50 shadow-[0_0_30px_rgba(209,0,0,0.3)]" />
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+              <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">Detroit, MI · Est. 2022</span>
+            </div>
           </div>
           <h1 className="font-['Anton'] text-6xl md:text-8xl uppercase mb-4">
             PROMO <span className="text-red-600">PACKAGES</span>
@@ -321,7 +324,7 @@ export default function Promo() {
       <footer className="border-t border-white/10 py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+            <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media" className="w-8 h-8 rounded-full object-cover" />
             <span className="font-['Anton'] text-lg tracking-wider">
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
