@@ -433,3 +433,13 @@
 - [x] Fix Music Review: live "Now Being Reviewed" banner visible to all viewers with working audio
 - [x] Fix forum audio upload: invalid_format error — audioUrl validation rejects S3 path, must store fileKey and serve via /manus-storage/ URL
 - [x] Add logo as home button to all pages missing it (pages that don't use SiteNav or have no back navigation)
+
+## Session 8 — Audio Player Complete Revamp
+- [x] Rebuild AudioPlayerContext: clean queue, presigned URL resolution, play/pause/skip/prev/seek/volume, onEnded auto-advance
+- [x] Rewrite FloatingPlayer: persistent bottom bar, progress scrubber, volume slider, queue panel, track info
+- [x] Fix MusicReview admin play button end-to-end (presigned URL resolved before broadcast)
+- [x] Fix MusicWars/ArtistStatModal play buttons end-to-end
+- [x] Fix Forum/ForumPost audio play buttons end-to-end (usePlayTrack hook, no native audio elements)
+- [x] Fix Search page play buttons end-to-end
+- [x] Fix UserProfile play buttons end-to-end
+- [x] Verify all pages have working audio playback

@@ -10,10 +10,72 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, ThumbsUp, ThumbsDown, MessageSquare, Trash2, Reply, Music, X, Upload, Play } from "lucide-react";
+import { ChevronLeft, ThumbsUp, ThumbsDown, MessageSquare, Trash2, Reply, Music, X, Upload, Play, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { usePlayTrack } from "@/hooks/usePlayTrack";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+
+// ── Inline audio player component that uses the global player ──────────────
+function ForumAudioPlayer({
+  audioUrl, audioTitle, artist, sourcePage, sourceUrl, large = false
+}: {
+  audioUrl: string; audioTitle: string; artist: string;
+  sourcePage: string; sourceUrl: string; large?: boolean;
+}) {
+  const { playTrack, isResolving } = usePlayTrack();
+  const { track: currentTrack, isPlaying, pause, resume } = useAudioPlayer();
+  const isThisTrack = currentTrack?.url && currentTrack.title === audioTitle && currentTrack.artist === artist;
+
+  const handleClick = async () => {
+    if (isThisTrack) {
+      isPlaying ? pause() : resume();
+      return;
+    }
+    await playTrack({
+      url: audioUrl,
+      title: audioTitle,
+      artist,
+      sourcePage,
+      sourceUrl,
+    });
+  };
+
+  return (
+    <div className={`mt-2 border border-red-600/20 bg-red-950/10 rounded p-2.5 flex items-center gap-3 ${large ? "mt-4 p-3" : ""}`}>
+      <button
+        onClick={handleClick}
+        disabled={isResolving}
+        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+          isThisTrack && isPlaying
+            ? "bg-red-600 hover:bg-red-700"
+            : "bg-red-600/20 border border-red-600/40 hover:bg-red-600/40"
+        }`}
+      >
+        {isResolving ? (
+          <Loader2 className="w-3.5 h-3.5 text-red-400 animate-spin" />
+        ) : isThisTrack && isPlaying ? (
+          <span className="w-3 h-3 flex items-center justify-center gap-0.5">
+            <span className="w-0.5 h-3 bg-white rounded-full" />
+            <span className="w-0.5 h-3 bg-white rounded-full" />
+          </span>
+        ) : (
+          <Play className="w-3.5 h-3.5 text-red-400 ml-0.5" />
+        )}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <Music className={`flex-shrink-0 text-red-400 ${large ? "w-4 h-4" : "w-3 h-3"}`} />
+          <span className={`text-red-400 font-medium truncate ${large ? "text-sm" : "text-xs"}`}>{audioTitle}</span>
+        </div>
+        {isThisTrack && (
+          <div className="text-xs text-red-500/70 mt-0.5">{isPlaying ? "Playing in player ↓" : "Paused"}</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function timeAgo(date: Date | string) {
   try {
@@ -85,13 +147,13 @@ function CommentItem({ comment, currentUserId, isAdmin, onReply, onDelete, onRea
             <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">{comment.body}</p>
             {/* Audio attachment */}
             {comment.audioUrl && (
-              <div className="mt-2 border border-red-600/20 bg-red-950/10 p-2">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Music className="w-3 h-3 text-red-400" />
-                  <span className="text-xs text-red-400">{comment.audioTitle || "Audio"}</span>
-                </div>
-                <audio controls className="w-full h-7" src={comment.audioUrl} preload="none" style={{ accentColor: '#D10000' }} />
-              </div>
+              <ForumAudioPlayer
+                audioUrl={comment.audioUrl}
+                audioTitle={comment.audioTitle || "Audio"}
+                artist={comment.author?.artistName ?? comment.author?.name ?? "Anonymous"}
+                sourcePage="Forum"
+                sourceUrl="/forum"
+              />
             )}
 
             {/* Actions */}
@@ -347,13 +409,14 @@ export default function ForumPost({ params }: ForumPostProps) {
 
             {/* Audio attachment */}
             {post.audioUrl && (
-              <div className="mt-4 border border-red-600/30 bg-red-950/20 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Music className="w-4 h-4 text-red-400" />
-                  <span className="text-xs text-red-400 font-semibold uppercase tracking-widest">{post.audioTitle || "Audio"}</span>
-                </div>
-                <audio controls className="w-full h-8" src={post.audioUrl} preload="none" style={{ accentColor: '#D10000' }} />
-              </div>
+              <ForumAudioPlayer
+                audioUrl={post.audioUrl}
+                audioTitle={post.audioTitle || "Audio"}
+                artist={post.author?.artistName ?? post.author?.name ?? "Anonymous"}
+                sourcePage="Forum"
+                sourceUrl="/forum"
+                large
+              />
             )}
 
             {/* Reactions */}

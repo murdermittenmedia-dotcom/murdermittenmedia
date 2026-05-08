@@ -134,23 +134,35 @@ function AdminPanel({
     toast.success(isLive ? "Stream ended" : "You're now live!");
   };
 
-  const handleSetPlaying = (id: number) => {
+  const utils = trpc.useUtils();
+  const handleSetPlaying = async (id: number) => {
     const sub = queue.find(s => s.id === id);
+    if (!sub) return;
+    // Resolve presigned URL first so all viewers get a direct playable URL
+    let resolvedAudioUrl: string | null = null;
+    if (sub.fileKey) {
+      try {
+        const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: sub.fileKey });
+        resolvedAudioUrl = url;
+      } catch {
+        resolvedAudioUrl = sub.fileUrl ?? null;
+      }
+    } else if (sub.fileUrl) {
+      resolvedAudioUrl = sub.fileUrl;
+    }
     setPlaying.mutate({ submissionId: id }, {
       onSuccess: () => {
-        if (sub) {
-          // Actually start audio playback in the global player
-          playTrack(sub);
-          broadcastReviewActive({
-            submissionId: sub.id,
-            artistName: sub.artistName,
-            songTitle: sub.songTitle,
-            audioUrl: sub.fileUrl ?? null,
-            youtubeUrl: sub.youtubeUrl ?? null,
-            submissionType: sub.submissionType,
-          });
-          broadcastReviewQueueUpdated();
-        }
+        // Actually start audio playback in the global player
+        playTrack(sub);
+        broadcastReviewActive({
+          submissionId: sub.id,
+          artistName: sub.artistName,
+          songTitle: sub.songTitle,
+          audioUrl: resolvedAudioUrl,
+          youtubeUrl: sub.youtubeUrl ?? null,
+          submissionType: sub.submissionType,
+        });
+        broadcastReviewQueueUpdated();
       }
     });
     toast.success("Now playing track");
@@ -806,13 +818,20 @@ export default function MusicReview() {
                 <div className="font-['Anton'] text-2xl uppercase">{liveReviewActive.songTitle}</div>
                 <div className="text-white/60 text-sm mb-3">by {liveReviewActive.artistName}</div>
                 {liveReviewActive.audioUrl && (
-                  <audio
-                    ref={liveAudioRef}
-                    src={liveReviewActive.audioUrl}
-                    controls
-                    className="w-full h-8 mt-1"
-                    style={{ accentColor: "#dc2626" }}
-                  />
+                  <button
+                    onClick={() => audioPlayer.play({
+                      url: liveReviewActive.audioUrl!,
+                      title: liveReviewActive.songTitle ?? "Live Review",
+                      artist: liveReviewActive.artistName,
+                      isStream: false,
+                      sourcePage: "Music Review",
+                      sourceUrl: "/music-review",
+                    })}
+                    className="flex items-center gap-2 mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold uppercase tracking-widest transition-colors"
+                  >
+                    <Play className="w-4 h-4" />
+                    Play in Player
+                  </button>
                 )}
                 {liveReviewActive.youtubeUrl && (
                   <a
