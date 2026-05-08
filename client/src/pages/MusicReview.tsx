@@ -551,8 +551,32 @@ export default function MusicReview() {
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
   });
 
-  const reactMutation = trpc.queue.react.useMutation({ onSuccess: () => refetch() });
+  const reactMutation = trpc.queue.react.useMutation({
+    onSuccess: () => {
+      refetch();
+      refetchMyReaction();
+      refetchReactions();
+    },
+    onError: (err) => {
+      if (err.message.includes("Already voted")) {
+        toast.error("You already voted on this track!");
+      } else {
+        toast.error(err.message);
+      }
+    },
+  });
   const updateStatusMutation = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
+
+  // Poll queries for the currently playing submission
+  const currentPlayingId = data?.currentPlaying?.id ?? null;
+  const { data: myReaction, refetch: refetchMyReaction } = trpc.queue.getMyReaction.useQuery(
+    { submissionId: currentPlayingId! },
+    { enabled: !!user && !!currentPlayingId, refetchInterval: 5000 }
+  );
+  const { data: reactionCounts, refetch: refetchReactions } = trpc.queue.getReactions.useQuery(
+    { submissionId: currentPlayingId! },
+    { enabled: !!currentPlayingId, refetchInterval: 5000 }
+  );
 
   // Auto-mark as reviewed when a queued track finishes playing
   useEffect(() => {
@@ -1054,32 +1078,121 @@ export default function MusicReview() {
               </div>
             )}
 
-            {/* Currently playing banner (fallback when no live socket active) */}
-            {!liveReviewActive && currentPlaying && (
-              <div className="mb-6 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent" />
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Playing</span>
-                </div>
-                <div className="font-['Anton'] text-2xl uppercase">{currentPlaying.songTitle}</div>
-                <div className="text-white/60 text-sm">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
-                {currentPlaying.fileUrl && (
-                  <div className="mt-3">
-                    <AudioPlayButton
-                      url={currentPlaying.fileUrl}
-                      urlSource="queue"
-                      title={currentPlaying.songTitle}
-                      artist={currentPlaying.artistName}
-                      submissionId={currentPlaying.id}
-                      sourcePage="Music Review"
-                      sourceUrl="/review"
-                      size="md"
-                    />
+            {/* Currently playing banner with Fire/Trash poll */}
+            {!liveReviewActive && currentPlaying && (() => {
+              const fire = reactionCounts?.fire ?? currentPlaying.fireCount ?? 0;
+              const trash = reactionCounts?.trash ?? currentPlaying.trashCount ?? 0;
+              const total = fire + trash;
+              const firePct = total > 0 ? Math.round((fire / total) * 100) : 50;
+              const trashPct = total > 0 ? 100 - firePct : 50;
+              const hasVoted = !!myReaction;
+              const myVote = myReaction?.reaction ?? null;
+              return (
+                <div className="mb-6 border border-red-600/50 bg-red-600/10 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent animate-pulse" />
+                  {/* Header */}
+                  <div className="p-5 pb-3">
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Playing</span>
+                    </div>
+                    <div className="font-['Anton'] text-2xl uppercase">{currentPlaying.songTitle}</div>
+                    <div className="text-white/60 text-sm mb-3">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
+                    {currentPlaying.fileUrl && (
+                      <AudioPlayButton
+                        url={currentPlaying.fileUrl}
+                        urlSource="queue"
+                        title={currentPlaying.songTitle}
+                        artist={currentPlaying.artistName}
+                        submissionId={currentPlaying.id}
+                        sourcePage="Music Review"
+                        sourceUrl="/review"
+                        size="md"
+                      />
+                    )}
+                    {currentPlaying.youtubeUrl && !currentPlaying.fileUrl && (
+                      <a href={currentPlaying.youtubeUrl} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1">
+                        <ExternalLink className="w-3.5 h-3.5" /> Open on YouTube
+                      </a>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                  {/* Poll divider */}
+                  <div className="border-t border-white/10 mx-5" />
+                  {/* Poll label */}
+                  <div className="px-5 pt-4 pb-2 text-center">
+                    <span className="text-white/40 text-xs uppercase tracking-[0.2em] font-semibold">
+                      {hasVoted ? (myVote === "fire" ? "🔥 You voted Fire" : "🗑️ You voted Trash") : "Cast Your Vote"}
+                    </span>
+                  </div>
+                  {/* Vote buttons */}
+                  <div className="grid grid-cols-2 divide-x divide-white/10">
+                    <button
+                      onClick={() => {
+                        if (!user) { toast.error("Login to vote"); return; }
+                        if (hasVoted) { toast.error("You already voted!"); return; }
+                        reactMutation.mutate({ submissionId: currentPlaying.id, reaction: "fire" });
+                      }}
+                      disabled={hasVoted || reactMutation.isPending}
+                      className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
+                        myVote === "fire"
+                          ? "bg-orange-500/20 cursor-default"
+                          : hasVoted
+                          ? "opacity-40 cursor-not-allowed"
+                          : "hover:bg-orange-500/10 active:bg-orange-500/20 cursor-pointer"
+                      }`}
+                    >
+                      <span className={`text-6xl transition-transform duration-200 select-none ${
+                        myVote === "fire" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
+                      }`}>🔥</span>
+                      <div className="text-center">
+                        <div className={`font-['Anton'] text-2xl transition-colors ${
+                          myVote === "fire" ? "text-orange-300" : "text-orange-400 group-hover:text-orange-300"
+                        }`}>FIRE</div>
+                        <div className="text-white/30 text-xs uppercase tracking-widest">This a banger</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!user) { toast.error("Login to vote"); return; }
+                        if (hasVoted) { toast.error("You already voted!"); return; }
+                        reactMutation.mutate({ submissionId: currentPlaying.id, reaction: "trash" });
+                      }}
+                      disabled={hasVoted || reactMutation.isPending}
+                      className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
+                        myVote === "trash"
+                          ? "bg-blue-500/20 cursor-default"
+                          : hasVoted
+                          ? "opacity-40 cursor-not-allowed"
+                          : "hover:bg-blue-500/10 active:bg-blue-500/20 cursor-pointer"
+                      }`}
+                    >
+                      <span className={`text-6xl transition-transform duration-200 select-none ${
+                        myVote === "trash" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
+                      }`}>🗑️</span>
+                      <div className="text-center">
+                        <div className={`font-['Anton'] text-2xl transition-colors ${
+                          myVote === "trash" ? "text-blue-300" : "text-blue-400 group-hover:text-blue-300"
+                        }`}>TRASH</div>
+                        <div className="text-white/30 text-xs uppercase tracking-widest">Next track please</div>
+                      </div>
+                    </button>
+                  </div>
+                  {/* Live results bar */}
+                  <div className="border-t border-white/10">
+                    <div className="flex">
+                      <div className="h-2 bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700" style={{ width: `${firePct}%` }} />
+                      <div className="h-2 bg-gradient-to-l from-blue-600 to-blue-400 transition-all duration-700" style={{ width: `${trashPct}%` }} />
+                    </div>
+                    <div className="flex justify-between px-5 py-2.5 text-xs">
+                      <span className="text-orange-400 font-bold">🔥 {fire} Fire ({firePct}%)</span>
+                      <span className="text-white/30">{total} vote{total !== 1 ? "s" : ""} · updates live</span>
+                      <span className="text-blue-400 font-bold">{trashPct}% Trash 🗑️ {trash}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Tabs */}
             <div className="flex gap-0 mb-6 border border-white/10">
