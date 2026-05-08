@@ -495,13 +495,25 @@ async function startServer() {
         isPlaying: true,
         tripleTheatMode: data.tracks.length > 2,
       };
+      // Broadcast to music_wars room for UI updates
       io.to("music_wars").emit("wars_radio:playing", { ...warsRadioState });
+      // Broadcast site-wide so FloatingPlayer on all pages auto-plays
+      if (warsRadioState.tracks.length > 0) {
+        const currentTrack = warsRadioState.tracks[warsRadioState.currentIndex];
+        io.emit("wars:now_playing", {
+          url: currentTrack.songUrl,
+          title: currentTrack.songTitle,
+          artist: currentTrack.contestantName,
+          startedAt: warsRadioState.startedAt,
+        });
+      }
     });
 
     socket.on("wars_radio:pause", (data: { currentTime: number }) => {
       warsRadioState.pausedAt = data.currentTime;
       warsRadioState.isPlaying = false;
       io.to("music_wars").emit("wars_radio:paused", { pausedAt: data.currentTime });
+      io.emit("wars:paused", { pausedAt: data.currentTime });
     });
 
     socket.on("wars_radio:resume", (data: { currentTime: number }) => {
@@ -509,12 +521,14 @@ async function startServer() {
       warsRadioState.pausedAt = null;
       warsRadioState.isPlaying = true;
       io.to("music_wars").emit("wars_radio:resumed", { startedAt: warsRadioState.startedAt });
+      io.emit("wars:resumed", { startedAt: warsRadioState.startedAt });
     });
 
     socket.on("wars_radio:seek", (data: { currentTime: number }) => {
       warsRadioState.startedAt = Date.now() - data.currentTime * 1000;
       if (warsRadioState.pausedAt !== null) warsRadioState.pausedAt = data.currentTime;
       io.to("music_wars").emit("wars_radio:seeked", { currentTime: data.currentTime, startedAt: warsRadioState.startedAt });
+      io.emit("wars:seeked", { currentTime: data.currentTime, startedAt: warsRadioState.startedAt });
     });
 
     socket.on("wars_radio:skip", () => {
@@ -525,10 +539,19 @@ async function startServer() {
         warsRadioState.pausedAt = null;
         warsRadioState.isPlaying = true;
         io.to("music_wars").emit("wars_radio:playing", { ...warsRadioState });
+        // Broadcast new track site-wide
+        const currentTrack = warsRadioState.tracks[warsRadioState.currentIndex];
+        io.emit("wars:now_playing", {
+          url: currentTrack.songUrl,
+          title: currentTrack.songTitle,
+          artist: currentTrack.contestantName,
+          startedAt: warsRadioState.startedAt,
+        });
       } else {
         // All tracks played
         warsRadioState.isPlaying = false;
         io.to("music_wars").emit("wars_radio:ended");
+        io.emit("wars:stopped");
       }
     });
 
@@ -540,16 +563,26 @@ async function startServer() {
         warsRadioState.pausedAt = null;
         warsRadioState.isPlaying = true;
         io.to("music_wars").emit("wars_radio:playing", { ...warsRadioState });
+        // Broadcast new track site-wide
+        const currentTrack = warsRadioState.tracks[warsRadioState.currentIndex];
+        io.emit("wars:now_playing", {
+          url: currentTrack.songUrl,
+          title: currentTrack.songTitle,
+          artist: currentTrack.contestantName,
+          startedAt: warsRadioState.startedAt,
+        });
       } else {
         // All tracks played — battle audio complete
         warsRadioState.isPlaying = false;
         io.to("music_wars").emit("wars_radio:ended");
+        io.emit("wars:stopped");
       }
     });
 
     socket.on("wars_radio:stop", () => {
       warsRadioState = { tracks: [], currentIndex: 0, startedAt: null, pausedAt: null, isPlaying: false, tripleTheatMode: false };
       io.to("music_wars").emit("wars_radio:stopped");
+      io.emit("wars:stopped");
     });
 
     socket.on("wars_radio:set_triple_threat", (data: { enabled: boolean }) => {

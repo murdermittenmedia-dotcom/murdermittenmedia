@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import FloatingPlayer from "./components/FloatingPlayer";
 import { useLivePlayer } from "./hooks/useLivePlayer";
+import { useWarsLivePlayer } from "./hooks/useWarsLivePlayer";
 import Home from "./pages/Home";
 import Promo from "./pages/Promo";
 import MurderMittenMic from "./pages/MurderMittenMic";
@@ -62,9 +63,10 @@ function Router() {
   );
 }
 
-/** Mounts the live-player listener inside AudioPlayerProvider context */
+/** Mounts the live-player listeners inside AudioPlayerProvider context */
 function LivePlayerMount() {
   useLivePlayer();
+  useWarsLivePlayer();
   return null;
 }
 

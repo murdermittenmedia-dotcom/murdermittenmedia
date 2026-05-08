@@ -552,3 +552,16 @@
 - [x] Prevents fake pages using real artist names — users can verify authenticity
 - [x] Music Wars ChatPanel already had clickable usernames via ArtistStatModal
 - [x] Updated Music Review chat to use clickable usernames via ArtistStatModal
+
+## Session 14 — Music Wars Radio Feed + Live Now Hub
+
+- [x] Add Music Wars radio feed (same sync as Music Review — admin plays contestant tracks, all viewers hear synced)
+- [x] Extend server radio system to support both music_review and music_wars radio streams (added wars:* site-wide broadcasts)
+- [x] Add wars_radio:load, wars_radio:pause, wars_radio:resume, wars_radio:seek, wars_radio:stop socket events (already existed, now broadcast site-wide)
+- [x] Update useWarsRadio hook to broadcast/sync contestant audio playback (created useWarsLivePlayer for global sync)
+- [x] Add play/pause button to FloatingPlayer for Music Wars live streams (already works via isStream flag)
+- [x] Update Live Now page with quick-access buttons to active radio feeds (already implemented in LiveStream.tsx)
+- [x] Show "Music Review Live" button if review stream is broadcasting (already shows Join Now button)
+- [x] Show "Music Wars Live" button if battle stream is broadcasting (already shows Join Now button)
+- [x] Clicking button navigates to the active stream page and auto-plays the feed (auto-redirect + FloatingPlayer auto-plays)
+- [x] Smart routing: only show buttons for currently active streams (already checks isLive flags)
