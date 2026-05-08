@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ThumbsUp, ThumbsDown, MessageSquare, Trash2, Reply, Music, X, Upload, Play, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
+import { ArtistLink } from "@/components/ArtistLink";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
@@ -138,7 +139,7 @@ function CommentItem({ comment, currentUserId, isAdmin, onReply, onDelete, onRea
             {/* Author + time */}
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-semibold text-white/80">
-                {comment.author?.artistName ?? comment.author?.name ?? "Anonymous"}
+                <ArtistLink artistName={comment.author?.artistName ?? comment.author?.name ?? 'Anonymous'} userId={comment.author?.id} />
               </span>
               <span className="text-xs text-white/30">{timeAgo(comment.createdAt)}</span>
             </div>
@@ -396,7 +397,7 @@ export default function ForumPost({ params }: ForumPostProps) {
               </div>
               <div>
                 <div className="text-sm font-semibold text-white/80">
-                  {post.author?.artistName ?? post.author?.name ?? "Anonymous"}
+                  <ArtistLink artistName={post.author?.artistName ?? post.author?.name ?? 'Anonymous'} userId={post.author?.id} />
                 </div>
                 <div className="text-xs text-white/40">{timeAgo(post.createdAt)}</div>
               </div>

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MessageSquare, ThumbsUp, ThumbsDown, Eye, Plus, Flame, Pin, Music, X, Upload } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { ArtistLink } from "@/components/ArtistLink";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -320,7 +321,7 @@ export default function Forum() {
                       {/* Meta row */}
                       <div className="flex items-center gap-4 text-xs text-white/40">
                         <span className="font-medium text-white/60">
-                          {post.author?.artistName ?? post.author?.name ?? "Anonymous"}
+                          <ArtistLink artistName={post.author?.artistName ?? post.author?.name ?? "Anonymous"} userId={post.author?.id} />
                         </span>
                         <span>{timeAgo(post.createdAt)}</span>
                         <span className="flex items-center gap-1">

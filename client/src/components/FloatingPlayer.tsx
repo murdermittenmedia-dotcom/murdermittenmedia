@@ -24,6 +24,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
+import { ArtistLink } from "@/components/ArtistLink";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || seconds <= 0) return "0:00";
@@ -195,7 +196,7 @@ export default function FloatingPlayer() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className={`text-sm truncate ${isCurrent ? "text-white font-semibold" : "text-white/70"}`}>{item.title}</div>
-                      <div className="text-xs text-white/40 truncate">{item.artistName}</div>
+                      <div className="text-xs text-white/40 truncate"><ArtistLink artistName={item.artistName} userId={null} /></div>
                     </div>
                     {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
                   </div>
@@ -223,7 +224,7 @@ export default function FloatingPlayer() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className={`text-sm truncate ${isCurrent ? "text-white font-semibold" : "text-white/70"}`}>{item.title}</div>
-                      {item.artist && <div className="text-xs text-white/40 truncate">{item.artist}</div>}
+                      {item.artist && <div className="text-xs text-white/40 truncate"><ArtistLink artistName={item.artist} userId={item.artistUserId ?? null} /></div>}
                     </div>
                     {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
                   </div>

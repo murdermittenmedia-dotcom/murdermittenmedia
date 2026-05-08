@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Search as SearchIcon, User, Music, MapPin, ExternalLink } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { ArtistLink } from "@/components/ArtistLink";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -185,7 +186,7 @@ export default function Search() {
                             {song.title}
                           </div>
                           <div className="text-xs text-white/40 truncate">
-                            {song.artistName}
+                            <ArtistLink artistName={song.artistName ?? 'Unknown'} userId={song.userId} />
                             {song.genre && <span className="ml-2 text-white/25">· {song.genre}</span>}
                           </div>
                         </div>

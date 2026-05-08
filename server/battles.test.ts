@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Mock mysql2/promise so no real DB connection is attempted
+vi.mock("mysql2/promise", () => ({
+  createConnection: vi.fn().mockRejectedValue(new Error("No DB in test")),
+  createPool: vi.fn().mockReturnValue({
+    query: vi.fn().mockRejectedValue(new Error("No DB in test")),
+    end: vi.fn(),
+  }),
+}));
+
 // Mock the DB module so tests don't need a real database
 vi.mock("./db", async () => {
   const actual = await vi.importActual<typeof import("./db")>("./db");

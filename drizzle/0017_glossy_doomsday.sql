@@ -1,0 +1,1 @@
+ALTER TABLE `review_submissions` ADD `userId` int;

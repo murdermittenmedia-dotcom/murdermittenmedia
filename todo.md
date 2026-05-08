@@ -512,3 +512,9 @@
 - [x] Restore admin skip/pause/rewind controls on Music Review page
 - [x] Make queue function as live radio — auto-advance to next track when current finishes
 - [x] All listeners hear same track in sync via socket broadcast
+
+## Clickable Artist Names & Catalogue Audio Fix
+
+- [ ] Make artist names clickable everywhere (links to /profile/:userId)
+- [ ] Fix music catalogue audio playback on profile page (same presigned URL issue)
+- [ ] Ensure every user gets a profile page at /profile/:userId on signup

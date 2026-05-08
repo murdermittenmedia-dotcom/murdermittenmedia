@@ -350,6 +350,7 @@ export const appRouter = router({
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
         await addSubmission({
+          userId: ctx.user.id,
           artistName,
           songTitle: input.songTitle,
           submissionType: input.submissionType,
@@ -419,8 +420,9 @@ export const appRouter = router({
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         await addSubmission({
+          userId: ctx.user.id,
           artistName: input.artistName,
           songTitle: input.songTitle,
           submissionType: "file",
@@ -457,6 +459,7 @@ export const appRouter = router({
         const key = `queue-submissions/${Date.now()}-${artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
         const { url } = await storagePut(key, buffer, input.mimeType);
         await addSubmission({
+          userId: ctx.user.id,
           artistName,
           songTitle: input.songTitle,
           submissionType: "file",

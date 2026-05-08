@@ -4,10 +4,12 @@
    real file upload, persistent player, queue management
    ============================================================ */
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { ArtistLink } from "@/components/ArtistLink";
 import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/hooks/useChat";
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
@@ -15,7 +17,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 // Types inferred from tRPC query
-type ReviewSubmission = { id: number; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
+type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
 type QueueState = { id: number; isLive: boolean; liveMessage: string | null; streamUrl: string | null; currentPlayingId: number | null; updatedAt: Date };
 
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
@@ -346,7 +348,7 @@ function AdminPanel({
               </span>
             </div>
             <div className="text-white font-semibold text-sm truncate">{currentPlaying.songTitle}</div>
-            <div className="text-white/50 text-xs mb-3">by {currentPlaying.artistName}</div>
+            <div className="text-white/50 text-xs mb-3">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
             {/* Transport controls — Pause/Resume, Rewind, Skip */}
             <div className="grid grid-cols-4 gap-2 mb-2">
               <button
@@ -423,7 +425,7 @@ function AdminPanel({
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="text-white font-semibold truncate">{sub.songTitle}</div>
-                    <div className="text-white/40 truncate">{sub.artistName}</div>
+                    <div className="text-white/40 truncate"><ArtistLink artistName={sub.artistName} userId={sub.userId} /></div>
                   </div>
                   {sub.skippedLine && (
                     <span className={`text-[10px] font-bold px-1 flex-shrink-0 ${sub.skipPaymentConfirmed ? "text-yellow-400" : "text-yellow-600"}`}>
@@ -929,7 +931,7 @@ export default function MusicReview() {
                   <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Being Reviewed</span>
                 </div>
                 <div className="font-['Anton'] text-2xl uppercase">{liveReviewActive.songTitle}</div>
-                <div className="text-white/60 text-sm mb-3">by {liveReviewActive.artistName}</div>
+                <div className="text-white/60 text-sm mb-3">by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={null} /></div>
                 {liveReviewActive.audioUrl && (
                   <div className="mt-3">
                     <AudioPlayButton
@@ -1061,7 +1063,7 @@ export default function MusicReview() {
                   <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Playing</span>
                 </div>
                 <div className="font-['Anton'] text-2xl uppercase">{currentPlaying.songTitle}</div>
-                <div className="text-white/60 text-sm">by {currentPlaying.artistName}</div>
+                <div className="text-white/60 text-sm">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
                 {currentPlaying.fileUrl && (
                   <div className="mt-3">
                     <AudioPlayButton
@@ -1135,7 +1137,7 @@ export default function MusicReview() {
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-white truncate">{sub.songTitle}</div>
                           <div className="text-white/50 text-xs truncate">
-                            {sub.artistName}
+                            <ArtistLink artistName={sub.artistName} userId={sub.userId} />
                             {sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-400 font-bold">⚡ Skip Confirmed</span>}
                             {sub.skippedLine && !sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-600">⚡ Pending Payment</span>}
                           </div>

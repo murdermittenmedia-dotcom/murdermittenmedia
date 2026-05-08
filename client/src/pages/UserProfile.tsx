@@ -284,9 +284,11 @@ function MusicCatalogue({
                 <AudioPlayButton
                   fileKey={song.fileKey ?? undefined}
                   url={song.fileUrl ?? undefined}
+                  urlSource="songs"
                   title={song.title}
                   artist={song.artistName}
                   sourcePage="Profile"
+                  sourceUrl={`/profile/${song.userId ?? ''}`}
                   size="md"
                 />
               ) : song.externalUrl ? (

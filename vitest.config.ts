@@ -15,5 +15,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    env: {
+      // Prevent tests from connecting to the real database
+      DATABASE_URL: "",
+    },
   },
 });

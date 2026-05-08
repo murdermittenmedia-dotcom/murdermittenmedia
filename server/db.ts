@@ -1015,13 +1015,14 @@ export async function getCombinedLeaderboard() {
     songTitle: reviewSubmissions.songTitle,
     fireCount: reviewSubmissions.fireCount,
     trashCount: reviewSubmissions.trashCount,
-    userId: sql<number | null>`NULL`,
+    userId: reviewSubmissions.userId,
   }).from(reviewSubmissions)
     .where(eq(reviewSubmissions.status, "reviewed"));
 
   // Aggregate by artist name
   const artistMap: Record<string, {
     artistName: string;
+    userId?: number | null;
     wins: number;
     losses: number;
     totalFire: number;
@@ -1031,23 +1032,25 @@ export async function getCombinedLeaderboard() {
     score: number;
   }> = {};
 
-  const ensureArtist = (name: string) => {
+  const ensureArtist = (name: string, userId?: number | null) => {
     const key = name.toLowerCase().trim();
     if (!artistMap[key]) {
-      artistMap[key] = { artistName: name, wins: 0, losses: 0, totalFire: 0, totalTrash: 0, totalBattles: 0, totalReviews: 0, score: 0 };
+      artistMap[key] = { artistName: name, userId: userId ?? null, wins: 0, losses: 0, totalFire: 0, totalTrash: 0, totalBattles: 0, totalReviews: 0, score: 0 };
     }
+    // Update userId if we have one and the existing entry doesn't
+    if (userId && !artistMap[key].userId) artistMap[key].userId = userId;
     return artistMap[key];
   };
 
   for (const b of battles) {
-    ensureArtist(b.winnerArtistName).wins++;
-    ensureArtist(b.winnerArtistName).totalBattles++;
-    ensureArtist(b.loserArtistName).losses++;
-    ensureArtist(b.loserArtistName).totalBattles++;
+    ensureArtist(b.winnerArtistName, b.winnerId).wins++;
+    ensureArtist(b.winnerArtistName, b.winnerId).totalBattles++;
+    ensureArtist(b.loserArtistName, b.loserId).losses++;
+    ensureArtist(b.loserArtistName, b.loserId).totalBattles++;
   }
 
   for (const s of submissions) {
-    const a = ensureArtist(s.artistName);
+    const a = ensureArtist(s.artistName, s.userId);
     a.totalFire += s.fireCount ?? 0;
     a.totalTrash += s.trashCount ?? 0;
     a.totalReviews++;

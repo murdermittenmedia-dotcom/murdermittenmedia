@@ -65,7 +65,7 @@ function SongRow({
         {/* Play button — AudioPlayButton for files, embed toggle for YouTube, link for others */}
         {!isExternalOnly ? (
           <AudioPlayButton
-            fileKey={song.fileKey}
+            fileKey={song.fileKey ?? undefined}
             url={song.fileUrl}
             urlSource="songs"
             title={song.title}
