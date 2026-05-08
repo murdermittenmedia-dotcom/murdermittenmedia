@@ -506,3 +506,9 @@
 - [ ] MusicReview viewer: Fire/Trash poll visible when track is playing
 - [ ] MusicReview viewer: queue list shows position, no individual play buttons
 - [ ] MusicReview: past played tracks section with clickable artist names
+
+## Music Review — Admin Controls & Live Radio Fix (Current)
+
+- [x] Restore admin skip/pause/rewind controls on Music Review page
+- [x] Make queue function as live radio — auto-advance to next track when current finishes
+- [x] All listeners hear same track in sync via socket broadcast

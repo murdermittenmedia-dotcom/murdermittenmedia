@@ -20,9 +20,9 @@ type QueueState = { id: number; isLive: boolean; liveMessage: string | null; str
 
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
 import {
-  Mic, MicOff, Video, VideoOff, Radio, Play, SkipForward,
+  Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
-  ExternalLink, Flame, ThumbsDown, Crown, AlertCircle,
+  ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -338,17 +338,51 @@ function AdminPanel({
         {/* Now playing controls */}
         {currentPlaying && (
           <div className="border border-red-600/30 bg-red-600/5 p-3">
-            <div className="text-red-400 text-xs uppercase tracking-wider font-bold mb-2">Now Playing</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-red-400 text-xs uppercase tracking-wider font-bold">Now Playing</div>
+              <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                LIVE
+              </span>
+            </div>
             <div className="text-white font-semibold text-sm truncate">{currentPlaying.songTitle}</div>
             <div className="text-white/50 text-xs mb-3">by {currentPlaying.artistName}</div>
-            <div className="flex gap-2">
+            {/* Transport controls — Pause/Resume, Rewind, Skip */}
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              <button
+                onClick={() => broadcastRadioPause(0)}
+                className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
+                title="Pause for all listeners"
+              >
+                <Pause className="w-3.5 h-3.5" />
+                Pause
+              </button>
+              <button
+                onClick={() => broadcastRadioResume(0)}
+                className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
+                title="Resume for all listeners"
+              >
+                <Play className="w-3.5 h-3.5" />
+                Play
+              </button>
+              <button
+                onClick={() => broadcastRadioSeek(0)}
+                className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
+                title="Rewind to start for all listeners"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Rewind
+              </button>
               <button
                 onClick={handleSkip}
-                className="flex-1 flex items-center justify-center gap-1.5 border border-white/20 text-white/60 hover:text-white py-2 text-xs uppercase tracking-wider transition-colors"
+                className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-xs uppercase tracking-wider transition-colors"
+                title="Skip to next track"
               >
                 <SkipForward className="w-3.5 h-3.5" />
-                Skip
+                Next
               </button>
+            </div>
+            <div className="flex gap-2">
               <button
                 onClick={() => handleMarkReviewed(currentPlaying.id)}
                 className="flex-1 flex items-center justify-center gap-1.5 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs uppercase tracking-wider transition-colors"

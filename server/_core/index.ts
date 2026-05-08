@@ -344,6 +344,69 @@ async function startServer() {
       io.emit("radio:seeked", { currentTime: data.currentTime, startedAt: radioState.startedAt });
     });
 
+    // Track ended — auto-advance to next pending track in queue
+    socket.on("radio:track_ended", async () => {
+      if (!radioState.submissionId) return;
+      try {
+        const db = await getDb();
+        if (!db) return;
+        // Import needed for query
+        const { reviewSubmissions } = await import("../../drizzle/schema");
+        const { eq, ne, asc, and } = await import("drizzle-orm");
+        // Mark current track as reviewed
+        await db.update(reviewSubmissions).set({ status: "reviewed" }).where(eq(reviewSubmissions.id, radioState.submissionId));
+        // Find next pending track
+        const pending = await db.select().from(reviewSubmissions)
+          .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, radioState.submissionId)))
+          .orderBy(asc(reviewSubmissions.createdAt))
+          .limit(1);
+        if (pending.length > 0) {
+          const next = pending[0];
+          // Set it as playing in DB
+          await db.update(reviewSubmissions).set({ status: "playing" }).where(eq(reviewSubmissions.id, next.id));
+          // Resolve presigned URL
+          const key = next.fileUrl?.replace(/^\/manus-storage\//, "") ?? next.fileKey ?? null;
+          let resolvedUrl: string | null = null;
+          if (key && next.submissionType !== "youtube") {
+            try { resolvedUrl = await storageGetSignedUrl(key); } catch (e) { resolvedUrl = next.fileUrl; }
+          }
+          radioState = {
+            submissionId: next.id,
+            artistName: next.artistName,
+            songTitle: next.songTitle,
+            audioUrl: resolvedUrl,
+            youtubeUrl: next.youtubeUrl,
+            submissionType: next.submissionType,
+            startedAt: Date.now(),
+            pausedAt: null,
+            fileKey: key,
+          };
+          io.to("music_review").emit("radio:playing", { ...radioState });
+          io.emit("live:now_playing", {
+            submissionId: radioState.submissionId,
+            artistName: radioState.artistName,
+            songTitle: radioState.songTitle,
+            audioUrl: radioState.audioUrl,
+            youtubeUrl: radioState.youtubeUrl,
+            submissionType: radioState.submissionType,
+            startedAt: radioState.startedAt,
+          });
+          // Notify queue updated
+          io.to("music_review").emit("review:queue_updated");
+          console.log("[radio:track_ended] Auto-advanced to:", next.songTitle);
+        } else {
+          // No more tracks — stop radio
+          radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null };
+          io.emit("radio:stopped");
+          io.emit("live:now_playing", null);
+          io.to("music_review").emit("review:queue_updated");
+          console.log("[radio:track_ended] Queue empty — radio stopped");
+        }
+      } catch (err) {
+        console.error("[radio:track_ended] Error:", err);
+      }
+    });
+
     // Late-joining viewer requests current radio state
     socket.on("radio:get_state", () => {
       if (!radioState.submissionId) {

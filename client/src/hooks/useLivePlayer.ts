@@ -38,7 +38,7 @@ function buildTrack(data: LiveNowPlayingEvent) {
 }
 
 export function useLivePlayer() {
-  const { play, pause, resume, stop, seek, track } = useAudioPlayer();
+  const { play, pause, resume, stop, seek, track, onEnded } = useAudioPlayer();
   // Keep refs so socket callbacks always see latest values without re-subscribing
   const playRef = useRef(play);
   const pauseRef = useRef(pause);
@@ -46,6 +46,7 @@ export function useLivePlayer() {
   const stopRef = useRef(stop);
   const seekRef = useRef(seek);
   const trackRef = useRef(track);
+  const socketRef = useRef<Socket | null>(null);
   playRef.current = play;
   pauseRef.current = pause;
   resumeRef.current = resume;
@@ -53,12 +54,23 @@ export function useLivePlayer() {
   seekRef.current = seek;
   trackRef.current = track;
 
+  // When a live track ends, tell the server to auto-advance
+  useEffect(() => {
+    const unsub = onEnded((finishedTrack) => {
+      if (finishedTrack.isStream && socketRef.current?.connected) {
+        socketRef.current.emit("radio:track_ended");
+      }
+    });
+    return unsub;
+  }, [onEnded]);
+
   useEffect(() => {
     // Connect without joining a room — we only need the global events
     const socket: Socket = io(window.location.origin, {
       path: "/api/socket.io",
       query: { room: "global" },
     });
+    socketRef.current = socket;
 
     // Request current radio state when we connect (for late joiners)
     socket.on("connect", () => {
@@ -143,6 +155,7 @@ export function useLivePlayer() {
     });
 
     return () => {
+      socketRef.current = null;
       socket.disconnect();
     };
   }, []); // mount once
