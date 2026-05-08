@@ -960,16 +960,23 @@ export default function MusicReview() {
                 <div className="text-white/60 text-sm mb-3">by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={null} /></div>
                 {liveReviewActive.audioUrl && (
                   <div className="mt-3">
-                    <AudioPlayButton
-                      url={liveReviewActive.audioUrl}
-                      urlSource="queue"
-                      title={liveReviewActive.songTitle ?? "Live Review"}
-                      artist={liveReviewActive.artistName}
-                      submissionId={liveReviewActive.submissionId ?? undefined}
-                      sourcePage="Music Review"
-                      sourceUrl="/review"
-                      size="lg"
-                    />
+                    {isAdmin ? (
+                      <AudioPlayButton
+                        url={liveReviewActive.audioUrl}
+                        urlSource="queue"
+                        title={liveReviewActive.songTitle ?? "Live Review"}
+                        artist={liveReviewActive.artistName}
+                        submissionId={liveReviewActive.submissionId ?? undefined}
+                        sourcePage="Music Review"
+                        sourceUrl="/review"
+                        size="lg"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 text-red-400 text-sm">
+                        <Radio className="w-4 h-4 animate-pulse" />
+                        <span className="font-semibold">Playing Live — synced to admin</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {liveReviewActive.youtubeUrl && (() => {

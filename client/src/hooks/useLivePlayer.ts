@@ -6,6 +6,13 @@
  * automatically starts playing that track with a LIVE badge, synced to the admin's position.
  *
  * Mount this hook ONCE in App.tsx (outside any route) so it runs on every page.
+ *
+ * Key behaviors:
+ * - Late joiners: on connect, emits radio:get_state → server replies with current track + position
+ * - Admin loads track: live:now_playing → auto-plays for all viewers
+ * - Admin pause/resume/seek/stop: synced to all viewers
+ * - Viewers cannot independently control live stream playback (FloatingPlayer hides controls)
+ * - Only affects the player when current track is from "Music Review" (avoids Music Wars interference)
  */
 
 import { useEffect, useRef } from "react";
@@ -30,11 +37,16 @@ function buildTrack(data: LiveNowPlayingEvent) {
     title: data.songTitle,
     artist: data.artistName,
     artworkUrl: LOGO,
-    isStream: true, // shows LIVE badge in FloatingPlayer
+    isStream: true, // shows LIVE badge in FloatingPlayer, disables viewer controls
     submissionId: data.submissionId,
     sourcePage: "Music Review",
     sourceUrl: "/review",
   };
+}
+
+/** Check if the currently loaded track belongs to Music Review live radio */
+function isOurStream(track: { isStream?: boolean; sourcePage?: string } | null): boolean {
+  return !!track?.isStream && track?.sourcePage === "Music Review";
 }
 
 export function useLivePlayer() {
@@ -57,7 +69,7 @@ export function useLivePlayer() {
   // When a live track ends, tell the server to auto-advance
   useEffect(() => {
     const unsub = onEnded((finishedTrack) => {
-      if (finishedTrack.isStream && socketRef.current?.connected) {
+      if (finishedTrack.isStream && finishedTrack.sourcePage === "Music Review" && socketRef.current?.connected) {
         socketRef.current.emit("radio:track_ended");
       }
     });
@@ -96,9 +108,9 @@ export function useLivePlayer() {
     // Admin loaded a new track — play it on all clients
     socket.on("live:now_playing", (data: LiveNowPlayingEvent | null) => {
       if (!data) {
-        // Admin cleared the deck — stop if we're playing a live track
+        // Admin cleared the deck — stop if we're playing a Music Review live track
         const current = trackRef.current;
-        if (current?.isStream) {
+        if (isOurStream(current)) {
           stopRef.current();
         }
         return;
@@ -117,18 +129,18 @@ export function useLivePlayer() {
       }
     });
 
-    // Admin paused — pause all clients
+    // Admin paused — pause all clients (only if playing our stream)
     socket.on("radio:paused", (_data: { pausedAt: number }) => {
       const current = trackRef.current;
-      if (current?.isStream) {
+      if (isOurStream(current)) {
         pauseRef.current();
       }
     });
 
-    // Admin resumed — resume all clients
+    // Admin resumed — resume all clients (only if playing our stream)
     socket.on("radio:resumed", (data: { startedAt: number }) => {
       const current = trackRef.current;
-      if (current?.isStream) {
+      if (isOurStream(current)) {
         resumeRef.current();
         // Sync position
         const elapsed = (Date.now() - data.startedAt) / 1000;
@@ -138,18 +150,18 @@ export function useLivePlayer() {
       }
     });
 
-    // Admin seeked — seek all clients
+    // Admin seeked — seek all clients (only if playing our stream)
     socket.on("radio:seeked", (data: { currentTime: number }) => {
       const current = trackRef.current;
-      if (current?.isStream) {
+      if (isOurStream(current)) {
         seekRef.current(data.currentTime);
       }
     });
 
-    // Admin stopped — stop all clients
+    // Admin stopped — stop all clients (only if playing our stream)
     socket.on("radio:stopped", () => {
       const current = trackRef.current;
-      if (current?.isStream) {
+      if (isOurStream(current)) {
         stopRef.current();
       }
     });

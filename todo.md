@@ -529,3 +529,11 @@
 - [x] Updated getStats and getStatsByUserId procedures to include totalWins in default return
 - [x] Profile stats display: Crown icon first (Total Wins), then Fire Votes, Trash Votes, Submissions
 - [x] Reset ALL user profile stats and catalogues: deleted all user_songs, reset fire/trash counts to 0, deleted all battle_records
+
+## Session 11 — Music Review Live Radio Fix (True Sync)
+
+- [x] Fix: All viewers on Music Review page automatically hear admin's currently playing track on page join
+- [x] Fix: Viewers cannot independently control playback — admin controls play/pause/skip for everyone
+- [x] Fix: Server broadcasts radio state (current track URL, playback position, isPlaying) to all connected clients
+- [x] Fix: Late-joining viewers get current radio state immediately on socket connect and auto-play from correct position
+- [x] Fix: Admin pause/resume/skip/seek actions broadcast to all viewers in real-time

@@ -10,7 +10,8 @@
  *   - Fire / Trash rating for review submissions
  *   - Clickable artist name → ArtistStatModal
  *   - Source page badge (links back to origin page)
- *   - Live Radio mode (polls radio.getState every 10s)
+ *   - LIVE mode: when track.isStream is true, viewer controls are disabled
+ *     (no pause/seek/stop/prev/next — only volume). Admin controls playback for everyone.
  */
 
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
@@ -43,11 +44,13 @@ export default function FloatingPlayer() {
   const { user } = useAuth();
   const [showVolume, setShowVolume] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-  const [radioMode, setRadioMode] = useState(false);
   const [myReaction, setMyReaction] = useState<"fire" | "trash" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragProgress, setDragProgress] = useState(0);
   const progressRef = useRef<HTMLDivElement>(null);
+
+  // Whether the current track is a live stream (admin-controlled)
+  const isLiveStream = !!track?.isStream;
 
   // ── Fire/Trash rating ──────────────────────────────────────────────────────
   const reactMutation = trpc.queue.react.useMutation({
@@ -75,33 +78,6 @@ export default function FloatingPlayer() {
     }
   }, [trackId]);
 
-  // ── Live Radio polling ─────────────────────────────────────────────────────
-  const { data: radioData } = trpc.radio.getState.useQuery(undefined, {
-    enabled: radioMode,
-    refetchInterval: radioMode ? 10000 : false,
-  });
-
-  useEffect(() => {
-    if (!radioMode || !radioData?.state?.isActive) return;
-    const currentTrack = radioData.queue.find(q => q.id === radioData.state?.currentTrackId);
-    if (!currentTrack) return;
-    const url = currentTrack.fileKey
-      ? `/manus-storage/${currentTrack.fileKey}`
-      : currentTrack.externalUrl ?? "";
-    if (url && track?.url !== url) {
-      const tracks = radioData.queue
-        .map(q => ({
-          url: q.fileKey ? `/manus-storage/${q.fileKey}` : q.externalUrl ?? "",
-          title: q.title,
-          artist: q.artistName,
-          isStream: false,
-        }))
-        .filter(t => t.url);
-      const startIdx = tracks.findIndex(t => t.url === url);
-      if (tracks.length > 0) playPlaylist(tracks, startIdx >= 0 ? startIdx : 0);
-    }
-  }, [radioMode, radioData]);
-
   // ── Progress scrubber drag ─────────────────────────────────────────────────
   const getProgressFromEvent = (e: React.MouseEvent | React.TouchEvent) => {
     const el = progressRef.current;
@@ -112,7 +88,7 @@ export default function FloatingPlayer() {
   };
 
   const handleProgressMouseDown = (e: React.MouseEvent) => {
-    if (track?.isStream || duration <= 0) return;
+    if (isLiveStream || duration <= 0) return;
     setIsDragging(true);
     setDragProgress(getProgressFromEvent(e));
   };
@@ -130,50 +106,28 @@ export default function FloatingPlayer() {
   };
 
   const handleProgressClick = (e: React.MouseEvent) => {
-    if (track?.isStream || duration <= 0) return;
+    if (isLiveStream || duration <= 0) return;
     const pct = getProgressFromEvent(e);
     seek(pct * duration);
   };
 
   // ── Render guards ──────────────────────────────────────────────────────────
-  if (!track && !radioMode) return null;
-
-  if (!track && radioMode && !radioData?.state?.isActive) {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-[100] bg-[#0a0a0a] border-t border-white/10 shadow-2xl"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-9 h-9 rounded-lg bg-red-600/20 border border-red-600/40 flex items-center justify-center flex-shrink-0">
-            <Radio className="w-4 h-4 text-red-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-white/60 text-sm font-medium">Live Radio</div>
-            <div className="text-white/30 text-xs">No broadcast active</div>
-          </div>
-          <button onClick={() => setRadioMode(false)} className="text-white/30 hover:text-white/70 p-1.5 rounded-lg hover:bg-white/5 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (!track) return null;
 
   const displayProgress = isDragging ? dragProgress * 100 : duration > 0 ? (currentTime / duration) * 100 : 0;
-  const canRate = !!track.submissionId && !!user && !track.isStream;
-  const hasPlaylist = playlist.length > 1;
+  const canRate = !!track.submissionId && !!user;
+  const hasPlaylist = playlist.length > 1 && !isLiveStream;
 
   return (
     <>
-      {/* ── Queue panel ─────────────────────────────────────────────────── */}
-      {showQueue && (
+      {/* ── Queue panel (only for personal playlist, not live stream) ──── */}
+      {showQueue && !isLiveStream && (
         <div className="fixed bottom-[72px] left-0 right-0 z-[99] bg-[#0f0f0f] border border-white/10 border-b-0 shadow-2xl max-h-[45vh] overflow-y-auto">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 sticky top-0 bg-[#0f0f0f] z-10">
             <div className="flex items-center gap-2">
               <List className="w-3.5 h-3.5 text-red-500" />
               <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
-                {radioMode ? "Live Radio Queue" : `Queue · ${playlist.length} track${playlist.length !== 1 ? "s" : ""}`}
+                Queue · {playlist.length} track{playlist.length !== 1 ? "s" : ""}
               </span>
             </div>
             <button onClick={() => setShowQueue(false)} className="text-white/40 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors">
@@ -181,57 +135,30 @@ export default function FloatingPlayer() {
             </button>
           </div>
 
-          {/* Radio queue */}
-          {radioMode && radioData?.queue && (
-            <div className="divide-y divide-white/5">
-              {radioData.queue.length === 0 && (
-                <div className="px-4 py-8 text-center text-white/30 text-sm">Queue is empty</div>
-              )}
-              {radioData.queue.map((item, idx) => {
-                const isCurrent = item.id === radioData.state?.currentTrackId;
-                return (
-                  <div key={item.id} className={`flex items-center gap-3 px-4 py-3 ${isCurrent ? "bg-red-950/40" : "hover:bg-white/[0.03]"}`}>
-                    <span className={`text-xs w-5 text-center flex-shrink-0 ${isCurrent ? "text-red-500" : "text-white/30"}`}>
-                      {isCurrent ? <Play className="w-3 h-3 inline" /> : idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm truncate ${isCurrent ? "text-white font-semibold" : "text-white/70"}`}>{item.title}</div>
-                      <div className="text-xs text-white/40 truncate"><ArtistLink artistName={item.artistName} userId={null} /></div>
-                    </div>
-                    {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
+          <div className="divide-y divide-white/5">
+            {playlist.length === 0 && (
+              <div className="px-4 py-8 text-center text-white/30 text-sm">Queue is empty</div>
+            )}
+            {playlist.map((item, idx) => {
+              const isCurrent = idx === playlistIndex;
+              return (
+                <div
+                  key={`${item.url}-${idx}`}
+                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${isCurrent ? "bg-red-950/40" : "hover:bg-white/[0.03]"}`}
+                  onClick={() => !isCurrent && playPlaylist(playlist, idx)}
+                >
+                  <span className={`text-xs w-5 text-center flex-shrink-0 ${isCurrent ? "text-red-500" : "text-white/30"}`}>
+                    {isCurrent ? <Play className="w-3 h-3 inline" /> : idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm truncate ${isCurrent ? "text-white font-semibold" : "text-white/70"}`}>{item.title}</div>
+                    {item.artist && <div className="text-xs text-white/40 truncate"><ArtistLink artistName={item.artist} userId={item.artistUserId ?? null} /></div>}
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Personal playlist */}
-          {!radioMode && (
-            <div className="divide-y divide-white/5">
-              {playlist.length === 0 && (
-                <div className="px-4 py-8 text-center text-white/30 text-sm">Queue is empty</div>
-              )}
-              {playlist.map((item, idx) => {
-                const isCurrent = idx === playlistIndex;
-                return (
-                  <div
-                    key={`${item.url}-${idx}`}
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${isCurrent ? "bg-red-950/40" : "hover:bg-white/[0.03]"}`}
-                    onClick={() => !isCurrent && playPlaylist(playlist, idx)}
-                  >
-                    <span className={`text-xs w-5 text-center flex-shrink-0 ${isCurrent ? "text-red-500" : "text-white/30"}`}>
-                      {isCurrent ? <Play className="w-3 h-3 inline" /> : idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm truncate ${isCurrent ? "text-white font-semibold" : "text-white/70"}`}>{item.title}</div>
-                      {item.artist && <div className="text-xs text-white/40 truncate"><ArtistLink artistName={item.artist} userId={item.artistUserId ?? null} /></div>}
-                    </div>
-                    {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -244,7 +171,10 @@ export default function FloatingPlayer() {
         onMouseLeave={() => { if (isDragging) { setIsDragging(false); } }}
       >
         {/* ── Progress bar ─────────────────────────────────────────────── */}
-        {!track.isStream ? (
+        {isLiveStream ? (
+          /* Live stream: pulsing red bar, no scrubbing */
+          <div className="w-full h-1.5 bg-red-600/60 animate-pulse" />
+        ) : (
           <div
             ref={progressRef}
             className="w-full h-1.5 bg-white/10 cursor-pointer group relative"
@@ -258,8 +188,6 @@ export default function FloatingPlayer() {
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
-        ) : (
-          <div className="w-full h-1.5 bg-red-600/60 animate-pulse" />
         )}
 
         {/* ── Controls row ─────────────────────────────────────────────── */}
@@ -274,7 +202,7 @@ export default function FloatingPlayer() {
                 <Music2 className="w-4 h-4 text-red-400" />
               </div>
             )}
-            {(track.isStream || radioMode) && (
+            {isLiveStream && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-600 border-2 border-[#0a0a0a] animate-pulse" />
             )}
           </div>
@@ -293,8 +221,11 @@ export default function FloatingPlayer() {
               )}
             </div>
             <div className="flex items-center gap-1.5 min-w-0 mt-0.5">
-              {track.isStream ? (
-                <span className="text-red-500 text-xs font-bold">● LIVE</span>
+              {isLiveStream ? (
+                <span className="text-red-500 text-xs font-bold flex items-center gap-1">
+                  <Radio className="w-3 h-3" />
+                  LIVE — Admin Controlled
+                </span>
               ) : track.artist ? (
                 <ArtistStatModal artistName={track.artist} userId={track.artistUserId ?? null}>
                   <button className="text-white/50 hover:text-red-400 text-xs transition-colors flex items-center gap-1 min-w-0 truncate">
@@ -305,7 +236,7 @@ export default function FloatingPlayer() {
               ) : (
                 <span className="text-white/40 text-xs">Murder Mitten Media</span>
               )}
-              {!track.isStream && duration > 0 && (
+              {!isLiveStream && duration > 0 && (
                 <span className="text-white/25 text-xs flex-shrink-0 hidden sm:inline">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
@@ -318,7 +249,7 @@ export default function FloatingPlayer() {
             </div>
           </div>
 
-          {/* Fire / Trash */}
+          {/* Fire / Trash — available for live stream tracks too */}
           {canRate && (
             <div className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
               <button
@@ -348,85 +279,88 @@ export default function FloatingPlayer() {
             </div>
           )}
 
-          {/* Playback controls */}
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-
-            {/* Volume */}
-            <button
-              onClick={() => setShowVolume(v => !v)}
-              className={`p-1.5 rounded-lg transition-colors hidden sm:flex items-center justify-center ${showVolume ? "text-white bg-white/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}
-              aria-label="Volume"
-            >
-              {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-
-            {/* Prev */}
-            {hasPlaylist && (
+          {/* Playback controls — HIDDEN for live stream (admin controls for everyone) */}
+          {isLiveStream ? (
+            /* Live stream: only volume control */
+            <div className="flex items-center gap-0.5 flex-shrink-0">
               <button
-                onClick={prev}
-                className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
-                aria-label="Previous"
+                onClick={() => setShowVolume(v => !v)}
+                className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${showVolume ? "text-white bg-white/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}
+                aria-label="Volume"
               >
-                <SkipBack className="w-4 h-4" />
+                {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
-            )}
+            </div>
+          ) : (
+            /* Personal playback: full controls */
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {/* Volume */}
+              <button
+                onClick={() => setShowVolume(v => !v)}
+                className={`p-1.5 rounded-lg transition-colors hidden sm:flex items-center justify-center ${showVolume ? "text-white bg-white/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}
+                aria-label="Volume"
+              >
+                {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
 
-            {/* Play / Pause */}
-            <button
-              onClick={isPlaying ? pause : resume}
-              disabled={isLoading}
-              className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
-              aria-label={isPlaying ? "Pause" : "Play"}
-            >
-              {isLoading ? (
-                <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="w-4 h-4 text-white" />
-              ) : (
-                <Play className="w-4 h-4 text-white ml-0.5" />
+              {/* Prev */}
+              {hasPlaylist && (
+                <button
+                  onClick={prev}
+                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                  aria-label="Previous"
+                >
+                  <SkipBack className="w-4 h-4" />
+                </button>
               )}
-            </button>
 
-            {/* Next */}
-            {hasPlaylist && (
+              {/* Play / Pause */}
               <button
-                onClick={next}
-                className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
-                aria-label="Next"
+                onClick={isPlaying ? pause : resume}
+                disabled={isLoading}
+                className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
+                aria-label={isPlaying ? "Pause" : "Play"}
               >
-                <SkipForward className="w-4 h-4" />
+                {isLoading ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : isPlaying ? (
+                  <Pause className="w-4 h-4 text-white" />
+                ) : (
+                  <Play className="w-4 h-4 text-white ml-0.5" />
+                )}
               </button>
-            )}
 
-            {/* Stop */}
-            <button
-              onClick={stop}
-              className="p-1.5 rounded-lg text-white/40 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-              aria-label="Stop"
-            >
-              <Square className="w-3.5 h-3.5" />
-            </button>
+              {/* Next */}
+              {hasPlaylist && (
+                <button
+                  onClick={next}
+                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                  aria-label="Next"
+                >
+                  <SkipForward className="w-4 h-4" />
+                </button>
+              )}
 
-            {/* Queue */}
-            <button
-              onClick={() => setShowQueue(v => !v)}
-              className={`p-1.5 rounded-lg transition-colors ${showQueue ? "text-red-500 bg-red-500/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}
-              aria-label="Queue"
-              title={`Queue (${playlist.length})`}
-            >
-              <List className="w-4 h-4" />
-            </button>
+              {/* Stop */}
+              <button
+                onClick={stop}
+                className="p-1.5 rounded-lg text-white/40 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                aria-label="Stop"
+              >
+                <Square className="w-3.5 h-3.5" />
+              </button>
 
-            {/* Live Radio */}
-            <button
-              onClick={() => setRadioMode(v => !v)}
-              className={`p-1.5 rounded-lg transition-colors hidden sm:flex items-center justify-center ${radioMode ? "text-red-500 bg-red-500/10" : "text-white/30 hover:text-red-400 hover:bg-red-500/5"}`}
-              aria-label="Live Radio"
-              title="Live Radio mode"
-            >
-              <Radio className="w-4 h-4" />
-            </button>
-          </div>
+              {/* Queue */}
+              <button
+                onClick={() => setShowQueue(v => !v)}
+                className={`p-1.5 rounded-lg transition-colors ${showQueue ? "text-red-500 bg-red-500/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}
+                aria-label="Queue"
+                title={`Queue (${playlist.length})`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Volume slider */}
