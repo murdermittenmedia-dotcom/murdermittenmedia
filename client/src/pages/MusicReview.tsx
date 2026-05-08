@@ -12,6 +12,7 @@ import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { usePlayTrack } from "@/hooks/usePlayTrack";
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
 type QueueState = { id: number; isLive: boolean; liveMessage: string | null; streamUrl: string | null; currentPlayingId: number | null; updatedAt: Date };
@@ -138,22 +139,26 @@ function AdminPanel({
   const handleSetPlaying = async (id: number) => {
     const sub = queue.find(s => s.id === id);
     if (!sub) return;
-    // Resolve presigned URL first so all viewers get a direct playable URL
+
+    // Resolve a real presigned URL before broadcasting so all viewers get a direct playable URL
     let resolvedAudioUrl: string | null = null;
     if (sub.fileKey) {
       try {
         const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: sub.fileKey });
         resolvedAudioUrl = url;
       } catch {
+        // If presign fails, fall back to the stored fileUrl (may be /manus-storage/ path)
         resolvedAudioUrl = sub.fileUrl ?? null;
       }
-    } else if (sub.fileUrl) {
+    } else if (sub.fileUrl && (sub.fileUrl.startsWith("http://") || sub.fileUrl.startsWith("https://"))) {
       resolvedAudioUrl = sub.fileUrl;
     }
+
     setPlaying.mutate({ submissionId: id }, {
       onSuccess: () => {
-        // Actually start audio playback in the global player
+        // Start playback in the admin's global player
         playTrack(sub);
+        // Broadcast to all viewers: send the resolved presigned URL (not /manus-storage/ redirect)
         broadcastReviewActive({
           submissionId: sub.id,
           artistName: sub.artistName,
@@ -163,9 +168,12 @@ function AdminPanel({
           submissionType: sub.submissionType,
         });
         broadcastReviewQueueUpdated();
+        toast.success(`Now playing: ${sub.songTitle}`);
+      },
+      onError: (err) => {
+        toast.error("Failed to set playing: " + err.message);
       }
     });
-    toast.success("Now playing track");
   };
 
   const handleSkip = () => {
@@ -391,12 +399,6 @@ function AdminPanel({
                       ⚡
                     </span>
                   )}
-                  {sub.submissionType === "file" && sub.fileUrl && (
-                    <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer"
-                      className="text-white/30 hover:text-white transition-colors flex-shrink-0" title="Open audio file">
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
                   {sub.submissionType === "youtube" && sub.youtubeUrl && (
                     <a href={sub.youtubeUrl} target="_blank" rel="noopener noreferrer"
                       className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0" title="Open YouTube">
@@ -479,12 +481,15 @@ export default function MusicReview() {
   const [submitted, setSubmitted] = useState(false);
   const [showVideoGrid, setShowVideoGrid] = useState(false);
   const [chatInput, setChatInput] = useState("");
+  // Inline YouTube embed state — set when a YouTube submission is "played"
+  const [selectedYouTube, setSelectedYouTube] = useState<{ url: string; title: string; artist: string } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const audioPlayer = useAudioPlayer();
+  const { playTrack: resolveAndPlay } = usePlayTrack();
 
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, {
     refetchInterval: 15000,
@@ -626,24 +631,29 @@ export default function MusicReview() {
   const streamUrl = data?.state?.streamUrl;
 
   const utils = trpc.useUtils();
-  const playTrack = useCallback(async (sub: typeof pendingQueue[0]) => {
-    if (sub.fileKey) {
-      try {
-        const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: sub.fileKey });
-        audioPlayer.play({ url, title: sub.songTitle, artist: sub.artistName, isStream: false, submissionId: sub.id });
-      } catch {
-        if (sub.fileUrl) {
-          audioPlayer.play({ url: sub.fileUrl, title: sub.songTitle, artist: sub.artistName, isStream: false, submissionId: sub.id });
-        } else {
-          toast.error("Could not load audio file");
-        }
-      }
-    } else if (sub.youtubeUrl) {
-      window.open(sub.youtubeUrl, "_blank");
-    } else {
-      toast.error("No audio available");
+  // Play a submission: resolves presigned URL for files, embeds YouTube inline
+  const playTrack = useCallback(async (sub: ReviewSubmission) => {
+    if (sub.submissionType === "youtube" && sub.youtubeUrl) {
+      // Show inline YouTube embed instead of opening new tab
+      setSelectedYouTube({ url: sub.youtubeUrl, title: sub.songTitle, artist: sub.artistName });
+      return;
     }
-  }, [audioPlayer, utils]);
+    if (sub.fileKey || sub.fileUrl) {
+      await resolveAndPlay({
+        fileKey: sub.fileKey ?? undefined,
+        url: sub.fileUrl ?? undefined,
+        urlSource: "queue",
+        title: sub.songTitle,
+        artist: sub.artistName,
+        isStream: false,
+        submissionId: sub.id,
+        sourcePage: "Music Review",
+        sourceUrl: "/music-review",
+      });
+      return;
+    }
+    toast.error("No audio available for this track");
+  }, [resolveAndPlay]);
 
   const playStream = useCallback(() => {
     if (streamUrl) {
@@ -813,6 +823,55 @@ export default function MusicReview() {
               </div>
             )}
 
+            {/* Inline YouTube embed — shown when user clicks play on a YouTube submission */}
+            {selectedYouTube && (() => {
+              const ytId = selectedYouTube.url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1];
+              return (
+                <div className="mb-6 border border-white/20 bg-black/60 p-4 relative">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="font-['Anton'] text-lg uppercase">{selectedYouTube.title}</div>
+                      <div className="text-white/50 text-xs">by {selectedYouTube.artist}</div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedYouTube(null)}
+                      className="text-white/30 hover:text-white text-xl leading-none px-2"
+                      title="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {ytId ? (
+                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
+                        className="absolute inset-0 w-full h-full border border-white/10"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={selectedYouTube.title}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-white/40 text-sm py-4 text-center">
+                      Could not parse YouTube ID.{" "}
+                      <a href={selectedYouTube.url} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">
+                        Open on YouTube →
+                      </a>
+                    </div>
+                  )}
+                  <a
+                    href={selectedYouTube.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-red-400 transition-colors mt-3"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Open on YouTube
+                  </a>
+                </div>
+              );
+            })()}
+
             {/* Live Review Banner — shown to all viewers when admin is reviewing a track */}
             {liveReviewActive && liveReviewActive.submissionId !== null && (
               <div className="mb-6 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
@@ -825,8 +884,9 @@ export default function MusicReview() {
                 <div className="text-white/60 text-sm mb-3">by {liveReviewActive.artistName}</div>
                 {liveReviewActive.audioUrl && (
                   <button
-                    onClick={() => audioPlayer.play({
+                    onClick={() => resolveAndPlay({
                       url: liveReviewActive.audioUrl!,
+                      urlSource: "queue",
                       title: liveReviewActive.songTitle ?? "Live Review",
                       artist: liveReviewActive.artistName,
                       isStream: false,
@@ -840,7 +900,7 @@ export default function MusicReview() {
                   </button>
                 )}
                 {liveReviewActive.youtubeUrl && (() => {
-                  const ytId = liveReviewActive.youtubeUrl?.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/)?.[1];
+                  const ytId = liveReviewActive.youtubeUrl?.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1];
                   return ytId ? (
                     <div className="mt-3">
                       <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
@@ -976,17 +1036,14 @@ export default function MusicReview() {
                             <ThumbsDown className="w-3.5 h-3.5" />
                             <span>{sub.trashCount}</span>
                           </button>
-                          {(sub.fileKey || sub.fileUrl) && (
-                            <button onClick={() => playTrack(sub)}
-                              className="text-white/30 hover:text-red-400 transition-colors" title="Play track">
+                          {(sub.fileKey || sub.fileUrl || sub.youtubeUrl) && (
+                            <button
+                              onClick={() => playTrack(sub)}
+                              className="flex items-center gap-1 text-white/30 hover:text-red-400 transition-colors"
+                              title={sub.submissionType === 'youtube' ? 'Embed YouTube' : 'Play track'}
+                            >
                               <Play className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                          {sub.youtubeUrl && (
-                            <a href={sub.youtubeUrl} target="_blank" rel="noopener noreferrer"
-                              className="text-white/30 hover:text-red-400 transition-colors" title="Open YouTube">
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
                           )}
                         </div>
                       </div>
