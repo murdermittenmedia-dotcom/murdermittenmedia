@@ -1,0 +1,55 @@
+{
+  "query": "SELECT id, songTitle, artistName, submissionType, fileKey, fileUrl, status FROM review_submissions WHERE status != 'removed' ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, songTitle, artistName, submissionType, fileKey, fileUrl, status FROM review_submissions WHERE status != 'removed' ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "210001",
+      "songTitle": "BYOB",
+      "artistName": "YLG TWON",
+      "submissionType": "file",
+      "fileKey": "queue-submissions/1778208009664-YLG_TWON.mp3",
+      "fileUrl": "/manus-storage/queue-submissions/1778208009664-YLG_TWON_859d2aaa.mp3",
+      "status": "playing"
+    },
+    {
+      "id": "180001",
+      "songTitle": "Test ",
+      "artistName": "YLG TWON",
+      "submissionType": "file",
+      "fileKey": "queue-submissions/1778205168142-YLG_TWON.mp3",
+      "fileUrl": "/manus-storage/queue-submissions/1778205168142-YLG_TWON_e481999d.mp3",
+      "status": "reviewed"
+    },
+    {
+      "id": "150001",
+      "songTitle": "Byob",
+      "artistName": "YLG TWON",
+      "submissionType": "file",
+      "fileKey": "queue-submissions/1778200880558-YLG_TWON.mp3",
+      "fileUrl": "/manus-storage/queue-submissions/1778200880558-YLG_TWON_df269b90.mp3",
+      "status": "reviewed"
+    },
+    {
+      "id": "120001",
+      "songTitle": "Free test",
+      "artistName": "Murder mitten bot",
+      "submissionType": "file",
+      "fileKey": "queue-submissions/1778193850073-Murder_mitten_bot.mp3",
+      "fileUrl": "/manus-storage/queue-submissions/1778193850073-Murder_mitten_bot_ef929f22.mp3",
+      "status": "reviewed"
+    },
+    {
+      "id": "90001",
+      "songTitle": "Test",
+      "artistName": "Murder mitten bot",
+      "submissionType": "youtube",
+      "fileKey": "NULL",
+      "fileUrl": "NULL",
+      "status": "reviewed"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsongTitle\tartistName\tsubmissionType\tfileKey\tfileUrl\tstatus\n210001\tBYOB\tYLG TWON\tfile\tqueue-submissions/1778208009664-YLG_TWON.mp3\t/manus-storage/queue-submissions/1778208009664-YLG_TWON_859d2aaa.mp3\tplaying\n180001\tTest \tYLG TWON\tfile\tqueue-submissions/1778205168142-YLG_TWON.mp3\t/manus-storage/queue-submissions/1778205168142-YLG_TWON_e481999d.mp3\treviewed\n150001\tByob\tYLG TWON\tfile\tqueue-submissions/1778200880558-YLG_TWON.mp3\t/manus-storage/queue-submissions/1778200880558-YLG_TWON_df269b90.mp3\treviewed\n120001\tFree test\tMurder mitten bot\tfile\tqueue-submissions/1778193850073-Murder_mitten_bot.mp3\t/manus-storage/queue-submissions/1778193850073-Murder_mitten_bot_ef929f22.mp3\treviewed\n90001\tTest\tMurder mitten bot\tyoutube\tNULL\tNULL\treviewed\n",
+  "stderr": "",
+  "execution_time_ms": 80
+}

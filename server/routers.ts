@@ -329,6 +329,14 @@ export const appRouter = router({
       return { submissions, state, currentPlaying };
     }),
 
+    // Get a direct presigned S3 URL for a queue submission audio file
+    getAudioUrl: publicProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .query(async ({ input }) => {
+        const url = await storageGetSignedUrl(input.fileKey);
+        return { url };
+      }),
+
     submit: protectedProcedure
       .input(z.object({
         songTitle: z.string().min(1).max(128),
@@ -505,14 +513,6 @@ export const appRouter = router({
       .input(z.object({ submissionId: z.number() }))
       .query(async ({ ctx, input }) => {
         return getUserSongReaction(input.submissionId, ctx.user.id);
-      }),
-
-    // Get a direct presigned S3 URL for a stored audio file (bypasses redirect)
-    getAudioUrl: publicProcedure
-      .input(z.object({ fileKey: z.string() }))
-      .query(async ({ input }) => {
-        const url = await storageGetSignedUrl(input.fileKey);
-        return { url };
       }),
   }),
   // -- Artist of the Weekk ---------------------------------------
