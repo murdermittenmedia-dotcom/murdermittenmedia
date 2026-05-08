@@ -458,7 +458,7 @@ function ChatPanel({
 // ─── Audio Room Panel ─────────────────────────────────────────
 function AudioRoomPanel({
   participants, micActive, isConnected, error, role,
-  onToggleMic, onActivateContestant, isJoined, onJoin, onLeave,
+  onToggleMic, onActivateContestant, onKick, isJoined, onJoin, onLeave,
 }: {
   participants: AudioParticipant[];
   micActive: boolean;
@@ -467,6 +467,7 @@ function AudioRoomPanel({
   role: string;
   onToggleMic: () => void;
   onActivateContestant: (socketId: string, active: boolean) => void;
+  onKick: (socketId: string) => void;
   isJoined: boolean;
   onJoin: () => void;
   onLeave: () => void;
@@ -517,14 +518,12 @@ function AudioRoomPanel({
             ))}
           </div>
           <div className="flex gap-2">
-            {(role === "judge" || role === "admin") && (
-              <button
-                onClick={onToggleMic}
-                className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider border transition-colors ${micActive ? "border-green-600 text-green-400 hover:bg-green-600/20" : "border-red-600 text-red-400 hover:bg-red-600/20"}`}
-              >
-                {micActive ? "Mic On" : "Mic Off"}
-              </button>
-            )}
+            <button
+              onClick={onToggleMic}
+              className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider border transition-colors ${micActive ? "border-green-600 text-green-400 hover:bg-green-600/20" : "border-white/20 text-white/40 hover:border-green-600 hover:text-green-400"}`}
+            >
+              {micActive ? "Mic On" : "Mic Off"}
+            </button>
             <button onClick={onLeave} className="flex-1 py-2 text-xs font-semibold uppercase tracking-wider border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors">
               Leave
             </button>
@@ -1132,7 +1131,7 @@ export default function MusicWars() {
   const isJudge = user?.role === "judge";
   const isContestant = user?.role === "contestant";
   const username = user?.artistName || user?.name || "Guest";
-  const audioRole = isAdmin ? "admin" : isJudge ? "judge" : isContestant ? "contestant" : "viewer";
+  const audioRole = isAdmin ? "admin" : isJudge ? "judge" : isContestant ? "contestant" : "user";
 
    const { data: wheelData, refetch: refetchWheel } = trpc.wheel.getEntries.useQuery();
   const { data: allEntries, refetch: refetchAllEntries } = trpc.wheel.getAllEntries.useQuery(undefined, { enabled: isAdmin });
@@ -1225,7 +1224,7 @@ export default function MusicWars() {
   }, [chatSocket, refetchWheel, refetchActiveBattle, refetchVotes, isAdmin, refetchAllEntries, refetchSpinState]);
 
   const [audioJoined, setAudioJoined] = useState(false);
-  const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic } = useAudioRoom({
+  const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic, kickParticipant } = useAudioRoom({
     room: "music_wars", username, role: audioRole, userId: user?.id, enabled: audioJoined,
   });
 
@@ -1436,6 +1435,7 @@ export default function MusicWars() {
                   participants={participants} micActive={micActive} isConnected={audioConnected}
                   error={audioError} role={audioRole} onToggleMic={toggleMic}
                   onActivateContestant={activateContestantMic}
+                  onKick={kickParticipant}
                   isJoined={audioJoined} onJoin={() => setAudioJoined(true)} onLeave={() => setAudioJoined(false)}
                 />
               ) : (

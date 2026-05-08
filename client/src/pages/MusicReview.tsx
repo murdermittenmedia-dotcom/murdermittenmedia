@@ -14,6 +14,7 @@ import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/h
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 // Types inferred from tRPC query
@@ -596,11 +597,12 @@ export default function MusicReview() {
 
   const chatUsername = user?.artistName || user?.name || "Guest";
 
+  const [voiceJoined, setVoiceJoined] = useState(false);
   const audioRoom = useAudioRoom({
-    enabled: isAdmin,
+    enabled: voiceJoined || isAdmin,
     room: "music_review",
     username: chatUsername,
-    role: isAdmin ? "admin" : "viewer",
+    role: isAdmin ? "admin" : "user",
     userId: user?.id,
   });
 
@@ -1495,26 +1497,75 @@ export default function MusicReview() {
               </div>
             </div>
 
-            {/* On-air participants (public view) */}
-            {audioRoom.participants.filter(p => p.role !== "viewer").length > 0 && !isAdmin && (
-              <div className="mt-4 border border-white/10 bg-white/[0.02] p-3">
-                <div className="text-white/40 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Users className="w-3 h-3" />
-                  On Air
+            {/* Voice Chat Panel — open to all logged-in users */}
+            <div className="mt-4 border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-white/60 text-xs uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                  <Mic className="w-3 h-3" />
+                  Voice Chat
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {audioRoom.participants.filter(p => p.role !== "viewer").map(p => (
-                    <div key={p.socketId} className="flex items-center gap-1.5 text-xs">
-                      <span className={`w-2 h-2 rounded-full ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
-                      <span className="text-white/60">{p.username}</span>
-                      <span className={`text-[10px] uppercase font-bold ${p.role === "judge" ? "text-yellow-400" : "text-red-400"}`}>
-                        {p.role}
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${audioRoom.isConnected ? "bg-green-400 animate-pulse" : "bg-white/20"}`} />
+                  <span className="text-xs text-white/30">{audioRoom.participants.length} in room</span>
                 </div>
               </div>
-            )}
+              {audioRoom.error && (
+                <div className="text-red-400 text-xs bg-red-900/20 border border-red-600/20 p-2 mb-2">{audioRoom.error}</div>
+              )}
+              {!user ? (
+                <a href={getLoginUrl()} className="block w-full text-center text-xs bg-red-600 hover:bg-red-700 text-white py-2 uppercase tracking-widest transition-colors">Login to Join Voice</a>
+              ) : !voiceJoined && !isAdmin ? (
+                <button onClick={() => setVoiceJoined(true)} className="w-full bg-red-600 hover:bg-red-700 text-white py-2 text-xs font-semibold uppercase tracking-widest transition-colors">
+                  Join Voice Chat
+                </button>
+              ) : (
+                <>
+                  <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
+                    {audioRoom.participants.length === 0 && <p className="text-white/20 text-xs text-center py-2">No one in voice yet</p>}
+                    {audioRoom.participants.map(p => (
+                      <div key={p.socketId} className="flex items-center justify-between py-1 border-b border-white/5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
+                          <span className="text-xs text-white/70">{p.username}</span>
+                          {p.role === "admin" && <span className="text-[10px] text-red-400 font-bold uppercase">HOST</span>}
+                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => audioRoom.adminToggleParticipantMic(p.socketId, !p.micActive)}
+                              className={`text-[10px] px-1.5 py-0.5 border transition-colors ${p.micActive ? "border-red-600/40 text-red-400 hover:bg-red-600/20" : "border-green-600/40 text-green-400 hover:bg-green-600/20"}`}
+                            >
+                              {p.micActive ? "Mute" : "Unmute"}
+                            </button>
+                            <button
+                              onClick={() => audioRoom.kickParticipant(p.socketId)}
+                              className="text-[10px] px-1.5 py-0.5 border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors"
+                            >
+                              Kick
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={audioRoom.toggleMic}
+                      className={`flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border transition-colors ${
+                        audioRoom.isMuted ? "border-white/20 text-white/40 hover:border-green-600 hover:text-green-400" : "border-green-600 text-green-400 hover:bg-green-600/20"
+                      }`}
+                    >
+                      {audioRoom.isMuted ? <><MicOff className="w-3 h-3 inline mr-1" />Mic Off</> : <><Mic className="w-3 h-3 inline mr-1" />Mic On</>}
+                    </button>
+                    {!isAdmin && (
+                      <button onClick={() => setVoiceJoined(false)} className="flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors">
+                        Leave
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

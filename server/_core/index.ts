@@ -219,16 +219,30 @@ async function startServer() {
       }
     });
 
-    // User self-toggles mic
+    // User self-toggles mic (all roles can toggle — even regular users)
     socket.on("audio:toggle_mic", (data: { active: boolean; isMuted?: boolean }) => {
       const participant = roomParticipants.get(socket.id);
       if (!participant) return;
-      if (participant.role === "judge" || participant.role === "admin" || participant.role === "contestant") {
-        participant.micActive = data.active;
-        const list = getRoomList(participant.room);
-        io.to(participant.room).emit("audio:participants", list);
-        io.to(participant.room).emit("room:participants", list);
-      }
+      participant.micActive = data.active;
+      const list = getRoomList(participant.room);
+      io.to(participant.room).emit("audio:participants", list);
+      io.to(participant.room).emit("room:participants", list);
+    });
+    // Admin kicks a participant from the voice room
+    socket.on("audio:kick", (data: { targetSocketId: string }) => {
+      const requester = roomParticipants.get(socket.id);
+      if (!requester || requester.role !== "admin") return;
+      const target = roomParticipants.get(data.targetSocketId);
+      if (!target) return;
+      const targetRoom = target.room;
+      // Notify the kicked user first
+      io.to(data.targetSocketId).emit("audio:kicked", { reason: "You were removed from the voice room by the admin." });
+      // Remove from participants map
+      roomParticipants.delete(data.targetSocketId);
+      const list = getRoomList(targetRoom);
+      io.to(targetRoom).emit("audio:participants", list);
+      io.to(targetRoom).emit("room:participants", list);
+      io.to(targetRoom).emit("webrtc:peer_left", { socketId: data.targetSocketId });
     });
 
     // ── Camera controls ───────────────────────────────────────

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 
-export type AudioRole = "admin" | "judge" | "contestant" | "viewer";
+export type AudioRole = "admin" | "judge" | "contestant" | "user" | "viewer";
 
 export interface AudioParticipant {
   socketId: string;
@@ -30,9 +30,10 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
   const vadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [participants, setParticipants] = useState<AudioParticipant[]>([]);
-  // Judges and admins start with mic on; contestants and viewers start muted
+  // Judges and admins start with mic on; all others start muted
   const [micActive, setMicActive] = useState(role === "judge" || role === "admin");
   const [isMuted, setIsMuted] = useState(!(role === "judge" || role === "admin"));
+  const [wasKicked, setWasKicked] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +143,7 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
 
     const init = async () => {
       try {
-        // All non-viewers get mic access (contestants start muted)
+        // All non-viewers get mic access (judges/admins start unmuted, others start muted)
         if (role !== "viewer") {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
           localStreamRef.current = stream;
@@ -167,6 +168,16 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
             room,
             isMuted: !(role === "judge" || role === "admin"),
           });
+        });
+
+        // Admin kicked this user from the room
+        socket.on("audio:kicked", ({ reason }: { reason: string }) => {
+          if (!mounted) return;
+          setWasKicked(true);
+          setIsConnected(false);
+          setParticipants([]);
+          cleanup();
+          alert(reason);
         });
 
         socket.on("audio:participants", (list: AudioParticipant[]) => {
@@ -253,9 +264,9 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
     };
   }, [enabled, room, username, role, userId, createPeerConnection, cleanup, startVAD, stopVAD]);
 
-  // Self-mute/unmute — available to ALL roles (not just judges/admins)
+  // Self-mute/unmute — available to ALL roles that have mic access
   const toggleMic = useCallback(() => {
-    if (role === "viewer") return; // viewers have no mic
+    if (role === "viewer") return; // pure viewers have no mic
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     setMicActive(!newMuted);
@@ -272,6 +283,11 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
     socketRef.current?.emit("audio:set_mic", { targetSocketId, active });
   }, []);
 
+  // Admin kick a participant from the voice room
+  const kickParticipant = useCallback((targetSocketId: string) => {
+    socketRef.current?.emit("audio:kick", { targetSocketId });
+  }, []);
+
   // Legacy name kept for backward compat
   const activateContestantMic = adminToggleParticipantMic;
 
@@ -282,9 +298,11 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
     isSpeaking,
     isConnected,
     error,
+    wasKicked,
     toggleMic,
     activateContestantMic,
     adminToggleParticipantMic,
+    kickParticipant,
     socket: socketRef.current,
   };
 }
