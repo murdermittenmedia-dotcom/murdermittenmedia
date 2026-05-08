@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X,
   Instagram, Trophy, Mic, MapPin, Upload, Plus, Globe, Eye, EyeOff,
-  Loader2,
+  Loader2, Crown,
 } from "lucide-react";
 
 type Submission = {
@@ -680,10 +680,10 @@ export default function UserProfile() {
         {displayStats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
             {[
-              { icon: <Music className="w-5 h-5 text-white/50" />, value: displayStats?.totalSubmissions ?? 0, label: "Submissions" },
+              { icon: <Crown className="w-5 h-5 text-yellow-500" />, value: displayStats?.totalWins ?? 0, label: "Total Wins" },
               { icon: <Flame className="w-5 h-5 text-orange-500" />, value: displayStats?.totalFire ?? 0, label: "Fire Votes" },
               { icon: <Trash2 className="w-5 h-5 text-white/40" />, value: displayStats?.totalTrash ?? 0, label: "Trash Votes" },
-              { icon: <Trophy className="w-5 h-5 text-yellow-500" />, value: displayStats?.reviewed ?? 0, label: "Reviewed" },
+              { icon: <Music className="w-5 h-5 text-white/50" />, value: displayStats?.totalSubmissions ?? 0, label: "Submissions" },
             ].map((s) => (
               <div key={s.label} className="border border-white/10 bg-white/[0.03] p-4 flex flex-col items-center gap-2">
                 {s.icon}

@@ -7,6 +7,7 @@
  * - Playlist/queue support with prev/next track navigation
  * - Auto-advances to next track when current ends
  * - Supports both radio streams (HLS/MP3 streams) and regular audio files
+ * - iOS-safe: unlockAndPlay starts playback synchronously within user gesture
  */
 
 import React, {
@@ -56,8 +57,14 @@ type AudioPlayerContextType = AudioPlayerState & {
   setVolume: (v: number) => void;
   seek: (time: number) => void;
   onEnded: (cb: (track: AudioTrack) => void) => () => void;
-  /** Unlock iOS autoplay: call synchronously in a user gesture, then swap src once URL is resolved */
+  /** iOS-safe play: call synchronously in a user gesture. Sets src and plays immediately. */
   unlockAndPlay: (track: AudioTrack) => void;
+  /**
+   * iOS-safe deferred play: call synchronously in a user gesture.
+   * Immediately unlocks audio with a silent data URI, then swaps to the real URL
+   * once it's resolved. Use this when you need to await URL resolution.
+   */
+  unlockThenSwap: (trackMeta: Omit<AudioTrack, "url">) => (resolvedUrl: string) => void;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -65,6 +72,9 @@ const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
 // Registry of onEnded callbacks
 type EndedCallback = (track: AudioTrack) => void;
 const endedCallbacks = new Set<EndedCallback>();
+
+// Tiny silent MP3 data URI (~100 bytes) — used to unlock iOS audio context
+const SILENT_MP3 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYlMUXIAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYlMUXIAAAAAAAAAAAAAAAAAAAA";
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -95,10 +105,23 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     const onPause = () => setState(s => ({ ...s, isPlaying: false }));
     const onWaiting = () => setState(s => ({ ...s, isLoading: true }));
     const onCanPlay = () => setState(s => ({ ...s, isLoading: false }));
-    const onError = () => setState(s => ({ ...s, isLoading: false, isPlaying: false, error: "Failed to load audio" }));
-    const onTimeUpdate = () => setState(s => ({ ...s, currentTime: audio.currentTime }));
-    const onDurationChange = () => setState(s => ({ ...s, duration: isFinite(audio.duration) ? audio.duration : 0 }));
+    const onError = () => {
+      // Ignore errors from the silent placeholder
+      if (audio.src === SILENT_MP3 || audio.src.startsWith("data:")) return;
+      setState(s => ({ ...s, isLoading: false, isPlaying: false, error: "Failed to load audio" }));
+    };
+    const onTimeUpdate = () => {
+      // Don't update time for silent placeholder
+      if (audio.src === SILENT_MP3 || audio.src.startsWith("data:")) return;
+      setState(s => ({ ...s, currentTime: audio.currentTime }));
+    };
+    const onDurationChange = () => {
+      if (audio.src === SILENT_MP3 || audio.src.startsWith("data:")) return;
+      setState(s => ({ ...s, duration: isFinite(audio.duration) ? audio.duration : 0 }));
+    };
     const onEnded = () => {
+      // Ignore ended event from silent placeholder
+      if (audio.src === SILENT_MP3 || audio.src.startsWith("data:")) return;
       // Fire registered onEnded callbacks
       const { track: currentTrack, playlist, playlistIndex } = stateRef.current;
       if (currentTrack) {
@@ -245,6 +268,69 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  /**
+   * iOS-safe deferred play: call synchronously in a user gesture handler.
+   * 
+   * This immediately plays a silent audio clip to "unlock" the audio context on iOS,
+   * then returns a callback. When you call that callback with the resolved URL,
+   * it swaps the src and continues playing seamlessly.
+   * 
+   * Usage:
+   *   const swap = unlockThenSwap({ title, artist, ... });
+   *   const resolvedUrl = await fetchPresignedUrl();
+   *   swap(resolvedUrl);
+   */
+  const unlockThenSwap = useCallback((trackMeta: Omit<AudioTrack, "url">) => {
+    const audio = audioRef.current;
+    if (!audio) return (_url: string) => {};
+
+    // Set state to loading with placeholder track
+    setState(s => ({
+      ...s,
+      track: { url: "", ...trackMeta },
+      playlist: [{ url: "", ...trackMeta }],
+      playlistIndex: 0,
+      isLoading: true,
+      error: null,
+      currentTime: 0,
+      duration: 0,
+    }));
+
+    // Play silent audio to unlock the audio context on iOS
+    audio.pause();
+    audio.src = SILENT_MP3;
+    audio.load();
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Ignore errors on the silent clip
+      });
+    }
+
+    // Return the swap function — caller invokes this once URL is resolved
+    return (resolvedUrl: string) => {
+      const fullTrack: AudioTrack = { url: resolvedUrl, ...trackMeta };
+      setState(s => ({
+        ...s,
+        track: fullTrack,
+        playlist: [fullTrack],
+        playlistIndex: 0,
+        isLoading: true,
+        error: null,
+      }));
+      audio.pause();
+      audio.src = resolvedUrl;
+      audio.load();
+      audio.play().catch(err => {
+        // After unlock, play should succeed. But handle gracefully.
+        if (err?.name !== 'AbortError') {
+          console.error("[AudioPlayer] unlockThenSwap play error:", err);
+          setState(s => ({ ...s, isLoading: false, error: "Playback failed" }));
+        }
+      });
+    };
+  }, []);
+
   const playPlaylist = useCallback((tracks: AudioTrack[], startIndex = 0) => {
     const audio = audioRef.current;
     if (!audio || tracks.length === 0) return;
@@ -328,7 +414,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay }}>
+    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay, unlockThenSwap }}>
       {children}
     </AudioPlayerContext.Provider>
   );

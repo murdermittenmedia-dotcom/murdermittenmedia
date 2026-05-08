@@ -720,14 +720,18 @@ export async function getSubmissionsByArtistName(artistName: string, limit = 100
 
 export async function getLifetimeStats(artistName: string) {
   const db = await getDb();
-  if (!db) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0 };
+  if (!db) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0, totalWins: 0 };
   const subs = await db.select().from(reviewSubmissions)
     .where(eq(reviewSubmissions.artistName, artistName));
+  // Count battle wins
+  const battleWins = await db.select().from(battleRecords)
+    .where(eq(battleRecords.winnerArtistName, artistName));
   return {
     totalSubmissions: subs.length,
     totalFire: subs.reduce((acc, s) => acc + (s.fireCount ?? 0), 0),
     totalTrash: subs.reduce((acc, s) => acc + (s.trashCount ?? 0), 0),
     reviewed: subs.filter(s => s.status === "reviewed").length,
+    totalWins: battleWins.length,
   };
 }
 

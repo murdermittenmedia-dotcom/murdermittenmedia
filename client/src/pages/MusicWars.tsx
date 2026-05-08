@@ -13,6 +13,9 @@ import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { useChat } from "@/hooks/useChat";
+import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
+import { ArtistLink } from "@/components/ArtistLink";
+import { Play, Pause, SkipForward, Rewind, FastForward, Square, Zap } from "lucide-react";
 import { useAudioRoom, type AudioParticipant } from "@/hooks/useAudioRoom";
 import { getLoginUrl } from "@/const";
 // ─── Live Stream Panel (offline-aware) ────────────────────────────────
@@ -227,7 +230,16 @@ interface WheelEntry {
   id: number;
   artistName: string;
   songTitle: string;
+  songUrl: string | null;
   status: string;
+  userId?: number | null;
+  contactInfo?: string | null;
+  paid?: boolean;
+  paymentConfirmed?: boolean;
+  wheelPosition?: number;
+  roundNumber?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const WHEEL_COLORS = [
@@ -1227,6 +1239,9 @@ export default function MusicWars() {
   const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic, kickParticipant } = useAudioRoom({
     room: "music_wars", username, role: audioRole, userId: user?.id, enabled: audioJoined,
   });
+  // ─── Wars Radio Feed ───────────────────────────────────────────────────
+  const warsRadio = useWarsRadio({ enabled: true });
+  const { state: warsRadioState, tripleTheatMode, loadTracks, adminPause, adminResume, adminSeek, adminSkip, adminStop, setTripleTheat } = warsRadio;
 
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [requiresPayment, setRequiresPayment] = useState(false);
@@ -1266,11 +1281,20 @@ export default function MusicWars() {
         });
         // Clear spin state in DB after battle is set
         await resetSpinStateMutation.mutateAsync();
+        // Auto-queue contestant tracks into wars radio
+        const tracks: WarsRadioTrack[] = [];
+        if (contestant1Entry.songUrl) {
+          tracks.push({ contestantName: contestant1Entry.artistName, songTitle: contestant1Entry.songTitle, songUrl: contestant1Entry.songUrl, contestantNumber: 1 });
+        }
+        if (entry.songUrl) {
+          tracks.push({ contestantName: entry.artistName, songTitle: entry.songTitle, songUrl: entry.songUrl, contestantNumber: 2 });
+        }
+        if (tracks.length > 0) loadTracks(tracks);
       } catch {}
       setSpinCount(0);
       setContestant1Entry(null);
     }
-  }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, markCalledAndSaveStateMutation, setBattleContestantsMutation, resetSpinStateMutation, refetchWheel, refetchAllEntries]);
+  }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, markCalledAndSaveStateMutation, setBattleContestantsMutation, resetSpinStateMutation, refetchWheel, refetchAllEntries, loadTracks]);
 
   const handleSubmit = async (data: { songTitle: string; songUrl: string; contactInfo: string }) => {
     try {
@@ -1408,6 +1432,81 @@ export default function MusicWars() {
               )}
             </div>
 
+            {/* Wars Radio — Now Playing + Admin Controls */}
+            {warsRadioState && warsRadioState.tracks.length > 0 && (
+              <div className="border border-red-600/30 bg-red-600/5 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-['Anton'] text-lg uppercase tracking-widest">
+                    Now <span className="text-red-600">Playing</span>
+                  </h2>
+                  <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                {/* Current track info */}
+                {(() => {
+                  const currentTrack = warsRadioState.tracks[warsRadioState.currentIndex];
+                  if (!currentTrack) return null;
+                  return (
+                    <div className="mb-3">
+                      <div className="text-white font-semibold text-sm truncate">{currentTrack.songTitle}</div>
+                      <div className="text-white/50 text-xs">
+                        by <ArtistLink artistName={currentTrack.contestantName} />
+                        <span className="ml-2 text-white/30">• Contestant {currentTrack.contestantNumber}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* Track list */}
+                <div className="flex gap-2 mb-3">
+                  {warsRadioState.tracks.map((t, i) => (
+                    <div key={i} className={`flex-1 text-center py-1.5 text-xs uppercase tracking-wider border ${i === warsRadioState.currentIndex ? "border-red-600 bg-red-600/20 text-red-400" : "border-white/10 text-white/30"}`}>
+                      {t.contestantName}
+                    </div>
+                  ))}
+                </div>
+                {/* Admin transport controls */}
+                {isAdmin && (
+                  <div className="grid grid-cols-5 gap-2">
+                    <button onClick={() => adminSeek(0)} className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs transition-colors" title="Rewind to start">
+                      <Rewind className="w-3.5 h-3.5" />
+                    </button>
+                    {warsRadioState.isPlaying ? (
+                      <button onClick={() => adminPause(0)} className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs transition-colors" title="Pause">
+                        <Pause className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button onClick={() => adminResume(0)} className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs transition-colors" title="Play">
+                        <Play className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button onClick={() => adminSeek(30)} className="flex items-center justify-center gap-1 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs transition-colors" title="Fast Forward +30s">
+                      <FastForward className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={adminSkip} className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-xs transition-colors" title="Skip to next contestant">
+                      <SkipForward className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={adminStop} className="flex items-center justify-center gap-1 border border-red-600/30 text-red-400 hover:bg-red-600/10 py-2 text-xs transition-colors" title="Stop radio">
+                      <Square className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Triple Threat Mode Toggle (Admin only) */}
+            {isAdmin && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setTripleTheat(!tripleTheatMode)}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest font-bold border transition-all duration-200 ${tripleTheatMode ? "border-yellow-500 bg-yellow-500/10 text-yellow-400" : "border-white/20 text-white/40 hover:text-white"}`}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  Triple Threat {tripleTheatMode ? "ON" : "OFF"}
+                </button>
+                <span className="text-white/30 text-xs">1v1v1 mode — 3 contestants per battle</span>
+              </div>
+            )}
             {/* Live Voting Panel */}
             <div>
               <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">

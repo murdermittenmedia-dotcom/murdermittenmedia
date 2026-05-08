@@ -142,7 +142,7 @@ export const appRouter = router({
     getStats: protectedProcedure.query(async ({ ctx }) => {
       const profile = await getArtistProfile(ctx.user.id);
       const name = profile?.artistName ?? ctx.user.name ?? "";
-      if (!name) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0 };
+      if (!name) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0, totalWins: 0 };
       return getLifetimeStats(name);
     }),
 
@@ -151,9 +151,9 @@ export const appRouter = router({
       .input(z.object({ userId: z.number() }))
       .query(async ({ input }) => {
         const profile = await getArtistProfile(input.userId);
-        if (!profile) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0 };
+        if (!profile) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0, totalWins: 0 };
         const name = profile.artistName ?? "";
-        if (!name) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0 };
+        if (!name) return { totalSubmissions: 0, totalFire: 0, totalTrash: 0, reviewed: 0, totalWins: 0 };
         return getLifetimeStats(name);
       }),
 

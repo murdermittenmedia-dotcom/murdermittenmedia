@@ -515,6 +515,17 @@
 
 ## Clickable Artist Names & Catalogue Audio Fix
 
-- [ ] Make artist names clickable everywhere (links to /profile/:userId)
-- [ ] Fix music catalogue audio playback on profile page (same presigned URL issue)
+- [x] Make artist names clickable everywhere (links to /profile/:userId)
+- [x] Fix music catalogue audio playback on profile page (iOS autoplay policy fix with unlockThenSwap)
 - [ ] Ensure every user gets a profile page at /profile/:userId on signup
+
+## Session 11 — iOS Audio Fix, Crown Stat, Stats Reset
+
+- [x] Fix iOS audio playback: added unlockThenSwap to AudioPlayerContext (plays silent clip to unlock audio context, then swaps to real URL)
+- [x] Updated AudioPlayButton to use unlockThenSwap for fileKey/manus-storage URLs (iOS-safe)
+- [x] Updated usePlayTrack hook to use unlockThenSwap for all async URL resolution (iOS-safe)
+- [x] Crown emoji stat on profile changed from "Submissions" to "Total Wins" (battle wins from battle_records)
+- [x] Added totalWins field to getLifetimeStats (counts wins from battleRecords table)
+- [x] Updated getStats and getStatsByUserId procedures to include totalWins in default return
+- [x] Profile stats display: Crown icon first (Total Wins), then Fire Votes, Trash Votes, Submissions
+- [x] Reset ALL user profile stats and catalogues: deleted all user_songs, reset fire/trash counts to 0, deleted all battle_records

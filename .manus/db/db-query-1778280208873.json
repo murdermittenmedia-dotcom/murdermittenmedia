@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM user_songs; UPDATE review_submissions SET fireCount = 0, trashCount = 0; DELETE FROM battle_records;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute DELETE FROM user_songs; UPDATE review_submissions SET fireCount = 0, trashCount = 0; DELETE FROM battle_records;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 355
+}

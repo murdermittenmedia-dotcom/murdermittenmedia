@@ -6,6 +6,9 @@
  *   2. /manus-storage/... path — fetches presigned URL via songs.getAudioUrl (strips prefix)
  *   3. External URL (https://...) — uses directly
  *
+ * iOS-safe: Uses unlockThenSwap to immediately unlock the audio context within
+ * the user gesture, then swaps to the resolved URL after async fetch.
+ *
  * Usage:
  *   const { playTrack, isResolving } = usePlayTrack();
  *   await playTrack({ fileKey: "abc.mp3", title: "My Song", artist: "YLG" });
@@ -40,7 +43,7 @@ export type PlayTrackInput = {
 };
 
 export function usePlayTrack() {
-  const { play } = useAudioPlayer();
+  const { unlockAndPlay, unlockThenSwap, pause } = useAudioPlayer();
   const utils = trpc.useUtils();
   const [isResolving, setIsResolving] = useState(false);
 
@@ -104,40 +107,56 @@ export function usePlayTrack() {
     }
 
     return null;
-  }, [utils, play]);
+  }, [utils]);
 
+  /**
+   * Play a track with iOS-safe audio unlock.
+   * 
+   * MUST be called directly from a user gesture (click/tap handler).
+   * For direct URLs, plays immediately. For URLs needing resolution,
+   * unlocks audio context first then swaps to resolved URL.
+   */
   const playTrack = useCallback(async (input: PlayTrackInput) => {
+    const trackMeta = {
+      title: input.title,
+      artist: input.artist,
+      artworkUrl: input.artworkUrl,
+      isStream: input.isStream,
+      submissionId: input.submissionId,
+      artistUserId: input.artistUserId,
+      sourcePage: input.sourcePage,
+      sourceUrl: input.sourceUrl,
+      uploaderName: input.uploaderName,
+      queuePosition: input.queuePosition,
+      queueTotal: input.queueTotal,
+    };
+
+    // For direct external URLs, play immediately (no async needed)
+    if (input.url && (input.url.startsWith("http://") || input.url.startsWith("https://")) && !input.fileKey) {
+      unlockAndPlay({ url: input.url, ...trackMeta });
+      return;
+    }
+
+    // For URLs that need async resolution: unlock audio context first
     setIsResolving(true);
+    const swap = unlockThenSwap(trackMeta);
+
     try {
       const resolvedUrl = await resolveUrl(input);
       if (!resolvedUrl) {
         toast.error("Could not load audio — no playable URL found");
+        pause();
         return;
       }
-
-      const track: AudioTrack = {
-        url: resolvedUrl,
-        title: input.title,
-        artist: input.artist,
-        artworkUrl: input.artworkUrl,
-        isStream: input.isStream,
-        submissionId: input.submissionId,
-        artistUserId: input.artistUserId,
-        sourcePage: input.sourcePage,
-        sourceUrl: input.sourceUrl,
-        uploaderName: input.uploaderName,
-        queuePosition: input.queuePosition,
-        queueTotal: input.queueTotal,
-      };
-
-      play(track);
+      swap(resolvedUrl);
     } catch (err) {
       console.error("[usePlayTrack] Error:", err);
       toast.error("Failed to play track");
+      pause();
     } finally {
       setIsResolving(false);
     }
-  }, [resolveUrl, play]);
+  }, [resolveUrl, unlockAndPlay, unlockThenSwap, pause]);
 
   return { playTrack, isResolving };
 }

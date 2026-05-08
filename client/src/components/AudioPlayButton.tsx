@@ -6,8 +6,9 @@
  *   - /manus-storage/... → extracts key and fetches presigned URL
  *   - https://... → uses directly
  *
- * iOS-safe: uses unlockAndPlay to call audio.play() synchronously within the
- * user gesture, then swaps the src once the presigned URL is resolved.
+ * iOS-safe: For direct URLs, uses unlockAndPlay. For URLs that need async
+ * resolution (fileKey, /manus-storage/), uses unlockThenSwap which immediately
+ * unlocks the audio context with a silent clip, then swaps to the real URL.
  *
  * Shows loading spinner while resolving, error toast on failure.
  * Highlights when the track is currently playing in the global player.
@@ -59,7 +60,7 @@ export function AudioPlayButton({
   className = "",
   onPlay,
 }: AudioPlayButtonProps) {
-  const { play, unlockAndPlay, pause, resume, track: currentTrack, isPlaying } = useAudioPlayer();
+  const { unlockAndPlay, unlockThenSwap, pause, resume, track: currentTrack, isPlaying } = useAudioPlayer();
   const utils = trpc.useUtils();
   const [isResolving, setIsResolving] = useState(false);
 
@@ -142,27 +143,35 @@ export function AudioPlayButton({
       return;
     }
 
+    // For fileKey or /manus-storage/ URLs that need async resolution:
+    // Use unlockThenSwap to immediately unlock iOS audio context,
+    // then swap to the real URL once resolved.
     setIsResolving(true);
+
+    // MUST call unlockThenSwap synchronously within the click handler
+    // to maintain the user gesture context for iOS autoplay unlock
+    const swap = unlockThenSwap(trackMeta);
+
     try {
       const resolvedUrl = await resolveUrl();
       if (!resolvedUrl) {
         toast.error("Could not load audio — please try again");
+        // Stop the silent playback
+        pause();
+        setIsResolving(false);
         return;
       }
-      // Use play() here since we already awaited — the URL is ready
-      // For iOS: the user gesture chain is maintained because we're in the same
-      // click handler microtask queue. If this still fails on older iOS, the
-      // unlockAndPlay with a placeholder would be needed, but modern iOS 15+
-      // allows play() after a short await within the same gesture.
-      play({ url: resolvedUrl, ...trackMeta });
+      // Swap the silent placeholder with the real audio URL
+      swap(resolvedUrl);
       onPlay?.();
     } catch (err) {
       console.error("[AudioPlayButton] Error:", err);
       toast.error("Failed to play track");
+      pause();
     } finally {
       setIsResolving(false);
     }
-  }, [isCurrentTrack, isPlaying, pause, resume, fileKey, url, resolveUrl, play, unlockAndPlay, title, artist, artworkUrl, sourcePage, sourceUrl, uploaderName, submissionId, artistUserId, onPlay]);
+  }, [isCurrentTrack, isPlaying, pause, resume, fileKey, url, resolveUrl, unlockAndPlay, unlockThenSwap, title, artist, artworkUrl, sourcePage, sourceUrl, uploaderName, submissionId, artistUserId, onPlay]);
 
   const sizeClasses = {
     sm: "w-7 h-7",
