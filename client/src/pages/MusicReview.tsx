@@ -406,9 +406,15 @@ function AdminPanel({
                   <div className="flex gap-1 flex-shrink-0">
                     {sub.status !== "playing" && (
                       <button onClick={() => handleSetPlaying(sub.id)}
-                        className="text-white/30 hover:text-green-400 transition-colors p-0.5" title="Set as playing">
-                        <Play className="w-3 h-3" />
+                        className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-green-500/40 text-green-400 hover:bg-green-500/10 px-2 py-0.5 transition-colors" title="Load to Now Playing">
+                        <Play className="w-2.5 h-2.5" />
+                        Load
                       </button>
+                    )}
+                    {sub.status === "playing" && (
+                      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-red-500/40 text-red-400 px-2 py-0.5">
+                        ▶ Live
+                      </span>
                     )}
                     <button onClick={() => handleRemove(sub.id)}
                       className="text-white/30 hover:text-red-400 transition-colors p-0.5" title="Remove">
@@ -833,17 +839,41 @@ export default function MusicReview() {
                     Play in Player
                   </button>
                 )}
-                {liveReviewActive.youtubeUrl && (
-                  <a
-                    href={liveReviewActive.youtubeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Open on YouTube
-                  </a>
-                )}
+                {liveReviewActive.youtubeUrl && (() => {
+                  const ytId = liveReviewActive.youtubeUrl?.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/)?.[1];
+                  return ytId ? (
+                    <div className="mt-3">
+                      <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                        <iframe
+                          src={`https://www.youtube.com/embed/${ytId}?autoplay=0&rel=0`}
+                          className="absolute inset-0 w-full h-full border border-white/10"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title={liveReviewActive.songTitle ?? 'YouTube'}
+                        />
+                      </div>
+                      <a
+                        href={liveReviewActive.youtubeUrl!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-red-400 transition-colors mt-2"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Open on YouTube
+                      </a>
+                    </div>
+                  ) : (
+                    <a
+                      href={liveReviewActive.youtubeUrl!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Open on YouTube
+                    </a>
+                  );
+                })()}
               </div>
             )}
 

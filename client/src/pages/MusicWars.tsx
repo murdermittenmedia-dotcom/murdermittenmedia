@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { useChat } from "@/hooks/useChat";
 import { useAudioRoom, type AudioParticipant } from "@/hooks/useAudioRoom";
 import { getLoginUrl } from "@/const";
@@ -732,7 +733,7 @@ function VotingPanel({
   activeBattle, voteResults, myVote, user, isJudge, isAdmin,
   onVote, onSetActiveBattle, onClearVotes, entries,
 }: {
-  activeBattle: { id: number; contestant1Name: string; contestant2Name: string } | null | undefined;
+  activeBattle: { id: number; contestant1Name: string; contestant1SongTitle?: string | null; contestant1SongUrl?: string | null; contestant2Name: string; contestant2SongTitle?: string | null; contestant2SongUrl?: string | null } | null | undefined;
   voteResults: { contestant1: number; contestant2: number; total: number; judgeVotes: Array<{ name: string; role: string; candidate: string }>; audienceContestant1: number; audienceContestant2: number; } | null | undefined;
   myVote: { candidate: string } | null | undefined;
   user: { id: number; name: string; role: string } | null | undefined;
@@ -787,6 +788,42 @@ function VotingPanel({
 
       {activeBattle ? (
         <div>
+          {/* Contestant audio play buttons */}
+          {(activeBattle.contestant1SongUrl || activeBattle.contestant2SongUrl) && (
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="flex items-center gap-2 bg-green-600/5 border border-green-600/20 px-2 py-2">
+                {activeBattle.contestant1SongUrl && (
+                  <AudioPlayButton
+                    url={activeBattle.contestant1SongUrl}
+                    title={activeBattle.contestant1SongTitle || activeBattle.contestant1Name}
+                    artist={activeBattle.contestant1Name}
+                    sourcePage="Music Wars"
+                    size="sm"
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className="text-green-400 font-['Anton'] text-xs uppercase truncate">{activeBattle.contestant1Name}</div>
+                  {activeBattle.contestant1SongTitle && <div className="text-white/30 text-[10px] truncate">{activeBattle.contestant1SongTitle}</div>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-red-600/5 border border-red-600/20 px-2 py-2">
+                {activeBattle.contestant2SongUrl && (
+                  <AudioPlayButton
+                    url={activeBattle.contestant2SongUrl}
+                    title={activeBattle.contestant2SongTitle || activeBattle.contestant2Name}
+                    artist={activeBattle.contestant2Name}
+                    sourcePage="Music Wars"
+                    size="sm"
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className="text-red-400 font-['Anton'] text-xs uppercase truncate">{activeBattle.contestant2Name}</div>
+                  {activeBattle.contestant2SongTitle && <div className="text-white/30 text-[10px] truncate">{activeBattle.contestant2SongTitle}</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Vote buttons */}
           {user && !myVote && (
             <div className="grid grid-cols-2 gap-3 mb-4">

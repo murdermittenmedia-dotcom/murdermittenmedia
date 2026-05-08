@@ -443,3 +443,32 @@
 - [x] Fix Search page play buttons end-to-end
 - [x] Fix UserProfile play buttons end-to-end
 - [x] Verify all pages have working audio playback
+
+## Session 9 — Music Review + Music Wars + Audio Fix
+- [ ] Fix audio playback: usePlayTrack presigned URL resolution not loading into global player
+- [ ] Music Review admin: "Load to Now Playing" button per submission
+- [ ] Music Review admin: "Disable" button removes submission from active queue (soft disable, not delete)
+- [ ] Music Review: inline YouTube player on same page (no new window)
+- [ ] Add Music Wars to SiteNav More dropdown
+- [ ] Music Wars: show contestant 1 and contestant 2 audio submissions, auto-queue both when battle starts
+- [ ] Music Wars: play buttons for each contestant's submission using global player
+
+## Session 9 Continued — Catalogue + Forum + UI
+- [x] Add Music Wars to SiteNav More dropdown
+- [x] Music Wars: contestant audio play buttons in VotingPanel (green for C1, red for C2)
+- [x] Music Review admin: "Load" button per queue item (replaces plain play icon)
+- [x] Music Review admin: inline YouTube embed in Now Being Reviewed banner
+- [x] Forum audio: AudioPlayButton + clickable title link on post cards
+- [x] Artist Music Catalogue: upload form on own profile (MP3 file or external link, visibility toggle, delete)
+- [x] Artist Music Catalogue: viewable on any user's public profile page (/profile/:id)
+- [x] UserProfile: support visiting other users' profiles via /profile/:id route
+
+## Session 9 Continued — Catalogue + Forum + UI
+- [x] Add Music Wars to SiteNav More dropdown
+- [x] Music Wars: contestant audio play buttons in VotingPanel (green for C1, red for C2)
+- [x] Music Review admin: "Load" button per queue item (replaces plain play icon)
+- [x] Music Review admin: inline YouTube embed in Now Being Reviewed banner
+- [x] Forum audio: AudioPlayButton + clickable title link on post cards
+- [x] Artist Music Catalogue: upload form on own profile (MP3 file or external link, visibility toggle, delete)
+- [x] Artist Music Catalogue: viewable on any user's public profile page (/profile/:id)
+- [x] UserProfile: support visiting other users' profiles via /profile/:id route

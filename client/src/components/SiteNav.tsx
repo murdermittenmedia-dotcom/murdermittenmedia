@@ -24,6 +24,7 @@ const PRIMARY_LINKS = [
 
 // Secondary links — shown in "More" dropdown
 const MORE_LINKS = [
+  { href: "/wars", label: "Music Wars" },
   { href: "/leaderboard", label: "Leaderboards" },
   { href: "/artist-of-the-week", label: "Artist of the Week" },
   { href: "/podcast", label: "Meeting With The Mitten" },
