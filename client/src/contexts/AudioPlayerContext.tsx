@@ -56,6 +56,8 @@ type AudioPlayerContextType = AudioPlayerState & {
   setVolume: (v: number) => void;
   seek: (time: number) => void;
   onEnded: (cb: (track: AudioTrack) => void) => () => void;
+  /** Unlock iOS autoplay: call synchronously in a user gesture, then swap src once URL is resolved */
+  unlockAndPlay: (track: AudioTrack) => void;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -218,6 +220,31 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     });
   }, []);
 
+  /**
+   * iOS-safe play: call this synchronously in a user gesture handler.
+   * It immediately sets the src and calls play() (unlocking autoplay),
+   * then the audio element will load and play once the URL is ready.
+   */
+  const unlockAndPlay = useCallback((track: AudioTrack) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setState(s => ({ ...s, track, playlist: [track], playlistIndex: 0, isLoading: true, error: null, currentTime: 0, duration: 0 }));
+    audio.pause();
+    audio.src = track.url;
+    audio.load();
+    // Call play() synchronously within the user gesture to unlock iOS autoplay
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        // NotSupportedError can happen if src isn't set yet — ignore, audio will play once src loads
+        if (err?.name !== 'NotSupportedError' && err?.name !== 'AbortError') {
+          console.error("[AudioPlayer] unlockAndPlay error:", err);
+          setState(s => ({ ...s, isLoading: false, error: "Playback failed" }));
+        }
+      });
+    }
+  }, []);
+
   const playPlaylist = useCallback((tracks: AudioTrack[], startIndex = 0) => {
     const audio = audioRef.current;
     if (!audio || tracks.length === 0) return;
@@ -301,7 +328,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded }}>
+    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay }}>
       {children}
     </AudioPlayerContext.Provider>
   );

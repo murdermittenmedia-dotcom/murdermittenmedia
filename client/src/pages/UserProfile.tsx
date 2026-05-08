@@ -381,6 +381,11 @@ export default function UserProfile() {
   const refetchProfile = isOwnProfile ? refetchOwnProfile : refetchVisitingProfile;
 
   const { data: stats } = trpc.profile.getStats.useQuery(undefined, { enabled: !!user && isOwnProfile });
+  const { data: publicStats } = trpc.profile.getStatsByUserId.useQuery(
+    { userId: visitingId! },
+    { enabled: !isOwnProfile && !!visitingId }
+  );
+  const displayStats = isOwnProfile ? stats : publicStats;
   const { data: submissions } = trpc.profile.getSubmissions.useQuery(undefined, { enabled: !!user && isOwnProfile });
 
   // Songs catalogue
@@ -671,14 +676,14 @@ export default function UserProfile() {
           </div>
         </div>
 
-        {/* ── Lifetime Stats (own profile only) ──────────── */}
-        {isOwnProfile && (
+        {/* ── Lifetime Stats (shown for all profiles) ──────────── */}
+        {displayStats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
             {[
-              { icon: <Music className="w-5 h-5 text-white/50" />, value: stats?.totalSubmissions ?? 0, label: "Submissions" },
-              { icon: <Flame className="w-5 h-5 text-orange-500" />, value: stats?.totalFire ?? 0, label: "Fire Votes" },
-              { icon: <Trash2 className="w-5 h-5 text-white/40" />, value: stats?.totalTrash ?? 0, label: "Trash Votes" },
-              { icon: <Trophy className="w-5 h-5 text-yellow-500" />, value: stats?.reviewed ?? 0, label: "Reviewed" },
+              { icon: <Music className="w-5 h-5 text-white/50" />, value: displayStats?.totalSubmissions ?? 0, label: "Submissions" },
+              { icon: <Flame className="w-5 h-5 text-orange-500" />, value: displayStats?.totalFire ?? 0, label: "Fire Votes" },
+              { icon: <Trash2 className="w-5 h-5 text-white/40" />, value: displayStats?.totalTrash ?? 0, label: "Trash Votes" },
+              { icon: <Trophy className="w-5 h-5 text-yellow-500" />, value: displayStats?.reviewed ?? 0, label: "Reviewed" },
             ].map((s) => (
               <div key={s.label} className="border border-white/10 bg-white/[0.03] p-4 flex flex-col items-center gap-2">
                 {s.icon}

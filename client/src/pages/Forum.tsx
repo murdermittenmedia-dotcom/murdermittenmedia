@@ -213,7 +213,7 @@ export default function Forum() {
     <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-16 z-10 backdrop-blur-sm">
+      <div className="border-b border-white/10 bg-[#080808]/90 sticky top-[64px] z-10 backdrop-blur-sm">
         <div className="container py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="font-['Anton'] text-2xl tracking-wider">
@@ -245,7 +245,7 @@ export default function Forum() {
       </div>
 
       {/* Posts list */}
-      <div className="container py-6 max-w-4xl">
+      <div className="container pt-6 pb-16 max-w-4xl">
         {isLoading && (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
