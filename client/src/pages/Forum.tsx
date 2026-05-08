@@ -245,7 +245,7 @@ export default function Forum() {
       </div>
 
       {/* Posts list */}
-      <div className="container pt-6 pb-16 max-w-4xl">
+      <div className="container pt-40 md:pt-20 lg:pt-8 pb-16 max-w-4xl">
         {isLoading && (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
