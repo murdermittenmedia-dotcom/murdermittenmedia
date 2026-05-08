@@ -106,13 +106,16 @@ function VideoTile({
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated, playTrack, setSelectedYouTube,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, playTrack, setSelectedYouTube,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
   audioRoom: ReturnType<typeof useAudioRoom>;
   videoRoom: ReturnType<typeof useVideoRoom>;
-  broadcastReviewActive: (item: { submissionId: number | null; artistName?: string; songTitle?: string; audioUrl?: string | null; youtubeUrl?: string | null; submissionType?: string }) => void;
+  broadcastReviewActive: (item: { submissionId: number | null; artistName?: string; songTitle?: string; audioUrl?: string | null; youtubeUrl?: string | null; submissionType?: string; fileKey?: string | null; fileUrl?: string | null }) => void;
+  broadcastRadioPause: (currentTime: number) => void;
+  broadcastRadioResume: (currentTime: number) => void;
+  broadcastRadioSeek: (currentTime: number) => void;
   broadcastReviewPlayback: (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => void;
   broadcastReviewQueueUpdated: () => void;
   playTrack: (sub: ReviewSubmission) => void;
@@ -142,32 +145,20 @@ function AdminPanel({
     const sub = queue.find(s => s.id === id);
     if (!sub) return;
 
-    // Resolve a real presigned URL before broadcasting so all viewers get a direct playable URL
-    let resolvedAudioUrl: string | null = null;
-    if (sub.fileKey) {
-      try {
-        const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: sub.fileKey });
-        resolvedAudioUrl = url;
-      } catch {
-        // If presign fails, fall back to the stored fileUrl (may be /manus-storage/ path)
-        resolvedAudioUrl = sub.fileUrl ?? null;
-      }
-    } else if (sub.fileUrl && (sub.fileUrl.startsWith("http://") || sub.fileUrl.startsWith("https://"))) {
-      resolvedAudioUrl = sub.fileUrl;
-    }
-
     setPlaying.mutate({ submissionId: id }, {
       onSuccess: () => {
-        // Start playback in the admin's global player
+        // For admin's own player: play locally
         playTrack(sub);
-        // Broadcast to all viewers: send the resolved presigned URL (not /manus-storage/ redirect)
+        // Broadcast via radio:load — server resolves presigned URL and emits to ALL clients
         broadcastReviewActive({
           submissionId: sub.id,
           artistName: sub.artistName,
           songTitle: sub.songTitle,
-          audioUrl: resolvedAudioUrl,
+          audioUrl: null, // server will resolve this
           youtubeUrl: sub.youtubeUrl ?? null,
           submissionType: sub.submissionType,
+          fileKey: sub.fileKey ?? null,
+          fileUrl: sub.fileUrl ?? null,
         });
         broadcastReviewQueueUpdated();
         toast.success(`Now playing: ${sub.songTitle}`);
@@ -183,28 +174,20 @@ function AdminPanel({
     updateStatus.mutate({ id: currentPlaying.id, status: "reviewed" });
     const next = queue.find(s => s.status === "pending" && s.id !== currentPlaying.id);
     if (next) {
-      // Resolve presigned URL for the next track before broadcasting
-      let nextAudioUrl: string | null = null;
-      if (next.fileKey) {
-        try {
-          const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: next.fileKey });
-          nextAudioUrl = url;
-        } catch {
-          nextAudioUrl = next.fileUrl ?? null;
-        }
-      } else if (next.fileUrl?.startsWith("http")) {
-        nextAudioUrl = next.fileUrl;
-      }
       setTimeout(() => {
         setPlaying.mutate({ submissionId: next.id }, {
           onSuccess: () => {
+            playTrack(next);
+            // Server resolves presigned URL via radio:load
             broadcastReviewActive({
               submissionId: next.id,
               artistName: next.artistName,
               songTitle: next.songTitle,
-              audioUrl: nextAudioUrl,
+              audioUrl: null,
               youtubeUrl: next.youtubeUrl ?? null,
               submissionType: next.submissionType,
+              fileKey: next.fileKey ?? null,
+              fileUrl: next.fileUrl ?? null,
             });
             broadcastReviewQueueUpdated();
           }
@@ -420,9 +403,8 @@ function AdminPanel({
                       <ExternalLink className="w-3 h-3" />
                     </button>
                   )}
-                  {(sub.fileKey || sub.fileUrl) && (
+                  {sub.fileUrl && (
                     <AudioPlayButton
-                      fileKey={sub.fileKey}
                       url={sub.fileUrl}
                       urlSource="queue"
                       title={sub.songTitle}
@@ -576,7 +558,7 @@ export default function MusicReview() {
   const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated } = useChat({
+  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated } = useChat({
     room: "music_review",
     username: chatUsername,
     userId: user?.id,
@@ -666,17 +648,17 @@ export default function MusicReview() {
       setSelectedYouTube({ url: sub.youtubeUrl, title: sub.songTitle, artist: sub.artistName });
       return;
     }
-    if (sub.fileKey || sub.fileUrl) {
+    if (sub.fileUrl) {
+      // Use fileUrl (has hash suffix) not fileKey (original key without hash)
       await resolveAndPlay({
-        fileKey: sub.fileKey ?? undefined,
-        url: sub.fileUrl ?? undefined,
+        url: sub.fileUrl,
         urlSource: "queue",
         title: sub.songTitle,
         artist: sub.artistName,
         isStream: false,
         submissionId: sub.id,
         sourcePage: "Music Review",
-        sourceUrl: "/music-review",
+        sourceUrl: "/review",
       });
       return;
     }
@@ -844,6 +826,9 @@ export default function MusicReview() {
                   audioRoom={audioRoom}
                   videoRoom={videoRoom}
                   broadcastReviewActive={broadcastReviewActive}
+                  broadcastRadioPause={broadcastRadioPause}
+                  broadcastRadioResume={broadcastRadioResume}
+                  broadcastRadioSeek={broadcastRadioSeek}
                   broadcastReviewPlayback={broadcastReviewPlayback}
                   broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
                   playTrack={playTrack}
@@ -1043,10 +1028,9 @@ export default function MusicReview() {
                 </div>
                 <div className="font-['Anton'] text-2xl uppercase">{currentPlaying.songTitle}</div>
                 <div className="text-white/60 text-sm">by {currentPlaying.artistName}</div>
-                {(currentPlaying.fileKey || currentPlaying.fileUrl) && (
+                {currentPlaying.fileUrl && (
                   <div className="mt-3">
                     <AudioPlayButton
-                      fileKey={currentPlaying.fileKey}
                       url={currentPlaying.fileUrl}
                       urlSource="queue"
                       title={currentPlaying.songTitle}
@@ -1146,9 +1130,8 @@ export default function MusicReview() {
                             >
                               <Play className="w-3.5 h-3.5" />
                             </button>
-                          ) : (sub.fileKey || sub.fileUrl) ? (
+                          ) : sub.fileUrl ? (
                             <AudioPlayButton
-                              fileKey={sub.fileKey}
                               url={sub.fileUrl}
                               urlSource="queue"
                               title={sub.songTitle}

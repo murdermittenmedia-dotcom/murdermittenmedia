@@ -23,6 +23,8 @@ export interface LiveReviewActiveItem {
   audioUrl?: string | null;
   youtubeUrl?: string | null;
   submissionType?: string;
+  fileKey?: string | null;
+  fileUrl?: string | null;
 }
 
 export interface LiveReviewPlayback {
@@ -103,7 +105,7 @@ export function useChat({
       onSpinStateRef.current?.(data);
     });
 
-    // Live Review events
+    // Live Review events (legacy compat)
     socket.on("review:active_changed", (data: LiveReviewActiveItem) => {
       onReviewActiveRef.current?.(data);
     });
@@ -112,6 +114,13 @@ export function useChat({
     });
     socket.on("review:queue_updated", () => {
       onReviewQueueUpdatedRef.current?.();
+    });
+    // New radio events (review page listens for these too)
+    socket.on("radio:playing", (data: LiveReviewActiveItem) => {
+      onReviewActiveRef.current?.(data);
+    });
+    socket.on("radio:stopped", () => {
+      onReviewActiveRef.current?.({ submissionId: null });
     });
 
     return () => {
@@ -138,9 +147,25 @@ export function useChat({
     socketRef.current?.emit("wheel:result", { winner });
   }, []);
 
-  // Admin: set the active live review item
+  // Admin: load a track on the radio (server resolves presigned URL)
   const broadcastReviewActive = useCallback((data: LiveReviewActiveItem) => {
-    socketRef.current?.emit("review:set_active", data);
+    // Emit radio:load so server resolves presigned URL before broadcasting to all clients
+    socketRef.current?.emit("radio:load", data);
+  }, []);
+
+  // Admin: radio pause
+  const broadcastRadioPause = useCallback((currentTime: number) => {
+    socketRef.current?.emit("radio:pause", { currentTime });
+  }, []);
+
+  // Admin: radio resume
+  const broadcastRadioResume = useCallback((currentTime: number) => {
+    socketRef.current?.emit("radio:resume", { currentTime });
+  }, []);
+
+  // Admin: radio seek
+  const broadcastRadioSeek = useCallback((currentTime: number) => {
+    socketRef.current?.emit("radio:seek", { currentTime });
   }, []);
 
   // Admin: broadcast playback control
@@ -162,6 +187,9 @@ export function useChat({
     broadcastSpin,
     broadcastWinner,
     broadcastReviewActive,
+    broadcastRadioPause,
+    broadcastRadioResume,
+    broadcastRadioSeek,
     broadcastReviewPlayback,
     broadcastReviewQueueUpdated,
     socket: socketRef.current,

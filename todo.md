@@ -489,3 +489,20 @@
 - [x] useLivePlayer hook: connects socket on every page, auto-plays live track with LIVE badge (isStream: true)
 - [x] App.tsx: LivePlayerMount component mounts useLivePlayer globally on every route
 - [x] MusicWars: AudioPlayButton already correct for contestant audio (handles all URL types)
+
+## Music Review Live Radio Rebuild
+- [ ] Server: resolve presigned URL server-side before broadcasting (not client-side)
+- [ ] Server: radio:play event — broadcasts { trackUrl, fileKey, title, artist, submissionId, startedAt }
+- [ ] Server: radio:pause event — broadcasts { pausedAt (seconds) }
+- [ ] Server: radio:seek event — broadcasts { seekTo (seconds) }
+- [ ] Server: radio:skip event — advances to next pending submission, broadcasts radio:play
+- [ ] Server: radio:state query — returns current radio state for late-joining viewers
+- [ ] Server: auto-advance — when admin marks track done, next pending track auto-loads
+- [ ] Client: useLiveRadio hook — connects socket, listens for radio:* events, syncs FloatingPlayer
+- [ ] Client: FloatingPlayer — LIVE badge when radio active, synced position
+- [ ] MusicReview admin: big play/pause/skip/rewind controls (admin only)
+- [ ] MusicReview admin: auto-advance toggle (plays next track when current ends)
+- [ ] MusicReview viewer: NOW PLAYING banner with track info (no play button — audio auto-plays)
+- [ ] MusicReview viewer: Fire/Trash poll visible when track is playing
+- [ ] MusicReview viewer: queue list shows position, no individual play buttons
+- [ ] MusicReview: past played tracks section with clickable artist names

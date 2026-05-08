@@ -11,6 +11,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages } from "../../drizzle/schema";
+import { storageGetSignedUrl } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +40,31 @@ type RoomParticipant = {
 
 // Track audio/video room participants: socketId -> participant
 const roomParticipants = new Map<string, RoomParticipant>();
+
+// ─── Radio State (server-side source of truth) ────────────────────────────────
+type RadioState = {
+  submissionId: number | null;
+  artistName: string;
+  songTitle: string;
+  audioUrl: string | null;       // direct presigned S3 URL (expires ~1hr)
+  youtubeUrl: string | null;
+  submissionType: string;
+  startedAt: number | null;      // Date.now() when track started
+  pausedAt: number | null;       // seconds into track when paused (null = playing)
+  fileKey: string | null;        // original S3 key for re-signing
+};
+
+let radioState: RadioState = {
+  submissionId: null,
+  artistName: "",
+  songTitle: "",
+  audioUrl: null,
+  youtubeUrl: null,
+  submissionType: "file",
+  startedAt: null,
+  pausedAt: null,
+  fileKey: null,
+};
 
 function getRoomList(room: string) {
   return Array.from(roomParticipants.entries())
@@ -237,35 +263,118 @@ async function startServer() {
       }
     });
 
-    // ── Live Review Controls (admin → all viewers) ────────────
-    // Admin selects a submission to review live — broadcasts to all in music_review room
-    // AND emits a site-wide live:now_playing event so every visitor's FloatingPlayer auto-plays
-    socket.on("review:set_active", (data: {
+    // ── Live Radio Controls (admin → ALL viewers site-wide) ─────
+    // Admin loads a track: server resolves presigned URL, broadcasts to everyone
+    socket.on("radio:load", async (data: {
+      submissionId: number | null;
+      artistName?: string;
+      songTitle?: string;
+      fileKey?: string | null;
+      fileUrl?: string | null;   // /manus-storage/ path — we resolve it here
+      youtubeUrl?: string | null;
+      submissionType?: string;
+    }) => {
+      if (data.submissionId === null) {
+        // Admin cleared the deck
+        radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null };
+        io.emit("radio:stopped");
+        io.emit("live:now_playing", null);
+        return;
+      }
+
+      // Resolve presigned S3 URL server-side so all clients get a direct URL
+      // IMPORTANT: fileUrl has the correct hash-suffixed key (e.g. queue-submissions/song_a1b2c3d4.mp3)
+      // fileKey may be the original key without hash — always prefer fileUrl for key extraction
+      let resolvedAudioUrl: string | null = null;
+      const key = data.fileUrl?.replace(/^\/manus-storage\//, "") ?? data.fileKey ?? null;
+      if (key && data.submissionType !== "youtube") {
+        try {
+          resolvedAudioUrl = await storageGetSignedUrl(key);
+          console.log("[radio:load] Resolved presigned URL for key:", key);
+        } catch (e) {
+          console.error("[radio:load] Failed to resolve presigned URL for key:", key, e);
+          // Fall back to /manus-storage/ path — client will try to handle it
+          resolvedAudioUrl = data.fileUrl ?? null;
+        }
+      }
+
+      radioState = {
+        submissionId: data.submissionId,
+        artistName: data.artistName ?? "Unknown Artist",
+        songTitle: data.songTitle ?? "Live Review",
+        audioUrl: resolvedAudioUrl,
+        youtubeUrl: data.youtubeUrl ?? null,
+        submissionType: data.submissionType ?? "file",
+        startedAt: Date.now(),
+        pausedAt: null,
+        fileKey: key,
+      };
+
+      const broadcast = { ...radioState };
+      // Broadcast to music_review room (for the review page UI)
+      io.to("music_review").emit("radio:playing", broadcast);
+      // Broadcast site-wide so FloatingPlayer on ALL pages auto-plays
+      io.emit("live:now_playing", {
+        submissionId: broadcast.submissionId,
+        artistName: broadcast.artistName,
+        songTitle: broadcast.songTitle,
+        audioUrl: broadcast.audioUrl,
+        youtubeUrl: broadcast.youtubeUrl,
+        submissionType: broadcast.submissionType,
+        startedAt: broadcast.startedAt,
+      });
+    });
+
+    // Admin pause/resume/seek — broadcast to all
+    socket.on("radio:pause", (data: { currentTime: number }) => {
+      radioState.pausedAt = data.currentTime;
+      io.emit("radio:paused", { pausedAt: data.currentTime });
+    });
+
+    socket.on("radio:resume", (data: { currentTime: number }) => {
+      // Recalculate startedAt so late joiners can sync
+      radioState.startedAt = Date.now() - data.currentTime * 1000;
+      radioState.pausedAt = null;
+      io.emit("radio:resumed", { startedAt: radioState.startedAt });
+    });
+
+    socket.on("radio:seek", (data: { currentTime: number }) => {
+      radioState.startedAt = Date.now() - data.currentTime * 1000;
+      radioState.pausedAt = radioState.pausedAt !== null ? data.currentTime : null;
+      io.emit("radio:seeked", { currentTime: data.currentTime, startedAt: radioState.startedAt });
+    });
+
+    // Late-joining viewer requests current radio state
+    socket.on("radio:get_state", () => {
+      if (!radioState.submissionId) {
+        socket.emit("radio:state", null);
+        return;
+      }
+      // Calculate current position
+      let currentTime = 0;
+      if (radioState.pausedAt !== null) {
+        currentTime = radioState.pausedAt;
+      } else if (radioState.startedAt) {
+        currentTime = (Date.now() - radioState.startedAt) / 1000;
+      }
+      socket.emit("radio:state", { ...radioState, currentTime });
+    });
+
+    // Legacy review:set_active support (backward compat)
+    socket.on("review:set_active", async (data: {
       submissionId: number | null;
       artistName?: string;
       songTitle?: string;
       audioUrl?: string | null;
       youtubeUrl?: string | null;
       submissionType?: string;
+      fileKey?: string | null;
     }) => {
-      // Broadcast to music_review room (for the review page UI)
-      io.to("music_review").emit("review:active_changed", data);
-      // Broadcast site-wide so FloatingPlayer on ALL pages auto-plays
-      if (data.submissionId !== null) {
-        io.emit("live:now_playing", {
-          submissionId: data.submissionId,
-          artistName: data.artistName ?? "Unknown Artist",
-          songTitle: data.songTitle ?? "Live Review",
-          audioUrl: data.audioUrl ?? null,
-          youtubeUrl: data.youtubeUrl ?? null,
-          submissionType: data.submissionType ?? "file",
-        });
-      } else {
-        // Admin cleared the deck — tell all clients to stop the live track
-        io.emit("live:now_playing", null);
-      }
+      // Forward to radio:load handler logic
+      socket.emit("radio:load", data);
     });
-    // Admin broadcasts playback state (play/pause/seek)
+
+    // Admin broadcasts playback state (play/pause/seek) — legacy compat
     socket.on("review:playback", (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => {
       io.to("music_review").emit("review:playback", data);
     });
