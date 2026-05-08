@@ -281,8 +281,26 @@ export default function FloatingPlayer() {
 
           {/* Playback controls — HIDDEN for live stream (admin controls for everyone) */}
           {isLiveStream ? (
-            /* Live stream: only volume control */
+            /* Live stream: play/pause (mute/unmute) + volume control */
             <div className="flex items-center gap-0.5 flex-shrink-0">
+              {/* Play / Pause — acts as mute/unmute for live stream */}
+              <button
+                onClick={isPlaying ? pause : resume}
+                disabled={isLoading}
+                className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
+                aria-label={isPlaying ? "Pause" : "Play"}
+                title="Pause/Resume live stream"
+              >
+                {isLoading ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : isPlaying ? (
+                  <Pause className="w-4 h-4 text-white" />
+                ) : (
+                  <Play className="w-4 h-4 text-white ml-0.5" />
+                )}
+              </button>
+
+              {/* Volume */}
               <button
                 onClick={() => setShowVolume(v => !v)}
                 className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${showVolume ? "text-white bg-white/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}

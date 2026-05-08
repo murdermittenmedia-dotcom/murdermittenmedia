@@ -537,3 +537,10 @@
 - [x] Fix: Server broadcasts radio state (current track URL, playback position, isPlaying) to all connected clients
 - [x] Fix: Late-joining viewers get current radio state immediately on socket connect and auto-play from correct position
 - [x] Fix: Admin pause/resume/skip/seek actions broadcast to all viewers in real-time
+
+## Session 12 — Live Radio Play/Pause Button (Mute/Unmute)
+
+- [x] Add play/pause button to FloatingPlayer for live streams (acts as mute/unmute)
+- [x] When viewer clicks play on a live stream, resume playback (handles tab switching)
+- [x] When viewer clicks pause on a live stream, mute/pause locally (doesn't affect other viewers)
+- [x] Show play icon when paused, pause icon when playing
