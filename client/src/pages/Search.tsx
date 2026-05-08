@@ -3,14 +3,13 @@
    Style: Dark Editorial matching site theme (#080808, #D10000)
    ============================================================ */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { Input } from "@/components/ui/input";
-import { Search as SearchIcon, User, Music, Play, MapPin, ExternalLink } from "lucide-react";
-import { toast } from "sonner";
+import { Search as SearchIcon, User, Music, MapPin, ExternalLink } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -25,21 +24,6 @@ export default function Search() {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 350);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { play } = useAudioPlayer();
-  const utils = trpc.useUtils();
-
-  const handlePlaySong = useCallback(async (song: { fileKey?: string | null; externalUrl?: string | null; title: string; artistName?: string | null }) => {
-    if (song.fileKey) {
-      try {
-        const { url } = await utils.songs.getAudioUrl.fetch({ fileKey: song.fileKey });
-        play({ url, title: song.title, artist: song.artistName ?? "Unknown", sourcePage: "Explore" });
-      } catch {
-        toast.error("Could not load audio file");
-      }
-    } else if (song.externalUrl) {
-      play({ url: song.externalUrl, title: song.title, artist: song.artistName ?? "Unknown", sourcePage: "Explore" });
-    }
-  }, [play, utils]);
 
   const enabled = debouncedQuery.trim().length >= 2;
 
@@ -180,15 +164,17 @@ export default function Search() {
                     >
                       <div className="flex items-center gap-3">
                         {/* Play button */}
-                        {(song.fileKey || song.externalUrl) && (
-                          <button
-                            onClick={() => handlePlaySong(song)}
-                            className="w-8 h-8 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center hover:bg-red-600 transition-all flex-shrink-0"
-                          >
-                            <Play className="w-3 h-3 text-red-400 group-hover:text-white fill-current" />
-                          </button>
-                        )}
-                        {!song.fileKey && !song.externalUrl && (
+                        {(song.fileKey || song.externalUrl) ? (
+                          <AudioPlayButton
+                            fileKey={song.fileKey}
+                            url={song.externalUrl}
+                            urlSource="songs"
+                            title={song.title}
+                            artist={song.artistName ?? "Unknown"}
+                            sourcePage="Explore"
+                            size="sm"
+                          />
+                        ) : (
                           <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
                             <Music className="w-3 h-3 text-white/30" />
                           </div>

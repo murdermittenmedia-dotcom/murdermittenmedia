@@ -472,3 +472,20 @@
 - [x] Artist Music Catalogue: upload form on own profile (MP3 file or external link, visibility toggle, delete)
 - [x] Artist Music Catalogue: viewable on any user's public profile page (/profile/:id)
 - [x] UserProfile: support visiting other users' profiles via /profile/:id route
+
+## Session 10 — Audio System Overhaul (Complete)
+
+- [x] AudioPlayButton: handles fileKey, /manus-storage/ paths, and direct https:// URLs universally
+- [x] Fix ArtistStatModal: AudioPlayButton for file songs, inline YouTube embed for external links
+- [x] Fix MusicReview: AudioPlayButton on all queue items (admin preview + public queue)
+- [x] Fix MusicReview: admin YouTube preview opens inline embed (not new tab)
+- [x] Fix MusicReview: handleSkip resolves presigned URL before broadcasting next track
+- [x] Fix MusicReview: setSelectedYouTube prop passed to AdminPanel
+- [x] Fix Search page: AudioPlayButton replaces hand-rolled play button
+- [x] Auto-save to catalogue: queue.submit (YouTube) auto-inserts user_songs row
+- [x] Auto-save to catalogue: queue.uploadAudio (MP3) auto-inserts user_songs row
+- [x] Big Fire/Trash poll: full-width 🔥/🗑️ banner on Music Review for all viewers during live review
+- [x] Live global Now Playing: server emits live:now_playing to ALL sockets when admin loads track
+- [x] useLivePlayer hook: connects socket on every page, auto-plays live track with LIVE badge (isStream: true)
+- [x] App.tsx: LivePlayerMount component mounts useLivePlayer globally on every route
+- [x] MusicWars: AudioPlayButton already correct for contestant audio (handles all URL types)

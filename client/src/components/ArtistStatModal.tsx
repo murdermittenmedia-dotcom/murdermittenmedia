@@ -7,8 +7,8 @@
 import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
-import { Play, Pause, MapPin } from "lucide-react";
+import { MapPin, ExternalLink, X, ChevronDown, ChevronUp } from "lucide-react";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 
 interface ArtistStatModalProps {
   artistName: string;
@@ -39,76 +39,105 @@ interface BattleRecord {
   notes?: string | null;
 }
 
-// ─── Song Row with presigned URL playback ─────────────────────
-function SongRow({ song, displayName }: { song: Song; displayName: string }) {
-  const { track: currentTrack, isPlaying, play, pause } = useAudioPlayer();
-  const utils = trpc.useUtils();
-  const [loading, setLoading] = useState(false);
-
-  const hasAudio = !!song.fileKey || !!song.fileUrl || !!song.externalUrl;
-  const isThisPlaying = currentTrack?.title === song.title && currentTrack?.artist === displayName && isPlaying;
-
-  const handlePlay = async () => {
-    if (isThisPlaying) { pause(); return; }
-    if (!hasAudio) return;
-
-    // External link — open in new tab
-    if (!song.fileKey && !song.fileUrl && song.externalUrl) {
-      window.open(song.externalUrl, "_blank");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      let url = song.fileUrl;
-      if (song.fileKey) {
-        // Always get a fresh presigned URL for uploaded files
-        const res = await utils.songs.getAudioUrl.fetch({ fileKey: song.fileKey });
-        url = res.url;
-      }
-      if (url) {
-        play({ url, title: song.title, artist: displayName });
-      }
-    } catch (err) {
-      console.error("Failed to load audio:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+// ─── Song Row ─────────────────────────────────────────────────
+// Uses AudioPlayButton for uploaded files (same pattern as Forum).
+// For YouTube/SoundCloud-only links: shows an inline YouTube embed
+// or an external link button.
+function SongRow({
+  song,
+  displayName,
+  isOwn,
+  onDelete,
+}: {
+  song: Song;
+  displayName: string;
+  isOwn: boolean;
+  onDelete: () => void;
+}) {
+  const [showEmbed, setShowEmbed] = useState(false);
+  const isExternalOnly = !song.fileKey && !song.fileUrl && !!song.externalUrl;
+  const isYouTube = song.externalUrl?.includes("youtube") || song.externalUrl?.includes("youtu.be");
+  const ytId = song.externalUrl?.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1];
 
   return (
-    <div className={`bg-white/[0.03] border p-3 transition-all duration-200 ${
-      isThisPlaying ? "border-red-600/40 bg-red-600/5" : "border-white/5"
-    }`}>
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handlePlay}
-          disabled={!hasAudio || loading}
-          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-            hasAudio
-              ? "bg-red-600 hover:bg-red-700 text-white"
-              : "bg-white/5 text-white/20 cursor-not-allowed"
-          }`}
-          title={hasAudio ? (song.externalUrl && !song.fileKey ? "Open in new tab" : "Play") : "No audio"}
-        >
-          {loading ? (
-            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-          ) : isThisPlaying ? (
-            <Pause className="w-3 h-3" />
-          ) : (
-            <Play className="w-3 h-3 ml-0.5" />
-          )}
-        </button>
+    <div className="bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all duration-200">
+      <div className="flex items-center gap-3 p-3">
+        {/* Play button — AudioPlayButton for files, embed toggle for YouTube, link for others */}
+        {!isExternalOnly ? (
+          <AudioPlayButton
+            fileKey={song.fileKey}
+            url={song.fileUrl}
+            urlSource="songs"
+            title={song.title}
+            artist={displayName}
+            sourcePage="Artist Profile"
+            sourceUrl="/profile"
+            size="sm"
+          />
+        ) : isYouTube && ytId ? (
+          <button
+            onClick={() => setShowEmbed(v => !v)}
+            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-red-600 hover:bg-red-700 text-white transition-colors"
+            title={showEmbed ? "Hide video" : "Watch on page"}
+          >
+            {showEmbed ? <ChevronUp className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
+          </button>
+        ) : (
+          <a
+            href={song.externalUrl!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-white/10 hover:bg-red-600 text-white transition-colors"
+            title="Open on streaming platform"
+          >
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+
         <div className="flex-1 min-w-0">
           <div className="text-sm text-white font-semibold truncate">{song.title}</div>
           {song.genre && <div className="text-xs text-white/30">{song.genre}</div>}
         </div>
-        {song.externalUrl && !song.fileKey && (
-          <span className="text-xs text-white/30 flex-shrink-0">
-            {song.externalUrl.includes("youtube") ? "YT" : "SC"}
-          </span>
+
+        {/* External link badge */}
+        {song.externalUrl && (
+          <a
+            href={song.externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white/20 hover:text-white/60 transition-colors flex-shrink-0"
+            title="Open on streaming platform"
+          >
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+
+        {/* Delete button — own profile only */}
+        {isOwn && (
+          <button
+            onClick={onDelete}
+            className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0 p-0.5"
+            title="Remove song"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
+
+      {/* Inline YouTube embed */}
+      {showEmbed && ytId && (
+        <div className="px-3 pb-3">
+          <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
+              className="absolute inset-0 w-full h-full border border-white/10"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={song.title}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -194,9 +223,9 @@ function SongUploadForm({ onSuccess, defaultArtistName }: { onSuccess: () => voi
         />
       ) : (
         <div>
-          <label className="block text-xs text-white/40 mb-1">Audio file (.mp3, .wav, .ogg) — max 15MB</label>
+          <label className="block text-xs text-white/40 mb-1">Audio file (.mp3, .wav, .m4a) — max 15MB</label>
           <input
-            type="file" accept="audio/*"
+            type="file" accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
             onChange={e => setFile(e.target.files?.[0] || null)}
             className="w-full text-xs text-white/60 file:bg-red-600 file:text-white file:border-0 file:px-3 file:py-1.5 file:text-xs file:cursor-pointer file:mr-3"
           />
@@ -366,9 +395,7 @@ export function ArtistStatModal({ artistName, userId, children }: ArtistStatModa
                 onClick={() => setOpen(false)}
                 className="text-white/40 hover:text-white transition-colors ml-4 flex-shrink-0"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -434,20 +461,13 @@ export function ArtistStatModal({ artistName, userId, children }: ArtistStatModa
                 ) : (
                   <div className="space-y-2">
                     {songList.map(song => (
-                      <div key={song.id} className="relative">
-                        <SongRow song={song} displayName={displayName} />
-                        {isOwnProfile && (
-                          <button
-                            onClick={() => deleteSong.mutate({ id: song.id })}
-                            className="absolute top-2 right-2 text-white/20 hover:text-red-400 transition-colors"
-                            title="Remove song"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
+                      <SongRow
+                        key={song.id}
+                        song={song}
+                        displayName={displayName}
+                        isOwn={isOwnProfile}
+                        onDelete={() => deleteSong.mutate({ id: song.id })}
+                      />
                     ))}
                   </div>
                 )}

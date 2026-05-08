@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/hooks/useChat";
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
@@ -105,7 +106,7 @@ function VideoTile({
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated, playTrack,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastReviewPlayback, broadcastReviewQueueUpdated, playTrack, setSelectedYouTube,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -115,6 +116,7 @@ function AdminPanel({
   broadcastReviewPlayback: (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => void;
   broadcastReviewQueueUpdated: () => void;
   playTrack: (sub: ReviewSubmission) => void;
+  setSelectedYouTube: (val: { url: string; title: string; artist: string } | null) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -176,11 +178,23 @@ function AdminPanel({
     });
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (!currentPlaying) return;
     updateStatus.mutate({ id: currentPlaying.id, status: "reviewed" });
     const next = queue.find(s => s.status === "pending" && s.id !== currentPlaying.id);
     if (next) {
+      // Resolve presigned URL for the next track before broadcasting
+      let nextAudioUrl: string | null = null;
+      if (next.fileKey) {
+        try {
+          const { url } = await utils.queue.getAudioUrl.fetch({ fileKey: next.fileKey });
+          nextAudioUrl = url;
+        } catch {
+          nextAudioUrl = next.fileUrl ?? null;
+        }
+      } else if (next.fileUrl?.startsWith("http")) {
+        nextAudioUrl = next.fileUrl;
+      }
       setTimeout(() => {
         setPlaying.mutate({ submissionId: next.id }, {
           onSuccess: () => {
@@ -188,7 +202,7 @@ function AdminPanel({
               submissionId: next.id,
               artistName: next.artistName,
               songTitle: next.songTitle,
-              audioUrl: next.fileUrl ?? null,
+              audioUrl: nextAudioUrl,
               youtubeUrl: next.youtubeUrl ?? null,
               submissionType: next.submissionType,
             });
@@ -400,15 +414,29 @@ function AdminPanel({
                     </span>
                   )}
                   {sub.submissionType === "youtube" && sub.youtubeUrl && (
-                    <a href={sub.youtubeUrl} target="_blank" rel="noopener noreferrer"
-                      className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0" title="Open YouTube">
+                    <button
+                      onClick={() => setSelectedYouTube({ url: sub.youtubeUrl!, title: sub.songTitle, artist: sub.artistName })}
+                      className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0" title="Preview YouTube inline">
                       <ExternalLink className="w-3 h-3" />
-                    </a>
+                    </button>
+                  )}
+                  {(sub.fileKey || sub.fileUrl) && (
+                    <AudioPlayButton
+                      fileKey={sub.fileKey}
+                      url={sub.fileUrl}
+                      urlSource="queue"
+                      title={sub.songTitle}
+                      artist={sub.artistName}
+                      submissionId={sub.id}
+                      sourcePage="Music Review"
+                      sourceUrl="/review"
+                      size="sm"
+                    />
                   )}
                   <div className="flex gap-1 flex-shrink-0">
                     {sub.status !== "playing" && (
                       <button onClick={() => handleSetPlaying(sub.id)}
-                        className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-green-500/40 text-green-400 hover:bg-green-500/10 px-2 py-0.5 transition-colors" title="Load to Now Playing">
+                        className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-green-500/40 text-green-400 hover:bg-green-500/10 px-2 py-0.5 transition-colors" title="Load to Now Playing — broadcasts to all viewers">
                         <Play className="w-2.5 h-2.5" />
                         Load
                       </button>
@@ -819,6 +847,7 @@ export default function MusicReview() {
                   broadcastReviewPlayback={broadcastReviewPlayback}
                   broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
                   playTrack={playTrack}
+                  setSelectedYouTube={setSelectedYouTube}
                 />
               </div>
             )}
@@ -883,21 +912,18 @@ export default function MusicReview() {
                 <div className="font-['Anton'] text-2xl uppercase">{liveReviewActive.songTitle}</div>
                 <div className="text-white/60 text-sm mb-3">by {liveReviewActive.artistName}</div>
                 {liveReviewActive.audioUrl && (
-                  <button
-                    onClick={() => resolveAndPlay({
-                      url: liveReviewActive.audioUrl!,
-                      urlSource: "queue",
-                      title: liveReviewActive.songTitle ?? "Live Review",
-                      artist: liveReviewActive.artistName,
-                      isStream: false,
-                      sourcePage: "Music Review",
-                      sourceUrl: "/music-review",
-                    })}
-                    className="flex items-center gap-2 mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold uppercase tracking-widest transition-colors"
-                  >
-                    <Play className="w-4 h-4" />
-                    Play in Player
-                  </button>
+                  <div className="mt-3">
+                    <AudioPlayButton
+                      url={liveReviewActive.audioUrl}
+                      urlSource="queue"
+                      title={liveReviewActive.songTitle ?? "Live Review"}
+                      artist={liveReviewActive.artistName}
+                      submissionId={liveReviewActive.submissionId ?? undefined}
+                      sourcePage="Music Review"
+                      sourceUrl="/review"
+                      size="lg"
+                    />
+                  </div>
                 )}
                 {liveReviewActive.youtubeUrl && (() => {
                   const ytId = liveReviewActive.youtubeUrl?.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1];
@@ -937,6 +963,76 @@ export default function MusicReview() {
               </div>
             )}
 
+            {/* ── BIG FIRE / TRASH POLL ─────────────────────────────────────────
+               Shown to ALL viewers when admin is reviewing a track live.
+               This is the main interactive element — big, unmissable, full-width.
+            ─────────────────────────────────────────────────────────────────── */}
+            {liveReviewActive && liveReviewActive.submissionId !== null && (
+              <div className="mb-6 border border-white/10 bg-white/[0.02] overflow-hidden">
+                <div className="px-5 pt-4 pb-2 border-b border-white/10 flex items-center gap-2">
+                  <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Rate This Track</span>
+                  <span className="text-white/20 text-xs">— Your vote is live</span>
+                </div>
+                <div className="grid grid-cols-2">
+                  {/* FIRE */}
+                  <button
+                    onClick={() => {
+                      if (!user) { toast.error("Login to vote"); return; }
+                      reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction: "fire" });
+                    }}
+                    className="group flex flex-col items-center justify-center gap-3 py-10 border-r border-white/10 hover:bg-orange-500/10 active:bg-orange-500/20 transition-all duration-200"
+                  >
+                    <span className="text-7xl group-hover:scale-125 group-active:scale-110 transition-transform duration-200 select-none">🔥</span>
+                    <div className="text-center">
+                      <div className="font-['Anton'] text-3xl text-orange-400 group-hover:text-orange-300 transition-colors">FIRE</div>
+                      <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">This a banger</div>
+                    </div>
+                  </button>
+                  {/* TRASH */}
+                  <button
+                    onClick={() => {
+                      if (!user) { toast.error("Login to vote"); return; }
+                      reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction: "trash" });
+                    }}
+                    className="group flex flex-col items-center justify-center gap-3 py-10 hover:bg-blue-500/10 active:bg-blue-500/20 transition-all duration-200"
+                  >
+                    <span className="text-7xl group-hover:scale-125 group-active:scale-110 transition-transform duration-200 select-none">🗑️</span>
+                    <div className="text-center">
+                      <div className="font-['Anton'] text-3xl text-blue-400 group-hover:text-blue-300 transition-colors">TRASH</div>
+                      <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Next track please</div>
+                    </div>
+                  </button>
+                </div>
+                {/* Live vote counts */}
+                {(() => {
+                  const sub = data?.submissions?.find(s => s.id === liveReviewActive.submissionId);
+                  if (!sub) return null;
+                  const total = (sub.fireCount ?? 0) + (sub.trashCount ?? 0);
+                  const firePct = total > 0 ? Math.round(((sub.fireCount ?? 0) / total) * 100) : 50;
+                  const trashPct = total > 0 ? 100 - firePct : 50;
+                  return (
+                    <div className="border-t border-white/10">
+                      <div className="flex">
+                        <div
+                          className="h-2 bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700"
+                          style={{ width: `${firePct}%` }}
+                        />
+                        <div
+                          className="h-2 bg-gradient-to-l from-blue-600 to-blue-400 transition-all duration-700"
+                          style={{ width: `${trashPct}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between px-5 py-2 text-xs">
+                        <span className="text-orange-400 font-bold">🔥 {sub.fireCount ?? 0} Fire ({firePct}%)</span>
+                        <span className="text-white/30">{total} votes</span>
+                        <span className="text-blue-400 font-bold">{trashPct}% Trash 🗑️ {sub.trashCount ?? 0}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Currently playing banner (fallback when no live socket active) */}
             {!liveReviewActive && currentPlaying && (
               <div className="mb-6 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
@@ -948,13 +1044,19 @@ export default function MusicReview() {
                 <div className="font-['Anton'] text-2xl uppercase">{currentPlaying.songTitle}</div>
                 <div className="text-white/60 text-sm">by {currentPlaying.artistName}</div>
                 {(currentPlaying.fileKey || currentPlaying.fileUrl) && (
-                  <button
-                    onClick={() => playTrack(currentPlaying)}
-                    className="mt-3 flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    Play in background
-                  </button>
+                  <div className="mt-3">
+                    <AudioPlayButton
+                      fileKey={currentPlaying.fileKey}
+                      url={currentPlaying.fileUrl}
+                      urlSource="queue"
+                      title={currentPlaying.songTitle}
+                      artist={currentPlaying.artistName}
+                      submissionId={currentPlaying.id}
+                      sourcePage="Music Review"
+                      sourceUrl="/review"
+                      size="md"
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -1036,15 +1138,27 @@ export default function MusicReview() {
                             <ThumbsDown className="w-3.5 h-3.5" />
                             <span>{sub.trashCount}</span>
                           </button>
-                          {(sub.fileKey || sub.fileUrl || sub.youtubeUrl) && (
+                          {sub.submissionType === "youtube" && sub.youtubeUrl ? (
                             <button
-                              onClick={() => playTrack(sub)}
+                              onClick={() => setSelectedYouTube({ url: sub.youtubeUrl!, title: sub.songTitle, artist: sub.artistName })}
                               className="flex items-center gap-1 text-white/30 hover:text-red-400 transition-colors"
-                              title={sub.submissionType === 'youtube' ? 'Embed YouTube' : 'Play track'}
+                              title="Watch on page"
                             >
                               <Play className="w-3.5 h-3.5" />
                             </button>
-                          )}
+                          ) : (sub.fileKey || sub.fileUrl) ? (
+                            <AudioPlayButton
+                              fileKey={sub.fileKey}
+                              url={sub.fileUrl}
+                              urlSource="queue"
+                              title={sub.songTitle}
+                              artist={sub.artistName}
+                              submissionId={sub.id}
+                              sourcePage="Music Review"
+                              sourceUrl="/review"
+                              size="sm"
+                            />
+                          ) : null}
                         </div>
                       </div>
                     ))}

@@ -239,6 +239,7 @@ async function startServer() {
 
     // ── Live Review Controls (admin → all viewers) ────────────
     // Admin selects a submission to review live — broadcasts to all in music_review room
+    // AND emits a site-wide live:now_playing event so every visitor's FloatingPlayer auto-plays
     socket.on("review:set_active", (data: {
       submissionId: number | null;
       artistName?: string;
@@ -247,7 +248,22 @@ async function startServer() {
       youtubeUrl?: string | null;
       submissionType?: string;
     }) => {
+      // Broadcast to music_review room (for the review page UI)
       io.to("music_review").emit("review:active_changed", data);
+      // Broadcast site-wide so FloatingPlayer on ALL pages auto-plays
+      if (data.submissionId !== null) {
+        io.emit("live:now_playing", {
+          submissionId: data.submissionId,
+          artistName: data.artistName ?? "Unknown Artist",
+          songTitle: data.songTitle ?? "Live Review",
+          audioUrl: data.audioUrl ?? null,
+          youtubeUrl: data.youtubeUrl ?? null,
+          submissionType: data.submissionType ?? "file",
+        });
+      } else {
+        // Admin cleared the deck — tell all clients to stop the live track
+        io.emit("live:now_playing", null);
+      }
     });
     // Admin broadcasts playback state (play/pause/seek)
     socket.on("review:playback", (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => {

@@ -352,6 +352,18 @@ export const appRouter = router({
           status: "pending",
           position: 0,
         });
+        // Auto-save to artist's music catalogue so it appears on their profile
+        try {
+          await addUserSong({
+            userId: ctx.user.id,
+            title: input.songTitle,
+            artistName,
+            externalUrl: input.youtubeUrl ?? null,
+            isPublic: true,
+          });
+        } catch (e) {
+          console.warn("[queue.submit] Failed to auto-save to catalogue:", e);
+        }
         return { success: true };
       }),
 
@@ -448,6 +460,20 @@ export const appRouter = router({
           status: "pending",
           position: 0,
         });
+        // Auto-save to artist's music catalogue so it appears on their profile
+        try {
+          await addUserSong({
+            userId: ctx.user.id,
+            title: input.songTitle,
+            artistName,
+            fileKey: key,
+            fileUrl: url,
+            isPublic: true,
+          });
+        } catch (e) {
+          // Non-fatal — submission still goes through even if catalogue insert fails
+          console.warn("[queue.uploadAudio] Failed to auto-save to catalogue:", e);
+        }
         return { success: true };
       }),
 

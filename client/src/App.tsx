@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import FloatingPlayer from "./components/FloatingPlayer";
+import { useLivePlayer } from "./hooks/useLivePlayer";
 import Home from "./pages/Home";
 import Promo from "./pages/Promo";
 import MurderMittenMic from "./pages/MurderMittenMic";
@@ -68,6 +69,12 @@ function Router() {
   );
 }
 
+/** Mounts the live-player listener inside AudioPlayerProvider context */
+function LivePlayerMount() {
+  useLivePlayer();
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -75,6 +82,8 @@ function App() {
         <AudioPlayerProvider>
           <TooltipProvider>
             <Toaster />
+            {/* Global live-review listener: auto-plays admin-selected tracks on every page */}
+            <LivePlayerMount />
             <Router />
             <FloatingPlayer />
           </TooltipProvider>
