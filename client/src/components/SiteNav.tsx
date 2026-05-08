@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import {
-  User, Radio, Newspaper, Star, Mic2, Podcast,
+  User, Radio, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
   LogOut, LogIn, ChevronDown, X, Menu, Shield,
 } from "lucide-react";
@@ -20,7 +20,6 @@ const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 // Ordered menu items — used for both desktop and mobile
 const NAV_ITEMS = [
   { href: "/live",              label: "Live Now",                    icon: Radio,       live: true  },
-  { href: "/latest-news",       label: "Latest News",                 icon: Newspaper              },
   { href: "/artist-of-the-week",label: "Artist of the Week",          icon: Star                   },
   { href: "/mic",               label: "Mic Drops",                   icon: Mic2                   },
   { href: "/podcast",           label: "Meeting With The Mitten",     icon: Podcast                },

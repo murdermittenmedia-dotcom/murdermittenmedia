@@ -20,7 +20,6 @@ import Forum from "./pages/Forum";
 import ForumPost from "./pages/ForumPost";
 import Leaderboard from "./pages/Leaderboard";
 import Search from "./pages/Search";
-import LatestPosts from "./pages/LatestPosts";
 import AdminModeration from "./pages/AdminModeration";
 
 function Router() {
@@ -46,12 +45,6 @@ function Router() {
         {(params) => <ForumPost params={params} />}
       </Route>
       <Route path={"/leaderboard"} component={Leaderboard} />
-
-      {/* Latest News — new canonical route (old /latest-posts redirects here) */}
-      <Route path={"/latest-news"} component={LatestPosts} />
-      <Route path={"/latest-posts"}>
-        <Redirect to="/latest-news" />
-      </Route>
 
       {/* Explore — new canonical route (old /search redirects here) */}
       <Route path={"/explore"} component={Search} />
