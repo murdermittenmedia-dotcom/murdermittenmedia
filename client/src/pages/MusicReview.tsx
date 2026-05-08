@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { ArtistLink } from "@/components/ArtistLink";
+import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/hooks/useChat";
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
@@ -1481,7 +1482,10 @@ export default function MusicReview() {
                 {chatMessages.map(msg => (
                   <div key={msg.id} className="text-xs leading-relaxed">
                     <span className={`font-semibold ${msg.isAdmin ? "text-red-400" : "text-white/60"}`}>
-                      {msg.isAdmin && "[ADMIN] "}{msg.username}:
+                      {msg.isAdmin && "[ADMIN] "}
+                      <ArtistStatModal artistName={msg.username}>
+                        <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
+                      </ArtistStatModal>:
                     </span>{" "}
                     <span className="text-white/80">{msg.message}</span>
                   </div>

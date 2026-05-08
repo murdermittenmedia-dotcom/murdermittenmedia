@@ -544,3 +544,11 @@
 - [x] When viewer clicks play on a live stream, resume playback (handles tab switching)
 - [x] When viewer clicks pause on a live stream, mute/pause locally (doesn't affect other viewers)
 - [x] Show play icon when paused, pause icon when playing
+
+## Session 13 — Clickable Usernames in Live Chat (Anti-Impersonation)
+
+- [x] Make usernames clickable in all live chat messages (Music Wars, Music Review)
+- [x] Clicking username opens ArtistStatModal to show real profile (battle record, songs, etc.)
+- [x] Prevents fake pages using real artist names — users can verify authenticity
+- [x] Music Wars ChatPanel already had clickable usernames via ArtistStatModal
+- [x] Updated Music Review chat to use clickable usernames via ArtistStatModal
