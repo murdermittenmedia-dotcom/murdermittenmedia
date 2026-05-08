@@ -15,64 +15,24 @@ import { SiteNav } from "@/components/SiteNav";
 import { ArtistLink } from "@/components/ArtistLink";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { usePlayTrack } from "@/hooks/usePlayTrack";
-import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { TuneInButton } from "@/components/TuneInButton";
 
-// ── Inline audio player component that uses the global player ──────────────
+// ── Audio attachment — redirects to live radio station ──────────────────────
 function ForumAudioPlayer({
-  audioUrl, audioTitle, artist, sourcePage, sourceUrl, large = false
+  audioTitle, large = false
 }: {
   audioUrl: string; audioTitle: string; artist: string;
   sourcePage: string; sourceUrl: string; large?: boolean;
 }) {
-  const { playTrack, isResolving } = usePlayTrack();
-  const { track: currentTrack, isPlaying, pause, resume } = useAudioPlayer();
-  const isThisTrack = currentTrack?.url && currentTrack.title === audioTitle && currentTrack.artist === artist;
-
-  const handleClick = async () => {
-    if (isThisTrack) {
-      isPlaying ? pause() : resume();
-      return;
-    }
-    await playTrack({
-      url: audioUrl,
-      title: audioTitle,
-      artist,
-      sourcePage,
-      sourceUrl,
-    });
-  };
-
   return (
     <div className={`mt-2 border border-red-600/20 bg-red-950/10 rounded p-2.5 flex items-center gap-3 ${large ? "mt-4 p-3" : ""}`}>
-      <button
-        onClick={handleClick}
-        disabled={isResolving}
-        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-          isThisTrack && isPlaying
-            ? "bg-red-600 hover:bg-red-700"
-            : "bg-red-600/20 border border-red-600/40 hover:bg-red-600/40"
-        }`}
-      >
-        {isResolving ? (
-          <Loader2 className="w-3.5 h-3.5 text-red-400 animate-spin" />
-        ) : isThisTrack && isPlaying ? (
-          <span className="w-3 h-3 flex items-center justify-center gap-0.5">
-            <span className="w-0.5 h-3 bg-white rounded-full" />
-            <span className="w-0.5 h-3 bg-white rounded-full" />
-          </span>
-        ) : (
-          <Play className="w-3.5 h-3.5 text-red-400 ml-0.5" />
-        )}
-      </button>
+      <TuneInButton size={large ? "md" : "sm"} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <Music className={`flex-shrink-0 text-red-400 ${large ? "w-4 h-4" : "w-3 h-3"}`} />
           <span className={`text-red-400 font-medium truncate ${large ? "text-sm" : "text-xs"}`}>{audioTitle}</span>
         </div>
-        {isThisTrack && (
-          <div className="text-xs text-red-500/70 mt-0.5">{isPlaying ? "Playing in player ↓" : "Paused"}</div>
-        )}
+        <div className="text-xs text-white/30 mt-0.5">Tune in to hear this on the radio</div>
       </div>
     </div>
   );

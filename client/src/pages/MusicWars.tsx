@@ -11,7 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
-import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { TuneInButton } from "@/components/TuneInButton";
 import { useChat } from "@/hooks/useChat";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
 import { ArtistLink } from "@/components/ArtistLink";
@@ -804,13 +804,7 @@ function VotingPanel({
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="flex items-center gap-2 bg-green-600/5 border border-green-600/20 px-2 py-2">
                 {activeBattle.contestant1SongUrl && (
-                  <AudioPlayButton
-                    url={activeBattle.contestant1SongUrl}
-                    title={activeBattle.contestant1SongTitle || activeBattle.contestant1Name}
-                    artist={activeBattle.contestant1Name}
-                    sourcePage="Music Wars"
-                    size="sm"
-                  />
+                  <TuneInButton size="sm" />
                 )}
                 <div className="min-w-0">
                   <div className="text-green-400 font-['Anton'] text-xs uppercase truncate">{activeBattle.contestant1Name}</div>
@@ -819,13 +813,7 @@ function VotingPanel({
               </div>
               <div className="flex items-center gap-2 bg-red-600/5 border border-red-600/20 px-2 py-2">
                 {activeBattle.contestant2SongUrl && (
-                  <AudioPlayButton
-                    url={activeBattle.contestant2SongUrl}
-                    title={activeBattle.contestant2SongTitle || activeBattle.contestant2Name}
-                    artist={activeBattle.contestant2Name}
-                    sourcePage="Music Wars"
-                    size="sm"
-                  />
+                  <TuneInButton size="sm" />
                 )}
                 <div className="min-w-0">
                   <div className="text-red-400 font-['Anton'] text-xs uppercase truncate">{activeBattle.contestant2Name}</div>

@@ -10,7 +10,7 @@ import { useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
-import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { TuneInButton } from "@/components/TuneInButton";
 import { toast } from "sonner";
 import {
   Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X,
@@ -279,18 +279,9 @@ function MusicCatalogue({
               key={song.id}
               className="border border-white/10 bg-white/[0.03] hover:border-red-600/30 hover:bg-white/[0.05] transition-all duration-200 p-3 flex items-center gap-3"
             >
-              {/* Play button */}
+              {/* Play button — redirects to live radio station */}
               {(song.fileKey || song.fileUrl) ? (
-                <AudioPlayButton
-                  fileKey={song.fileKey ?? undefined}
-                  url={song.fileUrl ?? undefined}
-                  urlSource="songs"
-                  title={song.title}
-                  artist={song.artistName}
-                  sourcePage="Profile"
-                  sourceUrl={`/profile/${song.userId ?? ''}`}
-                  size="md"
-                />
+                <TuneInButton size="md" />
               ) : song.externalUrl ? (
                 <a
                   href={song.externalUrl}
@@ -742,15 +733,7 @@ export default function UserProfile() {
                           <Play className="w-4 h-4" />
                         </a>
                       ) : hasAudio ? (
-                        <AudioPlayButton
-                          fileKey={sub.fileKey ?? undefined}
-                          url={sub.fileUrl ?? undefined}
-                          urlSource="queue"
-                          title={sub.songTitle}
-                          artist={sub.artistName}
-                          sourcePage="Profile"
-                          size="md"
-                        />
+                        <TuneInButton size="md" />
                       ) : (
                         <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center border border-white/10 text-white/20">
                           <Play className="w-4 h-4" />

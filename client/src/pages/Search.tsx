@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
 import { Search as SearchIcon, User, Music, MapPin, ExternalLink } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
-import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { TuneInButton } from "@/components/TuneInButton";
 import { ArtistLink } from "@/components/ArtistLink";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -164,17 +164,9 @@ export default function Search() {
                       className="border border-white/10 bg-white/[0.03] hover:border-red-600/30 hover:bg-white/[0.06] transition-all duration-200 p-3 group"
                     >
                       <div className="flex items-center gap-3">
-                        {/* Play button */}
+                        {/* Tune In — redirects to live radio station */}
                         {(song.fileKey || song.externalUrl) ? (
-                          <AudioPlayButton
-                            fileKey={song.fileKey}
-                            url={song.externalUrl}
-                            urlSource="songs"
-                            title={song.title}
-                            artist={song.artistName ?? "Unknown"}
-                            sourcePage="Explore"
-                            size="sm"
-                          />
+                          <TuneInButton size="sm" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
                             <Music className="w-3 h-3 text-white/30" />

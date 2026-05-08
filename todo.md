@@ -565,3 +565,17 @@
 - [x] Show "Music Wars Live" button if battle stream is broadcasting (already shows Join Now button)
 - [x] Clicking button navigates to the active stream page and auto-plays the feed (auto-redirect + FloatingPlayer auto-plays)
 - [x] Smart routing: only show buttons for currently active streams (already checks isLive flags)
+
+## Session 15 — Radio Station Model (Play Buttons → Tune In)
+
+- [x] Audit all AudioPlayButton and play button usages across the site
+- [x] Replace AudioPlayButton on UserProfile catalogue with TuneInButton (redirects to /live)
+- [x] Replace AudioPlayButton on ForumPost audio posts with TuneInButton redirect
+- [x] Replace AudioPlayButton in MusicWars VotingPanel with TuneInButton
+- [x] Replace inline AudioPlayer in ArtistOfWeek with TuneInButton
+- [x] Replace AudioPlayButton in Search.tsx with TuneInButton
+- [x] Replace AudioPlayButton in Forum.tsx with TuneInButton
+- [x] Remove AudioPlayButton from MusicReview Now Playing card (replaced with LIVE indicator)
+- [x] Remove AudioPlayButton from MusicReview Queue viewer tab (replaced with LIVE badge for playing tracks)
+- [x] Added Previously Submitted Tracks section to MusicReview with AudioPlayButton (independent playback)
+- [x] AudioPlayButton kept in Admin panel only (admin-only) and Previously Submitted Tracks section

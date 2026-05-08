@@ -26,7 +26,7 @@ type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null;
 import {
   Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
-  ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw,
+  ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw, Music,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -541,6 +541,11 @@ export default function MusicReview() {
 
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, {
     refetchInterval: 15000,
+  });
+
+  // Previously reviewed tracks — the ONLY place on the site with independent playback
+  const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, {
+    refetchInterval: 30000,
   });
 
   const submitMutation = trpc.queue.submit.useMutation({
@@ -1109,16 +1114,10 @@ export default function MusicReview() {
                     <div className="font-['Anton'] text-2xl uppercase">{currentPlaying.songTitle}</div>
                     <div className="text-white/60 text-sm mb-3">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
                     {currentPlaying.fileUrl && (
-                      <AudioPlayButton
-                        url={currentPlaying.fileUrl}
-                        urlSource="queue"
-                        title={currentPlaying.songTitle}
-                        artist={currentPlaying.artistName}
-                        submissionId={currentPlaying.id}
-                        sourcePage="Music Review"
-                        sourceUrl="/review"
-                        size="md"
-                      />
+                      <div className="inline-flex items-center gap-2 text-xs text-red-400 font-semibold uppercase tracking-widest border border-red-600/40 px-3 py-1.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        Playing Live — Synced to Admin
+                      </div>
                     )}
                     {currentPlaying.youtubeUrl && !currentPlaying.fileUrl && (
                       <a href={currentPlaying.youtubeUrl} target="_blank" rel="noopener noreferrer"
@@ -1290,16 +1289,12 @@ export default function MusicReview() {
                               <Play className="w-3.5 h-3.5" />
                             </button>
                           ) : sub.fileUrl ? (
-                            <AudioPlayButton
-                              url={sub.fileUrl}
-                              urlSource="queue"
-                              title={sub.songTitle}
-                              artist={sub.artistName}
-                              submissionId={sub.id}
-                              sourcePage="Music Review"
-                              sourceUrl="/review"
-                              size="sm"
-                            />
+                            sub.status === "playing" ? (
+                              <div className="inline-flex items-center gap-1 text-[10px] text-red-400 font-bold uppercase tracking-widest border border-red-600/40 px-2 py-1">
+                                <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                                Live
+                              </div>
+                            ) : null
                           ) : null}
                         </div>
                       </div>
@@ -1580,6 +1575,67 @@ export default function MusicReview() {
           </div>
         </div>
       </div>
+
+      {/* ── PREVIOUSLY REVIEWED TRACKS — Only place with independent playback ── */}
+      {reviewedTracks && reviewedTracks.length > 0 && (
+        <section className="border-t border-white/10 py-12">
+          <div className="container max-w-5xl mx-auto px-4">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-1 h-8 bg-red-600" />
+              <div>
+                <h2 className="font-['Anton'] text-2xl uppercase">Previously Submitted Tracks</h2>
+                <p className="text-white/40 text-xs uppercase tracking-widest mt-0.5">Tracks reviewed on air — play them anytime</p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {reviewedTracks.map((sub: ReviewSubmission) => (
+                <div
+                  key={sub.id}
+                  className="border border-white/10 bg-white/[0.02] hover:border-red-600/30 hover:bg-white/[0.04] transition-all duration-200 p-4 flex items-center gap-3"
+                >
+                  {/* Independent play button — ONLY allowed here */}
+                  {sub.fileUrl ? (
+                    <AudioPlayButton
+                      url={sub.fileUrl}
+                      urlSource="queue"
+                      title={sub.songTitle}
+                      artist={sub.artistName}
+                      submissionId={sub.id}
+                      sourcePage="Music Review"
+                      sourceUrl="/review"
+                      size="md"
+                    />
+                  ) : sub.youtubeUrl ? (
+                    <a
+                      href={sub.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 flex items-center justify-center flex-shrink-0 border border-red-600/50 text-red-500 hover:bg-red-600 hover:text-white transition-all"
+                      title="Open on YouTube"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  ) : (
+                    <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 border border-white/10 text-white/20">
+                      <Music className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
+                    <div className="text-white/40 text-xs truncate">
+                      <ArtistLink artistName={sub.artistName} userId={sub.userId} />
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-white/30">
+                      <span>🔥 {sub.fireCount}</span>
+                      <span>🗑️ {sub.trashCount}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── FOOTER ────────────────────────────────────────────── */}
       <footer className="border-t border-white/10 py-10 mt-8">
