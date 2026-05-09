@@ -971,7 +971,7 @@ export async function getUserForumReactions(userId: number, targetType: "post" |
 export async function searchUsers(query: string, limit = 20) {
   const db = await getDb();
   if (!db) return [];
-  const q = `%${query}%`;
+  const q = `%${query.toLowerCase()}%`;
   return db.select({
     id: users.id,
     name: users.name,
@@ -983,8 +983,8 @@ export async function searchUsers(query: string, limit = 20) {
   })
     .from(users)
     .where(or(
-      sql`${users.artistName} LIKE ${q}`,
-      sql`${users.name} LIKE ${q}`,
+      sql`LOWER(${users.artistName}) LIKE ${q}`,
+      sql`LOWER(${users.name}) LIKE ${q}`,
     ))
     .limit(limit);
 }
@@ -992,7 +992,7 @@ export async function searchUsers(query: string, limit = 20) {
 export async function searchSongs(query: string, limit = 20) {
   const db = await getDb();
   if (!db) return [];
-  const q = `%${query}%`;
+  const q = `%${query.toLowerCase()}%`;
   return db.select({
     id: userSongs.id,
     title: userSongs.title,
@@ -1007,8 +1007,8 @@ export async function searchSongs(query: string, limit = 20) {
     .where(and(
       eq(userSongs.isPublic, true),
       or(
-        sql`${userSongs.title} LIKE ${q}`,
-        sql`${userSongs.artistName} LIKE ${q}`,
+        sql`LOWER(${userSongs.title}) LIKE ${q}`,
+        sql`LOWER(${userSongs.artistName}) LIKE ${q}`,
       ),
     ))
     .limit(limit);

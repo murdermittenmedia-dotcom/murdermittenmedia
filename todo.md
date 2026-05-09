@@ -629,3 +629,6 @@
 - [x] Now Playing box: show audio player (AudioPlayButton) when submission is file upload only
 - [x] Fix voting UI to support Triple Threat (3-way battle) toggle — show 3 contestant cards when active
 - [x] Fix admin controls in Live Voting section — Triple Threat toggle now co-located with Set Active Battle, 3rd contestant dropdown appears when Triple Threat is ON
+
+## Explore Search Fix
+- [x] Make Explore search case-insensitive (server-side SQL LIKE with LOWER(), client-side filter with toLowerCase())
