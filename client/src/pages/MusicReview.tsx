@@ -694,6 +694,8 @@ export default function MusicReview() {
     room: "music_review",
     isAdmin,
     enabled: true,
+    username: user?.artistName || user?.name || "Admin",
+    userId: user?.id,
   });
 
   useEffect(() => {
@@ -1621,6 +1623,21 @@ export default function MusicReview() {
                         Leave
                       </button>
                     )}
+                  </div>
+                  {/* Voice Chat Mix Volume */}
+                  <div className="mt-2 pt-2 border-t border-white/10">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-white/40 uppercase tracking-widest">Voice Mix</span>
+                      <span className="text-[10px] text-white/60 font-mono">{Math.round(audioRoom.voiceVolume * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0" max="1" step="0.05"
+                      value={audioRoom.voiceVolume}
+                      onChange={e => audioRoom.setVoiceVolume(parseFloat(e.target.value))}
+                      className="w-full h-1.5 accent-red-600 cursor-pointer"
+                      title="Voice chat volume (does not affect radio)"
+                    />
                   </div>
                 </>
               )}

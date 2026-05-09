@@ -32,9 +32,13 @@ interface UseAdminMicBroadcastOptions {
   room: "music_review" | "music_wars";
   isAdmin: boolean;
   enabled?: boolean;
+  /** Username of the admin — needed so the server registers them as a room participant */
+  username?: string;
+  /** User ID of the admin */
+  userId?: number;
 }
 
-export function useAdminMicBroadcast({ room, isAdmin, enabled = true }: UseAdminMicBroadcastOptions) {
+export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username = "Admin", userId }: UseAdminMicBroadcastOptions) {
   const socketRef = useRef<Socket | null>(null);
 
   // Admin state
@@ -96,6 +100,14 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true }: UseAdmin
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      // Register as a participant so the server knows our role
+      // This is required for radio:mic_broadcast_start to work (server checks participant.role === "admin")
+      socket.emit("room:join", {
+        username,
+        role: isAdmin ? "admin" : "viewer",
+        userId,
+        room,
+      });
       // Request current broadcast state on connect
       socket.emit("radio:mic_get_state", { room });
     });

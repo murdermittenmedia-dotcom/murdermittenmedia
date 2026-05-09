@@ -37,6 +37,9 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Voice chat mix volume (0–1) — applied to all remote audio elements
+  const [voiceVolume, setVoiceVolumeState] = useState(0.8);
+  const voiceVolumeRef = useRef(0.8);
 
   // Voice activity detection using Web Audio API
   const startVAD = useCallback((stream: MediaStream) => {
@@ -97,6 +100,8 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
         audioElementsRef.current.set(targetSocketId, audio);
       }
       audio.srcObject = event.streams[0];
+      // Apply current voice volume to this new audio element
+      audio.volume = voiceVolumeRef.current;
     };
 
     pc.onicecandidate = (event) => {
@@ -291,6 +296,17 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
   // Legacy name kept for backward compat
   const activateContestantMic = adminToggleParticipantMic;
 
+  /** Set the voice chat mix volume (0–1) for all remote audio streams */
+  const setVoiceVolume = useCallback((vol: number) => {
+    const clamped = Math.max(0, Math.min(1, vol));
+    voiceVolumeRef.current = clamped;
+    setVoiceVolumeState(clamped);
+    // Apply immediately to all active audio elements
+    audioElementsRef.current.forEach(audio => {
+      audio.volume = clamped;
+    });
+  }, []);
+
   return {
     participants,
     micActive,
@@ -299,6 +315,8 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
     isConnected,
     error,
     wasKicked,
+    voiceVolume,
+    setVoiceVolume,
     toggleMic,
     activateContestantMic,
     adminToggleParticipantMic,

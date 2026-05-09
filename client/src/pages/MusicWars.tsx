@@ -477,6 +477,7 @@ function ChatPanel({
 function AudioRoomPanel({
   participants, micActive, isConnected, error, role,
   onToggleMic, onActivateContestant, onKick, isJoined, onJoin, onLeave,
+  voiceVolume, onVoiceVolumeChange,
 }: {
   participants: AudioParticipant[];
   micActive: boolean;
@@ -489,6 +490,8 @@ function AudioRoomPanel({
   isJoined: boolean;
   onJoin: () => void;
   onLeave: () => void;
+  voiceVolume: number;
+  onVoiceVolumeChange: (v: number) => void;
 }) {
   const roleColor: Record<string, string> = {
     admin: "text-red-400", judge: "text-yellow-400",
@@ -545,6 +548,25 @@ function AudioRoomPanel({
             <button onClick={onLeave} className="flex-1 py-2 text-xs font-semibold uppercase tracking-wider border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors">
               Leave
             </button>
+          </div>
+          {/* Voice Chat Mix Volume */}
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-white/40 uppercase tracking-widest">Voice Mix</span>
+              <span className="text-xs text-white/60 font-mono">{Math.round(voiceVolume * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0" max="1" step="0.05"
+              value={voiceVolume}
+              onChange={e => onVoiceVolumeChange(parseFloat(e.target.value))}
+              className="w-full h-1.5 accent-red-600 cursor-pointer"
+              title="Voice chat volume (does not affect radio)"
+            />
+            <div className="flex justify-between text-[10px] text-white/20 mt-0.5">
+              <span>Quiet</span>
+              <span>Loud</span>
+            </div>
           </div>
         </>
       )}
@@ -1701,14 +1723,14 @@ export default function MusicWars() {
   }, [chatSocket, refetchWheel, refetchActiveBattle, refetchVotes, isAdmin, refetchAllEntries, refetchSpinState]);
 
   const [audioJoined, setAudioJoined] = useState(false);
-  const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic, kickParticipant } = useAudioRoom({
+  const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic, kickParticipant, voiceVolume, setVoiceVolume } = useAudioRoom({
     room: "music_wars", username, role: audioRole, userId: user?.id, enabled: audioJoined,
   });
   // ─── Wars Radio Feed ─────────────────────────────────────────────────────────
   const warsRadio = useWarsRadio({ enabled: true });
   const { state: warsRadioState, tripleTheatMode, loadTracks, adminPause, adminResume, adminSeek, adminSkip, adminStop, adminLastSong, setTripleTheat } = warsRadio;
   // ─── Admin Mic Broadcast ─────────────────────────────────────────────────────────
-  const adminMicBroadcast = useAdminMicBroadcast({ room: "music_wars", isAdmin, enabled: true });
+  const adminMicBroadcast = useAdminMicBroadcast({ room: "music_wars", isAdmin, enabled: true, username, userId: user?.id });
 
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [requiresPayment, setRequiresPayment] = useState(false);
@@ -2039,6 +2061,7 @@ export default function MusicWars() {
                   onActivateContestant={activateContestantMic}
                   onKick={kickParticipant}
                   isJoined={audioJoined} onJoin={() => setAudioJoined(true)} onLeave={() => setAudioJoined(false)}
+                  voiceVolume={voiceVolume} onVoiceVolumeChange={setVoiceVolume}
                 />
               ) : (
                 <div className="bg-[#0d0d0d] border border-white/10 p-5 text-center">

@@ -38,8 +38,9 @@ function formatTime(seconds: number): string {
 export default function FloatingPlayer() {
   const {
     track, playlist, playlistIndex, isPlaying, isLoading,
-    volume, currentTime, duration,
+    volume, currentTime, duration, isLocallyMuted,
     pause, resume, stop, setVolume, seek, next, prev, playPlaylist,
+    localMuteStream, localUnmuteStream,
   } = useAudioPlayer();
 
   const { user } = useAuth();
@@ -49,6 +50,8 @@ export default function FloatingPlayer() {
     room: "music_review",
     isAdmin,
     enabled: !!track?.isStream, // only connect when a live stream is active
+    username: user?.artistName || user?.name || "Listener",
+    userId: user?.id,
   });
   const [showVolume, setShowVolume] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -377,20 +380,20 @@ export default function FloatingPlayer() {
                 </button>
               )}
 
-              {/* Play / Pause — acts as mute/unmute for live stream */}
+              {/* Mute/Unmute — local only for live stream, never pauses the actual stream */}
               <button
-                onClick={isPlaying ? pause : resume}
+                onClick={isLocallyMuted ? localUnmuteStream : localMuteStream}
                 disabled={isLoading}
                 className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
-                aria-label={isPlaying ? "Pause" : "Play"}
-                title="Pause/Resume live stream"
+                aria-label={isLocallyMuted ? "Unmute" : "Mute"}
+                title={isLocallyMuted ? "Unmute stream (local)" : "Mute stream (local only)"}
               >
                 {isLoading ? (
                   <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : isPlaying ? (
-                  <Pause className="w-4 h-4 text-white" />
+                ) : isLocallyMuted ? (
+                  <VolumeX className="w-4 h-4 text-white" />
                 ) : (
-                  <Play className="w-4 h-4 text-white ml-0.5" />
+                  <Pause className="w-4 h-4 text-white" />
                 )}
               </button>
 

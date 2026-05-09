@@ -682,3 +682,15 @@
 - [x] Fix: AudioPlayerContext.play() skips audio loading for YouTube tracks (just updates state, FloatingPlayer handles iframe)
 - [x] Fix: useWarsRadio buildWarsAudioTrack helper detects YouTube URLs and passes youtubeUrl field
 - [x] Fix: useLivePlayer and useWarsLivePlayer both pass youtubeUrl + submissionType on the AudioTrack
+
+## Audio Fix — Live Stream Pause, Mic Broadcast, Voice+Radio Mix
+- [ ] Fix: Live stream pause/stop in FloatingPlayer should only mute local audio, not broadcast a pause to all listeners
+- [ ] Fix: Admin Mic → Radio broadcast pipeline not working (investigate useAdminMicBroadcast + socket server)
+- [ ] Feature: Allow voice chat (WebRTC audio room) and radio feed to play simultaneously
+- [ ] Feature: Add voice chat mix volume knob so users can balance voice chat vs radio volume
+
+## Audio Fix — Live Stream Pause, Admin Mic, Voice+Radio Mix (May 2026)
+- [x] Fix: Live stream pause/stop now only mutes locally (audio.muted=true) — does NOT broadcast pause to all listeners; button shows as Mute/Unmute for live streams
+- [x] Fix: Admin Mic to Radio was broken because useAdminMicBroadcast never emitted room:join — server never registered the admin as a participant; fixed by emitting room:join with role=admin on socket connect
+- [x] Fix: Voice chat and radio now play simultaneously — voice chat audio elements are separate from the radio audio element; no conflict
+- [x] Feature: Voice Mix volume slider added to AudioRoomPanel (Music Wars) and MusicReview voice chat section — users can balance voice chat vs radio volume independently; starts at 80%, accent-red-600 slider

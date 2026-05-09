@@ -47,6 +47,8 @@ type AudioPlayerState = {
   currentTime: number;
   duration: number;
   error: string | null;
+  /** For live streams: true when the user has locally muted (audio.muted=true) without pausing the stream */
+  isLocallyMuted: boolean;
 };
 
 type AudioPlayerContextType = AudioPlayerState & {
@@ -68,6 +70,10 @@ type AudioPlayerContextType = AudioPlayerState & {
    * once it's resolved. Use this when you need to await URL resolution.
    */
   unlockThenSwap: (trackMeta: Omit<AudioTrack, "url">) => (resolvedUrl: string) => void;
+  /** For live streams: mute local audio without stopping the stream (keeps buffering) */
+  localMuteStream: () => void;
+  /** For live streams: unmute local audio */
+  localUnmuteStream: () => void;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -91,6 +97,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     currentTime: 0,
     duration: 0,
     error: null,
+    isLocallyMuted: false,
   });
 
   // Keep a ref to state for use in callbacks without stale closures
@@ -408,9 +415,22 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const pause = useCallback(() => {
     audioRef.current?.pause();
   }, []);
-
   const resume = useCallback(() => {
     audioRef.current?.play().catch(console.error);
+  }, []);
+  /** Mute local audio for live streams without pausing (stream keeps buffering) */
+  const localMuteStream = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = true;
+    setState(s => ({ ...s, isLocallyMuted: true }));
+  }, []);
+  /** Unmute local audio for live streams */
+  const localUnmuteStream = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = false;
+    setState(s => ({ ...s, isLocallyMuted: false }));
   }, []);
 
   const stop = useCallback(() => {
@@ -441,7 +461,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay, unlockThenSwap }}>
+    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay, unlockThenSwap, localMuteStream, localUnmuteStream }}>
       {children}
     </AudioPlayerContext.Provider>
   );
