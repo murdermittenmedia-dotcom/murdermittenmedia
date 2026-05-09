@@ -632,3 +632,6 @@
 
 ## Explore Search Fix
 - [x] Make Explore search case-insensitive (server-side SQL LIKE with LOWER(), client-side filter with toLowerCase())
+
+## Search Results Audio Fix
+- [x] Replace Tune In button on song search results with working AudioPlayButton

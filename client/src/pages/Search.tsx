@@ -9,8 +9,8 @@ import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
 import { Search as SearchIcon, User, Music, MapPin, ExternalLink } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
-import { TuneInButton } from "@/components/TuneInButton";
 import { ArtistLink } from "@/components/ArtistLink";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -164,9 +164,27 @@ export default function Search() {
                       className="border border-white/10 bg-white/[0.03] hover:border-red-600/30 hover:bg-white/[0.06] transition-all duration-200 p-3 group"
                     >
                       <div className="flex items-center gap-3">
-                        {/* Tune In — redirects to live radio station */}
-                        {(song.fileKey || song.externalUrl) ? (
-                          <TuneInButton size="sm" />
+                        {/* Play button — plays audio directly in the FloatingPlayer */}
+                        {song.fileKey ? (
+                          <AudioPlayButton
+                            fileKey={song.fileKey}
+                            title={song.title}
+                            artist={song.artistName ?? undefined}
+                            artistUserId={song.userId ?? undefined}
+                            sourcePage="Search"
+                            size="sm"
+                          />
+                        ) : song.externalUrl ? (
+                          <a
+                            href={song.externalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0 hover:bg-red-600 hover:border-red-600 transition-all"
+                            title="Open external link"
+                          >
+                            <ExternalLink className="w-3 h-3 text-white/60" />
+                          </a>
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
                             <Music className="w-3 h-3 text-white/30" />
