@@ -8,6 +8,7 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
+import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { ArtistLink } from "@/components/ArtistLink";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
@@ -798,6 +799,8 @@ export default function MusicReview() {
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden pb-24">
       <SiteNav />
+      {/* Live banner — only shown to non-admin viewers when stream is offline on this page */}
+      {!isAdmin && !isLive && <LiveRadioBanner filter="review" />}
 
       {/* ── HERO ──────────────────────────────────────────────── */}
       <section className="pt-20 pb-8 border-b border-white/10">

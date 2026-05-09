@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { SiteNav } from "@/components/SiteNav";
+import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -69,6 +70,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
       <SiteNav />
+      {/* Show live banner across the top of the home page when any stream is live */}
+      <LiveRadioBanner />
 
       {/* ══════════════════════════════════════════════════════
           HERO -- Clean, focused, breathing room

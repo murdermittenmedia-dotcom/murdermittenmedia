@@ -646,3 +646,13 @@
 - [x] Analytics tab — submission counts, vote totals, top artists, site activity
 - [x] Site Settings tab — Artist of the Week, featured content, announcements
 - [x] Admin nav link visible only to admin role users
+
+## Live Radio Banner & Nav LIVE Badge
+- [x] Remove standalone "Live Now" nav item from SiteNav
+- [x] Add pulsing red LIVE badge next to Music Reviews nav link when Music Review radio is live
+- [x] Add pulsing red LIVE badge next to Music Wars nav link when Music Wars stream is live
+- [x] Build LiveRadioBanner component — noticeable banner/button to join live radio when active
+- [x] Add LiveRadioBanner to Music Review page
+- [x] Add LiveRadioBanner to Music Wars page
+- [x] Add LiveRadioBanner to Home page
+- [x] Create useLiveStatus shared hook polling both live statuses every 30s

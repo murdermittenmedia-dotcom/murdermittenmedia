@@ -9,8 +9,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { useLiveStatus } from "@/hooks/useLiveStatus";
 import {
-  User, Radio, Star, Mic2, Podcast,
+  User, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
   LogOut, LogIn, ChevronDown, X, Menu, Shield,
 } from "lucide-react";
@@ -18,17 +19,17 @@ import {
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
 // Ordered menu items — used for both desktop and mobile
+// liveKey: matches the key returned by useLiveStatus to show LIVE badge
 const NAV_ITEMS = [
-  { href: "/live",              label: "Live Now",                    icon: Radio,       live: true  },
-  { href: "/artist-of-the-week",label: "Artist of the Week",          icon: Star                   },
-  { href: "/mic",               label: "Mic Drops",                   icon: Mic2                   },
-  { href: "/podcast",           label: "Meeting With The Mitten",     icon: Podcast                },
-  { href: "/review",            label: "Music Reviews",               icon: Music                  },
-  { href: "/music-wars",        label: "Music Wars",                  icon: Swords                 },
-  { href: "/forum",             label: "Forum",                       icon: MessageSquare          },
-  { href: "/explore",           label: "Explore",                     icon: Search                 },
-  { href: "/leaderboard",       label: "Leaderboards",                icon: Trophy                 },
-  { href: "/promo",             label: "Get Promoted",                icon: Tag                    },
+  { href: "/artist-of-the-week",label: "Artist of the Week",          icon: Star                          },
+  { href: "/mic",               label: "Mic Drops",                   icon: Mic2                          },
+  { href: "/podcast",           label: "Meeting With The Mitten",     icon: Podcast                       },
+  { href: "/review",            label: "Music Reviews",               icon: Music,   liveKey: "review"   },
+  { href: "/music-wars",        label: "Music Wars",                  icon: Swords,  liveKey: "wars"     },
+  { href: "/forum",             label: "Forum",                       icon: MessageSquare                 },
+  { href: "/explore",           label: "Explore",                     icon: Search                        },
+  { href: "/leaderboard",       label: "Leaderboards",                icon: Trophy                        },
+  { href: "/promo",             label: "Get Promoted",                icon: Tag                           },
 ];
 
 // Desktop primary (visible without More dropdown)
@@ -42,6 +43,13 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
+  const { reviewIsLive, warsIsLive } = useLiveStatus();
+
+  const isLiveForKey = (key?: string) => {
+    if (key === "review") return reviewIsLive;
+    if (key === "wars") return warsIsLive;
+    return false;
+  };
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 60);
@@ -89,19 +97,24 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 
           {/* ── Desktop nav ── */}
           <div className="hidden lg:flex items-center gap-1 text-sm font-medium">
-            {DESKTOP_PRIMARY.map(link => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="flex items-center gap-1.5 px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded transition-all duration-150 whitespace-nowrap"
-              >
-                {link.live
-                  ? <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  : <link.icon className="w-3.5 h-3.5 opacity-60" />
-                }
-                {link.label}
-              </a>
-            ))}
+            {DESKTOP_PRIMARY.map(link => {
+              const isLive = isLiveForKey((link as any).liveKey);
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="flex items-center gap-1.5 px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded transition-all duration-150 whitespace-nowrap relative"
+                >
+                  <link.icon className="w-3.5 h-3.5 opacity-60" />
+                  {link.label}
+                  {isLive && (
+                    <span className="ml-1 text-[9px] font-bold uppercase tracking-widest text-red-500 animate-pulse">
+                      LIVE
+                    </span>
+                  )}
+                </a>
+              );
+            })}
 
             {/* More dropdown */}
             <div className="relative" ref={moreRef}>
@@ -277,6 +290,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
             {NAV_ITEMS.map((link, i) => {
               const Icon = link.icon;
               const isGetPromoted = link.href === "/promo";
+              const isLiveMobile = isLiveForKey((link as any).liveKey);
               return (
                 <a
                   key={link.href}
@@ -291,18 +305,17 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                   <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
                     isGetPromoted
                       ? "bg-red-600/20 border border-red-600/30"
+                      : isLiveMobile
+                      ? "bg-red-600/20 border border-red-600/40"
                       : "bg-white/5 border border-white/10 group-hover:border-white/20"
                   }`}>
-                    {link.live
-                      ? <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      : <Icon className={`w-4 h-4 ${isGetPromoted ? "text-red-500" : "text-white/50 group-hover:text-white/80"}`} />
-                    }
+                    <Icon className={`w-4 h-4 ${isGetPromoted ? "text-red-500" : isLiveMobile ? "text-red-400" : "text-white/50 group-hover:text-white/80"}`} />
                   </div>
                   <span className={`text-sm font-medium ${isGetPromoted ? "font-semibold" : ""}`}>
                     {link.label}
                   </span>
-                  {link.live && (
-                    <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-red-500 bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded-sm">
+                  {isLiveMobile && (
+                    <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-red-500 bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded-sm animate-pulse">
                       LIVE
                     </span>
                   )}
