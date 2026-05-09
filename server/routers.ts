@@ -192,7 +192,7 @@ export const appRouter = router({
         return getUserSongs(input.userId, false);
       }),
 
-    // Add a song via external URL (YouTube/SoundCloud)
+    // Add a song via external URL (YouTube only)
     addExternal: protectedProcedure
       .input(z.object({
         title: z.string().min(1).max(128),

@@ -41,7 +41,7 @@ interface BattleRecord {
 
 // ─── Song Row ─────────────────────────────────────────────────
 // Uses AudioPlayButton for uploaded files (same pattern as Forum).
-// For YouTube/SoundCloud-only links: shows an inline YouTube embed
+// For YouTube-only links: shows an inline YouTube embed
 // or an external link button.
 function SongRow({
   song,
@@ -198,7 +198,7 @@ function SongUploadForm({ onSuccess, defaultArtistName }: { onSuccess: () => voi
               tab === t ? "bg-red-600 text-white" : "text-white/40 hover:text-white"
             }`}
           >
-            {t === "link" ? "YouTube / SoundCloud" : "Upload File"}
+            {t === "link" ? "YouTube Link" : "Upload File"}
           </button>
         ))}
       </div>
@@ -217,7 +217,7 @@ function SongUploadForm({ onSuccess, defaultArtistName }: { onSuccess: () => voi
 
       {tab === "link" ? (
         <input
-          type="url" placeholder="YouTube or SoundCloud URL" value={externalUrl}
+          type="url" placeholder="YouTube URL" value={externalUrl}
           onChange={e => setExternalUrl(e.target.value)}
           className="w-full bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/30"
         />

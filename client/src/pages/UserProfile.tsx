@@ -144,7 +144,7 @@ function UploadSongForm({ onUploaded }: { onUploaded: () => void }) {
               uploadMode === m ? "border-red-600 text-red-500 bg-red-600/10" : "border-white/10 text-white/40 hover:border-white/30"
             }`}
           >
-            {m === "file" ? "Upload MP3" : "Link (YouTube/SC)"}
+            {m === "file" ? "Upload MP3" : "YouTube Link"}
           </button>
         ))}
       </div>
@@ -181,7 +181,7 @@ function UploadSongForm({ onUploaded }: { onUploaded: () => void }) {
         </div>
       ) : (
         <div>
-          <label className="text-xs text-white/40 uppercase tracking-widest block mb-1">YouTube / SoundCloud URL *</label>
+          <label className="text-xs text-white/40 uppercase tracking-widest block mb-1">YouTube URL *</label>
           <input
             value={externalUrl}
             onChange={e => setExternalUrl(e.target.value)}
@@ -288,7 +288,7 @@ function MusicCatalogue({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-600 text-white transition-all"
-                  title="Open on YouTube/SoundCloud"
+                  title="Open on YouTube"
                 >
                   <Globe className="w-4 h-4" />
                 </a>

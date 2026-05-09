@@ -17,6 +17,14 @@ const requireUser = t.middleware(async opts => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
+  // Banned users cannot use any protected procedures — even with a valid session
+  if (ctx.user.isBanned) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Your account has been banned. Contact murdermittenmedia@gmail.com to appeal.",
+    });
+  }
+
   return next({
     ctx: {
       ...ctx,

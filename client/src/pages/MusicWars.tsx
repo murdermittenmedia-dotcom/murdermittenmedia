@@ -666,7 +666,7 @@ function SubmissionForm({
         </div>
         <input type="text" placeholder="Song Title *" value={songTitle} onChange={e => setSongTitle(e.target.value)} required maxLength={128}
           className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
-        <input type="url" placeholder="YouTube / SoundCloud link (optional)" value={songUrl} onChange={e => setSongUrl(e.target.value)}
+        <input type="url" placeholder="YouTube link (optional)" value={songUrl} onChange={e => setSongUrl(e.target.value)}
           className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2.5 focus:outline-none focus:border-red-600/50 placeholder-white/30" />
         {/* MP3 upload */}
         <div>

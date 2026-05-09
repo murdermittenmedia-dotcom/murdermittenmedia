@@ -694,3 +694,10 @@
 - [x] Fix: Admin Mic to Radio was broken because useAdminMicBroadcast never emitted room:join — server never registered the admin as a participant; fixed by emitting room:join with role=admin on socket connect
 - [x] Fix: Voice chat and radio now play simultaneously — voice chat audio elements are separate from the radio audio element; no conflict
 - [x] Feature: Voice Mix volume slider added to AudioRoomPanel (Music Wars) and MusicReview voice chat section — users can balance voice chat vs radio volume independently; starts at 80%, accent-red-600 slider
+
+## Ban Enforcement & SoundCloud Removal (May 2026)
+- [x] Remove SoundCloud from all link input fields and validation — YouTube links only (ArtistStatModal, MusicWars, UserProfile, routers.ts)
+- [x] Enforce ban at auth layer: OAuth callback checks isBanned before issuing session cookie, redirects to /banned immediately
+- [x] Enforce ban in protectedProcedure: requireUser middleware throws FORBIDDEN if ctx.user.isBanned (blocks all API calls even with existing session)
+- [x] Built /banned page: dark editorial style, red ShieldOff icon, BANNED headline, appeal instructions with mailto link to murdermittenmedia@gmail.com
+- [x] Wired /banned route into App.tsx

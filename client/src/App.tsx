@@ -23,6 +23,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Search from "./pages/Search";
 import AdminModeration from "./pages/AdminModeration";
 import AdminPanel from "./pages/AdminPanel";
+import Banned from "./pages/Banned";
 
 function Router() {
   return (
@@ -57,6 +58,9 @@ function Router() {
       {/* Admin */}
       <Route path={"/admin"} component={AdminPanel} />
       <Route path={"/admin/moderation"} component={AdminModeration} />
+
+      {/* Ban appeal */}
+      <Route path={"/banned"} component={Banned} />
 
       {/* Fallback */}
       <Route path={"/404"} component={NotFound} />
