@@ -665,3 +665,11 @@
 - [x] Condense redundant sections and improve mobile layout
 - [x] MusicWarsAdminHub: collapsible red header bar, collapsed by default, 4 tabs (Radio/Battle/Entries/Settings)
 - [x] MusicWarsAdminHub: shows MIC LIVE badge in header when admin mic is broadcasting
+
+## Admin Tools — Delete User, Reset Stats, Reset Submissions
+- [x] tRPC: admin.deleteUser — hard-delete a user and all their associated data (songs, votes, wheel entries, battle records, chat messages)
+- [x] tRPC: admin.resetAllStats — reset all user stats: delete all battle_records, reset fireCount/trashCount on review_submissions to 0, delete all song_reactions
+- [x] tRPC: admin.resetAllSubmissions — delete all review_submissions (Music Review queue), reset wheel_entries to empty, clear active_battle and votes
+- [x] Admin UI: Delete User button in User Management tab (with inline confirmation: "Yes, Delete" / Cancel)
+- [x] Admin UI: "Reset All Stats" button in new Danger Zone tab (requires typing "RESET STATS" to confirm)
+- [x] Admin UI: "Reset All Submissions" button in Danger Zone tab (requires typing "RESET SUBMISSIONS" to confirm)

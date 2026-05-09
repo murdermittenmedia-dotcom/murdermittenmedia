@@ -18,7 +18,7 @@ import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText,
-  ChevronDown, ChevronUp, Eye, EyeOff
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -85,6 +85,11 @@ function UsersTab() {
   const unbanUser = trpc.admin.unbanUser.useMutation({
     onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("User unbanned"); },
     onError: (e) => toast.error(e.message),
+  });
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const deleteUser = trpc.admin.deleteUser.useMutation({
+    onSuccess: () => { utils.admin.listUsers.invalidate(); setDeleteConfirmId(null); toast.success("User deleted permanently"); },
+    onError: (e) => { toast.error(e.message); setDeleteConfirmId(null); },
   });
 
   return (
@@ -206,6 +211,23 @@ function UsersTab() {
                       Instagram: <a href={`https://instagram.com/${user.instagramHandle}`} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">@{user.instagramHandle}</a>
                     </div>
                   )}
+                  {/* Delete user */}
+                  <div className="pt-2 border-t border-red-900/30">
+                    <p className="text-red-400/60 text-xs uppercase tracking-widest mb-2">Danger Zone</p>
+                    {deleteConfirmId === user.id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-red-400 text-xs">Permanently delete this user and ALL their data?</span>
+                        <Button size="sm" className="bg-red-700 hover:bg-red-800 text-white" onClick={() => deleteUser.mutate({ userId: user.id })} disabled={deleteUser.isPending}>
+                          {deleteUser.isPending ? "Deleting..." : "Yes, Delete"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20" onClick={() => setDeleteConfirmId(user.id)}>
+                        <Trash2 className="w-3 h-3 mr-1" /> Delete User
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -596,14 +618,115 @@ function SiteSettingsTab() {
   );
 }
 
-// ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings";
+/// ─── Danger Zone Tab ─────────────────────────────────────────
+function DangerZoneTab() {
+  const utils = trpc.useUtils();
+  const [confirmAction, setConfirmAction] = useState<"stats" | "submissions" | null>(null);
+  const [confirmText, setConfirmText] = useState("");
 
+  const resetStats = trpc.admin.resetAllStats.useMutation({
+    onSuccess: () => { setConfirmAction(null); setConfirmText(""); toast.success("All stats have been reset"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const resetSubmissions = trpc.admin.resetAllSubmissions.useMutation({
+    onSuccess: () => { setConfirmAction(null); setConfirmText(""); toast.success("All submissions have been reset"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const CONFIRM_STATS = "RESET STATS";
+  const CONFIRM_SUBS = "RESET SUBMISSIONS";
+
+  return (
+    <div className="max-w-2xl">
+      <div className="flex items-center gap-3 mb-6">
+        <AlertTriangle className="w-6 h-6 text-red-500" />
+        <div>
+          <h2 className="text-white font-bold text-lg">Danger Zone</h2>
+          <p className="text-white/40 text-sm">These actions are irreversible. Proceed with extreme caution.</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {/* Reset All Stats */}
+        <div className="border border-red-600/30 bg-red-950/20 rounded-lg p-5">
+          <h3 className="text-white font-semibold mb-1">Reset All Stats</h3>
+          <p className="text-white/50 text-sm mb-4">
+            Deletes all battle records, all votes, all song reactions (🔥/🗑️), and resets fire/trash counts on every submission to zero.
+            User accounts and songs are preserved.
+          </p>
+          {confirmAction === "stats" ? (
+            <div className="space-y-3">
+              <p className="text-red-400 text-sm font-semibold">Type <span className="font-mono bg-red-900/40 px-1 rounded">{CONFIRM_STATS}</span> to confirm:</p>
+              <div className="flex gap-2">
+                <Input
+                  value={confirmText}
+                  onChange={e => setConfirmText(e.target.value)}
+                  placeholder={CONFIRM_STATS}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono"
+                />
+                <Button
+                  className="bg-red-700 hover:bg-red-800 text-white flex-shrink-0"
+                  onClick={() => resetStats.mutate()}
+                  disabled={confirmText !== CONFIRM_STATS || resetStats.isPending}
+                >
+                  {resetStats.isPending ? "Resetting..." : "Confirm Reset"}
+                </Button>
+                <Button variant="outline" className="border-white/20 text-white/60 flex-shrink-0" onClick={() => { setConfirmAction(null); setConfirmText(""); }}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <Button variant="outline" className="border-red-600/50 text-red-400 hover:bg-red-600/20" onClick={() => { setConfirmAction("stats"); setConfirmText(""); }}>
+              <RefreshCw className="w-4 h-4 mr-2" /> Reset All Stats
+            </Button>
+          )}
+        </div>
+
+        {/* Reset All Submissions */}
+        <div className="border border-red-600/30 bg-red-950/20 rounded-lg p-5">
+          <h3 className="text-white font-semibold mb-1">Reset All Submissions</h3>
+          <p className="text-white/50 text-sm mb-4">
+            Deletes all Music Review queue submissions, all Music Wars wheel entries, all votes, and closes the active battle.
+            User accounts, songs, and battle records are preserved.
+          </p>
+          {confirmAction === "submissions" ? (
+            <div className="space-y-3">
+              <p className="text-red-400 text-sm font-semibold">Type <span className="font-mono bg-red-900/40 px-1 rounded">{CONFIRM_SUBS}</span> to confirm:</p>
+              <div className="flex gap-2">
+                <Input
+                  value={confirmText}
+                  onChange={e => setConfirmText(e.target.value)}
+                  placeholder={CONFIRM_SUBS}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono"
+                />
+                <Button
+                  className="bg-red-700 hover:bg-red-800 text-white flex-shrink-0"
+                  onClick={() => resetSubmissions.mutate()}
+                  disabled={confirmText !== CONFIRM_SUBS || resetSubmissions.isPending}
+                >
+                  {resetSubmissions.isPending ? "Resetting..." : "Confirm Reset"}
+                </Button>
+                <Button variant="outline" className="border-white/20 text-white/60 flex-shrink-0" onClick={() => { setConfirmAction(null); setConfirmText(""); }}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <Button variant="outline" className="border-red-600/50 text-red-400 hover:bg-red-600/20" onClick={() => { setConfirmAction("submissions"); setConfirmText(""); }}>
+              <Trash2 className="w-4 h-4 mr-2" /> Reset All Submissions
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Admin Panel ─────────────────────────────────────────
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "settings", label: "Site Settings", icon: Settings },
+  { id: "danger", label: "Danger Zone", icon: AlertTriangle },
 ];
 
 export default function AdminPanel() {
@@ -675,6 +798,7 @@ export default function AdminPanel() {
         {activeTab === "orders" && <PromoOrdersTab />}
         {activeTab === "analytics" && <AnalyticsTab />}
         {activeTab === "settings" && <SiteSettingsTab />}
+        {activeTab === "danger" && <DangerZoneTab />}
       </div>
     </div>
   );

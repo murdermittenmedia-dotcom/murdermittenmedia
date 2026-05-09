@@ -36,6 +36,7 @@ import {
   banUser, unbanUser,
   getSkipLineOrders, getWheelPaidOrders,
   getAdminAnalytics,
+  deleteUser, resetAllStats, resetAllSubmissions,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -1546,6 +1547,53 @@ export const appRouter = router({
       .input(z.object({ applicationId: z.number(), status: z.enum(["approved", "rejected"]) }))
       .mutation(async ({ input }) => {
         await reviewJudgeApplication(input.applicationId, input.status);
+        return { success: true };
+      }),
+
+    // Danger Zone — hard-delete a user and all their data
+    deleteUser: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (input.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot delete your own account" });
+        await deleteUser(input.userId);
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "delete_user",
+          targetType: "user",
+          targetId: input.userId,
+          reason: "Admin hard-delete",
+        });
+        return { success: true };
+      }),
+
+    // Danger Zone — reset all stats (battle records, votes, fire/trash counts, song reactions)
+    resetAllStats: adminProcedure
+      .mutation(async ({ ctx }) => {
+        await resetAllStats();
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "reset_all_stats",
+          targetType: "user",
+          targetId: 0,
+          reason: "Admin reset all stats",
+        });
+        return { success: true };
+      }),
+
+    // Danger Zone — reset all submissions (review queue + wheel entries + votes + active battle)
+    resetAllSubmissions: adminProcedure
+      .mutation(async ({ ctx }) => {
+        await resetAllSubmissions();
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "reset_all_submissions",
+          targetType: "user",
+          targetId: 0,
+          reason: "Admin reset all submissions",
+        });
         return { success: true };
       }),
   }),

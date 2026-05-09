@@ -1232,3 +1232,57 @@ export async function getAdminAnalytics() {
     topBattleWinners,
   };
 }
+
+// -- Admin Danger Zone helpers --------------------------------
+
+/** Hard-delete a user and all their associated data. */
+export async function deleteUser(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  // Delete in dependency order to avoid FK issues
+  await db.delete(votes).where(eq(votes.voterId, userId));
+  await db.delete(songReactions).where(eq(songReactions.userId, userId));
+  await db.delete(userSongs).where(eq(userSongs.userId, userId));
+  await db.delete(wheelEntries).where(eq(wheelEntries.userId, userId));
+  await db.delete(reviewSubmissions).where(eq(reviewSubmissions.userId, userId));
+  await db.delete(judgeApplications).where(eq(judgeApplications.userId, userId));
+  await db.delete(chatMessages).where(eq(chatMessages.userId, userId));
+  await db.delete(users).where(eq(users.id, userId));
+}
+
+/**
+ * Reset all stats site-wide:
+ * - Delete all battle records (all war sessions)
+ * - Delete all votes
+ * - Reset fire/trash counts on all review submissions to 0
+ * - Delete all song reactions
+ */
+export async function resetAllStats(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(battleRecords);
+  await db.delete(votes);
+  await db.delete(songReactions);
+  await db.update(reviewSubmissions).set({ fireCount: 0, trashCount: 0 });
+}
+
+/**
+ * Reset all submissions site-wide:
+ * - Delete all Music Review queue submissions
+ * - Delete all wheel entries
+ * - Close the active battle
+ * - Clear all votes
+ * - Reset queue state (no current playing track)
+ */
+export async function resetAllSubmissions(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(reviewSubmissions);
+  await db.delete(wheelEntries);
+  await db.delete(votes);
+  // Close active battle if any
+  const battle = await getActiveBattle();
+  if (battle) await updateActiveBattleStatus(battle.id, "closed");
+  // Reset queue state
+  await db.update(queueState).set({ currentPlayingId: null, isLive: false });
+}
