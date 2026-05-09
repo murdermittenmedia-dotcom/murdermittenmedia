@@ -188,6 +188,11 @@ export const activeBattle = mysqlTable("active_battle", {
   contestant2Name: varchar("contestant2Name", { length: 128 }).notNull(),
   contestant2SongTitle: varchar("contestant2SongTitle", { length: 128 }),
   contestant2SongUrl: varchar("contestant2SongUrl", { length: 512 }),
+  // Triple Threat — optional 3rd contestant
+  contestant3Name: varchar("contestant3Name", { length: 128 }),
+  contestant3SongTitle: varchar("contestant3SongTitle", { length: 128 }),
+  contestant3SongUrl: varchar("contestant3SongUrl", { length: 512 }),
+  isTripleThreat: boolean("isTripleThreat").default(false).notNull(),
   roundNumber: int("roundNumber").default(1).notNull(),
   status: mysqlEnum("status", ["pending", "voting", "closed"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -204,7 +209,7 @@ export const votes = mysqlTable("votes", {
   voterId: int("voterId").notNull(),             // references users.id
   voterName: varchar("voterName", { length: 128 }),  // display name for public judge vote visibility
   voterRole: mysqlEnum("voterRole", ["user", "judge", "admin"]).default("user").notNull(),
-  candidate: mysqlEnum("candidate", ["contestant1", "contestant2"]).notNull(),
+  candidate: mysqlEnum("candidate", ["contestant1", "contestant2", "contestant3"]).notNull(),
   weight: int("weight").default(1).notNull(),    // always 1 — all votes equal
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

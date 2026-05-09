@@ -700,15 +700,20 @@ export const appRouter = router({
       .input(z.object({
         contestant1Id: z.number(),
         contestant2Id: z.number(),
+        contestant3Id: z.number().optional(),
+        isTripleThreat: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {
         const entries = await getAllWheelEntries();
         const c1 = entries.find(e => e.id === input.contestant1Id);
         const c2 = entries.find(e => e.id === input.contestant2Id);
+        const c3 = input.contestant3Id ? entries.find(e => e.id === input.contestant3Id) : undefined;
         if (!c1 || !c2) throw new TRPCError({ code: "NOT_FOUND", message: "Entry not found" });
-        // Mark both as eliminated (removed from wheel)
+        if (input.contestant3Id && !c3) throw new TRPCError({ code: "NOT_FOUND", message: "Contestant 3 not found" });
+        // Mark contestants as eliminated (removed from wheel)
         await updateWheelEntryStatus(input.contestant1Id, "eliminated");
         await updateWheelEntryStatus(input.contestant2Id, "eliminated");
+        if (c3) await updateWheelEntryStatus(c3.id, "eliminated");
         // Set active battle with song info
         await setActiveBattle({
           contestant1Name: c1.artistName,
@@ -717,11 +722,15 @@ export const appRouter = router({
           contestant2Name: c2.artistName,
           contestant2SongTitle: c2.songTitle ?? undefined,
           contestant2SongUrl: c2.songUrl ?? undefined,
+          contestant3Name: c3?.artistName ?? null,
+          contestant3SongTitle: c3?.songTitle ?? null,
+          contestant3SongUrl: c3?.songUrl ?? null,
+          isTripleThreat: input.isTripleThreat ?? !!c3,
           roundNumber: 1,
           status: "voting",
         });
         // Notify users if they have accounts
-        const notifyUser = async (entry: typeof c1, picked: boolean) => {
+        const notifyUser = async (entry: typeof c1 | undefined, picked: boolean) => {
           if (!entry?.userId) return;
           await setSetting(`notify_user_${entry.userId}`, JSON.stringify({
             type: "picked",
@@ -731,7 +740,8 @@ export const appRouter = router({
         };
         await notifyUser(c1, true);
         await notifyUser(c2, true);
-        return { success: true, contestant1: c1, contestant2: c2 };
+        if (c3) await notifyUser(c3, true);
+        return { success: true, contestant1: c1, contestant2: c2, contestant3: c3 ?? null };
       }),
 
     // Get notification for current user
@@ -944,7 +954,7 @@ export const appRouter = router({
     cast: protectedProcedure
       .input(z.object({
         battleId: z.number(),
-        candidate: z.enum(["contestant1", "contestant2"]),
+        candidate: z.enum(["contestant1", "contestant2", "contestant3"]),
       }))
       .mutation(async ({ ctx, input }) => {
         const weight = 1; // all votes equal weight

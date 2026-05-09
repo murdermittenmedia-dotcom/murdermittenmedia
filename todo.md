@@ -579,3 +579,16 @@
 - [x] Remove AudioPlayButton from MusicReview Queue viewer tab (replaced with LIVE badge for playing tracks)
 - [x] Added Previously Submitted Tracks section to MusicReview with AudioPlayButton (independent playback)
 - [x] AudioPlayButton kept in Admin panel only (admin-only) and Previously Submitted Tracks section
+
+## Session 16 — Music Wars Admin Audio Controls + Triple Threat Fix
+
+- [x] Add admin "Load to Radio" buttons for each contestant in VotingPanel (admin-only)
+- [x] Admin can manually broadcast contestant songs to live radio without spinning the wheel
+- [x] Clicking "Load to Radio" broadcasts contestant song via wars_radio:load socket event to all viewers
+- [x] Triple Threat mode: spin wheel 3 times instead of 2 when Triple Threat is ON
+- [x] Triple Threat: VotingPanel shows 3 contestant cards, 3 vote buttons, 3 progress bars
+- [x] Triple Threat: contestant3 fields added to activeBattle schema (contestant3Name, contestant3SongTitle, contestant3SongUrl, isTripleThreat)
+- [x] Triple Threat: contestant3 added to votes candidate enum
+- [x] Triple Threat: setBattleContestants procedure accepts optional contestant3Id and isTripleThreat
+- [x] Triple Threat: getVoteResults counts contestant3 votes
+- [x] FloatingPlayer: artist name is clickable (ArtistStatModal) for both live and non-live tracks

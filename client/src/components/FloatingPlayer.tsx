@@ -222,9 +222,19 @@ export default function FloatingPlayer() {
             </div>
             <div className="flex items-center gap-1.5 min-w-0 mt-0.5">
               {isLiveStream ? (
-                <span className="text-red-500 text-xs font-bold flex items-center gap-1">
-                  <Radio className="w-3 h-3" />
-                  LIVE — Admin Controlled
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-red-500 text-xs font-bold flex items-center gap-1 flex-shrink-0">
+                    <Radio className="w-3 h-3" />
+                    LIVE
+                  </span>
+                  {track.artist && (
+                    <ArtistStatModal artistName={track.artist} userId={track.artistUserId ?? null}>
+                      <button className="text-white/50 hover:text-red-400 text-xs transition-colors flex items-center gap-1 min-w-0 truncate">
+                        <User className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{track.artist}</span>
+                      </button>
+                    </ArtistStatModal>
+                  )}
                 </span>
               ) : track.artist ? (
                 <ArtistStatModal artistName={track.artist} userId={track.artistUserId ?? null}>

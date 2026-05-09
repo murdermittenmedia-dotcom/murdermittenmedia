@@ -427,6 +427,10 @@ export async function setActiveBattle(data: {
   contestant2Name: string;
   contestant2SongTitle?: string | null;
   contestant2SongUrl?: string | null;
+  contestant3Name?: string | null;
+  contestant3SongTitle?: string | null;
+  contestant3SongUrl?: string | null;
+  isTripleThreat?: boolean;
   roundNumber?: number;
   status?: "pending" | "voting" | "closed";
 }) {
@@ -440,6 +444,10 @@ export async function setActiveBattle(data: {
     contestant2Name: data.contestant2Name,
     contestant2SongTitle: data.contestant2SongTitle ?? null,
     contestant2SongUrl: data.contestant2SongUrl ?? null,
+    contestant3Name: data.contestant3Name ?? null,
+    contestant3SongTitle: data.contestant3SongTitle ?? null,
+    contestant3SongUrl: data.contestant3SongUrl ?? null,
+    isTripleThreat: data.isTripleThreat ?? false,
     roundNumber: data.roundNumber ?? 1,
     status: data.status ?? "pending",
   });
@@ -476,17 +484,18 @@ export async function getUserVote(battleId: number, voterId: number) {
 export async function getVoteResults(battleId: number) {
   const db = await getDb();
   if (!db) return {
-    contestant1: 0, contestant2: 0, total: 0,
+    contestant1: 0, contestant2: 0, contestant3: 0, total: 0,
     judgeVotes: [] as Array<{ name: string; role: string; candidate: string }>,
-    audienceContestant1: 0, audienceContestant2: 0,
+    audienceContestant1: 0, audienceContestant2: 0, audienceContestant3: 0,
   };
   const allVotes = await db.select().from(votes).where(eq(votes.battleId, battleId));
-  let c1 = 0, c2 = 0, audienceC1 = 0, audienceC2 = 0;
+  let c1 = 0, c2 = 0, c3 = 0, audienceC1 = 0, audienceC2 = 0, audienceC3 = 0;
   const judgeVotes: Array<{ name: string; role: string; candidate: string }> = [];
   for (const v of allVotes) {
     const isJudge = v.voterRole === "judge" || v.voterRole === "admin";
     if (v.candidate === "contestant1") { c1++; if (!isJudge) audienceC1++; }
-    else { c2++; if (!isJudge) audienceC2++; }
+    else if (v.candidate === "contestant2") { c2++; if (!isJudge) audienceC2++; }
+    else if (v.candidate === "contestant3") { c3++; if (!isJudge) audienceC3++; }
     if (isJudge) {
       judgeVotes.push({ name: v.voterName ?? "Judge", role: v.voterRole, candidate: v.candidate });
     }
@@ -494,10 +503,12 @@ export async function getVoteResults(battleId: number) {
   return {
     contestant1: c1,
     contestant2: c2,
+    contestant3: c3,
     total: allVotes.length,
     judgeVotes,
     audienceContestant1: audienceC1,
     audienceContestant2: audienceC2,
+    audienceContestant3: audienceC3,
   };
 }
 

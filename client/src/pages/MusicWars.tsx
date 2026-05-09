@@ -742,24 +742,27 @@ function RecordBattleForm({
 // ─── Voting Panel ─────────────────────────────────────────────
 function VotingPanel({
   activeBattle, voteResults, myVote, user, isJudge, isAdmin,
-  onVote, onSetActiveBattle, onClearVotes, entries,
+  onVote, onSetActiveBattle, onClearVotes, entries, onLoadToRadio,
 }: {
-  activeBattle: { id: number; contestant1Name: string; contestant1SongTitle?: string | null; contestant1SongUrl?: string | null; contestant2Name: string; contestant2SongTitle?: string | null; contestant2SongUrl?: string | null } | null | undefined;
-  voteResults: { contestant1: number; contestant2: number; total: number; judgeVotes: Array<{ name: string; role: string; candidate: string }>; audienceContestant1: number; audienceContestant2: number; } | null | undefined;
+  activeBattle: { id: number; contestant1Name: string; contestant1SongTitle?: string | null; contestant1SongUrl?: string | null; contestant2Name: string; contestant2SongTitle?: string | null; contestant2SongUrl?: string | null; contestant3Name?: string | null; contestant3SongTitle?: string | null; contestant3SongUrl?: string | null; isTripleThreat?: boolean | null } | null | undefined;
+  voteResults: { contestant1: number; contestant2: number; contestant3?: number; total: number; judgeVotes: Array<{ name: string; role: string; candidate: string }>; audienceContestant1: number; audienceContestant2: number; audienceContestant3?: number; } | null | undefined;
   myVote: { candidate: string } | null | undefined;
   user: { id: number; name: string; role: string } | null | undefined;
   isJudge: boolean; isAdmin: boolean;
-  onVote: (candidate: "contestant1" | "contestant2") => void;
+  onVote: (candidate: "contestant1" | "contestant2" | "contestant3") => void;
   onSetActiveBattle: (c1: string, c2: string) => void;
   onClearVotes: () => void;
   entries: Array<{ id: number; artistName: string; status: string }>;
+  onLoadToRadio?: (contestantName: string, songTitle: string, songUrl: string, contestantNumber: number) => void;
 }) {
   const [c1, setC1] = useState("");
   const [c2, setC2] = useState("");
   const activeEntries = entries.filter(e => e.status === "active");
-  const total = (voteResults?.contestant1 ?? 0) + (voteResults?.contestant2 ?? 0);
-  const c1Pct = total > 0 ? Math.round(((voteResults?.contestant1 ?? 0) / total) * 100) : 50;
-  const c2Pct = 100 - c1Pct;
+  const isTriple = !!(activeBattle?.isTripleThreat && activeBattle?.contestant3Name);
+  const total = (voteResults?.contestant1 ?? 0) + (voteResults?.contestant2 ?? 0) + (isTriple ? (voteResults?.contestant3 ?? 0) : 0);
+  const c1Pct = total > 0 ? Math.round(((voteResults?.contestant1 ?? 0) / total) * 100) : isTriple ? 33 : 50;
+  const c2Pct = total > 0 ? Math.round(((voteResults?.contestant2 ?? 0) / total) * 100) : isTriple ? 33 : 50;
+  const c3Pct = isTriple ? (100 - c1Pct - c2Pct) : 0;
 
   return (
     <div className="bg-[#0d0d0d] border border-white/10 p-5">
@@ -799,33 +802,43 @@ function VotingPanel({
 
       {activeBattle ? (
         <div>
-          {/* Contestant audio play buttons */}
-          {(activeBattle.contestant1SongUrl || activeBattle.contestant2SongUrl) && (
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="flex items-center gap-2 bg-green-600/5 border border-green-600/20 px-2 py-2">
-                {activeBattle.contestant1SongUrl && (
-                  <TuneInButton size="sm" />
-                )}
+          {/* Contestant cards — admin gets Load to Radio button, viewers get Tune In */}
+          <div className={`grid gap-3 mb-3 ${isTriple ? "grid-cols-3" : "grid-cols-2"}`}>
+            {[
+              { name: activeBattle.contestant1Name, title: activeBattle.contestant1SongTitle, url: activeBattle.contestant1SongUrl, num: 1, color: "green" },
+              { name: activeBattle.contestant2Name, title: activeBattle.contestant2SongTitle, url: activeBattle.contestant2SongUrl, num: 2, color: "red" },
+              ...(isTriple && activeBattle.contestant3Name ? [{ name: activeBattle.contestant3Name, title: activeBattle.contestant3SongTitle, url: activeBattle.contestant3SongUrl, num: 3, color: "yellow" }] : []),
+            ].map((c) => (
+              <div key={c.num} className={`flex flex-col gap-1.5 border px-2 py-2 ${
+                c.color === "green" ? "bg-green-600/5 border-green-600/20" :
+                c.color === "red" ? "bg-red-600/5 border-red-600/20" :
+                "bg-yellow-600/5 border-yellow-600/20"
+              }`}>
                 <div className="min-w-0">
-                  <div className="text-green-400 font-['Anton'] text-xs uppercase truncate">{activeBattle.contestant1Name}</div>
-                  {activeBattle.contestant1SongTitle && <div className="text-white/30 text-[10px] truncate">{activeBattle.contestant1SongTitle}</div>}
+                  <div className={`font-['Anton'] text-xs uppercase truncate ${
+                    c.color === "green" ? "text-green-400" : c.color === "red" ? "text-red-400" : "text-yellow-400"
+                  }`}>{c.name}</div>
+                  {c.title && <div className="text-white/30 text-[10px] truncate">{c.title}</div>}
                 </div>
-              </div>
-              <div className="flex items-center gap-2 bg-red-600/5 border border-red-600/20 px-2 py-2">
-                {activeBattle.contestant2SongUrl && (
-                  <TuneInButton size="sm" />
+                {c.url && (
+                  isAdmin && onLoadToRadio ? (
+                    <button
+                      onClick={() => onLoadToRadio(c.name, c.title ?? c.name, c.url!, c.num)}
+                      className="flex items-center gap-1 text-[10px] uppercase tracking-wider border border-white/20 text-white/60 hover:border-red-600 hover:text-red-400 px-2 py-1 transition-colors"
+                    >
+                      <Play className="w-2.5 h-2.5" /> Load to Radio
+                    </button>
+                  ) : (
+                    <TuneInButton size="sm" />
+                  )
                 )}
-                <div className="min-w-0">
-                  <div className="text-red-400 font-['Anton'] text-xs uppercase truncate">{activeBattle.contestant2Name}</div>
-                  {activeBattle.contestant2SongTitle && <div className="text-white/30 text-[10px] truncate">{activeBattle.contestant2SongTitle}</div>}
-                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
 
           {/* Vote buttons */}
           {user && !myVote && (
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className={`grid gap-3 mb-4 ${isTriple ? "grid-cols-3" : "grid-cols-2"}`}>
               <button onClick={() => onVote("contestant1")}
                 className="py-3 border border-green-600/50 text-green-400 hover:bg-green-600/20 font-['Anton'] uppercase tracking-wide text-sm transition-colors">
                 {activeBattle.contestant1Name}
@@ -834,12 +847,20 @@ function VotingPanel({
                 className="py-3 border border-red-600/50 text-red-400 hover:bg-red-600/20 font-['Anton'] uppercase tracking-wide text-sm transition-colors">
                 {activeBattle.contestant2Name}
               </button>
+              {isTriple && activeBattle.contestant3Name && (
+                <button onClick={() => onVote("contestant3")}
+                  className="py-3 border border-yellow-600/50 text-yellow-400 hover:bg-yellow-600/20 font-['Anton'] uppercase tracking-wide text-sm transition-colors">
+                  {activeBattle.contestant3Name}
+                </button>
+              )}
             </div>
           )}
           {myVote && (
             <div className="text-center text-xs text-white/40 mb-4">
               You voted: <span className="text-white font-semibold">
-                {myVote.candidate === "contestant1" ? activeBattle.contestant1Name : activeBattle.contestant2Name}
+                {myVote.candidate === "contestant1" ? activeBattle.contestant1Name
+                  : myVote.candidate === "contestant2" ? activeBattle.contestant2Name
+                  : activeBattle.contestant3Name ?? myVote.candidate}
               </span>
             </div>
           )}
@@ -867,6 +888,17 @@ function VotingPanel({
                 <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${c2Pct}%` }} />
               </div>
             </div>
+            {isTriple && activeBattle.contestant3Name && (
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-white font-semibold">{activeBattle.contestant3Name}</span>
+                  <span className="text-white/60">{voteResults?.contestant3 ?? 0} votes ({c3Pct}%)</span>
+                </div>
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${c3Pct}%` }} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Judge votes — visible to all viewers */}
@@ -879,7 +911,11 @@ function VotingPanel({
                     <span className="border border-yellow-600/50 text-yellow-400 px-1.5 py-0.5 text-[10px] uppercase tracking-wider flex-shrink-0">JUDGE</span>
                     <span className="text-white/60">{jv.name}</span>
                     <span className="text-white/30">→</span>
-                    <span className="text-white font-semibold">{jv.candidate === "contestant1" ? activeBattle?.contestant1Name : activeBattle?.contestant2Name}</span>
+                    <span className="text-white font-semibold">
+                      {jv.candidate === "contestant1" ? activeBattle?.contestant1Name
+                        : jv.candidate === "contestant2" ? activeBattle?.contestant2Name
+                        : activeBattle?.contestant3Name ?? jv.candidate}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1167,8 +1203,9 @@ export default function MusicWars() {
 
   // Persistent wheel spin state — loaded from DB on mount, synced via socket
   const { data: persistedSpinState, refetch: refetchSpinState } = trpc.wheel.getSpinState.useQuery();
-  const [spinCount, setSpinCount] = useState<0 | 1>(0);
+  const [spinCount, setSpinCount] = useState<0 | 1 | 2>(0);
   const [contestant1Entry, setContestant1Entry] = useState<WheelEntry | null>(null);
+  const [contestant2Entry, setContestant2Entry] = useState<WheelEntry | null>(null);
 
   // Helper to restore contestant1 from entry list
   const restoreContestant1 = useCallback((id: number, name: string, entries: WheelEntry[]) => {
@@ -1180,8 +1217,8 @@ export default function MusicWars() {
   // Hydrate spin state from DB on load
   useEffect(() => {
     if (!persistedSpinState) return;
-    setSpinCount(persistedSpinState.spinCount);
-    if (persistedSpinState.spinCount === 1 && persistedSpinState.contestant1Id) {
+    setSpinCount(persistedSpinState.spinCount as 0 | 1 | 2);
+    if (persistedSpinState.spinCount >= 1 && persistedSpinState.contestant1Id) {
       restoreContestant1(persistedSpinState.contestant1Id, persistedSpinState.contestant1Name ?? "", wheelData?.entries ?? []);
     } else {
       setContestant1Entry(null);
@@ -1218,6 +1255,7 @@ export default function MusicWars() {
       if (isAdmin) refetchAllEntries();
       setSpinCount(0);
       setContestant1Entry(null);
+      setContestant2Entry(null);
     };
     chatSocket.on("war:reset", handleWarReset);
     return () => { chatSocket.off("war:reset", handleWarReset); };
@@ -1234,12 +1272,14 @@ export default function MusicWars() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [requiresPayment, setRequiresPayment] = useState(false);
 
+  const maxSpins = tripleTheatMode ? 3 : 2;
+
   const handleSpin = useCallback(() => {
     if (!isAdmin || !wheelData?.entries.length) return;
-    // Only allow spinning if we have fewer than 2 contestants picked
-    if (spinCount >= 2) return;
+    // Only allow spinning if we haven't picked all contestants yet
+    if (spinCount >= maxSpins) return;
     broadcastSpin();
-  }, [isAdmin, wheelData, broadcastSpin, spinCount]);
+  }, [isAdmin, wheelData, broadcastSpin, spinCount, maxSpins]);
 
   const handleSpinComplete = useCallback(async (winnerName: string) => {
     // Only the admin's wheel determines the result — broadcast to all clients
@@ -1252,7 +1292,7 @@ export default function MusicWars() {
     if (!entry) return;
 
     if (spinCount === 0) {
-      // First spin → Contestant 1: persist to DB and broadcast via socket
+      // First spin → Contestant 1
       setContestant1Entry(entry);
       setSpinCount(1);
       try {
@@ -1261,28 +1301,53 @@ export default function MusicWars() {
       refetchWheel();
       if (isAdmin) refetchAllEntries();
     } else if (spinCount === 1 && contestant1Entry) {
-      // Second spin → Contestant 2: set battle and clear spin state
+      if (tripleTheatMode) {
+        // Second spin in Triple Threat → Contestant 2, wait for third spin
+        setContestant2Entry(entry);
+        setSpinCount(2);
+        try {
+          await markCalledAndSaveStateMutation.mutateAsync({ id: entry.id, artistName: entry.artistName });
+        } catch {}
+        refetchWheel();
+        if (isAdmin) refetchAllEntries();
+      } else {
+        // Second spin in 1v1 → Contestant 2: set battle and clear spin state
+        try {
+          await setBattleContestantsMutation.mutateAsync({
+            contestant1Id: contestant1Entry.id,
+            contestant2Id: entry.id,
+          });
+          await resetSpinStateMutation.mutateAsync();
+          const tracks: WarsRadioTrack[] = [];
+          if (contestant1Entry.songUrl) tracks.push({ contestantName: contestant1Entry.artistName, songTitle: contestant1Entry.songTitle, songUrl: contestant1Entry.songUrl, contestantNumber: 1 });
+          if (entry.songUrl) tracks.push({ contestantName: entry.artistName, songTitle: entry.songTitle, songUrl: entry.songUrl, contestantNumber: 2 });
+          if (tracks.length > 0) loadTracks(tracks);
+        } catch {}
+        setSpinCount(0);
+        setContestant1Entry(null);
+        setContestant2Entry(null);
+      }
+    } else if (spinCount === 2 && contestant1Entry && contestant2Entry && tripleTheatMode) {
+      // Third spin in Triple Threat → Contestant 3: set battle with all 3
       try {
         await setBattleContestantsMutation.mutateAsync({
           contestant1Id: contestant1Entry.id,
-          contestant2Id: entry.id,
+          contestant2Id: contestant2Entry.id,
+          contestant3Id: entry.id,
+          isTripleThreat: true,
         });
-        // Clear spin state in DB after battle is set
         await resetSpinStateMutation.mutateAsync();
-        // Auto-queue contestant tracks into wars radio
         const tracks: WarsRadioTrack[] = [];
-        if (contestant1Entry.songUrl) {
-          tracks.push({ contestantName: contestant1Entry.artistName, songTitle: contestant1Entry.songTitle, songUrl: contestant1Entry.songUrl, contestantNumber: 1 });
-        }
-        if (entry.songUrl) {
-          tracks.push({ contestantName: entry.artistName, songTitle: entry.songTitle, songUrl: entry.songUrl, contestantNumber: 2 });
-        }
+        if (contestant1Entry.songUrl) tracks.push({ contestantName: contestant1Entry.artistName, songTitle: contestant1Entry.songTitle, songUrl: contestant1Entry.songUrl, contestantNumber: 1 });
+        if (contestant2Entry.songUrl) tracks.push({ contestantName: contestant2Entry.artistName, songTitle: contestant2Entry.songTitle, songUrl: contestant2Entry.songUrl, contestantNumber: 2 });
+        if (entry.songUrl) tracks.push({ contestantName: entry.artistName, songTitle: entry.songTitle, songUrl: entry.songUrl, contestantNumber: 3 });
         if (tracks.length > 0) loadTracks(tracks);
       } catch {}
       setSpinCount(0);
       setContestant1Entry(null);
+      setContestant2Entry(null);
     }
-  }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, markCalledAndSaveStateMutation, setBattleContestantsMutation, resetSpinStateMutation, refetchWheel, refetchAllEntries, loadTracks]);
+  }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, contestant2Entry, tripleTheatMode, markCalledAndSaveStateMutation, setBattleContestantsMutation, resetSpinStateMutation, refetchWheel, refetchAllEntries, loadTracks]);
 
   const handleSubmit = async (data: { songTitle: string; songUrl: string; contactInfo: string }) => {
     try {
@@ -1355,7 +1420,7 @@ export default function MusicWars() {
                   entries={activeEntries}
                   isSpinning={wheelSpinning}
                   winner={wheelWinner}
-                  winnerLabel={spinCount === 0 ? "Contestant 1" : "Contestant 2"}
+                  winnerLabel={spinCount === 0 ? "Contestant 1" : spinCount === 1 ? (tripleTheatMode ? "Contestant 2" : "Contestant 2") : "Contestant 3"}
                   onSpin={handleSpin}
                   isAdmin={isAdmin}
                   onSpinComplete={handleSpinComplete}
@@ -1370,14 +1435,18 @@ export default function MusicWars() {
                       <span className="text-red-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 1</span>
                       <span className="text-white font-semibold">{contestant1Entry?.artistName ?? "—"}</span>
                     </div>
-                    <div className={`flex items-center gap-2 px-3 py-2 border text-sm ${
-                      spinCount === 0 && contestant1Entry ? "border-white/10 bg-white/5" : "border-white/10 bg-white/5"
-                    }`}>
+                    <div className="flex items-center gap-2 px-3 py-2 border border-white/10 bg-white/5 text-sm">
                       <span className="text-red-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 2</span>
-                      <span className="text-white font-semibold">{spinCount === 1 ? "Pending spin…" : "—"}</span>
+                      <span className="text-white font-semibold">{contestant2Entry?.artistName ?? (spinCount === 1 ? "Pending spin…" : "—")}</span>
                     </div>
-                    {spinCount === 1 && (
-                      <p className="text-white/40 text-xs text-center">Spin again to pick Contestant 2</p>
+                    {tripleTheatMode && (
+                      <div className="flex items-center gap-2 px-3 py-2 border border-yellow-600/30 bg-yellow-950/10 text-sm">
+                        <span className="text-yellow-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 3</span>
+                        <span className="text-white font-semibold">{spinCount === 2 ? "Pending spin…" : "—"}</span>
+                      </div>
+                    )}
+                    {spinCount < maxSpins && (
+                      <p className="text-white/40 text-xs text-center">Spin again to pick Contestant {spinCount + 1}</p>
                     )}
                   </div>
                 )}
@@ -1511,6 +1580,11 @@ export default function MusicWars() {
                 onSetActiveBattle={async (c1, c2) => { await setActiveBattleMutation.mutateAsync({ contestant1Name: c1, contestant2Name: c2 }); }}
                 onClearVotes={async () => { if (activeBattle?.id) await clearVotesMutation.mutateAsync({ battleId: activeBattle.id }); }}
                 entries={allEntries ?? []}
+                onLoadToRadio={(contestantName, songTitle, songUrl, contestantNumber) => {
+                  const existing = warsRadioState?.tracks ?? [];
+                  const updated = existing.filter(t => t.contestantNumber !== contestantNumber);
+                  loadTracks([...updated, { contestantName, songTitle, songUrl, contestantNumber }]);
+                }}
               />
             </div>
             <div>
