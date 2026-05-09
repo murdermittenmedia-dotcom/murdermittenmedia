@@ -59,6 +59,17 @@ export default function FloatingPlayer() {
 
   // Whether the current track is a live stream (admin-controlled)
   const isLiveStream = !!track?.isStream;
+  // Whether the current live track is a YouTube submission
+  const isYouTubeTrack = isLiveStream && !!track?.youtubeUrl;
+  const [showYouTubeEmbed, setShowYouTubeEmbed] = useState(false);
+  // Auto-show YouTube embed when a YouTube live track is loaded
+  useEffect(() => {
+    if (isYouTubeTrack) {
+      setShowYouTubeEmbed(true);
+    } else {
+      setShowYouTubeEmbed(false);
+    }
+  }, [isYouTubeTrack, track?.youtubeUrl]);
 
   // ── Fire/Trash rating ──────────────────────────────────────────────────────
   const reactMutation = trpc.queue.react.useMutation({
@@ -126,8 +137,49 @@ export default function FloatingPlayer() {
   const canRate = !!track.submissionId && !!user;
   const hasPlaylist = playlist.length > 1 && !isLiveStream;
 
+  // Extract YouTube video ID from URL
+  const getYouTubeVideoId = (url: string): string | null => {
+    try {
+      const u = new URL(url);
+      if (u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("?")[0];
+      return u.searchParams.get("v");
+    } catch { return null; }
+  };
+
   return (
     <>
+      {/* ── YouTube embed panel (for live YouTube tracks) ──────────────── */}
+      {isYouTubeTrack && showYouTubeEmbed && track.youtubeUrl && (() => {
+        const videoId = getYouTubeVideoId(track.youtubeUrl);
+        if (!videoId) return null;
+        return (
+          <div className="fixed bottom-[72px] right-4 z-[99] w-72 sm:w-80 shadow-2xl border border-red-600/40 rounded-lg overflow-hidden bg-black">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-[#0f0f0f] border-b border-white/10">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-red-400 uppercase tracking-widest">
+                <Radio className="w-3 h-3" />
+                LIVE · YouTube
+              </span>
+              <button
+                onClick={() => setShowYouTubeEmbed(false)}
+                className="text-white/40 hover:text-white p-0.5 rounded transition-colors"
+                aria-label="Close YouTube embed"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={track.title}
+              />
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Queue panel (only for personal playlist, not live stream) ──── */}
       {showQueue && !isLiveStream && (
         <div className="fixed bottom-[72px] left-0 right-0 z-[99] bg-[#0f0f0f] border border-white/10 border-b-0 shadow-2xl max-h-[45vh] overflow-y-auto">
@@ -305,8 +357,26 @@ export default function FloatingPlayer() {
 
           {/* Playback controls — HIDDEN for live stream (admin controls for everyone) */}
           {isLiveStream ? (
-            /* Live stream: play/pause (mute/unmute) + volume control */
+            /* Live stream: play/pause (mute/unmute) + volume control + YouTube toggle */
             <div className="flex items-center gap-0.5 flex-shrink-0">
+              {/* YouTube toggle — shown only for YouTube live tracks */}
+              {isYouTubeTrack && (
+                <button
+                  onClick={() => setShowYouTubeEmbed(v => !v)}
+                  className={`p-1.5 rounded-lg transition-colors flex items-center justify-center text-xs font-bold ${
+                    showYouTubeEmbed
+                      ? "text-red-400 bg-red-500/20 border border-red-500/40"
+                      : "text-white/40 hover:text-red-400 hover:bg-red-500/10 border border-transparent"
+                  }`}
+                  aria-label="Toggle YouTube embed"
+                  title={showYouTubeEmbed ? "Hide video" : "Watch video"}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </button>
+              )}
+
               {/* Play / Pause — acts as mute/unmute for live stream */}
               <button
                 onClick={isPlaying ? pause : resume}

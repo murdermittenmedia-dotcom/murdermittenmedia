@@ -19,18 +19,28 @@ export interface WarsNowPlayingEvent {
   title: string;
   artist: string;
   startedAt?: number | null;
+  youtubeUrl?: string | null;
+  submissionType?: string;
 }
 
 function buildTrack(data: WarsNowPlayingEvent) {
+  const isYoutube = data.submissionType === "youtube" || isYouTubeUrl(data.url);
   return {
-    url: data.url,
+    // For YouTube tracks, url is empty string — FloatingPlayer uses youtubeUrl instead
+    url: isYoutube ? "" : data.url,
     title: data.title,
     artist: data.artist,
     artworkUrl: LOGO,
     isStream: true, // shows LIVE badge in FloatingPlayer, disables viewer controls
     sourcePage: "Music Wars",
     sourceUrl: "/music-wars",
+    youtubeUrl: data.youtubeUrl ?? (isYoutube ? data.url : null),
+    submissionType: isYoutube ? "youtube" : (data.submissionType ?? "file"),
   };
+}
+
+function isYouTubeUrl(url: string): boolean {
+  return url.includes("youtube.com") || url.includes("youtu.be");
 }
 
 /** Check if the currently loaded track belongs to Music Wars live radio */
@@ -80,11 +90,12 @@ export function useWarsLivePlayer() {
 
     // Server sends current state to late joiners
     socket.on("wars_radio:state", (data: (WarsNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
-      if (!data || !data.url) return;
+      if (!data || (!data.url && !data.youtubeUrl)) return;
       const t = buildTrack(data);
       playRef.current(t);
-      // Sync to current position after a short delay to let audio load
-      if (data.currentTime > 1) {
+      // For file tracks, sync to current position after a short delay
+      const isYt = t.submissionType === "youtube";
+      if (!isYt && data.currentTime > 1) {
         setTimeout(() => {
           seekRef.current(data.currentTime);
           if (data.pausedAt !== null) {
@@ -104,11 +115,12 @@ export function useWarsLivePlayer() {
         }
         return;
       }
-      if (data.url) {
+      if (data.url || data.youtubeUrl) {
         const t = buildTrack(data);
         playRef.current(t);
-        // Sync to current position if track already started
-        if (data.startedAt) {
+        // For file tracks, sync to current position if track already started
+        const isYt = t.submissionType === "youtube";
+        if (!isYt && data.startedAt) {
           const elapsed = (Date.now() - data.startedAt) / 1000;
           if (elapsed > 1) {
             setTimeout(() => seekRef.current(elapsed), 800);

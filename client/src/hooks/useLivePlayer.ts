@@ -33,7 +33,8 @@ export interface LiveNowPlayingEvent {
 
 function buildTrack(data: LiveNowPlayingEvent) {
   return {
-    url: data.audioUrl!,
+    // For YouTube tracks, url is empty string — FloatingPlayer uses youtubeUrl instead
+    url: data.audioUrl ?? "",
     title: data.songTitle,
     artist: data.artistName,
     artworkUrl: LOGO,
@@ -41,6 +42,8 @@ function buildTrack(data: LiveNowPlayingEvent) {
     submissionId: data.submissionId,
     sourcePage: "Music Review",
     sourceUrl: "/review",
+    youtubeUrl: data.youtubeUrl ?? null,
+    submissionType: data.submissionType,
   };
 }
 
@@ -91,11 +94,12 @@ export function useLivePlayer() {
 
     // Server sends current state to late joiners
     socket.on("radio:state", (data: (LiveNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
-      if (!data || !data.audioUrl || data.submissionType === "youtube") return;
+      // Support both file and YouTube submissions
+      if (!data || (!data.audioUrl && !data.youtubeUrl)) return;
       const t = buildTrack(data);
       playRef.current(t);
-      // Sync to current position after a short delay to let audio load
-      if (data.currentTime > 1) {
+      // For file tracks, sync to current position after a short delay
+      if (data.submissionType !== "youtube" && data.currentTime > 1) {
         setTimeout(() => {
           seekRef.current(data.currentTime);
           if (data.pausedAt !== null) {
@@ -115,12 +119,12 @@ export function useLivePlayer() {
         }
         return;
       }
-      // Only auto-play file submissions (not YouTube — those embed inline on /review)
-      if (data.submissionType !== "youtube" && data.audioUrl) {
+      // Support both file and YouTube submissions
+      if (data.audioUrl || data.youtubeUrl) {
         const t = buildTrack(data);
         playRef.current(t);
-        // Sync to current position if track already started
-        if (data.startedAt) {
+        // For file tracks, sync to current position if track already started
+        if (data.submissionType !== "youtube" && data.startedAt) {
           const elapsed = (Date.now() - data.startedAt) / 1000;
           if (elapsed > 1) {
             setTimeout(() => seekRef.current(elapsed), 800);

@@ -32,6 +32,9 @@ export type AudioTrack = {
   uploaderName?: string; // username of who uploaded/posted the track
   queuePosition?: number; // position in the review queue (1-based)
   queueTotal?: number; // total items in the review queue
+  // YouTube support: when set, FloatingPlayer shows an iframe embed instead of audio controls
+  youtubeUrl?: string | null;
+  submissionType?: "youtube" | "file" | string;
 };
 
 type AudioPlayerState = {
@@ -233,6 +236,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const play = useCallback((track: AudioTrack) => {
     const audio = audioRef.current;
     if (!audio) return;
+    // For YouTube tracks, just update state — FloatingPlayer renders the iframe embed
+    if (track.submissionType === "youtube" || (!track.url && track.youtubeUrl)) {
+      setState(s => ({ ...s, track, playlist: [track], playlistIndex: 0, isLoading: false, isPlaying: true, error: null, currentTime: 0, duration: 0 }));
+      audio.pause();
+      return;
+    }
     setState(s => ({ ...s, track, playlist: [track], playlistIndex: 0, isLoading: true, error: null, currentTime: 0, duration: 0 }));
     audio.pause();
     audio.src = track.url;

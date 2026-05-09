@@ -673,3 +673,12 @@
 - [x] Admin UI: Delete User button in User Management tab (with inline confirmation: "Yes, Delete" / Cancel)
 - [x] Admin UI: "Reset All Stats" button in new Danger Zone tab (requires typing "RESET STATS" to confirm)
 - [x] Admin UI: "Reset All Submissions" button in Danger Zone tab (requires typing "RESET SUBMISSIONS" to confirm)
+
+## YouTube Submissions in Radio Feed Fix
+- [x] Investigated: useLivePlayer/useWarsLivePlayer were skipping YouTube URLs since <audio> can't play them
+- [x] Fix: YouTube submissions now trigger a YouTube embed panel instead of being skipped
+- [x] Fix: Admin loads a YouTube track → all listeners see the YouTube embed auto-pop-up in FloatingPlayer
+- [x] Fix: FloatingPlayer shows YouTube embed (bottom-right overlay) when the active radio track is a YouTube submission; YouTube icon toggle button in controls
+- [x] Fix: AudioPlayerContext.play() skips audio loading for YouTube tracks (just updates state, FloatingPlayer handles iframe)
+- [x] Fix: useWarsRadio buildWarsAudioTrack helper detects YouTube URLs and passes youtubeUrl field
+- [x] Fix: useLivePlayer and useWarsLivePlayer both pass youtubeUrl + submissionType on the AudioTrack

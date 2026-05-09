@@ -15,7 +15,28 @@ export type WarsRadioTrack = {
   songTitle: string;
   songUrl: string;
   contestantNumber: number;
+  youtubeUrl?: string | null;
+  submissionType?: string;
 };
+
+function isYouTubeUrl(url: string): boolean {
+  return url.includes("youtube.com") || url.includes("youtu.be");
+}
+
+function buildWarsAudioTrack(track: WarsRadioTrack): AudioTrack {
+  const isYt = track.submissionType === "youtube" || isYouTubeUrl(track.songUrl);
+  return {
+    url: isYt ? "" : track.songUrl,
+    title: track.songTitle,
+    artist: track.contestantName,
+    artworkUrl: LOGO,
+    isStream: true,
+    sourcePage: "Music Wars",
+    sourceUrl: "/music-wars",
+    youtubeUrl: track.youtubeUrl ?? (isYt ? track.songUrl : null),
+    submissionType: isYt ? "youtube" : (track.submissionType ?? "file"),
+  };
+}
 
 export type WarsRadioState = {
   tracks: WarsRadioTrack[];
@@ -52,15 +73,7 @@ export function useWarsRadio({ enabled = true }: { enabled?: boolean } = {}) {
   const playCurrentTrack = useCallback((warsState: WarsRadioState) => {
     const currentTrack = warsState.tracks[warsState.currentIndex];
     if (!currentTrack) return;
-    playRef.current({
-      url: currentTrack.songUrl,
-      title: currentTrack.songTitle,
-      artist: currentTrack.contestantName,
-      artworkUrl: LOGO,
-      isStream: true, // shows LIVE badge
-      sourcePage: "Music Wars",
-      sourceUrl: "/music-wars",
-    });
+    playRef.current(buildWarsAudioTrack(currentTrack));
   }, []);
 
   // When a live track ends, tell the server to auto-advance
@@ -96,16 +109,10 @@ export function useWarsRadio({ enabled = true }: { enabled?: boolean } = {}) {
       setTripleTheatMode(data.tripleTheatMode);
       const currentTrack = data.tracks[data.currentIndex];
       if (currentTrack && data.isPlaying) {
-        playRef.current({
-          url: currentTrack.songUrl,
-          title: currentTrack.songTitle,
-          artist: currentTrack.contestantName,
-          artworkUrl: LOGO,
-          isStream: true,
-          sourcePage: "Music Wars",
-          sourceUrl: "/music-wars",
-        });
-        if (data.currentTime && data.currentTime > 1) {
+        const audioTrack = buildWarsAudioTrack(currentTrack);
+        playRef.current(audioTrack);
+        // Only seek for non-YouTube tracks
+        if (audioTrack.submissionType !== "youtube" && data.currentTime && data.currentTime > 1) {
           setTimeout(() => seekRef.current(data.currentTime!), 800);
         }
       }
@@ -117,16 +124,10 @@ export function useWarsRadio({ enabled = true }: { enabled?: boolean } = {}) {
       setTripleTheatMode(data.tripleTheatMode);
       const currentTrack = data.tracks[data.currentIndex];
       if (currentTrack) {
-        playRef.current({
-          url: currentTrack.songUrl,
-          title: currentTrack.songTitle,
-          artist: currentTrack.contestantName,
-          artworkUrl: LOGO,
-          isStream: true,
-          sourcePage: "Music Wars",
-          sourceUrl: "/music-wars",
-        });
-        if (data.startedAt) {
+        const audioTrack = buildWarsAudioTrack(currentTrack);
+        playRef.current(audioTrack);
+        // Only seek for non-YouTube tracks
+        if (audioTrack.submissionType !== "youtube" && data.startedAt) {
           const elapsed = (Date.now() - data.startedAt) / 1000;
           if (elapsed > 1) {
             setTimeout(() => seekRef.current(elapsed), 800);
