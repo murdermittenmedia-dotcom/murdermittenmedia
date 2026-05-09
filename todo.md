@@ -608,3 +608,11 @@
 - [x] Fix: Audio room users should join auto-muted (not with hot mics) — must press Talk button to activate
 - [x] Feature: Add Last Song button to all admin song controls (Music Review admin panel, Music Wars admin panel)
 - [x] Feature: Last Song button puts the previous track back into the queue/deck for replay
+
+## Admin Mic Broadcast to Radio Feed
+- [x] Server: add radio:mic_broadcast socket channel for admin→listeners WebRTC signaling
+- [x] Server: track active mic broadcaster per room, relay offers/answers/ICE to all room listeners
+- [x] Client: useAdminMicBroadcast hook — admin captures mic, broadcasts via WebRTC to all listeners
+- [x] Client: listener side in useAdminMicBroadcast — receive admin mic broadcast stream and play it
+- [x] UI: Admin panel "Mic to Radio" toggle button — activates/deactivates admin mic broadcast
+- [x] UI: Listener FloatingPlayer shows "🎙 Admin Live" indicator when admin mic is broadcasting

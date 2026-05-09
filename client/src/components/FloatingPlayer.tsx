@@ -17,7 +17,7 @@
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import {
   Pause, Play, Square, Volume2, VolumeX, Radio, Flame, Trash2, User,
-  ChevronDown, List, X, SkipBack, SkipForward, ExternalLink, Music2,
+  ChevronDown, List, X, SkipBack, SkipForward, ExternalLink, Music2, Mic,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect, useRef } from "react";
@@ -26,6 +26,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { ArtistLink } from "@/components/ArtistLink";
+import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || seconds <= 0) return "0:00";
@@ -42,6 +43,13 @@ export default function FloatingPlayer() {
   } = useAudioPlayer();
 
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  // Listen for admin mic broadcast (listener side — non-admin users hear the admin's mic)
+  const adminMicBroadcast = useAdminMicBroadcast({
+    room: "music_review",
+    isAdmin,
+    enabled: !!track?.isStream, // only connect when a live stream is active
+  });
   const [showVolume, setShowVolume] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [myReaction, setMyReaction] = useState<"fire" | "trash" | null>(null);
@@ -227,6 +235,12 @@ export default function FloatingPlayer() {
                     <Radio className="w-3 h-3" />
                     LIVE
                   </span>
+                  {adminMicBroadcast.isAdminMicLive && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-orange-400 font-bold flex-shrink-0 animate-pulse" title="Admin is speaking live">
+                      <Mic className="w-2.5 h-2.5" />
+                      MIC
+                    </span>
+                  )}
                   {track.artist && (
                     <ArtistStatModal artistName={track.artist} userId={track.artistUserId ?? null}>
                       <button className="text-white/50 hover:text-red-400 text-xs transition-colors flex items-center gap-1 min-w-0 truncate">

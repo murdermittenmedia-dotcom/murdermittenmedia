@@ -96,6 +96,10 @@ let warsRadioState: WarsRadioState = {
 // Track the last played Wars Radio track so admin can put it back
 let lastWarsRadioState: WarsRadioState | null = null;
 
+// Track which socket is the active admin mic broadcaster per room
+// Map<roomName, broadcasterSocketId>
+const micBroadcasters = new Map<string, string>();
+
 function getRoomList(room: string) {
   return Array.from(roomParticipants.entries())
     .filter(([, p]) => p.room === room)
@@ -307,7 +311,62 @@ async function startServer() {
       }
     });
 
-    // ── Live Radio Controls (admin → ALL viewers site-wide) ─────
+    // ── Admin Mic Broadcast (admin mic → all radio listeners) ──────────────
+    // Admin starts broadcasting their mic to the radio feed
+    socket.on("radio:mic_broadcast_start", () => {
+      const participant = roomParticipants.get(socket.id);
+      if (!participant || participant.role !== "admin") return;
+      // Track the broadcaster socket ID per room
+      micBroadcasters.set(participant.room, socket.id);
+      // Notify all listeners in the room that admin mic is live
+      io.to(participant.room).emit("radio:mic_broadcast_active", { broadcasterSocketId: socket.id });
+      console.log(`[radio:mic_broadcast_start] Admin mic active in room: ${participant.room}`);
+    });
+
+    // Admin stops broadcasting their mic
+    socket.on("radio:mic_broadcast_stop", () => {
+      const participant = roomParticipants.get(socket.id);
+      if (!participant) return;
+      if (micBroadcasters.get(participant.room) === socket.id) {
+        micBroadcasters.delete(participant.room);
+        io.to(participant.room).emit("radio:mic_broadcast_inactive");
+        console.log(`[radio:mic_broadcast_stop] Admin mic stopped in room: ${participant.room}`);
+      }
+    });
+
+    // Relay WebRTC offer from admin broadcaster to a specific listener
+    socket.on("radio:mic_offer", (data: { to: string; offer: RTCSessionDescriptionInit }) => {
+      io.to(data.to).emit("radio:mic_offer", { from: socket.id, offer: data.offer });
+    });
+
+    // Relay WebRTC answer from listener back to admin broadcaster
+    socket.on("radio:mic_answer", (data: { to: string; answer: RTCSessionDescriptionInit }) => {
+      io.to(data.to).emit("radio:mic_answer", { from: socket.id, answer: data.answer });
+    });
+
+    // Relay ICE candidates between admin and listeners
+    socket.on("radio:mic_ice", (data: { to: string; candidate: RTCIceCandidateInit }) => {
+      io.to(data.to).emit("radio:mic_ice", { from: socket.id, candidate: data.candidate });
+    });
+
+    // Listener signals to the admin broadcaster that they are ready to receive
+    socket.on("radio:mic_listener_ready", (data: { broadcasterSocketId: string; listenerSocketId: string }) => {
+      // Relay to the admin broadcaster so they can send an offer
+      io.to(data.broadcasterSocketId).emit("radio:mic_listener_ready", { listenerSocketId: socket.id });
+    });
+
+    // Listener joins the radio room and requests current mic broadcast state
+    socket.on("radio:mic_get_state", (data: { room: string }) => {
+      const broadcasterSocketId = micBroadcasters.get(data.room);
+      if (broadcasterSocketId) {
+        // Tell the listener who the broadcaster is so they can initiate WebRTC
+        socket.emit("radio:mic_broadcast_active", { broadcasterSocketId });
+      } else {
+        socket.emit("radio:mic_broadcast_inactive");
+      }
+    });
+
+    // ── Live Radio Controls (admin → ALL viewers site-wide) ──────────────
     // Admin loads a track: server resolves presigned URL, broadcasts to everyone
     socket.on("radio:load", async (data: {
       submissionId: number | null;
@@ -681,6 +740,11 @@ async function startServer() {
       const participant = roomParticipants.get(socket.id);
       if (participant) {
         roomParticipants.delete(socket.id);
+        // If this socket was the admin mic broadcaster, stop the broadcast
+        if (micBroadcasters.get(participant.room) === socket.id) {
+          micBroadcasters.delete(participant.room);
+          io.to(participant.room).emit("radio:mic_broadcast_inactive");
+        }
         const list = getRoomList(participant.room);
         io.to(participant.room).emit("audio:participants", list);
         io.to(participant.room).emit("room:participants", list);

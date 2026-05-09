@@ -14,6 +14,7 @@ import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/hooks/useChat";
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
+import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
@@ -110,7 +111,7 @@ function VideoTile({
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, playTrack, setSelectedYouTube,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -123,6 +124,7 @@ function AdminPanel({
   broadcastReviewPlayback: (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => void;
   broadcastReviewQueueUpdated: () => void;
   broadcastLastSong: () => void;
+  adminMicBroadcast: ReturnType<typeof import("@/hooks/useAdminMicBroadcast").useAdminMicBroadcast>;
   playTrack: (sub: ReviewSubmission) => void;
   setSelectedYouTube: (val: { url: string; title: string; artist: string } | null) => void;
 }) {
@@ -315,6 +317,31 @@ function AdminPanel({
             {videoRoom.cameraActive ? "Cam On" : "Cam Off"}
           </button>
         </div>
+
+        {/* Mic to Radio broadcast button */}
+        <button
+          onClick={async () => {
+            try {
+              await adminMicBroadcast.toggleBroadcast();
+              if (!adminMicBroadcast.isBroadcasting) {
+                toast.success("🎙 Mic is now broadcasting to the radio feed");
+              } else {
+                toast("Mic broadcast stopped");
+              }
+            } catch {
+              toast.error("Could not access microphone — check browser permissions");
+            }
+          }}
+          className={`w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-wider border transition-all ${
+            adminMicBroadcast.isBroadcasting
+              ? "border-red-500/60 bg-red-500/15 text-red-400 animate-pulse"
+              : "border-white/20 text-white/40 hover:border-red-500/40 hover:text-red-400"
+          }`}
+          title={adminMicBroadcast.isBroadcasting ? "Stop broadcasting mic to radio" : "Broadcast your mic to all radio listeners"}
+        >
+          {adminMicBroadcast.isBroadcasting ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
+          {adminMicBroadcast.isBroadcasting ? "🔴 Mic → Radio (Live)" : "Mic → Radio"}
+        </button>
 
         {/* Pending skip payments */}
         {pendingSkips.length > 0 && (
@@ -661,6 +688,13 @@ export default function MusicReview() {
     },
   });
 
+  // Admin mic broadcast to radio feed
+  const adminMicBroadcast = useAdminMicBroadcast({
+    room: "music_review",
+    isAdmin,
+    enabled: true,
+  });
+
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
@@ -914,6 +948,7 @@ export default function MusicReview() {
                   broadcastReviewPlayback={broadcastReviewPlayback}
                   broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
                   broadcastLastSong={broadcastLastSong}
+                  adminMicBroadcast={adminMicBroadcast}
                   playTrack={playTrack}
                   setSelectedYouTube={setSelectedYouTube}
                 />
