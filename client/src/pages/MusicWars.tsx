@@ -19,6 +19,7 @@ import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap } 
 import { toast } from "sonner";
 import { useAudioRoom, type AudioParticipant } from "@/hooks/useAudioRoom";
 import { getLoginUrl } from "@/const";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 // ─── Live Stream Panel (offline-aware) ────────────────────────────────
 interface EventData {
   title: string | null;
@@ -740,10 +741,98 @@ function RecordBattleForm({
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────
+
+// Helper: extract YouTube video ID from any YouTube URL format
+function extractYouTubeId(url: string): string | null {
+  const match = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|watch\?v=)([\w-]{11})/);
+  return match ? match[1] : null;
+}
+
+// Helper: check if a URL is a YouTube link
+function isYouTubeUrl(url: string): boolean {
+  return url.includes("youtube.com") || url.includes("youtu.be");
+}
+
+// ─── Contestant Now Playing Card ──────────────────────────────
+function ContestantNowPlayingCard({
+  name, songTitle, songUrl, contestantNumber, color, userId, isAdmin, onLoadToRadio,
+}: {
+  name: string;
+  songTitle?: string | null;
+  songUrl?: string | null;
+  contestantNumber: number;
+  color: "green" | "red" | "yellow";
+  userId?: number;
+  isAdmin?: boolean;
+  onLoadToRadio?: (contestantName: string, songTitle: string, songUrl: string, contestantNumber: number) => void;
+}) {
+  const borderColor = color === "green" ? "border-green-600/30" : color === "red" ? "border-red-600/30" : "border-yellow-600/30";
+  const bgColor = color === "green" ? "bg-green-600/5" : color === "red" ? "bg-red-600/5" : "bg-yellow-600/5";
+  const labelColor = color === "green" ? "text-green-400" : color === "red" ? "text-red-400" : "text-yellow-400";
+  const badgeColor = color === "green" ? "border-green-600/40 text-green-500" : color === "red" ? "border-red-600/40 text-red-500" : "border-yellow-600/40 text-yellow-500";
+
+  const ytId = songUrl && isYouTubeUrl(songUrl) ? extractYouTubeId(songUrl) : null;
+  const isAudioFile = songUrl && !isYouTubeUrl(songUrl);
+
+  return (
+    <div className={`border ${borderColor} ${bgColor} rounded-sm overflow-hidden`}>
+      {/* Header */}
+      <div className="px-3 pt-3 pb-2">
+        <div className="flex items-center justify-between mb-1">
+          <span className={`text-[10px] uppercase tracking-widest font-bold border px-1.5 py-0.5 ${badgeColor}`}>
+            C{contestantNumber}
+          </span>
+          {isAdmin && songUrl && onLoadToRadio && (
+            <button
+              onClick={() => onLoadToRadio(name, songTitle ?? name, songUrl, contestantNumber)}
+              className="flex items-center gap-1 text-[10px] uppercase tracking-wider border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-2 py-0.5 transition-colors"
+            >
+              <Play className="w-2.5 h-2.5" /> Load
+            </button>
+          )}
+        </div>
+        {/* Artist name — clickable to profile */}
+        <div className={`font-['Anton'] text-sm uppercase leading-tight ${labelColor}`}>
+          <ArtistLink artistName={name} userId={userId} className={labelColor} />
+        </div>
+        {songTitle && (
+          <div className="text-white/50 text-[11px] mt-0.5 truncate">{songTitle}</div>
+        )}
+      </div>
+
+      {/* Media: YouTube embed or audio play button */}
+      {ytId ? (
+        <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+          <iframe
+            src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`}
+            title={`${name} — ${songTitle ?? "Battle Track"}`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="absolute inset-0 w-full h-full border-0"
+          />
+        </div>
+      ) : isAudioFile ? (
+        <div className="px-3 pb-3 flex items-center gap-2">
+          <AudioPlayButton
+            url={songUrl}
+            title={songTitle ?? name}
+            artist={name}
+            artistUserId={userId}
+            sourcePage="Music Wars"
+            size="sm"
+          />
+          <span className="text-white/30 text-[10px] uppercase tracking-wider">Preview</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ─── Voting Panel ─────────────────────────────────────────────
 function VotingPanel({
   activeBattle, voteResults, myVote, user, isJudge, isAdmin,
   onVote, onSetActiveBattle, onClearVotes, entries, onLoadToRadio,
+  tripleTheatMode, onToggleTripleThreat,
 }: {
   activeBattle: { id: number; contestant1Name: string; contestant1SongTitle?: string | null; contestant1SongUrl?: string | null; contestant2Name: string; contestant2SongTitle?: string | null; contestant2SongUrl?: string | null; contestant3Name?: string | null; contestant3SongTitle?: string | null; contestant3SongUrl?: string | null; isTripleThreat?: boolean | null } | null | undefined;
   voteResults: { contestant1: number; contestant2: number; contestant3?: number; total: number; judgeVotes: Array<{ name: string; role: string; candidate: string }>; audienceContestant1: number; audienceContestant2: number; audienceContestant3?: number; } | null | undefined;
@@ -751,13 +840,16 @@ function VotingPanel({
   user: { id: number; name: string; role: string } | null | undefined;
   isJudge: boolean; isAdmin: boolean;
   onVote: (candidate: "contestant1" | "contestant2" | "contestant3") => void;
-  onSetActiveBattle: (c1: string, c2: string) => void;
+  onSetActiveBattle: (c1: string, c2: string, c3?: string, isTriple?: boolean) => void;
   onClearVotes: () => void;
-  entries: Array<{ id: number; artistName: string; status: string }>;
+  entries: Array<{ id: number; artistName: string; status: string; userId?: number | null }>;
   onLoadToRadio?: (contestantName: string, songTitle: string, songUrl: string, contestantNumber: number) => void;
+  tripleTheatMode?: boolean;
+  onToggleTripleThreat?: () => void;
 }) {
   const [c1, setC1] = useState("");
   const [c2, setC2] = useState("");
+  const [c3, setC3] = useState("");
   const activeEntries = entries.filter(e => e.status === "active");
   const isTriple = !!(activeBattle?.isTripleThreat && activeBattle?.contestant3Name);
   const total = (voteResults?.contestant1 ?? 0) + (voteResults?.contestant2 ?? 0) + (isTriple ? (voteResults?.contestant3 ?? 0) : 0);
@@ -765,17 +857,32 @@ function VotingPanel({
   const c2Pct = total > 0 ? Math.round(((voteResults?.contestant2 ?? 0) / total) * 100) : isTriple ? 33 : 50;
   const c3Pct = isTriple ? (100 - c1Pct - c2Pct) : 0;
 
+  // Look up userId from entries list for profile linking
+  const getUserId = (name: string) => entries.find(e => e.artistName === name)?.userId ?? undefined;
+
   return (
     <div className="bg-[#0d0d0d] border border-white/10 p-5">
       <h3 className="font-['Anton'] text-sm uppercase tracking-widest mb-3">
         Live <span className="text-red-600">Vote</span>
       </h3>
 
-      {/* Admin: set active battle */}
+      {/* Admin: battle setup controls */}
       {isAdmin && (
-        <div className="mb-4 p-3 border border-red-600/20 bg-red-900/10">
-          <div className="text-xs text-red-400 uppercase tracking-widest mb-2 font-semibold">Set Active Battle</div>
-          <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="mb-4 p-3 border border-red-600/20 bg-red-900/10 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-red-400 uppercase tracking-widest font-semibold">Set Active Battle</div>
+            {/* Triple Threat toggle — co-located with battle setup */}
+            <button
+              onClick={onToggleTripleThreat}
+              className={`flex items-center gap-1.5 px-3 py-1 text-[10px] uppercase tracking-widest font-bold border transition-all duration-200 ${
+                tripleTheatMode ? "border-yellow-500 bg-yellow-500/10 text-yellow-400" : "border-white/20 text-white/40 hover:text-white"
+              }`}
+            >
+              <Zap className="w-3 h-3" />
+              Triple Threat {tripleTheatMode ? "ON" : "OFF"}
+            </button>
+          </div>
+          <div className={`grid gap-2 ${tripleTheatMode ? "grid-cols-3" : "grid-cols-2"}`}>
             <select value={c1} onChange={e => setC1(e.target.value)}
               className="bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none">
               <option value="">Contestant 1...</option>
@@ -786,10 +893,21 @@ function VotingPanel({
               <option value="">Contestant 2...</option>
               {activeEntries.map(e => <option key={e.id} value={e.artistName}>{e.artistName}</option>)}
             </select>
+            {tripleTheatMode && (
+              <select value={c3} onChange={e => setC3(e.target.value)}
+                className="bg-white/5 border border-yellow-600/30 text-yellow-300 text-xs px-2 py-1.5 focus:outline-none">
+                <option value="">Contestant 3...</option>
+                {activeEntries.map(e => <option key={e.id} value={e.artistName}>{e.artistName}</option>)}
+              </select>
+            )}
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { if (c1 && c2 && c1 !== c2) onSetActiveBattle(c1, c2); }}
-              disabled={!c1 || !c2 || c1 === c2}
+            <button
+              onClick={() => {
+                const valid = tripleTheatMode ? (c1 && c2 && c3 && c1 !== c2 && c1 !== c3 && c2 !== c3) : (c1 && c2 && c1 !== c2);
+                if (valid) onSetActiveBattle(c1, c2, tripleTheatMode ? c3 : undefined, tripleTheatMode);
+              }}
+              disabled={tripleTheatMode ? (!c1 || !c2 || !c3 || c1 === c2 || c1 === c3 || c2 === c3) : (!c1 || !c2 || c1 === c2)}
               className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors">
               Start Voting
             </button>
@@ -803,38 +921,40 @@ function VotingPanel({
 
       {activeBattle ? (
         <div>
-          {/* Contestant cards — admin gets Load to Radio button, viewers get Tune In */}
-          <div className={`grid gap-3 mb-3 ${isTriple ? "grid-cols-3" : "grid-cols-2"}`}>
-            {[
-              { name: activeBattle.contestant1Name, title: activeBattle.contestant1SongTitle, url: activeBattle.contestant1SongUrl, num: 1, color: "green" },
-              { name: activeBattle.contestant2Name, title: activeBattle.contestant2SongTitle, url: activeBattle.contestant2SongUrl, num: 2, color: "red" },
-              ...(isTriple && activeBattle.contestant3Name ? [{ name: activeBattle.contestant3Name, title: activeBattle.contestant3SongTitle, url: activeBattle.contestant3SongUrl, num: 3, color: "yellow" }] : []),
-            ].map((c) => (
-              <div key={c.num} className={`flex flex-col gap-1.5 border px-2 py-2 ${
-                c.color === "green" ? "bg-green-600/5 border-green-600/20" :
-                c.color === "red" ? "bg-red-600/5 border-red-600/20" :
-                "bg-yellow-600/5 border-yellow-600/20"
-              }`}>
-                <div className="min-w-0">
-                  <div className={`font-['Anton'] text-xs uppercase truncate ${
-                    c.color === "green" ? "text-green-400" : c.color === "red" ? "text-red-400" : "text-yellow-400"
-                  }`}>{c.name}</div>
-                  {c.title && <div className="text-white/30 text-[10px] truncate">{c.title}</div>}
-                </div>
-                {c.url && (
-                  isAdmin && onLoadToRadio ? (
-                    <button
-                      onClick={() => onLoadToRadio(c.name, c.title ?? c.name, c.url!, c.num)}
-                      className="flex items-center gap-1 text-[10px] uppercase tracking-wider border border-white/20 text-white/60 hover:border-red-600 hover:text-red-400 px-2 py-1 transition-colors"
-                    >
-                      <Play className="w-2.5 h-2.5" /> Load to Radio
-                    </button>
-                  ) : (
-                    <TuneInButton size="sm" />
-                  )
-                )}
-              </div>
-            ))}
+          {/* Now Playing cards — one per contestant */}
+          <div className={`grid gap-3 mb-4 ${isTriple ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
+            <ContestantNowPlayingCard
+              name={activeBattle.contestant1Name}
+              songTitle={activeBattle.contestant1SongTitle}
+              songUrl={activeBattle.contestant1SongUrl}
+              contestantNumber={1}
+              color="green"
+              userId={getUserId(activeBattle.contestant1Name)}
+              isAdmin={isAdmin}
+              onLoadToRadio={onLoadToRadio}
+            />
+            <ContestantNowPlayingCard
+              name={activeBattle.contestant2Name}
+              songTitle={activeBattle.contestant2SongTitle}
+              songUrl={activeBattle.contestant2SongUrl}
+              contestantNumber={2}
+              color="red"
+              userId={getUserId(activeBattle.contestant2Name)}
+              isAdmin={isAdmin}
+              onLoadToRadio={onLoadToRadio}
+            />
+            {isTriple && activeBattle.contestant3Name && (
+              <ContestantNowPlayingCard
+                name={activeBattle.contestant3Name}
+                songTitle={activeBattle.contestant3SongTitle}
+                songUrl={activeBattle.contestant3SongUrl}
+                contestantNumber={3}
+                color="yellow"
+                userId={getUserId(activeBattle.contestant3Name)}
+                isAdmin={isAdmin}
+                onLoadToRadio={onLoadToRadio}
+              />
+            )}
           </div>
 
           {/* Vote buttons */}
@@ -1563,19 +1683,6 @@ export default function MusicWars() {
                 )}
               </div>
             )}
-            {/* Triple Threat Mode Toggle (Admin only) */}
-            {isAdmin && (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setTripleTheat(!tripleTheatMode)}
-                  className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest font-bold border transition-all duration-200 ${tripleTheatMode ? "border-yellow-500 bg-yellow-500/10 text-yellow-400" : "border-white/20 text-white/40 hover:text-white"}`}
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  Triple Threat {tripleTheatMode ? "ON" : "OFF"}
-                </button>
-                <span className="text-white/30 text-xs">1v1v1 mode — 3 contestants per battle</span>
-              </div>
-            )}
             {/* Live Voting Panel */}
             <div>
               <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
@@ -1589,7 +1696,14 @@ export default function MusicWars() {
                 isJudge={isJudge}
                 isAdmin={isAdmin}
                 onVote={async (candidate) => { if (activeBattle?.id) await castVoteMutation.mutateAsync({ battleId: activeBattle.id, candidate }); }}
-                onSetActiveBattle={async (c1, c2) => { await setActiveBattleMutation.mutateAsync({ contestant1Name: c1, contestant2Name: c2 }); }}
+                onSetActiveBattle={async (c1, c2, c3, isTriple) => {
+                  await setActiveBattleMutation.mutateAsync({
+                    contestant1Name: c1,
+                    contestant2Name: c2,
+                    contestant3Name: c3,
+                    isTripleThreat: isTriple,
+                  });
+                }}
                 onClearVotes={async () => { if (activeBattle?.id) await clearVotesMutation.mutateAsync({ battleId: activeBattle.id }); }}
                 entries={allEntries ?? []}
                 onLoadToRadio={(contestantName, songTitle, songUrl, contestantNumber) => {
@@ -1597,6 +1711,8 @@ export default function MusicWars() {
                   const updated = existing.filter(t => t.contestantNumber !== contestantNumber);
                   loadTracks([...updated, { contestantName, songTitle, songUrl, contestantNumber }]);
                 }}
+                tripleTheatMode={tripleTheatMode}
+                onToggleTripleThreat={() => setTripleTheat(!tripleTheatMode)}
               />
             </div>
             <div>

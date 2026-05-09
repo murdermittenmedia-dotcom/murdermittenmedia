@@ -979,6 +979,10 @@ export const appRouter = router({
         contestant2Name: z.string().min(1).max(128),
         contestant2SongTitle: z.string().max(128).optional(),
         contestant2SongUrl: z.string().max(512).optional(),
+        contestant3Name: z.string().max(128).optional(),
+        contestant3SongTitle: z.string().max(128).optional(),
+        contestant3SongUrl: z.string().max(512).optional(),
+        isTripleThreat: z.boolean().optional(),
         roundNumber: z.number().default(1),
         status: z.enum(["pending", "voting", "closed"]).default("voting"),
       }))
@@ -990,6 +994,10 @@ export const appRouter = router({
           contestant2Name: input.contestant2Name,
           contestant2SongTitle: input.contestant2SongTitle ?? null,
           contestant2SongUrl: input.contestant2SongUrl ?? null,
+          contestant3Name: input.contestant3Name ?? null,
+          contestant3SongTitle: input.contestant3SongTitle ?? null,
+          contestant3SongUrl: input.contestant3SongUrl ?? null,
+          isTripleThreat: input.isTripleThreat ?? !!input.contestant3Name,
           roundNumber: input.roundNumber,
           status: input.status,
         });

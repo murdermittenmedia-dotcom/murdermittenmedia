@@ -621,3 +621,11 @@
 - [x] Bug: Submission play buttons load track into FloatingPlayer but no audio plays and no seek bar available
 - [x] Fix: AudioPlayButton now prefers /manus-storage/ URL (correct key with hash) over fileKey for presigned URL resolution
 - [x] Fix: unlockThenSwap now waits for canplay event before calling play() to prevent NotSupportedError
+
+## Music Wars Live Voting UI Cleanup
+- [x] Replace "Tune In" cards with a clean "Now Playing" box per contestant
+- [x] Now Playing box: artist name links to their profile page
+- [x] Now Playing box: show YouTube embed when submission has youtubeUrl
+- [x] Now Playing box: show audio player (AudioPlayButton) when submission is file upload only
+- [x] Fix voting UI to support Triple Threat (3-way battle) toggle — show 3 contestant cards when active
+- [x] Fix admin controls in Live Voting section — Triple Threat toggle now co-located with Set Active Battle, 3rd contestant dropdown appears when Triple Threat is ON
