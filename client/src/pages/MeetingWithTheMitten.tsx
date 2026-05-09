@@ -132,7 +132,7 @@ const EPISODES = [
 ];
 
 export default function MeetingWithTheMitten() {
-  const [playing, setPlaying] = useState<string | null>(null);
+  const [activeVideo, setActiveVideo] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const filtered = EPISODES.filter(ep =>
@@ -189,28 +189,35 @@ export default function MeetingWithTheMitten() {
         />
       </div>
 
+      {/* Video Modal — same pattern as MurderMittenMic */}
+      {activeVideo && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setActiveVideo(null)}
+        >
+          <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <div className="relative aspect-video w-full">
+              <iframe
+                src={`https://www.youtube.com/embed/${activeVideo}?autoplay=1`}
+                title="YouTube video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+            <button
+              onClick={() => setActiveVideo(null)}
+              className="mt-4 text-white/50 hover:text-white text-sm uppercase tracking-widest transition-colors"
+            >
+              ✕ Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Episodes grid */}
       <section className="pb-24">
         <div className="container">
-          {playing && (
-            <div className="mb-10">
-              <div className="relative aspect-video max-w-3xl bg-black border border-red-600/30">
-                <iframe
-                  src={`https://www.youtube.com/embed/${playing}?autoplay=1`}
-                  title="Now Playing"
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-              <button
-                onClick={() => setPlaying(null)}
-                className="mt-3 text-xs text-white/30 hover:text-red-500 uppercase tracking-widest transition-colors"
-              >
-                ✕ Close Player
-              </button>
-            </div>
-          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((ep, i) => (
@@ -221,7 +228,7 @@ export default function MeetingWithTheMitten() {
                 {/* Thumbnail */}
                 <div
                   className="relative aspect-video bg-black cursor-pointer overflow-hidden"
-                  onClick={() => setPlaying(ep.id)}
+                  onClick={() => setActiveVideo(ep.id)}
                 >
                   <img
                     src={`https://img.youtube.com/vi/${ep.id}/hqdefault.jpg`}
@@ -256,7 +263,7 @@ export default function MeetingWithTheMitten() {
                     )}
                     <div className="flex gap-2 ml-auto">
                       <button
-                        onClick={() => setPlaying(ep.id)}
+                        onClick={() => setActiveVideo(ep.id)}
                         className="text-xs border border-red-600/40 text-red-500 hover:bg-red-600 hover:text-white px-3 py-1 transition-all uppercase tracking-wider"
                       >
                         Watch

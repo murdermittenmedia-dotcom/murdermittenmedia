@@ -635,3 +635,6 @@
 
 ## Search Results Audio Fix
 - [x] Replace Tune In button on song search results with working AudioPlayButton
+
+## Meeting With The Mitten Video Playback
+- [x] Update Meeting With The Mitten page to play videos the same way Mic Drops does
