@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, songTitle, fileKey, fileUrl FROM review_submissions LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, songTitle, fileKey, fileUrl FROM review_submissions LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "songTitle": "Test",
+      "fileKey": "NULL",
+      "fileUrl": "NULL"
+    },
+    {
+      "id": "2",
+      "songTitle": "Rest",
+      "fileKey": "NULL",
+      "fileUrl": "NULL"
+    },
+    {
+      "id": "30001",
+      "songTitle": "New",
+      "fileKey": "NULL",
+      "fileUrl": "NULL"
+    },
+    {
+      "id": "60001",
+      "songTitle": "Rod Woodson",
+      "fileKey": "NULL",
+      "fileUrl": "NULL"
+    },
+    {
+      "id": "90001",
+      "songTitle": "Test",
+      "fileKey": "NULL",
+      "fileUrl": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsongTitle\tfileKey\tfileUrl\n1\tTest\tNULL\tNULL\n2\tRest\tNULL\tNULL\n30001\tNew\tNULL\tNULL\n60001\tRod Woodson\tNULL\tNULL\n90001\tTest\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

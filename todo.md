@@ -616,3 +616,8 @@
 - [x] Client: listener side in useAdminMicBroadcast — receive admin mic broadcast stream and play it
 - [x] UI: Admin panel "Mic to Radio" toggle button — activates/deactivates admin mic broadcast
 - [x] UI: Listener FloatingPlayer shows "🎙 Admin Live" indicator when admin mic is broadcasting
+
+## Bug: Submission Play Buttons on Artist Profile
+- [x] Bug: Submission play buttons load track into FloatingPlayer but no audio plays and no seek bar available
+- [x] Fix: AudioPlayButton now prefers /manus-storage/ URL (correct key with hash) over fileKey for presigned URL resolution
+- [x] Fix: unlockThenSwap now waits for canplay event before calling play() to prevent NotSupportedError

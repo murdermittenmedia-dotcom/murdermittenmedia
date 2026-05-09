@@ -321,13 +321,31 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       audio.pause();
       audio.src = resolvedUrl;
       audio.load();
-      audio.play().catch(err => {
-        // After unlock, play should succeed. But handle gracefully.
-        if (err?.name !== 'AbortError') {
-          console.error("[AudioPlayer] unlockThenSwap play error:", err);
-          setState(s => ({ ...s, isLoading: false, error: "Playback failed" }));
+
+      // Wait for the browser to validate the source before calling play().
+      // Calling play() immediately after load() can throw NotSupportedError
+      // because the audio element hasn't fetched enough data yet.
+      const onCanPlay = () => {
+        audio.removeEventListener('canplay', onCanPlay);
+        audio.removeEventListener('error', onLoadError);
+        audio.play().catch(err => {
+          if (err?.name !== 'AbortError') {
+            console.error("[AudioPlayer] unlockThenSwap play error:", err);
+            setState(s => ({ ...s, isLoading: false, error: "Playback failed" }));
+          }
+        });
+      };
+      const onLoadError = () => {
+        audio.removeEventListener('canplay', onCanPlay);
+        audio.removeEventListener('error', onLoadError);
+        // Only report error if this is still the active src
+        if (audio.src.includes(resolvedUrl.split('?')[0].split('/').pop() ?? '')) {
+          console.error("[AudioPlayer] unlockThenSwap load error for:", resolvedUrl.substring(0, 80));
+          setState(s => ({ ...s, isLoading: false, error: "Failed to load audio" }));
         }
-      });
+      };
+      audio.addEventListener('canplay', onCanPlay);
+      audio.addEventListener('error', onLoadError);
     };
   }, []);
 

@@ -69,22 +69,9 @@ export function AudioPlayButton({
   const isCurrentlyPlaying = isCurrentTrack && isPlaying;
 
   const resolveUrl = useCallback(async (): Promise<string | null> => {
-    // 1. fileKey → presigned URL
-    if (fileKey) {
-      try {
-        if (urlSource === "queue") {
-          const { url: resolved } = await utils.queue.getAudioUrl.fetch({ fileKey });
-          if (resolved) return resolved;
-        } else {
-          const { url: resolved } = await utils.songs.getAudioUrl.fetch({ fileKey });
-          if (resolved) return resolved;
-        }
-      } catch (err) {
-        console.error("[AudioPlayButton] Failed to resolve fileKey:", fileKey, err);
-      }
-    }
-
-    // 2. /manus-storage/... path → extract key → presigned URL
+    // 1. /manus-storage/... path → extract key → presigned URL
+    //    Prefer this over fileKey because the stored path always has the correct
+    //    key (including any hash suffix added at upload time).
     if (url?.startsWith("/manus-storage/")) {
       const key = url.replace("/manus-storage/", "");
       try {
@@ -97,6 +84,21 @@ export function AudioPlayButton({
         }
       } catch (err) {
         console.error("[AudioPlayButton] Failed to resolve /manus-storage/ path:", key, err);
+      }
+    }
+
+    // 2. fileKey → presigned URL (fallback when no fileUrl is available)
+    if (fileKey) {
+      try {
+        if (urlSource === "queue") {
+          const { url: resolved } = await utils.queue.getAudioUrl.fetch({ fileKey });
+          if (resolved) return resolved;
+        } else {
+          const { url: resolved } = await utils.songs.getAudioUrl.fetch({ fileKey });
+          if (resolved) return resolved;
+        }
+      } catch (err) {
+        console.error("[AudioPlayButton] Failed to resolve fileKey:", fileKey, err);
       }
     }
 
