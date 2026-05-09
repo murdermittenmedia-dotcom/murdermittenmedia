@@ -24,7 +24,7 @@ type QueueState = { id: number; isLive: boolean; liveMessage: string | null; str
 
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
 import {
-  Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
+  Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward, SkipBack,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
   ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw, Music,
 } from "lucide-react";
@@ -110,7 +110,7 @@ function VideoTile({
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, playTrack, setSelectedYouTube,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, playTrack, setSelectedYouTube,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -122,6 +122,7 @@ function AdminPanel({
   broadcastRadioSeek: (currentTime: number) => void;
   broadcastReviewPlayback: (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => void;
   broadcastReviewQueueUpdated: () => void;
+  broadcastLastSong: () => void;
   playTrack: (sub: ReviewSubmission) => void;
   setSelectedYouTube: (val: { url: string; title: string; artist: string } | null) => void;
 }) {
@@ -386,6 +387,15 @@ function AdminPanel({
                 Next
               </button>
             </div>
+            {/* Last Song button */}
+            <button
+              onClick={broadcastLastSong}
+              className="w-full flex items-center justify-center gap-1.5 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs uppercase tracking-wider transition-colors mb-2"
+              title="Restore previous song to queue"
+            >
+              <SkipBack className="w-3.5 h-3.5" />
+              Last Song
+            </button>
             <div className="flex gap-2">
               <button
                 onClick={() => handleMarkReviewed(currentPlaying.id)}
@@ -626,7 +636,7 @@ export default function MusicReview() {
   const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated } = useChat({
+  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong } = useChat({
     room: "music_review",
     username: chatUsername,
     userId: user?.id,
@@ -645,6 +655,10 @@ export default function MusicReview() {
       else if (data.action === "replay") { liveAudioRef.current.currentTime = 0; liveAudioRef.current.play().catch(() => {}); }
     },
     onReviewQueueUpdated: () => { refetch(); },
+    onLastSongRestored: (data) => {
+      toast.success(`↩ "${data.songTitle}" by ${data.artistName} restored to queue`);
+      refetch();
+    },
   });
 
   useEffect(() => {
@@ -899,6 +913,7 @@ export default function MusicReview() {
                   broadcastRadioSeek={broadcastRadioSeek}
                   broadcastReviewPlayback={broadcastReviewPlayback}
                   broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
+                  broadcastLastSong={broadcastLastSong}
                   playTrack={playTrack}
                   setSelectedYouTube={setSelectedYouTube}
                 />

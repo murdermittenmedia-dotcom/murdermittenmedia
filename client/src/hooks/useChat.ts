@@ -32,6 +32,13 @@ export interface LiveReviewPlayback {
   currentTime?: number;
 }
 
+export interface LastSongRestoredData {
+  submissionId: number;
+  artistName: string;
+  songTitle: string;
+  fileKey: string | null;
+}
+
 interface UseChatOptions {
   room: "music_wars" | "music_review";
   username: string;
@@ -42,6 +49,7 @@ interface UseChatOptions {
   onReviewActiveChanged?: (item: LiveReviewActiveItem) => void;
   onReviewPlayback?: (data: LiveReviewPlayback) => void;
   onReviewQueueUpdated?: () => void;
+  onLastSongRestored?: (data: LastSongRestoredData) => void;
 }
 
 export function useChat({
@@ -54,6 +62,7 @@ export function useChat({
   onReviewActiveChanged,
   onReviewPlayback,
   onReviewQueueUpdated,
+  onLastSongRestored,
 }: UseChatOptions) {
   const socketRef = useRef<Socket | null>(null);
   const onSpinStateRef = useRef(onSpinStateChange);
@@ -64,6 +73,8 @@ export function useChat({
   onReviewPlaybackRef.current = onReviewPlayback;
   const onReviewQueueUpdatedRef = useRef(onReviewQueueUpdated);
   onReviewQueueUpdatedRef.current = onReviewQueueUpdated;
+  const onLastSongRestoredRef = useRef(onLastSongRestored);
+  onLastSongRestoredRef.current = onLastSongRestored;
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isConnected, setIsConnected] = useState(false);
@@ -123,6 +134,11 @@ export function useChat({
       onReviewActiveRef.current?.({ submissionId: null });
     });
 
+    // Admin: last song restored to queue
+    socket.on("radio:last_song_restored", (data: LastSongRestoredData) => {
+      onLastSongRestoredRef.current?.(data);
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -178,6 +194,11 @@ export function useChat({
     socketRef.current?.emit("review:queue_updated");
   }, []);
 
+  // Admin: restore last played song to queue
+  const broadcastLastSong = useCallback(() => {
+    socketRef.current?.emit("radio:last_song");
+  }, []);
+
   return {
     messages,
     isConnected,
@@ -192,6 +213,7 @@ export function useChat({
     broadcastRadioSeek,
     broadcastReviewPlayback,
     broadcastReviewQueueUpdated,
+    broadcastLastSong,
     socket: socketRef.current,
   };
 }

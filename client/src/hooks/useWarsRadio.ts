@@ -179,6 +179,11 @@ export function useWarsRadio({ enabled = true }: { enabled?: boolean } = {}) {
       setState(prev => prev ? { ...prev, tripleTheatMode: data.enabled } : prev);
     });
 
+    // Admin: last song restored acknowledgment
+    socket.on("wars_radio:last_song_restored", () => {
+      // State update handled via wars_radio:playing event already emitted by server
+    });
+
     return () => {
       socketRef.current = null;
       socket.disconnect();
@@ -214,6 +219,10 @@ export function useWarsRadio({ enabled = true }: { enabled?: boolean } = {}) {
     socketRef.current?.emit("wars_radio:set_triple_threat", { enabled });
   }, []);
 
+  const adminLastSong = useCallback(() => {
+    socketRef.current?.emit("wars_radio:last_song");
+  }, []);
+
   return {
     state,
     tripleTheatMode,
@@ -223,6 +232,7 @@ export function useWarsRadio({ enabled = true }: { enabled?: boolean } = {}) {
     adminSeek,
     adminSkip,
     adminStop,
+    adminLastSong,
     setTripleTheat,
     socket: socketRef.current,
   };

@@ -66,6 +66,9 @@ let radioState: RadioState = {
   fileKey: null,
 };
 
+// Track the last played song so admin can put it back on the deck
+let lastRadioState: RadioState | null = null;
+
 // ─── Music Wars Radio State ────────────────────────────────────────────────────
 type WarsRadioTrack = {
   contestantName: string;
@@ -89,6 +92,9 @@ let warsRadioState: WarsRadioState = {
   isPlaying: false,
   tripleTheatMode: false,
 };
+
+// Track the last played Wars Radio track so admin can put it back
+let lastWarsRadioState: WarsRadioState | null = null;
 
 function getRoomList(room: string) {
   return Array.from(roomParticipants.entries())
@@ -336,6 +342,9 @@ async function startServer() {
         }
       }
 
+      // Save current state as last before overwriting
+      if (radioState.submissionId) lastRadioState = { ...radioState };
+
       radioState = {
         submissionId: data.submissionId,
         artistName: data.artistName ?? "Unknown Artist",
@@ -461,6 +470,36 @@ async function startServer() {
       socket.emit("radio:state", { ...radioState, currentTime });
     });
 
+    // Admin: put last played song back on the deck
+    socket.on("radio:last_song", async () => {
+      if (!lastRadioState || !lastRadioState.submissionId) {
+        socket.emit("radio:error", { message: "No previous song to restore" });
+        return;
+      }
+      try {
+        const db = await getDb();
+        if (!db) return;
+        const { reviewSubmissions } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        // Restore the submission to pending so it appears in the queue
+        await db.update(reviewSubmissions)
+          .set({ status: "pending" })
+          .where(eq(reviewSubmissions.id, lastRadioState.submissionId));
+        // Notify queue updated so admin sees it back in the queue
+        io.to("music_review").emit("review:queue_updated");
+        // Emit the last song info back to admin so they can load it
+        socket.emit("radio:last_song_restored", {
+          submissionId: lastRadioState.submissionId,
+          artistName: lastRadioState.artistName,
+          songTitle: lastRadioState.songTitle,
+          fileKey: lastRadioState.fileKey,
+        });
+        console.log("[radio:last_song] Restored:", lastRadioState.songTitle);
+      } catch (err) {
+        console.error("[radio:last_song] Error:", err);
+      }
+    });
+
     // Legacy review:set_active support (backward compat)
     socket.on("review:set_active", async (data: {
       submissionId: number | null;
@@ -487,6 +526,8 @@ async function startServer() {
     // ── Music Wars Radio Events ─────────────────────────────────
     // Admin loads battle tracks (auto-called when battle is set)
     socket.on("wars_radio:load", (data: { tracks: WarsRadioTrack[] }) => {
+      // Save previous state so admin can restore it
+      if (warsRadioState.tracks.length > 0) lastWarsRadioState = { ...warsRadioState };
       warsRadioState = {
         tracks: data.tracks,
         currentIndex: 0,
@@ -603,6 +644,36 @@ async function startServer() {
         currentTime = (Date.now() - warsRadioState.startedAt) / 1000;
       }
       socket.emit("wars_radio:state", { ...warsRadioState, currentTime });
+    });
+
+    // Admin: restore last Wars Radio state
+    socket.on("wars_radio:last_song", () => {
+      if (!lastWarsRadioState || lastWarsRadioState.tracks.length === 0) {
+        socket.emit("wars_radio:error", { message: "No previous Wars Radio state to restore" });
+        return;
+      }
+      // Restore the previous state and replay from the beginning
+      warsRadioState = {
+        ...lastWarsRadioState,
+        startedAt: Date.now(),
+        pausedAt: null,
+        isPlaying: true,
+      };
+      io.to("music_wars").emit("wars_radio:playing", { ...warsRadioState });
+      if (warsRadioState.tracks.length > 0) {
+        const currentTrack = warsRadioState.tracks[warsRadioState.currentIndex];
+        io.emit("wars:now_playing", {
+          url: currentTrack.songUrl,
+          title: currentTrack.songTitle,
+          artist: currentTrack.contestantName,
+          startedAt: warsRadioState.startedAt,
+        });
+      }
+      socket.emit("wars_radio:last_song_restored", {
+        tracks: warsRadioState.tracks,
+        tripleTheatMode: warsRadioState.tripleTheatMode,
+      });
+      console.log("[wars_radio:last_song] Restored:", warsRadioState.tracks.map(t => t.songTitle).join(", "));
     });
 
     // ── Leave / disconnect ────────────────────────────────────

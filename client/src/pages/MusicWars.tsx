@@ -15,7 +15,8 @@ import { TuneInButton } from "@/components/TuneInButton";
 import { useChat } from "@/hooks/useChat";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
 import { ArtistLink } from "@/components/ArtistLink";
-import { Play, Pause, SkipForward, Rewind, FastForward, Square, Zap } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { useAudioRoom, type AudioParticipant } from "@/hooks/useAudioRoom";
 import { getLoginUrl } from "@/const";
 // ─── Live Stream Panel (offline-aware) ────────────────────────────────
@@ -1267,7 +1268,7 @@ export default function MusicWars() {
   });
   // ─── Wars Radio Feed ───────────────────────────────────────────────────
   const warsRadio = useWarsRadio({ enabled: true });
-  const { state: warsRadioState, tripleTheatMode, loadTracks, adminPause, adminResume, adminSeek, adminSkip, adminStop, setTripleTheat } = warsRadio;
+  const { state: warsRadioState, tripleTheatMode, loadTracks, adminPause, adminResume, adminSeek, adminSkip, adminStop, adminLastSong, setTripleTheat } = warsRadio;
 
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [requiresPayment, setRequiresPayment] = useState(false);
@@ -1525,27 +1526,38 @@ export default function MusicWars() {
                 </div>
                 {/* Admin transport controls */}
                 {isAdmin && (
-                  <div className="grid grid-cols-5 gap-2">
-                    <button onClick={() => adminSeek(0)} className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs transition-colors" title="Rewind to start">
-                      <Rewind className="w-3.5 h-3.5" />
-                    </button>
-                    {warsRadioState.isPlaying ? (
-                      <button onClick={() => adminPause(0)} className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs transition-colors" title="Pause">
-                        <Pause className="w-3.5 h-3.5" />
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-5 gap-2">
+                      <button onClick={() => adminSeek(0)} className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs transition-colors" title="Rewind to start">
+                        <Rewind className="w-3.5 h-3.5" />
                       </button>
-                    ) : (
-                      <button onClick={() => adminResume(0)} className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs transition-colors" title="Play">
-                        <Play className="w-3.5 h-3.5" />
+                      {warsRadioState.isPlaying ? (
+                        <button onClick={() => adminPause(0)} className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs transition-colors" title="Pause">
+                          <Pause className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <button onClick={() => adminResume(0)} className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs transition-colors" title="Play">
+                          <Play className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button onClick={() => adminSeek(30)} className="flex items-center justify-center gap-1 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs transition-colors" title="Fast Forward +30s">
+                        <FastForward className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                    <button onClick={() => adminSeek(30)} className="flex items-center justify-center gap-1 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs transition-colors" title="Fast Forward +30s">
-                      <FastForward className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={adminSkip} className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-xs transition-colors" title="Skip to next contestant">
-                      <SkipForward className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={adminStop} className="flex items-center justify-center gap-1 border border-red-600/30 text-red-400 hover:bg-red-600/10 py-2 text-xs transition-colors" title="Stop radio">
-                      <Square className="w-3.5 h-3.5" />
+                      <button onClick={adminSkip} className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-xs transition-colors" title="Skip to next contestant">
+                        <SkipForward className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={adminStop} className="flex items-center justify-center gap-1 border border-red-600/30 text-red-400 hover:bg-red-600/10 py-2 text-xs transition-colors" title="Stop radio">
+                        <Square className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {/* Last Song button */}
+                    <button
+                      onClick={() => { adminLastSong(); toast.success("Restoring last battle to radio..."); }}
+                      className="w-full flex items-center justify-center gap-1.5 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
+                      title="Restore previous battle to radio"
+                    >
+                      <SkipBack className="w-3.5 h-3.5" />
+                      Last Battle
                     </button>
                   </div>
                 )}

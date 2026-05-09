@@ -606,5 +606,5 @@
 - [x] Fix: Live chat user list shows glitchy/flickering admin names (duplicates appearing rapidly) — changed key from socketId to userId
 - [ ] Fix: Admin panel mic button should broadcast admin voice to the live radio feed (currently does nothing) — requires WebRTC audio streaming implementation
 - [x] Fix: Audio room users should join auto-muted (not with hot mics) — must press Talk button to activate
-- [ ] Feature: Add Last Song button to all admin song controls (Music Review admin panel, Music Wars admin panel)
-- [ ] Feature: Last Song button puts the previous track back into the queue/deck for replay
+- [x] Feature: Add Last Song button to all admin song controls (Music Review admin panel, Music Wars admin panel)
+- [x] Feature: Last Song button puts the previous track back into the queue/deck for replay
