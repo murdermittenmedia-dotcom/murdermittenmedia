@@ -16,7 +16,10 @@ import { TuneInButton } from "@/components/TuneInButton";
 import { useChat } from "@/hooks/useChat";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
 import { ArtistLink } from "@/components/ArtistLink";
-import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap, Mic, MicOff, ChevronDown, ChevronUp } from "lucide-react";
+import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { useAudioRoom, type AudioParticipant } from "@/hooks/useAudioRoom";
 import { getLoginUrl } from "@/const";
@@ -1146,6 +1149,320 @@ function AdminPanel({
   );
 }
 
+// ─── Music Wars Admin Hub ────────────────────────────────────
+function MusicWarsAdminHub({
+  // Radio tab
+  warsRadioState,
+  adminPause, adminResume, adminSeek, adminSkip, adminStop, adminLastSong,
+  adminMicBroadcast,
+  // Battle tab
+  tripleTheatMode, onToggleTripleThreat,
+  onSetActiveBattle, onClearVotes,
+  entries,
+  onLoadToRadio,
+  // Entries tab
+  onConfirmPayment, onUpdateStatus, onRemoveEntry,
+  // Settings tab
+  isPaid, isOpen, isUpdating, onTogglePaid, onToggleOpen, onRecord, onResetWar,
+}: {
+  warsRadioState: ReturnType<typeof import("@/hooks/useWarsRadio").useWarsRadio>["state"];
+  adminPause: (currentTime: number) => void;
+  adminResume: (currentTime: number) => void;
+  adminSeek: (currentTime: number) => void;
+  adminSkip: () => void;
+  adminStop: () => void;
+  adminLastSong: () => void;
+  adminMicBroadcast: ReturnType<typeof useAdminMicBroadcast>;
+  tripleTheatMode: boolean;
+  onToggleTripleThreat: () => void;
+  onSetActiveBattle: (c1: string, c2: string, c3?: string, isTriple?: boolean) => void;
+  onClearVotes: () => void;
+  entries: Array<{ id: number; artistName: string; songTitle: string; paid: boolean; paymentConfirmed: boolean; status: string; songUrl?: string | null; userId?: number | null }>;
+  onLoadToRadio: (contestantName: string, songTitle: string, songUrl: string, contestantNumber: number) => void;
+  onConfirmPayment: (id: number) => void;
+  onUpdateStatus: (id: number, status: string) => void;
+  onRemoveEntry: (id: number) => void;
+  isPaid: boolean;
+  isOpen: boolean;
+  isUpdating: boolean;
+  onTogglePaid: () => void;
+  onToggleOpen: () => void;
+  onRecord: () => void;
+  onResetWar: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [c1, setC1] = useState("");
+  const [c2, setC2] = useState("");
+  const [c3, setC3] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
+  const activeEntries = entries.filter(e => e.status === "active");
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className={`w-full flex items-center justify-between px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors ${
+          open ? "bg-red-600 text-white" : "bg-red-600/20 border border-red-600/40 text-red-400 hover:bg-red-600/30"
+        }`}>
+          <span className="flex items-center gap-2">
+            <span>⚙</span>
+            Admin Hub
+            {adminMicBroadcast.isBroadcasting && (
+              <span className="flex items-center gap-1 text-[10px] border border-red-300/60 bg-red-500/20 px-1.5 py-0.5 animate-pulse">
+                <Mic className="w-2.5 h-2.5" /> MIC LIVE
+              </span>
+            )}
+          </span>
+          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border border-red-600/20 border-t-0 bg-[#0d0d0d]">
+          <Tabs defaultValue="radio" className="w-full">
+            <TabsList className="w-full rounded-none bg-black/40 border-b border-white/10 h-auto p-0 gap-0">
+              {["radio", "battle", "entries", "settings"].map(tab => (
+                <TabsTrigger
+                  key={tab}
+                  value={tab}
+                  className="flex-1 rounded-none text-[10px] uppercase tracking-widest py-2.5 data-[state=active]:bg-red-600/20 data-[state=active]:text-red-400 data-[state=active]:border-b-2 data-[state=active]:border-red-600 text-white/40 hover:text-white/70 transition-colors"
+                >
+                  {tab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {/* ── RADIO TAB ── */}
+            <TabsContent value="radio" className="p-4 space-y-3">
+              <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Wars Radio Transport</div>
+              {warsRadioState && warsRadioState.tracks.length > 0 ? (
+                <>
+                  {/* Current track info */}
+                  {(() => {
+                    const t = warsRadioState.tracks[warsRadioState.currentIndex];
+                    if (!t) return null;
+                    return (
+                      <div className="px-3 py-2 border border-white/10 bg-white/5 mb-2">
+                        <div className="text-white text-xs font-semibold truncate">{t.songTitle}</div>
+                        <div className="text-white/40 text-[10px]">{t.contestantName} · C{t.contestantNumber}</div>
+                      </div>
+                    );
+                  })()}
+                  {/* Transport grid */}
+                  <div className="grid grid-cols-5 gap-2">
+                    <button onClick={() => adminSeek(0)} className="flex items-center justify-center border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs transition-colors" title="Rewind">
+                      <Rewind className="w-3.5 h-3.5" />
+                    </button>
+                    {warsRadioState.isPlaying ? (
+                      <button onClick={() => adminPause(0)} className="flex items-center justify-center border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs transition-colors" title="Pause">
+                        <Pause className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button onClick={() => adminResume(0)} className="flex items-center justify-center border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs transition-colors" title="Play">
+                        <Play className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button onClick={() => adminSeek(30)} className="flex items-center justify-center border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs transition-colors" title="+30s">
+                      <FastForward className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={adminSkip} className="flex items-center justify-center border border-white/20 text-white/60 hover:text-white py-2 text-xs transition-colors" title="Skip">
+                      <SkipForward className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={adminStop} className="flex items-center justify-center border border-red-600/30 text-red-400 hover:bg-red-600/10 py-2 text-xs transition-colors" title="Stop">
+                      <Square className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => { adminLastSong(); toast.success("Restoring last battle to radio..."); }}
+                    className="w-full flex items-center justify-center gap-1.5 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
+                  >
+                    <SkipBack className="w-3.5 h-3.5" /> Last Battle
+                  </button>
+                </>
+              ) : (
+                <p className="text-white/30 text-xs text-center py-2">No tracks loaded. Use Battle tab → Load to Radio.</p>
+              )}
+              {/* Mic → Radio */}
+              <div className="pt-2 border-t border-white/10">
+                <button
+                  onClick={async () => {
+                    try {
+                      await adminMicBroadcast.toggleBroadcast();
+                      if (!adminMicBroadcast.isBroadcasting) {
+                        toast.success("🎙 Mic is now broadcasting to the radio feed");
+                      } else {
+                        toast("Mic broadcast stopped");
+                      }
+                    } catch {
+                      toast.error("Could not access microphone — check browser permissions");
+                    }
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-wider border transition-all ${
+                    adminMicBroadcast.isBroadcasting
+                      ? "border-red-500/60 bg-red-500/15 text-red-400 animate-pulse"
+                      : "border-white/20 text-white/40 hover:border-red-500/40 hover:text-red-400"
+                  }`}
+                  title={adminMicBroadcast.isBroadcasting ? "Stop broadcasting mic to radio" : "Broadcast your mic to all radio listeners"}
+                >
+                  {adminMicBroadcast.isBroadcasting ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
+                  {adminMicBroadcast.isBroadcasting ? "🔴 Mic → Radio (Live)" : "Mic → Radio"}
+                </button>
+              </div>
+            </TabsContent>
+
+            {/* ── BATTLE TAB ── */}
+            <TabsContent value="battle" className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] text-white/30 uppercase tracking-widest">Set Active Battle</div>
+                <button
+                  onClick={onToggleTripleThreat}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-[10px] uppercase tracking-widest font-bold border transition-all duration-200 ${
+                    tripleTheatMode ? "border-yellow-500 bg-yellow-500/10 text-yellow-400" : "border-white/20 text-white/40 hover:text-white"
+                  }`}
+                >
+                  <Zap className="w-3 h-3" />
+                  Triple Threat {tripleTheatMode ? "ON" : "OFF"}
+                </button>
+              </div>
+              <div className={`grid gap-2 ${tripleTheatMode ? "grid-cols-3" : "grid-cols-2"}`}>
+                <select value={c1} onChange={e => setC1(e.target.value)}
+                  className="bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none">
+                  <option value="">Contestant 1...</option>
+                  {activeEntries.map(e => <option key={e.id} value={e.artistName}>{e.artistName}</option>)}
+                </select>
+                <select value={c2} onChange={e => setC2(e.target.value)}
+                  className="bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none">
+                  <option value="">Contestant 2...</option>
+                  {activeEntries.map(e => <option key={e.id} value={e.artistName}>{e.artistName}</option>)}
+                </select>
+                {tripleTheatMode && (
+                  <select value={c3} onChange={e => setC3(e.target.value)}
+                    className="bg-white/5 border border-yellow-600/30 text-yellow-300 text-xs px-2 py-1.5 focus:outline-none">
+                    <option value="">Contestant 3...</option>
+                    {activeEntries.map(e => <option key={e.id} value={e.artistName}>{e.artistName}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const valid = tripleTheatMode ? (c1 && c2 && c3 && c1 !== c2 && c1 !== c3 && c2 !== c3) : (c1 && c2 && c1 !== c2);
+                    if (valid) { onSetActiveBattle(c1, c2, tripleTheatMode ? c3 : undefined, tripleTheatMode); setC1(""); setC2(""); setC3(""); }
+                  }}
+                  disabled={tripleTheatMode ? (!c1 || !c2 || !c3 || c1 === c2 || c1 === c3 || c2 === c3) : (!c1 || !c2 || c1 === c2)}
+                  className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors">
+                  Start Voting
+                </button>
+                <button onClick={onClearVotes}
+                  className="border border-white/20 text-white/50 hover:border-white/40 px-3 py-1.5 text-xs uppercase tracking-wider transition-colors">
+                  Clear Votes
+                </button>
+              </div>
+              {/* Load to Radio section */}
+              {entries.filter(e => e.status === "active" && e.songUrl).length > 0 && (
+                <div className="pt-2 border-t border-white/10">
+                  <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Load Track to Radio</div>
+                  <div className="space-y-1.5">
+                    {entries.filter(e => e.status === "active" && e.songUrl).map((entry, idx) => (
+                      <div key={entry.id} className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-white/70 truncate flex-1">{entry.artistName} — {entry.songTitle}</span>
+                        <button
+                          onClick={() => onLoadToRadio(entry.artistName, entry.songTitle, entry.songUrl!, idx + 1)}
+                          className="flex items-center gap-1 text-[10px] uppercase tracking-wider border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-2 py-0.5 transition-colors flex-shrink-0"
+                        >
+                          <Play className="w-2.5 h-2.5" /> C{idx + 1}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Record Battle Result */}
+              <div className="pt-2 border-t border-white/10">
+                <RecordBattleForm entries={entries} onRecord={onRecord} />
+              </div>
+            </TabsContent>
+
+            {/* ── ENTRIES TAB ── */}
+            <TabsContent value="entries" className="p-4">
+              <div className="text-[10px] text-white/30 uppercase tracking-widest mb-3">Wheel Entries ({entries.length})</div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {entries.length === 0 && <p className="text-white/30 text-xs text-center py-3">No entries yet</p>}
+                {entries.map(entry => (
+                  <div key={entry.id} className="flex items-center gap-2 py-2 border-b border-white/5 text-xs">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white/80 font-semibold truncate">
+                        <ArtistStatModal artistName={entry.artistName} userId={entry.userId ?? undefined}>
+                          <button className="hover:text-red-400 transition-colors">{entry.artistName}</button>
+                        </ArtistStatModal>
+                      </div>
+                      <div className="text-white/40 truncate">{entry.songTitle}</div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {entry.paid && !entry.paymentConfirmed && (
+                        <button onClick={() => onConfirmPayment(entry.id)} className="border border-yellow-600/50 text-yellow-400 px-2 py-1 hover:bg-yellow-600/20 transition-colors">Confirm $</button>
+                      )}
+                      {entry.status === "pending" && (
+                        <button onClick={() => onUpdateStatus(entry.id, "active")} className="border border-green-600/50 text-green-400 px-2 py-1 hover:bg-green-600/20 transition-colors">Activate</button>
+                      )}
+                      {entry.status === "active" && (
+                        <button onClick={() => onUpdateStatus(entry.id, "eliminated")} className="border border-red-600/50 text-red-400 px-2 py-1 hover:bg-red-600/20 transition-colors">Eliminate</button>
+                      )}
+                      <span className={`px-1.5 py-0.5 text-xs uppercase ${
+                        entry.status === "active" ? "text-green-400" : entry.status === "winner" ? "text-yellow-400" : entry.status === "eliminated" ? "text-red-400" : "text-white/30"
+                      }`}>{entry.status}</span>
+                      <button onClick={() => onRemoveEntry(entry.id)} className="text-white/20 hover:text-red-500 transition-colors ml-1" title="Remove">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* ── SETTINGS TAB ── */}
+            <TabsContent value="settings" className="p-4 space-y-3">
+              <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2">War Settings</div>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={onTogglePaid} disabled={isUpdating}
+                  className={`py-2.5 text-xs font-semibold uppercase tracking-wider border transition-colors ${
+                    isPaid ? "border-red-600 text-red-400 bg-red-600/10" : "border-green-600 text-green-400 bg-green-600/10"
+                  }`}>
+                  Mode: {isPaid ? "Paid ($)" : "Free"}
+                </button>
+                <button onClick={onToggleOpen} disabled={isUpdating}
+                  className={`py-2.5 text-xs font-semibold uppercase tracking-wider border transition-colors ${
+                    isOpen ? "border-green-600 text-green-400 bg-green-600/10" : "border-red-600 text-red-400 bg-red-600/10"
+                  }`}>
+                  {isOpen ? "Open" : "Closed"}
+                </button>
+              </div>
+              <div className="pt-2 border-t border-white/10">
+                {!confirmReset ? (
+                  <button onClick={() => setConfirmReset(true)}
+                    className="w-full border border-orange-600/40 text-orange-400 hover:bg-orange-600/10 py-2 text-xs font-semibold uppercase tracking-wider transition-colors">
+                    Reset Current War
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-orange-400 text-center">This clears all wheel entries and current votes. Battle records are kept.</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => setConfirmReset(false)}
+                        className="border border-white/20 text-white/50 py-2 text-xs uppercase tracking-wider transition-colors hover:border-white/40">Cancel</button>
+                      <button onClick={() => { onResetWar(); setConfirmReset(false); }}
+                        className="bg-orange-600 hover:bg-orange-700 text-white py-2 text-xs font-semibold uppercase tracking-wider transition-colors">Confirm Reset</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 // ─── Leaderboard ──────────────────────────────────────────────
 function Leaderboard() {
   const { data: lb } = trpc.battles.leaderboard.useQuery();
@@ -1387,9 +1704,11 @@ export default function MusicWars() {
   const { participants, micActive, isConnected: audioConnected, error: audioError, toggleMic, activateContestantMic, kickParticipant } = useAudioRoom({
     room: "music_wars", username, role: audioRole, userId: user?.id, enabled: audioJoined,
   });
-  // ─── Wars Radio Feed ───────────────────────────────────────────────────
+  // ─── Wars Radio Feed ─────────────────────────────────────────────────────────
   const warsRadio = useWarsRadio({ enabled: true });
   const { state: warsRadioState, tripleTheatMode, loadTracks, adminPause, adminResume, adminSeek, adminSkip, adminStop, adminLastSong, setTripleTheat } = warsRadio;
+  // ─── Admin Mic Broadcast ─────────────────────────────────────────────────────────
+  const adminMicBroadcast = useAdminMicBroadcast({ room: "music_wars", isAdmin, enabled: true });
 
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [requiresPayment, setRequiresPayment] = useState(false);
@@ -1598,8 +1917,49 @@ export default function MusicWars() {
             <PastBattles />
           </div>
 
-          {/* RIGHT: Chat + Audio Room + Admin */}
+          {/* RIGHT: Chat + Audio Room + Admin Hub */}
           <div className="space-y-4">
+            {/* Admin Hub — consolidated admin controls, visible only to admins */}
+            {isAdmin && (
+              <MusicWarsAdminHub
+                warsRadioState={warsRadioState}
+                adminPause={adminPause}
+                adminResume={adminResume}
+                adminSeek={adminSeek}
+                adminSkip={adminSkip}
+                adminStop={adminStop}
+                adminLastSong={adminLastSong}
+                adminMicBroadcast={adminMicBroadcast}
+                tripleTheatMode={tripleTheatMode}
+                onToggleTripleThreat={() => setTripleTheat(!tripleTheatMode)}
+                onSetActiveBattle={async (c1, c2, c3, isTriple) => {
+                  await setActiveBattleMutation.mutateAsync({
+                    contestant1Name: c1,
+                    contestant2Name: c2,
+                    contestant3Name: c3,
+                    isTripleThreat: isTriple,
+                  });
+                }}
+                onClearVotes={async () => { if (activeBattle?.id) await clearVotesMutation.mutateAsync({ battleId: activeBattle.id }); }}
+                entries={allEntries ?? []}
+                onLoadToRadio={(contestantName, songTitle, songUrl, contestantNumber) => {
+                  const existing = warsRadioState?.tracks ?? [];
+                  const updated = existing.filter(t => t.contestantNumber !== contestantNumber);
+                  loadTracks([...updated, { contestantName, songTitle, songUrl, contestantNumber }]);
+                }}
+                onConfirmPayment={async (id) => { await confirmPaymentMutation.mutateAsync({ id }); refetchAllEntries(); refetchWheel(); }}
+                onUpdateStatus={async (id, status) => { await updateStatusMutation.mutateAsync({ id, status: status as any }); refetchAllEntries(); refetchWheel(); }}
+                onRemoveEntry={async (id) => { await removeEntryMutation.mutateAsync({ id }); refetchAllEntries(); refetchWheel(); }}
+                isPaid={wheelData?.isPaid ?? false}
+                isOpen={wheelData?.isOpen ?? true}
+                isUpdating={setSettingsMutation.isPending}
+                onTogglePaid={async () => { await setSettingsMutation.mutateAsync({ isPaid: !wheelData?.isPaid }); refetchWheel(); }}
+                onToggleOpen={async () => { await setSettingsMutation.mutateAsync({ isOpen: !wheelData?.isOpen }); refetchWheel(); }}
+                onRecord={() => { refetchAllEntries(); }}
+                onResetWar={async () => { await resetWarMutation.mutateAsync(); refetchAllEntries(); refetchWheel(); }}
+              />
+            )}
+
             <div>
               <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
                 Live <span className="text-red-600">Chat</span>
@@ -1612,7 +1972,7 @@ export default function MusicWars() {
               )}
             </div>
 
-            {/* Wars Radio — Now Playing + Admin Controls */}
+            {/* Wars Radio — Now Playing (viewer-facing, no admin controls) */}
             {warsRadioState && warsRadioState.tracks.length > 0 && (
               <div className="border border-red-600/30 bg-red-600/5 p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -1639,53 +1999,16 @@ export default function MusicWars() {
                   );
                 })()}
                 {/* Track list */}
-                <div className="flex gap-2 mb-3">
+                <div className="flex gap-2">
                   {warsRadioState.tracks.map((t, i) => (
                     <div key={i} className={`flex-1 text-center py-1.5 text-xs uppercase tracking-wider border ${i === warsRadioState.currentIndex ? "border-red-600 bg-red-600/20 text-red-400" : "border-white/10 text-white/30"}`}>
                       {t.contestantName}
                     </div>
                   ))}
                 </div>
-                {/* Admin transport controls */}
-                {isAdmin && (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-5 gap-2">
-                      <button onClick={() => adminSeek(0)} className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs transition-colors" title="Rewind to start">
-                        <Rewind className="w-3.5 h-3.5" />
-                      </button>
-                      {warsRadioState.isPlaying ? (
-                        <button onClick={() => adminPause(0)} className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs transition-colors" title="Pause">
-                          <Pause className="w-3.5 h-3.5" />
-                        </button>
-                      ) : (
-                        <button onClick={() => adminResume(0)} className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs transition-colors" title="Play">
-                          <Play className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      <button onClick={() => adminSeek(30)} className="flex items-center justify-center gap-1 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs transition-colors" title="Fast Forward +30s">
-                        <FastForward className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={adminSkip} className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-xs transition-colors" title="Skip to next contestant">
-                        <SkipForward className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={adminStop} className="flex items-center justify-center gap-1 border border-red-600/30 text-red-400 hover:bg-red-600/10 py-2 text-xs transition-colors" title="Stop radio">
-                        <Square className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    {/* Last Song button */}
-                    <button
-                      onClick={() => { adminLastSong(); toast.success("Restoring last battle to radio..."); }}
-                      className="w-full flex items-center justify-center gap-1.5 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
-                      title="Restore previous battle to radio"
-                    >
-                      <SkipBack className="w-3.5 h-3.5" />
-                      Last Battle
-                    </button>
-                  </div>
-                )}
               </div>
             )}
-            {/* Live Voting Panel */}
+            {/* Live Voting Panel — viewer-facing only (admin controls moved to Admin Hub) */}
             <div>
               <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
                 Live <span className="text-red-600">Voting</span>
@@ -1696,25 +2019,13 @@ export default function MusicWars() {
                 myVote={myVote}
                 user={user ? { id: user.id, name: user.name ?? "Anonymous", role: user.role } : undefined}
                 isJudge={isJudge}
-                isAdmin={isAdmin}
+                isAdmin={false}
                 onVote={async (candidate) => { if (activeBattle?.id) await castVoteMutation.mutateAsync({ battleId: activeBattle.id, candidate }); }}
-                onSetActiveBattle={async (c1, c2, c3, isTriple) => {
-                  await setActiveBattleMutation.mutateAsync({
-                    contestant1Name: c1,
-                    contestant2Name: c2,
-                    contestant3Name: c3,
-                    isTripleThreat: isTriple,
-                  });
-                }}
-                onClearVotes={async () => { if (activeBattle?.id) await clearVotesMutation.mutateAsync({ battleId: activeBattle.id }); }}
-                entries={allEntries ?? []}
-                onLoadToRadio={(contestantName, songTitle, songUrl, contestantNumber) => {
-                  const existing = warsRadioState?.tracks ?? [];
-                  const updated = existing.filter(t => t.contestantNumber !== contestantNumber);
-                  loadTracks([...updated, { contestantName, songTitle, songUrl, contestantNumber }]);
-                }}
+                onSetActiveBattle={async () => {}}
+                onClearVotes={async () => {}}
+                entries={[]}
                 tripleTheatMode={tripleTheatMode}
-                onToggleTripleThreat={() => setTripleTheat(!tripleTheatMode)}
+                onToggleTripleThreat={() => {}}
               />
             </div>
             <div>
@@ -1736,27 +2047,6 @@ export default function MusicWars() {
                 </div>
               )}
             </div>
-
-            {isAdmin && allEntries && (
-              <div>
-                <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
-                  Admin <span className="text-red-600">Panel</span>
-                </h2>
-                <AdminPanel
-                  entries={allEntries}
-                  onConfirmPayment={async (id) => { await confirmPaymentMutation.mutateAsync({ id }); refetchAllEntries(); refetchWheel(); }}
-                  onUpdateStatus={async (id, status) => { await updateStatusMutation.mutateAsync({ id, status: status as any }); refetchAllEntries(); refetchWheel(); }}
-                  onTogglePaid={async () => { await setSettingsMutation.mutateAsync({ isPaid: !wheelData?.isPaid }); refetchWheel(); }}
-                  onToggleOpen={async () => { await setSettingsMutation.mutateAsync({ isOpen: !wheelData?.isOpen }); refetchWheel(); }}
-                  isPaid={wheelData?.isPaid ?? false}
-                  isOpen={wheelData?.isOpen ?? true}
-                  isUpdating={setSettingsMutation.isPending}
-                  onRecord={() => { refetchAllEntries(); }}
-                  onRemoveEntry={async (id) => { await removeEntryMutation.mutateAsync({ id }); refetchAllEntries(); refetchWheel(); }}
-                  onResetWar={async () => { await resetWarMutation.mutateAsync(); refetchAllEntries(); refetchWheel(); }}
-                />
-              </div>
-            )}
 
             {/* How it works */}
             <div className="bg-[#0d0d0d] border border-white/10 p-5">

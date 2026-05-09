@@ -656,3 +656,12 @@
 - [x] Add LiveRadioBanner to Music Wars page
 - [x] Add LiveRadioBanner to Home page
 - [x] Create useLiveStatus shared hook polling both live statuses every 30s
+
+## Music Wars UI Cleanup & Admin Panel Consolidation
+- [x] Consolidate all scattered admin tools into a single collapsible admin panel with organized sections
+- [x] Admin panel sections: Radio (transport + Mic to Radio), Battle (Triple Threat + Set Active Battle + Clear Votes + Record Result), Entries (full list with Activate/Eliminate/Confirm/Remove), Settings (Paid/Free + Open/Closed + Reset War)
+- [x] Add Mic to Radio broadcast button to Music Wars admin panel (same as Music Review)
+- [x] Clean up viewer-facing UI — removed admin-only clutter from public view (Now Playing box no longer shows transport controls, VotingPanel no longer shows admin battle setup)
+- [x] Condense redundant sections and improve mobile layout
+- [x] MusicWarsAdminHub: collapsible red header bar, collapsed by default, 4 tabs (Radio/Battle/Entries/Settings)
+- [x] MusicWarsAdminHub: shows MIC LIVE badge in header when admin mic is broadcasting
