@@ -30,9 +30,9 @@ export function useAudioRoom({ room, username, role, userId, enabled }: UseAudio
   const vadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [participants, setParticipants] = useState<AudioParticipant[]>([]);
-  // Judges and admins start with mic on; all others start muted
-  const [micActive, setMicActive] = useState(role === "judge" || role === "admin");
-  const [isMuted, setIsMuted] = useState(!(role === "judge" || role === "admin"));
+  // All users start muted by default — must press Talk button to activate mic
+  const [micActive, setMicActive] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [wasKicked, setWasKicked] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isConnected, setIsConnected] = useState(false);

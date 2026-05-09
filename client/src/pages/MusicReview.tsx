@@ -1529,7 +1529,7 @@ export default function MusicReview() {
                   <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
                     {audioRoom.participants.length === 0 && <p className="text-white/20 text-xs text-center py-2">No one in voice yet</p>}
                     {audioRoom.participants.map(p => (
-                      <div key={p.socketId} className="flex items-center justify-between py-1 border-b border-white/5">
+                      <div key={p.userId || p.socketId} className="flex items-center justify-between py-1 border-b border-white/5">
                         <div className="flex items-center gap-1.5">
                           <span className={`w-1.5 h-1.5 rounded-full ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
                           <span className="text-xs text-white/70">{p.username}</span>
