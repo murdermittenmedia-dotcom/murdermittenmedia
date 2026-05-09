@@ -592,3 +592,11 @@
 - [x] Triple Threat: setBattleContestants procedure accepts optional contestant3Id and isTripleThreat
 - [x] Triple Threat: getVoteResults counts contestant3 votes
 - [x] FloatingPlayer: artist name is clickable (ArtistStatModal) for both live and non-live tracks
+
+## Session 17 — Fix Forum & Catalogue Audio Playback
+
+- [x] Restore AudioPlayButton to Forum.tsx (was replaced with TuneInButton by mistake)
+- [x] Restore AudioPlayButton to UserProfile.tsx catalogue section (was replaced with TuneInButton by mistake)
+- [x] Restore AudioPlayButton to UserProfile.tsx submission history section
+- [x] Keep TuneInButton only in specific contexts (e.g., ForumPost, Search, ArtistOfWeek, MusicWars viewer)
+- [x] Forum and catalogue now allow independent playback without redirecting to live radio

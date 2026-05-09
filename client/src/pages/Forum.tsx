@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageSquare, ThumbsUp, ThumbsDown, Eye, Plus, Flame, Pin, Music, X, Upload } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
-import { TuneInButton } from "@/components/TuneInButton";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { ArtistLink } from "@/components/ArtistLink";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -301,7 +301,7 @@ export default function Forum() {
                       {/* Audio attachment — play button + clickable title */}
                       {'audioUrl' in post && post.audioUrl && (
                         <div className="flex items-center gap-2 mb-2">
-                          <TuneInButton size="sm" />
+                          <AudioPlayButton url={('audioUrl' in post && post.audioUrl) || ''} title={('audioTitle' in post && post.audioTitle) || 'Audio'} size="sm" />
                           <Link href={`/forum/${post.id}`}>
                             <span className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer flex items-center gap-1">
                               <Music className="w-3 h-3 flex-shrink-0" />
