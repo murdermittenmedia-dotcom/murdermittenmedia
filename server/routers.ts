@@ -33,6 +33,9 @@ import {
   getCombinedLeaderboard,
   getWheelSpinState, setWheelSpinState, clearWheelSpinState,
   createModerationLog, getModerationLogs,
+  banUser, unbanUser,
+  getSkipLineOrders, getWheelPaidOrders,
+  getAdminAnalytics,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -1403,6 +1406,146 @@ export const appRouter = router({
           reason: input.reason,
         });
         await updateWheelEntryStatus(input.id, "removed");
+        return { success: true };
+      }),
+  }),
+  // ── Admin Panel ─────────────────────────────────────────────────────────────
+  admin: router({
+    // Analytics overview
+    analytics: adminProcedure.query(async () => {
+      return getAdminAnalytics();
+    }),
+
+    // User management — list all users with search
+    listUsers: adminProcedure
+      .input(z.object({ search: z.string().optional(), limit: z.number().default(100) }))
+      .query(async ({ input }) => {
+        const all = await getAllUsers(input.limit);
+        if (!input.search) return all;
+        const q = input.search.toLowerCase();
+        return all.filter(u =>
+          (u.name ?? "").toLowerCase().includes(q) ||
+          (u.artistName ?? "").toLowerCase().includes(q) ||
+          (u.email ?? "").toLowerCase().includes(q)
+        );
+      }),
+
+    // Change user role
+    setRole: adminProcedure
+      .input(z.object({ userId: z.number(), role: z.enum(["user", "judge", "contestant", "admin"]) }))
+      .mutation(async ({ input }) => {
+        await setUserRole(input.userId, input.role);
+        return { success: true };
+      }),
+
+    // Ban a user
+    banUser: adminProcedure
+      .input(z.object({ userId: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        await banUser(input.userId, input.reason ?? null);
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "ban_user",
+          targetType: "user",
+          targetId: input.userId,
+          reason: input.reason,
+        });
+        return { success: true };
+      }),
+
+    // Unban a user
+    unbanUser: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await unbanUser(input.userId);
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "unban_user",
+          targetType: "user",
+          targetId: input.userId,
+        });
+        return { success: true };
+      }),
+
+    // Promo orders — skip-the-line submissions
+    skipOrders: adminProcedure.query(async () => {
+      return getSkipLineOrders();
+    }),
+
+    // Promo orders — paid wheel entries
+    wheelOrders: adminProcedure.query(async () => {
+      return getWheelPaidOrders();
+    }),
+
+    // Confirm skip payment
+    confirmSkip: adminProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .mutation(async ({ input }) => {
+        await confirmSkipPayment(input.submissionId);
+        return { success: true };
+      }),
+
+    // Confirm wheel payment
+    confirmWheelPayment: adminProcedure
+      .input(z.object({ entryId: z.number() }))
+      .mutation(async ({ input }) => {
+        await confirmWheelPayment(input.entryId);
+        return { success: true };
+      }),
+
+    // Site settings — get all
+    getSettings: adminProcedure.query(async () => {
+      return getAllSettings();
+    }),
+
+    // Site settings — set a key
+    setSetting: adminProcedure
+      .input(z.object({ key: z.string(), value: z.string() }))
+      .mutation(async ({ input }) => {
+        await setSetting(input.key, input.value);
+        return { success: true };
+      }),
+
+    // Artist of the week — get all
+    getArtistsOfWeek: adminProcedure.query(async () => {
+      return getAllArtistsOfWeek();
+    }),
+
+    // Artist of the week — set new
+    setArtistOfWeek: adminProcedure
+      .input(z.object({
+        artistName: z.string(),
+        bio: z.string().optional(),
+        imageUrl: z.string().optional(),
+        instagramUrl: z.string().optional(),
+        youtubeUrl: z.string().optional(),
+        spotifyUrl: z.string().optional(),
+        featuredVideoId: z.string().optional(),
+        audioTrackUrl: z.string().optional(),
+        audioTrackTitle: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await upsertArtistOfWeek(input);
+        return { success: true };
+      }),
+
+    // Moderation logs
+    moderationLogs: adminProcedure.query(async () => {
+      return getModerationLogs(200);
+    }),
+
+    // Judge applications — list pending
+    judgeApplications: adminProcedure.query(async () => {
+      return getPendingJudgeApplications();
+    }),
+
+    // Judge applications — approve or reject
+    reviewJudgeApp: adminProcedure
+      .input(z.object({ applicationId: z.number(), status: z.enum(["approved", "rejected"]) }))
+      .mutation(async ({ input }) => {
+        await reviewJudgeApplication(input.applicationId, input.status);
         return { success: true };
       }),
   }),

@@ -22,6 +22,7 @@ import ForumPost from "./pages/ForumPost";
 import Leaderboard from "./pages/Leaderboard";
 import Search from "./pages/Search";
 import AdminModeration from "./pages/AdminModeration";
+import AdminPanel from "./pages/AdminPanel";
 
 function Router() {
   return (
@@ -54,6 +55,7 @@ function Router() {
       </Route>
 
       {/* Admin */}
+      <Route path={"/admin"} component={AdminPanel} />
       <Route path={"/admin/moderation"} component={AdminModeration} />
 
       {/* Fallback */}

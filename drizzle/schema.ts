@@ -13,6 +13,8 @@ export const users = mysqlTable("users", {
   city: varchar("city", { length: 128 }),                        // hometown / city
   avatarUrl: varchar("avatarUrl", { length: 512 }),              // profile picture URL
   profileComplete: boolean("profileComplete").default(false).notNull(),
+  isBanned: boolean("isBanned").default(false).notNull(),
+  banReason: varchar("banReason", { length: 256 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

@@ -638,3 +638,11 @@
 
 ## Meeting With The Mitten Video Playback
 - [x] Update Meeting With The Mitten page to play videos the same way Mic Drops does
+
+## Admin Panel (/admin)
+- [x] Admin-only route guard — redirect non-admins away from /admin
+- [x] User Management tab — list all users, search, change role, ban/unban
+- [x] Promo Orders tab — view all skip/promo purchases, mark fulfilled, filter by status
+- [x] Analytics tab — submission counts, vote totals, top artists, site activity
+- [x] Site Settings tab — Artist of the Week, featured content, announcements
+- [x] Admin nav link visible only to admin role users

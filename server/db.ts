@@ -1,4 +1,4 @@
-import { eq, asc, desc, ne, and, or, sql, isNotNull, inArray } from "drizzle-orm";
+import { eq, asc, desc, ne, and, or, sql, isNotNull, inArray, count, sum, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, User, users,
@@ -1132,4 +1132,103 @@ export async function getModerationLogs(limit = 100) {
   return db.select().from(moderationLogs)
     .orderBy(desc(moderationLogs.createdAt))
     .limit(limit);
+}
+
+// ─── Admin: Ban / Unban User ──────────────────────────────────────────────────
+export async function banUser(userId: number, reason: string | null): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(users).set({ isBanned: true, banReason: reason ?? null }).where(eq(users.id, userId));
+}
+
+export async function unbanUser(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(users).set({ isBanned: false, banReason: null }).where(eq(users.id, userId));
+}
+
+// ─── Admin: Promo Orders ──────────────────────────────────────────────────────
+export async function getSkipLineOrders(limit = 200) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(reviewSubmissions)
+    .where(eq(reviewSubmissions.skippedLine, true))
+    .orderBy(desc(reviewSubmissions.createdAt))
+    .limit(limit);
+}
+
+export async function getWheelPaidOrders(limit = 200) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(wheelEntries)
+    .where(eq(wheelEntries.paid, true))
+    .orderBy(desc(wheelEntries.createdAt))
+    .limit(limit);
+}
+
+// ─── Admin: Analytics ────────────────────────────────────────────────────────
+export async function getAdminAnalytics() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+
+  const [totalUsers] = await db.select({ count: count() }).from(users);
+  const [totalSubmissions] = await db.select({ count: count() }).from(reviewSubmissions);
+  const [pendingSubmissions] = await db.select({ count: count() }).from(reviewSubmissions).where(eq(reviewSubmissions.status, "pending"));
+  const [reviewedSubmissions] = await db.select({ count: count() }).from(reviewSubmissions).where(eq(reviewSubmissions.status, "reviewed"));
+  const [totalVotes] = await db.select({ count: count() }).from(votes);
+  const [totalBattles] = await db.select({ count: count() }).from(battleRecords);
+  const [totalWheelEntries] = await db.select({ count: count() }).from(wheelEntries);
+  const [totalSongs] = await db.select({ count: count() }).from(userSongs);
+  const [totalForumPosts] = await db.select({ count: count() }).from(forumPosts);
+  const [skipOrders] = await db.select({ count: count() }).from(reviewSubmissions).where(eq(reviewSubmissions.skippedLine, true));
+  const [confirmedSkipOrders] = await db.select({ count: count() }).from(reviewSubmissions).where(and(eq(reviewSubmissions.skippedLine, true), eq(reviewSubmissions.skipPaymentConfirmed, true)));
+  const [paidWheelEntries] = await db.select({ count: count() }).from(wheelEntries).where(eq(wheelEntries.paid, true));
+  const [confirmedWheelPayments] = await db.select({ count: count() }).from(wheelEntries).where(eq(wheelEntries.paymentConfirmed, true));
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [recentSignups] = await db.select({ count: count() }).from(users).where(gte(users.createdAt, sevenDaysAgo));
+
+  const topArtists = await db
+    .select({
+      artistName: reviewSubmissions.artistName,
+      totalFire: sum(reviewSubmissions.fireCount),
+      totalTrash: sum(reviewSubmissions.trashCount),
+      submissionCount: count(reviewSubmissions.id),
+    })
+    .from(reviewSubmissions)
+    .groupBy(reviewSubmissions.artistName)
+    .orderBy(desc(sum(reviewSubmissions.fireCount)))
+    .limit(10);
+
+  const topBattleWinners = await db
+    .select({
+      artistName: battleRecords.winnerArtistName,
+      wins: count(battleRecords.id),
+    })
+    .from(battleRecords)
+    .groupBy(battleRecords.winnerArtistName)
+    .orderBy(desc(count(battleRecords.id)))
+    .limit(10);
+
+  return {
+    users: { total: totalUsers.count, recentSignups: recentSignups.count },
+    submissions: { total: totalSubmissions.count, pending: pendingSubmissions.count, reviewed: reviewedSubmissions.count },
+    votes: { total: totalVotes.count },
+    battles: { total: totalBattles.count },
+    wheelEntries: { total: totalWheelEntries.count },
+    songs: { total: totalSongs.count },
+    forumPosts: { total: totalForumPosts.count },
+    promoOrders: {
+      skipTotal: skipOrders.count,
+      skipConfirmed: confirmedSkipOrders.count,
+      wheelPaidTotal: paidWheelEntries.count,
+      wheelPaidConfirmed: confirmedWheelPayments.count,
+    },
+    topArtists,
+    topBattleWinners,
+  };
 }
