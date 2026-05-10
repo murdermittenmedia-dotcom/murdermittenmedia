@@ -41,7 +41,8 @@ import {
   clearWheelOfNamesEntries, getLastWheelOfNamesWinner, createWheelOfNamesSpin,
   getTodaysWheelOfNamesSpin, createWheelOfNamesPaidEntryRequest,
   getPendingWheelOfNamesPaidEntries, confirmWheelOfNamesPaidEntry,
-  removeWheelOfNamesEntry
+  removeWheelOfNamesEntry,
+  trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -1695,6 +1696,50 @@ export const appRouter = router({
     adminReset: adminProcedure.mutation(async ({ ctx }) => {
       await clearWheelOfNamesEntries();
       return { success: true };
+    }),
+  }),
+
+  // -- Site Analytics (admin) -----------------------------------
+  siteAnalytics: router({
+    // Public: record a page view (called from client on each route change)
+    trackView: publicProcedure
+      .input(z.object({
+        path: z.string().max(512),
+        sessionId: z.string().max(64),
+        referrer: z.string().max(512).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const ua = ctx.req.headers["user-agent"] ?? null;
+        await trackPageView({
+          path: input.path,
+          sessionId: input.sessionId,
+          userId: ctx.user?.id ?? null,
+          referrer: input.referrer ?? null,
+          userAgent: typeof ua === "string" ? ua : null,
+        });
+        return { ok: true };
+      }),
+
+    // Public: heartbeat to mark session as active (called every 30s)
+    heartbeat: publicProcedure
+      .input(z.object({
+        path: z.string().max(512),
+        sessionId: z.string().max(64),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await upsertActiveSession({
+          sessionId: input.sessionId,
+          path: input.path,
+          userId: ctx.user?.id ?? null,
+        });
+        // Prune stale sessions opportunistically
+        await pruneStaleActiveSessions(90_000).catch(() => {});
+        return { ok: true };
+      }),
+
+    // Admin: get full site stats
+    getStats: adminProcedure.query(async () => {
+      return getSiteStats();
     }),
   }),
 });

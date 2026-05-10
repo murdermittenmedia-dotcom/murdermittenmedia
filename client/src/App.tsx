@@ -8,6 +8,7 @@ import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import FloatingPlayer from "./components/FloatingPlayer";
 import { useLivePlayer } from "./hooks/useLivePlayer";
 import { useWarsLivePlayer } from "./hooks/useWarsLivePlayer";
+import { usePageTracker } from "./hooks/usePageTracker";
 import Home from "./pages/Home";
 import Promo from "./pages/Promo";
 import MurderMittenMic from "./pages/MurderMittenMic";
@@ -23,6 +24,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Search from "./pages/Search";
 import AdminModeration from "./pages/AdminModeration";
 import AdminPanel from "./pages/AdminPanel";
+import AdminSiteStats from "./pages/AdminSiteStats";
 import Banned from "./pages/Banned";
 import WheelOfNames from "./pages/WheelOfNames";
 
@@ -62,6 +64,7 @@ function Router() {
       {/* Admin */}
       <Route path={"/admin"} component={AdminPanel} />
       <Route path={"/admin/moderation"} component={AdminModeration} />
+      <Route path={"/admin/stats"} component={AdminSiteStats} />
 
       {/* Ban appeal */}
       <Route path={"/banned"} component={Banned} />
@@ -80,6 +83,12 @@ function LivePlayerMount() {
   return null;
 }
 
+/** Tracks page views and heartbeats for admin analytics */
+function PageTrackerMount() {
+  usePageTracker();
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -89,6 +98,8 @@ function App() {
             <Toaster />
             {/* Global live-review listener: auto-plays admin-selected tracks on every page */}
             <LivePlayerMount />
+            {/* Page view tracker for admin analytics */}
+            <PageTrackerMount />
             <Router />
             <FloatingPlayer />
           </TooltipProvider>

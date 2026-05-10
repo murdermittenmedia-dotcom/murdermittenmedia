@@ -355,3 +355,25 @@ export const wheelOfNamesPaidEntries = mysqlTable("wheel_of_names_paid_entries",
 });
 export type WheelOfNamesPaidEntry = typeof wheelOfNamesPaidEntries.$inferSelect;
 export type InsertWheelOfNamesPaidEntry = typeof wheelOfNamesPaidEntries.$inferInsert;
+
+// ─── Site Analytics ───────────────────────────────────────────
+export const pageViews = mysqlTable("page_views", {
+  id: int("id").autoincrement().primaryKey(),
+  path: varchar("path", { length: 512 }).notNull(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  userId: int("userId"),                           // null = anonymous
+  referrer: varchar("referrer", { length: 512 }),
+  userAgent: varchar("userAgent", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PageView = typeof pageViews.$inferSelect;
+export type InsertPageView = typeof pageViews.$inferInsert;
+
+// Heartbeat rows: upserted every 30s per session to track "active now"
+export const activeSessions = mysqlTable("active_sessions", {
+  sessionId: varchar("sessionId", { length: 64 }).primaryKey(),
+  path: varchar("path", { length: 512 }).notNull(),
+  userId: int("userId"),
+  lastSeen: timestamp("lastSeen").defaultNow().notNull(),
+});
+export type ActiveSession = typeof activeSessions.$inferSelect;

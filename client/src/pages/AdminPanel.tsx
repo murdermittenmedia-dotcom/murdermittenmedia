@@ -5,7 +5,7 @@
    ============================================================ */
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
-  Crown, Gavel, Music, Star, TrendingUp, FileText,
+  Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
   ChevronDown, ChevronUp, Eye, EyeOff, Trash2
 } from "lucide-react";
 
@@ -767,6 +767,14 @@ export default function AdminPanel() {
             <h1 className="font-['Anton'] text-4xl uppercase">Admin Panel</h1>
           </div>
           <p className="text-white/40 text-sm">Manage users, orders, analytics, and site settings.</p>
+          <div className="mt-4">
+            <Link href="/admin/stats">
+              <button className="flex items-center gap-2 text-xs border border-green-500/40 text-green-400 bg-green-500/10 px-4 py-2 hover:bg-green-500/20 transition-all uppercase tracking-widest font-semibold">
+                <Activity className="w-3.5 h-3.5" />
+                Live Site Stats
+              </button>
+            </Link>
+          </div>
         </div>
       </section>
 

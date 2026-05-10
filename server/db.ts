@@ -21,6 +21,8 @@ import {
   wheelOfNamesEntries, InsertWheelOfNamesEntry,
   wheelOfNamesSpins, InsertWheelOfNamesSpin,
   wheelOfNamesPaidEntries, InsertWheelOfNamesPaidEntry,
+  pageViews, InsertPageView,
+  activeSessions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1415,4 +1417,132 @@ export async function removeWheelOfNamesEntry(entryId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   return db.delete(wheelOfNamesEntries).where(eq(wheelOfNamesEntries.id, entryId));
+}
+
+// ─── Site Analytics ───────────────────────────────────────────
+
+export async function trackPageView(data: {
+  path: string;
+  sessionId: string;
+  userId?: number | null;
+  referrer?: string | null;
+  userAgent?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(pageViews).values({
+    path: data.path,
+    sessionId: data.sessionId,
+    userId: data.userId ?? null,
+    referrer: data.referrer ?? null,
+    userAgent: data.userAgent ?? null,
+  });
+}
+
+export async function upsertActiveSession(data: {
+  sessionId: string;
+  path: string;
+  userId?: number | null;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .insert(activeSessions)
+    .values({ sessionId: data.sessionId, path: data.path, userId: data.userId ?? null, lastSeen: new Date() })
+    .onDuplicateKeyUpdate({ set: { path: data.path, lastSeen: new Date(), userId: data.userId ?? null } });
+}
+
+export async function pruneStaleActiveSessions(thresholdMs = 90_000) {
+  const db = await getDb();
+  if (!db) return;
+  const cutoff = new Date(Date.now() - thresholdMs);
+  await db.delete(activeSessions).where(sql`${activeSessions.lastSeen} < ${cutoff}`);
+}
+
+export async function getActiveSessions() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activeSessions).orderBy(desc(activeSessions.lastSeen));
+}
+
+export async function getSiteStats() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  // Total page views
+  const [totalViews] = await db.select({ count: count() }).from(pageViews);
+  const [todayViews] = await db.select({ count: count() }).from(pageViews).where(gte(pageViews.createdAt, todayStart));
+  const [weekViews] = await db.select({ count: count() }).from(pageViews).where(gte(pageViews.createdAt, weekStart));
+
+  // Unique sessions
+  const [totalSessions] = await db.select({ count: sql<number>`COUNT(DISTINCT ${pageViews.sessionId})` }).from(pageViews);
+  const [todaySessions] = await db.select({ count: sql<number>`COUNT(DISTINCT ${pageViews.sessionId})` }).from(pageViews).where(gte(pageViews.createdAt, todayStart));
+
+  // Logged-in vs anonymous
+  const [loggedInViews] = await db.select({ count: count() }).from(pageViews).where(isNotNull(pageViews.userId));
+
+  // Top pages (last 7 days)
+  const topPages = await db
+    .select({ path: pageViews.path, views: count() })
+    .from(pageViews)
+    .where(gte(pageViews.createdAt, weekStart))
+    .groupBy(pageViews.path)
+    .orderBy(desc(count()))
+    .limit(10);
+
+  // Hourly views for today (last 24 hours)
+  const hourlyRows = await db
+    .select({
+      hour: sql<number>`HOUR(${pageViews.createdAt})`,
+      views: count(),
+    })
+    .from(pageViews)
+    .where(gte(pageViews.createdAt, todayStart))
+    .groupBy(sql`HOUR(${pageViews.createdAt})`)
+    .orderBy(sql`HOUR(${pageViews.createdAt})`);
+
+  // Daily views for last 30 days
+  const dailyRows = await db
+    .select({
+      day: sql<string>`DATE(${pageViews.createdAt})`,
+      views: count(),
+    })
+    .from(pageViews)
+    .where(gte(pageViews.createdAt, monthStart))
+    .groupBy(sql`DATE(${pageViews.createdAt})`)
+    .orderBy(sql`DATE(${pageViews.createdAt})`);
+
+  // Recent page views (last 50)
+  const recentViews = await db
+    .select()
+    .from(pageViews)
+    .orderBy(desc(pageViews.createdAt))
+    .limit(50);
+
+  // Active now (sessions with heartbeat in last 90s)
+  const cutoff90s = new Date(Date.now() - 90_000);
+  const activeSess = await db.select().from(activeSessions).where(gte(activeSessions.lastSeen, cutoff90s));
+
+  return {
+    views: {
+      total: totalViews.count,
+      today: todayViews.count,
+      week: weekViews.count,
+      loggedIn: loggedInViews.count,
+    },
+    sessions: {
+      total: Number(totalSessions.count),
+      today: Number(todaySessions.count),
+    },
+    activeNow: activeSess,
+    topPages,
+    hourlyToday: hourlyRows,
+    dailyMonth: dailyRows,
+    recentViews,
+  };
 }

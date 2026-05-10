@@ -754,3 +754,11 @@
 
 ## Daily Wheel — Sign-in Button Fix (May 2026)
 - [x] Fix sign-in button on /daily-wheel page giving 404 — replace hardcoded /api/oauth/login href with getLoginUrl() helper
+
+## Admin Live Stats Dashboard (May 2026)
+- [x] Add page_views table to DB schema (id, path, userId nullable, sessionId, referrer, userAgent, createdAt)
+- [x] Add active_sessions table (sessionId, path, lastSeen, userId nullable)
+- [x] Add server procedures: trackPageView (public), heartbeat (public), getStats (admin-only)
+- [x] Add client-side page view tracker hook (fires on route change + 30s heartbeat)
+- [x] Build /admin/stats page: live active users, total views today/week/all-time, top pages, recent visitors, hourly/daily charts
+- [x] Add "Live Site Stats" button to admin panel header
