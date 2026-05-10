@@ -134,6 +134,12 @@ export default function Home() {
               >
                 Buy Promo
               </Link>
+              <Link
+                href="/daily-wheel"
+                className="border border-red-600/50 text-red-400 hover:border-red-500 hover:text-red-300 hover:bg-red-600/10 px-7 py-3 text-sm font-semibold uppercase tracking-widest transition-all"
+              >
+                Daily Wheel
+              </Link>
             </div>
           </div>
         </div>
