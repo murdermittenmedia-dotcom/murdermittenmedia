@@ -719,14 +719,27 @@
 - [x] Frontend: Wire /daily-wheel route into App.tsx
 
 ## Daily Free Promo Wheel Integration (May 2026)
-- [ ] Add "Daily Wheel" link to navbar menu (between Music Wars and More)
-- [ ] Add home button to /daily-wheel page (top-left or header)
-- [ ] Add wheel CTA to home page hero (right side free space) — "Try Your Luck" button + short description
-- [ ] Build 7pm auto-spin job using heartbeat/periodic-updates: randomly pick winner, create spin record, clear entries
-- [ ] Add admin manual controls: "Manually Pick Winner" button + "Reset Wheel" button in admin panel
-- [ ] Admin can override auto-spin: pick a specific winner from the entry list or reset the wheel at any time
+- [x] Add "Daily Wheel" link to navbar menu (between Music Wars and More)
+- [x] Add home button to /daily-wheel page (top-left or header)
+- [x] Add wheel CTA to home page hero (right side free space) — prominent "WIN FREE PROMO TODAY" section
+- [x] Build 7pm auto-spin job using heartbeat/periodic-updates: handler at /api/scheduled/daily-wheel-spin (schedule after deploy)
+- [x] Add admin manual controls: "Spin Wheel" button + "Reset" button in admin panel
+- [x] Admin can override auto-spin: pick a specific winner from the entry list or reset the wheel at any time
 
 ## Daily Wheel — Admin & UX Enhancements (May 2026)
-- [ ] Admin can manually add names to the wheel via admin panel form (without requiring payment)
-- [ ] Display active names list on wheel page (scrollable, shows all current entries with usernames)
-- [ ] Replace wheel pointer/ticker with knife SVG icon that animates during spin
+- [x] Admin can manually add names to the wheel via admin panel form (without requiring payment)
+- [x] Display active names list on wheel page (scrollable, shows all current entries with usernames)
+- [x] Replace wheel pointer/ticker with knife SVG icon that animates during spin
+
+## Daily Wheel Rebuild (Correct Implementation)
+- [x] Update DB: daily limit enforced by getUserWheelOfNamesEntry (checks userId + today's date)
+- [x] Update server: checkUserHasEnteredToday procedure (checks by userId + date)
+- [x] Update server: submitName enforces 1 entry per user per day (not per all-time)
+- [x] Update server: adminSpin procedure (admin-only, picks random winner, records spin, clears entries)
+- [x] Update server: adminReset procedure (admin-only, clears all current entries)
+- [x] Rebuild WheelOfNames page: canvas-based spinning wheel with names drawn ON segments
+- [x] Wheel: knife ticker SVG fixed at right side pointing to winning segment
+- [x] Wheel: admin-only Spin button (hidden from regular users)
+- [x] Wheel: user submit name form (1 per day, shows "Already entered today" if used)
+- [x] Wheel: show previous winner and countdown to next 7pm spin
+- [x] Set up 7pm daily Heartbeat job handler (deploy first, then run: manus-heartbeat create --name daily-wheel-spin --cron "0 0 23 * * *" --path /api/scheduled/daily-wheel-spin)

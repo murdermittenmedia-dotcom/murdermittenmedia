@@ -169,6 +169,81 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
+          DAILY FREE PROMO WHEEL -- Prominent CTA
+      ══════════════════════════════════════════════════════ */}
+      <section className="py-14 border-b border-white/10 bg-[#0a0a0a] relative overflow-hidden">
+        {/* Background glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-red-600/5 rounded-full blur-3xl" />
+        </div>
+        <div className="container relative z-10">
+          <div className="grid md:grid-cols-2 gap-0 border border-red-600/30 overflow-hidden">
+            {/* Left: wheel graphic */}
+            <div className="bg-gradient-to-br from-red-950/40 to-[#080808] p-10 flex flex-col items-center justify-center border-r border-red-600/20">
+              {/* Decorative wheel SVG */}
+              <svg width="160" height="160" viewBox="0 0 160 160" className="mb-6" style={{ filter: "drop-shadow(0 0 20px rgba(209,0,0,0.4))" }}>
+                {[0,1,2,3,4,5,6,7].map(i => {
+                  const angle = (i * Math.PI * 2) / 8;
+                  const colors = ["#D10000","#1a1a1a","#8B0000","#2d2d2d","#FF2222","#111111","#C00000","#333333"];
+                  const nextAngle = ((i + 1) * Math.PI * 2) / 8;
+                  const x1 = 80 + 72 * Math.cos(angle);
+                  const y1 = 80 + 72 * Math.sin(angle);
+                  const x2 = 80 + 72 * Math.cos(nextAngle);
+                  const y2 = 80 + 72 * Math.sin(nextAngle);
+                  return (
+                    <path
+                      key={i}
+                      d={`M80,80 L${x1},${y1} A72,72 0 0,1 ${x2},${y2} Z`}
+                      fill={colors[i]}
+                      stroke="#080808"
+                      strokeWidth="2"
+                    />
+                  );
+                })}
+                <circle cx="80" cy="80" r="18" fill="#D10000" stroke="#fff" strokeWidth="2" />
+                <circle cx="80" cy="80" r="6" fill="#fff" />
+                {/* Knife pointer */}
+                <path d="M152,80 L128,72 L124,80 L128,88 Z" fill="#C0C0C0" />
+                <circle cx="150" cy="80" r="3" fill="#D10000" />
+              </svg>
+              <div className="text-center">
+                <div className="font-['Anton'] text-5xl text-white leading-none mb-1">FREE</div>
+                <div className="font-['Anton'] text-2xl text-red-600 leading-none">DAILY PROMO</div>
+              </div>
+            </div>
+            {/* Right: CTA content */}
+            <div className="p-10 flex flex-col justify-center bg-[#0d0d0d]">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-semibold">Spin Daily at 7 PM</span>
+              </div>
+              <h2 className="font-['Anton'] text-5xl md:text-6xl uppercase leading-none mb-4">
+                WIN FREE<br /><span className="text-red-600">PROMO</span><br />TODAY
+              </h2>
+              <p className="text-white/50 text-sm leading-relaxed mb-6">
+                Enter your name once a day — admin spins the wheel every night at 7 PM.
+                Winner gets a free promo post in front of 45K+ followers. No catch.
+              </p>
+              <div className="flex flex-wrap gap-3 mb-6">
+                {["Free Entry", "Daily Reset", "45K+ Reach"].map(tag => (
+                  <span key={tag} className="text-xs border border-red-600/30 text-red-400/70 px-3 py-1 uppercase tracking-wider">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <Link
+                href="/daily-wheel"
+                className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-sm font-bold uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(209,0,0,0.5)] self-start"
+              >
+                Enter the Wheel Free
+                <span>→</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
           ARTIST OF THE WEEK -- Full-width feature, top billing
       ══════════════════════════════════════════════════════ */}
       <section className="py-20 relative overflow-hidden">

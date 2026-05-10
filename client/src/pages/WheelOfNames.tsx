@@ -1,292 +1,554 @@
-import { useState, useEffect } from "react";
+/* ============================================================
+   MURDER MITTEN MEDIA — Daily Free Promo Wheel
+   Canvas-based spinning wheel with names drawn on segments
+   Admin-only spin; users submit their name (1 per day)
+   ============================================================ */
+
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Loader2, Gift, Clock, User, Home, Zap, Trash2 } from "lucide-react";
-import { useLocation } from "wouter";
 
+// ─── Segment colors ──────────────────────────────────────────
+const SEGMENT_COLORS = [
+  "#D10000", "#1a1a1a", "#8B0000", "#2d2d2d",
+  "#FF2222", "#111111", "#C00000", "#333333",
+  "#E50000", "#222222", "#B00000", "#3a3a3a",
+];
+
+// ─── Countdown timer hook ─────────────────────────────────────
+function useCountdown7pm() {
+  const [timeLeft, setTimeLeft] = useState("");
+  useEffect(() => {
+    function calc() {
+      const now = new Date();
+      const next7pm = new Date();
+      next7pm.setHours(19, 0, 0, 0);
+      if (now >= next7pm) next7pm.setDate(next7pm.getDate() + 1);
+      const diff = next7pm.getTime() - now.getTime();
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      setTimeLeft(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+    }
+    calc();
+    const id = setInterval(calc, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return timeLeft;
+}
+
+// ─── Canvas wheel component ───────────────────────────────────
+interface WheelCanvasProps {
+  names: string[];
+  spinning: boolean;
+  winnerIndex: number | null;
+  onSpinComplete: () => void;
+}
+
+function WheelCanvas({ names, spinning, winnerIndex, onSpinComplete }: WheelCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const angleRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const spinningRef = useRef(false);
+  const onSpinCompleteRef = useRef(onSpinComplete);
+  onSpinCompleteRef.current = onSpinComplete;
+
+  const drawWheel = useCallback((angle: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = W / 2;
+    const cy = H / 2;
+    const r = Math.min(cx, cy) - 8;
+
+    ctx.clearRect(0, 0, W, H);
+
+    if (names.length === 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fill();
+      ctx.strokeStyle = "#D10000";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff44";
+      ctx.font = "bold 18px 'DM Sans', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("No entries yet", cx, cy);
+      return;
+    }
+
+    const segAngle = (Math.PI * 2) / names.length;
+
+    names.forEach((name, i) => {
+      const startAngle = angle + i * segAngle;
+      const endAngle = startAngle + segAngle;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+      ctx.fill();
+      ctx.strokeStyle = "#080808";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(startAngle + segAngle / 2);
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      const fontSize = names.length > 20 ? 9 : names.length > 12 ? 11 : names.length > 8 ? 13 : 15;
+      ctx.font = `bold ${fontSize}px 'DM Sans', sans-serif`;
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 3;
+
+      const textR = r - 12;
+      const maxWidth = textR * 0.75;
+      const displayName = name.length > 18 ? name.slice(0, 16) + "..." : name;
+      ctx.fillText(displayName, textR, 0, maxWidth);
+      ctx.restore();
+    });
+
+    // Center hub
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+    ctx.fillStyle = "#D10000";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+  }, [names]);
+
+  useEffect(() => {
+    drawWheel(angleRef.current);
+  }, [names, drawWheel]);
+
+  useEffect(() => {
+    if (!spinning || names.length === 0) return;
+    if (spinningRef.current) return;
+    spinningRef.current = true;
+
+    const segAngle = (Math.PI * 2) / names.length;
+    const targetIdx = winnerIndex !== null ? winnerIndex : Math.floor(Math.random() * names.length);
+    const currentAngle = angleRef.current % (Math.PI * 2);
+    const targetMid = -(targetIdx * segAngle + segAngle / 2);
+    let delta = targetMid - currentAngle;
+    delta = ((delta % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    delta += Math.PI * 10;
+
+    const totalAngle = delta;
+    const duration = 4500;
+    let startTime: number | null = null;
+    const startAngle = angleRef.current;
+
+    function easeOut(t: number) {
+      return 1 - Math.pow(1 - t, 4);
+    }
+
+    function frame(ts: number) {
+      if (!startTime) startTime = ts;
+      const elapsed = ts - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      angleRef.current = startAngle + totalAngle * easeOut(t);
+      drawWheel(angleRef.current);
+
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(frame);
+      } else {
+        spinningRef.current = false;
+        onSpinCompleteRef.current();
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(frame);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [spinning, winnerIndex, names, drawWheel]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={420}
+      height={420}
+      className="rounded-full"
+      style={{ maxWidth: "100%", height: "auto" }}
+    />
+  );
+}
+
+// ─── Knife ticker SVG ─────────────────────────────────────────
+function KnifeTicker() {
+  return (
+    <div
+      className="absolute"
+      style={{
+        right: "-22px",
+        top: "50%",
+        transform: "translateY(-50%) rotate(180deg)",
+        zIndex: 10,
+        filter: "drop-shadow(0 0 4px rgba(209,0,0,0.8))",
+      }}
+    >
+      <svg width="48" height="28" viewBox="0 0 48 28" fill="none">
+        <path d="M48 14 L8 4 L2 14 L8 24 Z" fill="#C0C0C0" />
+        <path d="M48 14 L8 4 L6 14" fill="#E8E8E8" />
+        <rect x="0" y="10" width="10" height="8" rx="2" fill="#1a1a1a" />
+        <rect x="1" y="11" width="8" height="6" rx="1" fill="#333" />
+        <circle cx="3" cy="14" r="1" fill="#888" />
+        <circle cx="7" cy="14" r="1" fill="#888" />
+        <circle cx="44" cy="14" r="2" fill="#D10000" />
+      </svg>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────
 export default function WheelOfNames() {
-  const { user, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
-  const [spinRotation, setSpinRotation] = useState(0);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const countdown = useCountdown7pm();
+
+  const { data: entries = [], refetch: refetchEntries } = trpc.promoWheel.getEntries.useQuery();
+  const { data: lastWinner, refetch: refetchWinner } = trpc.promoWheel.getLastWinner.useQuery();
+
+  const hasEnteredToday = !!entries.find(e => user && e.userId === user.id && !e.isPaid);
+
   const [isSpinning, setIsSpinning] = useState(false);
-  const [submissionName, setSubmissionName] = useState("");
+  const [spinWinnerIndex, setSpinWinnerIndex] = useState<number | null>(null);
+  const [spinResult, setSpinResult] = useState<{ name: string } | null>(null);
+  const [showResult, setShowResult] = useState(false);
+
+  const [submitName, setSubmitName] = useState("");
+  const [adminName, setAdminName] = useState("");
   const [showPaidModal, setShowPaidModal] = useState(false);
-  const [paidQuantity, setPaidQuantity] = useState(1);
-  const [countdownTime, setCountdownTime] = useState("");
-  const [adminNameInput, setAdminNameInput] = useState("");
+  const [paidQty, setPaidQty] = useState(1);
 
-  // Queries
-  const { data: entries, isLoading: entriesLoading, refetch: refetchEntries } = trpc.promoWheel.getEntries.useQuery();
-  const { data: lastWinner } = trpc.promoWheel.getLastWinner.useQuery();
-  const { data: todaysSpin } = trpc.promoWheel.getTodaysSpin.useQuery();
-
-  // Mutations
-  const submitNameMutation = trpc.promoWheel.submitName.useMutation({
-    onSuccess: () => {
-      setSubmissionName("");
-      refetchEntries();
-    },
+  const submitMutation = trpc.promoWheel.submitName.useMutation({
+    onSuccess: () => { setSubmitName(""); refetchEntries(); },
   });
 
-  const adminAddNameMutation = trpc.promoWheel.adminAddName.useMutation({
-    onSuccess: () => {
-      setAdminNameInput("");
-      refetchEntries();
+  const adminSpinMutation = trpc.promoWheel.adminSpin.useMutation({
+    onSuccess: (data) => {
+      const idx = entries.findIndex(e => e.name === data.winner.name);
+      setSpinWinnerIndex(idx >= 0 ? idx : 0);
+      setSpinResult({ name: data.winner.name });
+      setIsSpinning(true);
     },
+    onError: (err) => alert(err.message),
   });
 
-  const adminRemoveNameMutation = trpc.promoWheel.adminRemoveName.useMutation({
-    onSuccess: () => {
-      refetchEntries();
-    },
+  const adminResetMutation = trpc.promoWheel.adminReset.useMutation({
+    onSuccess: () => { refetchEntries(); refetchWinner(); setSpinResult(null); setShowResult(false); },
+  });
+
+  const adminAddMutation = trpc.promoWheel.adminAddName.useMutation({
+    onSuccess: () => { setAdminName(""); refetchEntries(); },
+  });
+
+  const adminRemoveMutation = trpc.promoWheel.adminRemoveName.useMutation({
+    onSuccess: () => refetchEntries(),
   });
 
   const buyEntriesMutation = trpc.promoWheel.buyEntries.useMutation({
     onSuccess: () => {
-      setPaidQuantity(1);
       setShowPaidModal(false);
+      alert("Request sent! Admin will confirm your paid entries after payment verification.");
     },
   });
 
-  // Calculate countdown to 7pm
-  useEffect(() => {
-    const updateCountdown = () => {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19, 0, 0); // 7pm
-      
-      if (now > today) {
-        today.setDate(today.getDate() + 1);
-      }
+  function handleSpinComplete() {
+    setIsSpinning(false);
+    setShowResult(true);
+    refetchEntries();
+    refetchWinner();
+  }
 
-      const diff = today.getTime() - now.getTime();
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  function handleAdminSpin() {
+    if (entries.length === 0) { alert("No entries on the wheel!"); return; }
+    setShowResult(false);
+    adminSpinMutation.mutate();
+  }
 
-      setCountdownTime(`${hours}h ${minutes}m ${seconds}s`);
-    };
+  function handleAdminReset() {
+    if (!confirm("Reset the wheel? This will clear all entries without picking a winner.")) return;
+    adminResetMutation.mutate();
+  }
 
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Simulate wheel spin
-  const handleSpin = () => {
-    if (!isAuthenticated) return;
-    setIsSpinning(true);
-    const spins = Math.random() * 360 + 720;
-    setSpinRotation(prev => prev + spins);
-    setTimeout(() => setIsSpinning(false), 3000);
-  };
+  const names = entries.map(e => e.name);
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header with home button */}
-        <div className="flex items-start justify-between mb-12 gap-4">
-          <div className="text-center flex-1">
-            <h1 className="font-['Anton'] text-6xl md:text-8xl uppercase tracking-wider text-red-600 mb-3">
-              DAILY FREE PROMO WHEEL
-            </h1>
-            <p className="text-white/60 text-lg">Win a free promo post daily at 7pm</p>
+    <div className="min-h-screen bg-[#080808] text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      {/* Header */}
+      <div className="border-b border-white/10 bg-[#0d0d0d]">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/">
+            <button className="flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm font-medium">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M3.828 7H14v2H3.828l4.243 4.243-1.414 1.414L0 8l6.657-6.657 1.414 1.414L3.828 7z"/>
+              </svg>
+              Home
+            </button>
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+            <span className="font-['Anton'] text-lg tracking-wider">
+              DAILY FREE <span className="text-red-600">PROMO WHEEL</span>
+            </span>
           </div>
-          <a
-            href="/"
-            className="flex items-center gap-2 px-4 py-2 border border-white/20 text-white/60 hover:border-red-600 hover:text-red-400 transition-all duration-200 rounded-sm flex-shrink-0 mt-2"
-            title="Back to home"
-          >
-            <Home className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs uppercase tracking-widest font-medium">Home</span>
-          </a>
+          <div className="text-xs text-white/40 uppercase tracking-widest hidden sm:block">
+            Free Daily Entry
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Countdown + last winner row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="border border-white/10 bg-white/[0.03] p-5 flex flex-col items-center justify-center">
+            <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-2 font-semibold">Next Spin In</div>
+            <div className="font-['Anton'] text-5xl text-white tracking-wider" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {countdown}
+            </div>
+            <div className="text-white/40 text-xs mt-1 uppercase tracking-widest">Daily spin at 7:00 PM</div>
+          </div>
+
+          <div className="border border-white/10 bg-white/[0.03] p-5 flex flex-col items-center justify-center">
+            <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-2 font-semibold">Last Winner</div>
+            {lastWinner ? (
+              <>
+                <div className="font-['Anton'] text-3xl text-white mb-1">{lastWinner.winnerName}</div>
+                <div className="text-white/40 text-xs uppercase tracking-widest">{lastWinner.spinDate}</div>
+              </>
+            ) : (
+              <div className="text-white/30 text-sm">No spins yet</div>
+            )}
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Left: Wheel Visualization */}
-          <div className="md:col-span-1 flex flex-col items-center">
-            <div className="relative w-64 h-64 mb-6">
-              {/* Wheel circle */}
-              <div
-                className={`absolute inset-0 rounded-full border-4 border-red-600 bg-gradient-to-br from-red-600/20 to-red-900/20 flex items-center justify-center transition-transform ${
-                  isSpinning ? "" : ""
-                }`}
-                style={{
-                  transform: `rotate(${spinRotation}deg)`,
-                  transitionDuration: isSpinning ? "3s" : "0s",
-                }}
-              >
-                {/* Wheel segments */}
-                {entries?.slice(0, 12).map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute w-px h-24 bg-white/20 origin-bottom"
-                    style={{ transform: `rotate(${(i * 360) / 12}deg) translateY(-48px)` }}
-                  />
-                ))}
-                {/* Center circle */}
-                <div className="w-12 h-12 rounded-full bg-red-600/30 border border-red-600" />
-              </div>
-
-              {/* Knife pointer at top */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0 border-l-6 border-r-6 border-t-8 border-l-transparent border-r-transparent border-t-red-600 z-10" />
-            </div>
-
-            {/* Previous Winner */}
-            {lastWinner && (
-              <div className="text-center mb-6 w-full">
-                <p className="text-white/60 text-sm mb-2">Last Winner</p>
-                <p className="font-['Anton'] text-2xl text-red-600">{lastWinner.winnerName}</p>
+        {/* Main content: wheel + sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Wheel */}
+          <div className="lg:col-span-2 flex flex-col items-center">
+            {showResult && spinResult && (
+              <div className="w-full mb-6 border border-red-600 bg-red-600/10 p-5 text-center">
+                <div className="text-xs text-red-400 uppercase tracking-[0.3em] mb-1">Today's Winner</div>
+                <div className="font-['Anton'] text-4xl text-white">{spinResult.name}</div>
+                <div className="text-white/50 text-sm mt-1">Congratulations!</div>
               </div>
             )}
 
-            {/* Countdown */}
-            <div className="flex items-center gap-2 text-white/60 text-sm mb-6">
-              <Clock className="w-4 h-4" />
-              <span>Next spin: {countdownTime}</span>
+            <div className="relative inline-flex items-center justify-center">
+              <WheelCanvas
+                names={names}
+                spinning={isSpinning}
+                winnerIndex={spinWinnerIndex}
+                onSpinComplete={handleSpinComplete}
+              />
+              <KnifeTicker />
             </div>
 
-            {/* Spin Button */}
-            <Button
-              onClick={handleSpin}
-              disabled={isSpinning || !isAuthenticated}
-              className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50"
-            >
-              {isSpinning ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Gift className="w-4 h-4 mr-2" />}
-              {isSpinning ? "Spinning..." : "View Wheel"}
-            </Button>
+            <div className="mt-4 text-white/40 text-sm">
+              {entries.length} {entries.length === 1 ? "name" : "names"} on the wheel
+            </div>
+
+            {isAdmin && (
+              <div className="mt-6 w-full max-w-md border border-red-600/30 bg-red-600/5 p-5">
+                <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-4 font-semibold">Admin Controls</div>
+                <div className="flex gap-3 mb-4">
+                  <button
+                    onClick={handleAdminSpin}
+                    disabled={isSpinning || adminSpinMutation.isPending || entries.length === 0}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
+                  >
+                    {isSpinning || adminSpinMutation.isPending ? "Spinning..." : "Spin Wheel"}
+                  </button>
+                  <button
+                    onClick={handleAdminReset}
+                    disabled={adminResetMutation.isPending}
+                    className="flex-1 border border-white/20 hover:border-white/50 text-white/60 hover:text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <form
+                  onSubmit={e => { e.preventDefault(); if (adminName.trim()) adminAddMutation.mutate({ name: adminName.trim() }); }}
+                  className="flex gap-2"
+                >
+                  <input
+                    value={adminName}
+                    onChange={e => setAdminName(e.target.value)}
+                    placeholder="Add name manually..."
+                    maxLength={128}
+                    className="flex-1 bg-white/5 border border-white/10 text-white placeholder-white/30 px-3 py-2 text-sm focus:outline-none focus:border-red-600/50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!adminName.trim() || adminAddMutation.isPending}
+                    className="bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white px-4 py-2 text-sm font-semibold transition-all"
+                  >
+                    Add
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
 
-          {/* Right: Submission Form & Names List */}
-          <div className="md:col-span-2">
-            {/* Submission Form */}
-            {isAuthenticated ? (
-              <Card className="p-6 bg-white/[0.03] border-white/10 mb-6">
-                <h2 className="text-xl font-['Anton'] text-red-600 mb-4">Submit Your Name</h2>
-                <div className="flex gap-2 mb-4">
-                  <Input
-                    type="text"
-                    placeholder="Enter your name..."
-                    value={submissionName}
-                    onChange={(e) => setSubmissionName(e.target.value)}
-                    maxLength={128}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={() => submitNameMutation.mutate({ name: submissionName })}
-                    disabled={!submissionName || submitNameMutation.isPending}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    {submitNameMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
-                  </Button>
+          {/* Sidebar */}
+          <div className="flex flex-col gap-6">
+            {/* Submit name */}
+            <div className="border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">Enter Today's Wheel</div>
+              {!user ? (
+                <div className="text-white/50 text-sm">
+                  <a href="/api/oauth/login" className="text-red-500 hover:text-red-400 underline">Sign in</a> to submit your name for free.
                 </div>
-                <p className="text-white/40 text-xs">1 free entry per account. Buy more for $5 each.</p>
-                <Button
-                  onClick={() => setShowPaidModal(true)}
-                  variant="outline"
-                  className="w-full mt-4 border-red-600/30 text-white/60 hover:border-red-600 hover:text-red-400"
-                >
-                  Buy Additional Entries
-                </Button>
-              </Card>
-            ) : (
-              <Card className="p-6 bg-white/[0.03] border-white/10 mb-6 text-center">
-                <p className="text-white/60 mb-4">Log in to submit your name</p>
-                <Button className="bg-red-600 hover:bg-red-700">Sign In</Button>
-              </Card>
-            )}
+              ) : hasEnteredToday ? (
+                <div className="text-center py-4">
+                  <div className="text-green-400 text-sm font-semibold mb-1">You're in!</div>
+                  <div className="text-white/40 text-xs">Already entered today. Come back tomorrow!</div>
+                  <button
+                    onClick={() => setShowPaidModal(true)}
+                    className="mt-3 w-full border border-red-600/40 text-red-400 hover:border-red-600 hover:text-red-300 py-2 text-xs font-semibold uppercase tracking-widest transition-all"
+                  >
+                    + Buy Extra Entries ($5 each)
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={e => { e.preventDefault(); if (submitName.trim()) submitMutation.mutate({ name: submitName.trim() }); }}>
+                  <input
+                    value={submitName}
+                    onChange={e => setSubmitName(e.target.value)}
+                    placeholder="Your name or artist name..."
+                    maxLength={128}
+                    className="w-full bg-white/5 border border-white/10 text-white placeholder-white/30 px-3 py-2 text-sm mb-3 focus:outline-none focus:border-red-600/50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!submitName.trim() || submitMutation.isPending}
+                    className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-2 text-sm font-bold uppercase tracking-widest transition-all"
+                  >
+                    {submitMutation.isPending ? "Submitting..." : "Submit Free Entry"}
+                  </button>
+                  {submitMutation.isError && (
+                    <div className="text-red-400 text-xs mt-2">{submitMutation.error.message}</div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowPaidModal(true)}
+                    className="mt-2 w-full border border-white/10 text-white/40 hover:text-white/60 py-2 text-xs font-semibold uppercase tracking-widest transition-all"
+                  >
+                    + Buy Extra Entries ($5 each)
+                  </button>
+                </form>
+              )}
+            </div>
 
-            {/* Names List */}
-            <div>
-              <h2 className="text-2xl font-['Anton'] mb-4 text-red-600">Current Entries ({entries?.length || 0})</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto border border-white/10 p-4 rounded bg-white/[0.03]">
-                {entries && entries.length > 0 ? (
-                  entries.map((entry, idx) => (
-                    <div key={entry.id} className="p-3 border border-red-600/30 bg-red-600/10 rounded text-center text-sm relative group">
-                      <div className="font-semibold text-white">{entry.name}</div>
-                      <div className="text-white/40 text-xs mt-1">#{idx + 1}</div>
-                      
-                      {/* Admin remove button */}
-                      {user?.role === "admin" && (
+            {/* Entries list */}
+            <div className="border border-white/10 bg-white/[0.03] p-5 flex-1">
+              <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">
+                On the Wheel ({entries.length})
+              </div>
+              {entries.length === 0 ? (
+                <div className="text-white/30 text-sm text-center py-6">No entries yet. Be the first!</div>
+              ) : (
+                <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
+                  {entries.map((entry, i) => (
+                    <div key={entry.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="w-3 h-3 rounded-sm flex-shrink-0"
+                          style={{ backgroundColor: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }}
+                        />
+                        <span className="text-sm text-white/80 truncate">{entry.name}</span>
+                        {entry.isPaid && (
+                          <span className="text-xs text-yellow-500 border border-yellow-500/30 px-1 flex-shrink-0">PAID</span>
+                        )}
+                      </div>
+                      {isAdmin && (
                         <button
-                          onClick={() => adminRemoveNameMutation.mutate({ entryId: entry.id })}
-                          className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 rounded-full p-1 hover:bg-red-700"
-                          title="Remove entry"
+                          onClick={() => adminRemoveMutation.mutate({ entryId: entry.id })}
+                          className="text-white/20 hover:text-red-500 transition-colors ml-2 flex-shrink-0 text-xs"
+                          title="Remove"
                         >
-                          <Trash2 className="w-3 h-3 text-white" />
+                          x
                         </button>
                       )}
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center text-white/40 py-8">No entries yet</div>
-                )}
-              </div>
-
-              {/* Admin: Add Name Manually */}
-              {user?.role === "admin" && (
-                <div className="mt-6 p-4 border border-red-600/30 bg-red-600/5 rounded">
-                  <h3 className="text-lg font-['Anton'] text-red-600 mb-3">Admin: Add Name Manually</h3>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      placeholder="Enter name..."
-                      value={adminNameInput}
-                      onChange={(e) => setAdminNameInput(e.target.value)}
-                      maxLength={128}
-                      className="flex-1"
-                    />
-                    <Button
-                      onClick={() => adminAddNameMutation.mutate({ name: adminNameInput })}
-                      disabled={!adminNameInput || adminAddNameMutation.isPending}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      {adminAddNameMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
-                    </Button>
-                  </div>
+                  ))}
                 </div>
               )}
+            </div>
+
+            {/* How it works */}
+            <div className="border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">How It Works</div>
+              <ul className="space-y-2 text-white/50 text-xs leading-relaxed list-none">
+                <li>Submit your name once per day for free</li>
+                <li>Admin spins the wheel daily at 7 PM</li>
+                <li>Winner gets free promo on our platform</li>
+                <li>Buy extra entries for more chances ($5 each)</li>
+                <li>Wheel resets after each spin</li>
+              </ul>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Paid Entries Modal */}
+      {/* Paid entries modal */}
       {showPaidModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <Card className="bg-[#080808] border-white/10 max-w-md w-full p-6">
-            <h2 className="text-2xl font-['Anton'] text-red-600 mb-4">Buy Additional Entries</h2>
+          <div className="bg-[#111] border border-white/10 p-6 max-w-sm w-full">
+            <div className="font-['Anton'] text-2xl mb-1">BUY EXTRA ENTRIES</div>
+            <div className="text-white/50 text-sm mb-5">$5 per additional entry. Admin confirms after payment.</div>
             <div className="mb-4">
-              <label className="text-white/60 text-sm mb-2 block">Quantity</label>
-              <Input
-                type="number"
-                min="1"
-                max="100"
-                value={paidQuantity}
-                onChange={(e) => setPaidQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="mb-2"
-              />
-              <p className="text-white/40 text-sm">${paidQuantity * 5} total</p>
+              <label className="text-xs text-white/50 uppercase tracking-widest block mb-2">Number of Entries</label>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setPaidQty(q => Math.max(1, q - 1))}
+                  className="w-10 h-10 border border-white/20 text-white hover:border-white/50 text-xl font-bold transition-all"
+                >-</button>
+                <span className="font-['Anton'] text-3xl w-12 text-center">{paidQty}</span>
+                <button
+                  onClick={() => setPaidQty(q => Math.min(10, q + 1))}
+                  className="w-10 h-10 border border-white/20 text-white hover:border-white/50 text-xl font-bold transition-all"
+                >+</button>
+              </div>
+              <div className="text-red-500 font-['Anton'] text-2xl mt-3">Total: ${paidQty * 5}</div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => buyEntriesMutation.mutate({ quantity: paidQuantity })}
+            <div className="text-white/40 text-xs mb-5 leading-relaxed">
+              After submitting, send $5 per entry to our Cash App or Venmo (see our Instagram bio). Admin will confirm your entries once payment is verified.
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => buyEntriesMutation.mutate({ quantity: paidQty })}
                 disabled={buyEntriesMutation.isPending}
-                className="flex-1 bg-red-600 hover:bg-red-700"
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
               >
-                {buyEntriesMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Buy"}
-              </Button>
-              <Button
+                {buyEntriesMutation.isPending ? "Submitting..." : "Request Entries"}
+              </button>
+              <button
                 onClick={() => setShowPaidModal(false)}
-                variant="outline"
-                className="flex-1 border-white/20"
+                className="flex-1 border border-white/20 text-white/60 hover:text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
               >
                 Cancel
-              </Button>
+              </button>
             </div>
-          </Card>
+          </div>
         </div>
       )}
     </div>

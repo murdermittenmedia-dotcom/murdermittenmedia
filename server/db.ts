@@ -1312,8 +1312,15 @@ export async function getWheelOfNamesEntries() {
 export async function getUserWheelOfNamesEntry(userId: number) {
   const db = await getDb();
   if (!db) return null;
+  // Check if user has a FREE entry created today (entries are cleared daily at 7pm)
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
   const result = await db.select().from(wheelOfNamesEntries)
-    .where(and(eq(wheelOfNamesEntries.userId, userId), eq(wheelOfNamesEntries.isPaid, false)))
+    .where(and(
+      eq(wheelOfNamesEntries.userId, userId),
+      eq(wheelOfNamesEntries.isPaid, false),
+      gte(wheelOfNamesEntries.createdAt, todayStart)
+    ))
     .limit(1);
   return result[0] || null;
 }

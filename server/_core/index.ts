@@ -12,6 +12,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
+import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -767,6 +768,34 @@ async function startServer() {
     "/api/trpc",
     createExpressMiddleware({ router: appRouter, createContext })
   );
+
+  // ── Daily Wheel Auto-Spin (Heartbeat cron at 7pm daily) ──────
+  app.post("/api/scheduled/daily-wheel-spin", async (req, res) => {
+    try {
+      // Verify this is a cron call via the x-manus-cron-task-uid header
+      const cronTaskUid = req.headers["x-manus-cron-task-uid"];
+      if (!cronTaskUid) {
+        return res.status(403).json({ error: "cron-only endpoint" });
+      }
+      const entries = await getWheelOfNamesEntries();
+      if (entries.length === 0) {
+        return res.json({ ok: true, skipped: "no entries", timestamp: new Date().toISOString() });
+      }
+      const winner = entries[Math.floor(Math.random() * entries.length)];
+      const today = new Date().toISOString().split('T')[0];
+      await createWheelOfNamesSpin(today, winner.userId || null, winner.name);
+      await clearWheelOfNamesEntries();
+      // Notify owner
+      try {
+        const { notifyOwner } = await import('./notification');
+        await notifyOwner({ title: 'Daily Wheel Auto-Spun!', content: `Today's winner is: ${winner.name}` });
+      } catch {}
+      return res.json({ ok: true, winner: winner.name, timestamp: new Date().toISOString() });
+    } catch (err: any) {
+      console.error('[daily-wheel-spin] Error:', err);
+      return res.status(500).json({ error: err?.message ?? 'Unknown error', timestamp: new Date().toISOString() });
+    }
+  });
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

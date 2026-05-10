@@ -1667,6 +1667,27 @@ export const appRouter = router({
         await addWheelOfNamesEntry(0, input.name, false);
         return { success: true };
       }),
+
+    // Admin: spin the wheel — picks random winner, records spin, clears all entries
+    adminSpin: adminProcedure.mutation(async ({ ctx }) => {
+      const entries = await getWheelOfNamesEntries();
+      if (entries.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "No entries on the wheel to spin" });
+      const winner = entries[Math.floor(Math.random() * entries.length)];
+      const today = new Date().toISOString().split('T')[0];
+      await createWheelOfNamesSpin(today, winner.userId || null, winner.name);
+      await clearWheelOfNamesEntries();
+      try {
+        const { notifyOwner } = await import('./_core/notification');
+        await notifyOwner({ title: 'Daily Wheel Spun!', content: `Today's winner is: ${winner.name}` });
+      } catch {}
+      return { success: true, winner: { name: winner.name, userId: winner.userId } };
+    }),
+
+    // Admin: reset the wheel without picking a winner
+    adminReset: adminProcedure.mutation(async ({ ctx }) => {
+      await clearWheelOfNamesEntries();
+      return { success: true };
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;
