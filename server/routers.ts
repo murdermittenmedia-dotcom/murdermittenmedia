@@ -1682,9 +1682,26 @@ export const appRouter = router({
       const entries = await getWheelOfNamesEntries();
       if (entries.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "No entries on the wheel to spin" });
       const winner = entries[Math.floor(Math.random() * entries.length)];
+      const winnerIndex = entries.findIndex(e => e.id === winner.id);
       const today = new Date().toISOString().split('T')[0];
       await createWheelOfNamesSpin(today, winner.userId || null, winner.name);
       await clearWheelOfNamesEntries();
+      // Broadcast live spin to all viewers on the promo_wheel room
+      try {
+        const io = (ctx.req as any).app?.io;
+        if (io) {
+          const SPIN_DURATION = 9000;
+          io.to("promo_wheel").emit("wof:spin_start", {
+            winnerIndex,
+            names: entries.map(e => e.name),
+            duration: SPIN_DURATION,
+          });
+          // After spin completes, broadcast the result
+          setTimeout(() => {
+            io.to("promo_wheel").emit("wof:spin_result", { winnerName: winner.name });
+          }, SPIN_DURATION + 500);
+        }
+      } catch {}
       try {
         const { notifyOwner } = await import('./_core/notification');
         await notifyOwner({ title: 'Daily Wheel Spun!', content: `Today's winner is: ${winner.name}` });

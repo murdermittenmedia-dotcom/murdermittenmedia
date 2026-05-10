@@ -780,3 +780,11 @@
 ## Wheel Spin Duplicate Date Fix
 - [x] Fix createWheelOfNamesSpin to use upsert (INSERT ... ON DUPLICATE KEY UPDATE) so re-spinning today overwrites the earlier record instead of throwing a duplicate key error
 - [x] Fix auto-spin scheduled job to skip if admin already manually spun today (prevents double-spin)
+
+## Wheel Animation & Live Broadcast
+- [x] Fix wheel animation to land precisely on the winner's name (calculate exact target angle)
+- [x] Make spin slow and dramatic: 9 seconds total, quintic easeOut deceleration
+- [x] Broadcast live spin animation to all viewers via Socket.io (wof:spin_start event with winner index + names snapshot + duration)
+- [x] All connected viewers see the wheel spin in real-time simultaneously (promo_wheel Socket.io room)
+- [x] 7 PM auto-spin triggers the same live animation for all connected viewers
+- [x] Winner reveal: confetti burst + winner banner after wheel stops (wof:spin_result event)

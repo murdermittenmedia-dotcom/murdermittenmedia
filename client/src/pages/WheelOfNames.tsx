@@ -2,6 +2,7 @@
    MURDER MITTEN MEDIA — Daily Free Promo Wheel
    Canvas-based spinning wheel with names drawn on segments
    Admin-only spin; users submit their name (1 per day)
+   Live broadcast via Socket.io so all viewers see the spin
    ============================================================ */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -9,6 +10,7 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { io as socketIO, Socket } from "socket.io-client";
 
 // ─── Segment colors ──────────────────────────────────────────
 const SEGMENT_COLORS = [
@@ -39,22 +41,29 @@ function useCountdown7pm() {
   return timeLeft;
 }
 
+// ─── Easing: starts fast, rubber-band deceleration at end ────
+function easeOutQuintic(t: number): number {
+  return 1 - Math.pow(1 - t, 5);
+}
+
 // ─── Canvas wheel component ───────────────────────────────────
 interface WheelCanvasProps {
   names: string[];
   spinning: boolean;
   winnerIndex: number | null;
+  spinDuration: number;   // ms — passed from outside so viewers sync
   onSpinComplete: () => void;
 }
 
-function WheelCanvas({ names, spinning, winnerIndex, onSpinComplete }: WheelCanvasProps) {
+function WheelCanvas({ names, spinning, winnerIndex, spinDuration, onSpinComplete }: WheelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const angleRef = useRef(0);
+  const angleRef = useRef(0);           // current rotation in radians
   const rafRef = useRef<number | null>(null);
   const spinningRef = useRef(false);
   const onSpinCompleteRef = useRef(onSpinComplete);
   onSpinCompleteRef.current = onSpinComplete;
 
+  // ── Draw ──────────────────────────────────────────────────
   const drawWheel = useCallback((angle: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -138,6 +147,7 @@ function WheelCanvas({ names, spinning, winnerIndex, onSpinComplete }: WheelCanv
     drawWheel(angleRef.current);
   }, [names, drawWheel]);
 
+  // ── Spin animation ────────────────────────────────────────
   useEffect(() => {
     if (!spinning || names.length === 0) return;
     if (spinningRef.current) return;
@@ -145,26 +155,34 @@ function WheelCanvas({ names, spinning, winnerIndex, onSpinComplete }: WheelCanv
 
     const segAngle = (Math.PI * 2) / names.length;
     const targetIdx = winnerIndex !== null ? winnerIndex : Math.floor(Math.random() * names.length);
+
+    // The ticker (knife) is at the RIGHT side of the wheel (3 o'clock = 0 radians).
+    // We want the CENTER of the winner's segment to land at 0 radians.
+    // Segment i starts at (angle + i * segAngle) and its center is at (angle + i * segAngle + segAngle/2).
+    // We need: angle + targetIdx * segAngle + segAngle/2 ≡ 0  (mod 2π)
+    // So: targetAngle = -(targetIdx * segAngle + segAngle/2)
+    // Then normalise to [0, 2π) and add extra full rotations for drama.
+
     const currentAngle = angleRef.current % (Math.PI * 2);
-    const targetMid = -(targetIdx * segAngle + segAngle / 2);
-    let delta = targetMid - currentAngle;
-    delta = ((delta % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    delta += Math.PI * 10;
+    const targetAngleRaw = -(targetIdx * segAngle + segAngle / 2);
+    // Normalise target into [0, 2π)
+    const targetAngleNorm = ((targetAngleRaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    // How far do we need to rotate forward from current position?
+    let delta = targetAngleNorm - currentAngle;
+    if (delta <= 0) delta += Math.PI * 2;
+    // Add 8 full extra rotations for drama (≈ 8 × 360° before settling)
+    delta += Math.PI * 2 * 8;
 
     const totalAngle = delta;
-    const duration = 4500;
+    const duration = spinDuration;
     let startTime: number | null = null;
     const startAngle = angleRef.current;
-
-    function easeOut(t: number) {
-      return 1 - Math.pow(1 - t, 4);
-    }
 
     function frame(ts: number) {
       if (!startTime) startTime = ts;
       const elapsed = ts - startTime;
       const t = Math.min(elapsed / duration, 1);
-      angleRef.current = startAngle + totalAngle * easeOut(t);
+      angleRef.current = startAngle + totalAngle * easeOutQuintic(t);
       drawWheel(angleRef.current);
 
       if (t < 1) {
@@ -179,7 +197,7 @@ function WheelCanvas({ names, spinning, winnerIndex, onSpinComplete }: WheelCanv
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [spinning, winnerIndex, names, drawWheel]);
+  }, [spinning, winnerIndex, names, drawWheel, spinDuration]);
 
   return (
     <canvas
@@ -218,7 +236,65 @@ function KnifeTicker() {
   );
 }
 
+// ─── Confetti burst ───────────────────────────────────────────
+function ConfettiBurst({ active }: { active: boolean }) {
+  if (!active) return null;
+  const pieces = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    x: 30 + Math.random() * 40,
+    delay: Math.random() * 0.4,
+    color: ["#D10000", "#ffffff", "#FFD700", "#FF6B6B", "#FFF"][Math.floor(Math.random() * 5)],
+    size: 6 + Math.random() * 8,
+  }));
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 20 }}>
+      {pieces.map(p => (
+        <div
+          key={p.id}
+          className="absolute rounded-sm"
+          style={{
+            left: `${p.x}%`,
+            top: "30%",
+            width: p.size,
+            height: p.size * 0.6,
+            backgroundColor: p.color,
+            animation: `confettiFall 1.8s ease-out ${p.delay}s forwards`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes confettiFall {
+          0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+          100% { transform: translateY(200px) rotate(720deg) scale(0.3); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Socket hook for promo wheel room ────────────────────────
+function usePromoWheelSocket() {
+  const socketRef = useRef<Socket | null>(null);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    const socket = socketIO(window.location.origin, {
+      path: "/api/socket.io",
+      query: { room: "promo_wheel" },
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+    socket.on("connect", () => setConnected(true));
+    socket.on("disconnect", () => setConnected(false));
+    return () => { socket.disconnect(); };
+  }, []);
+
+  return { socketRef, connected };
+}
+
 // ─── Main page ────────────────────────────────────────────────
+const SPIN_DURATION = 9000; // 9 seconds — slow & dramatic
+
 export default function WheelOfNames() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -233,19 +309,58 @@ export default function WheelOfNames() {
   const [spinWinnerIndex, setSpinWinnerIndex] = useState<number | null>(null);
   const [spinResult, setSpinResult] = useState<{ name: string } | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // The names snapshot used during the current spin (so animation stays stable)
+  const [spinNames, setSpinNames] = useState<string[]>([]);
 
   const [submitHandle, setSubmitHandle] = useState("");
   const [adminName, setAdminName] = useState("");
   const [showPaidModal, setShowPaidModal] = useState(false);
-  const [paidQty, setPaidQty] = useState(1);
 
+  // ── Socket.io ─────────────────────────────────────────────
+  const { socketRef } = usePromoWheelSocket();
+
+  // Listen for live spin events from server (broadcast to all viewers)
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    function onSpinStart(data: { winnerIndex: number; names: string[]; duration: number }) {
+      setShowResult(false);
+      setShowConfetti(false);
+      setSpinNames(data.names);
+      setSpinWinnerIndex(data.winnerIndex);
+      setIsSpinning(true);
+    }
+
+    function onSpinResult(data: { winnerName: string }) {
+      setSpinResult({ name: data.winnerName });
+    }
+
+    socket.on("wof:spin_start", onSpinStart);
+    socket.on("wof:spin_result", onSpinResult);
+
+    return () => {
+      socket.off("wof:spin_start", onSpinStart);
+      socket.off("wof:spin_result", onSpinResult);
+    };
+  }, [socketRef]);
+
+  // ── Mutations ─────────────────────────────────────────────
   const submitMutation = trpc.promoWheel.submitName.useMutation({
     onSuccess: () => { setSubmitHandle(""); refetchEntries(); },
   });
 
   const adminSpinMutation = trpc.promoWheel.adminSpin.useMutation({
     onSuccess: (data) => {
-      const idx = entries.findIndex(e => e.name === data.winner.name);
+      // Server will broadcast wof:spin_start via Socket.io — admin also receives it
+      // But we also trigger locally as fallback (in case socket hasn't fired yet)
+      const currentNames = entries.map(e => e.name);
+      const idx = currentNames.findIndex(n => n === data.winner.name);
+      setShowResult(false);
+      setShowConfetti(false);
+      setSpinNames(currentNames);
       setSpinWinnerIndex(idx >= 0 ? idx : 0);
       setSpinResult({ name: data.winner.name });
       setIsSpinning(true);
@@ -254,7 +369,7 @@ export default function WheelOfNames() {
   });
 
   const adminResetMutation = trpc.promoWheel.adminReset.useMutation({
-    onSuccess: () => { refetchEntries(); refetchWinner(); setSpinResult(null); setShowResult(false); },
+    onSuccess: () => { refetchEntries(); refetchWinner(); setSpinResult(null); setShowResult(false); setShowConfetti(false); },
   });
 
   const adminAddMutation = trpc.promoWheel.adminAddName.useMutation({
@@ -272,16 +387,18 @@ export default function WheelOfNames() {
     },
   });
 
+  // ── Handlers ──────────────────────────────────────────────
   function handleSpinComplete() {
     setIsSpinning(false);
     setShowResult(true);
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 2500);
     refetchEntries();
     refetchWinner();
   }
 
   function handleAdminSpin() {
     if (entries.length === 0) { alert("No entries on the wheel!"); return; }
-    setShowResult(false);
     adminSpinMutation.mutate();
   }
 
@@ -290,7 +407,8 @@ export default function WheelOfNames() {
     adminResetMutation.mutate();
   }
 
-  const names = entries.map(e => e.name);
+  // Use spinNames snapshot during spin, fall back to live entries when idle
+  const displayNames = isSpinning ? spinNames : entries.map(e => e.name);
 
   return (
     <div className="min-h-screen bg-[#080808] text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -345,26 +463,31 @@ export default function WheelOfNames() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Wheel */}
           <div className="lg:col-span-2 flex flex-col items-center">
+            {/* Winner reveal banner */}
             {showResult && spinResult && (
-              <div className="w-full mb-6 border border-red-600 bg-red-600/10 p-5 text-center">
-                <div className="text-xs text-red-400 uppercase tracking-[0.3em] mb-1">Today's Winner</div>
-                <div className="font-['Anton'] text-4xl text-white">{spinResult.name}</div>
-                <div className="text-white/50 text-sm mt-1">Congratulations!</div>
+              <div className="w-full mb-6 border border-red-600 bg-red-600/10 p-5 text-center animate-pulse-once">
+                <div className="text-xs text-red-400 uppercase tracking-[0.3em] mb-1">🎉 Today's Winner</div>
+                <div className="font-['Anton'] text-5xl text-white mb-1">{spinResult.name}</div>
+                <div className="text-white/50 text-sm">Congratulations! You won a free promo post.</div>
               </div>
             )}
 
+            {/* Wheel canvas + ticker */}
             <div className="relative inline-flex items-center justify-center">
               <WheelCanvas
-                names={names}
+                names={displayNames}
                 spinning={isSpinning}
                 winnerIndex={spinWinnerIndex}
+                spinDuration={SPIN_DURATION}
                 onSpinComplete={handleSpinComplete}
               />
               <KnifeTicker />
+              <ConfettiBurst active={showConfetti} />
             </div>
 
             <div className="mt-4 text-white/40 text-sm">
               {entries.length} {entries.length === 1 ? "name" : "names"} on the wheel
+              {isSpinning && <span className="ml-3 text-red-400 animate-pulse font-semibold">● SPINNING LIVE</span>}
             </div>
 
             {isAdmin && (
@@ -401,8 +524,7 @@ export default function WheelOfNames() {
                     type="submit"
                     disabled={!adminName.trim() || adminAddMutation.isPending}
                     className="bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white px-4 py-2 text-sm font-semibold transition-all"
-                    onClick={e => {
-                      // Normalise: strip leading @ then re-add so it's stored as @handle
+                    onClick={() => {
                       const raw = adminName.trim().replace(/^@/, "");
                       if (raw) setAdminName(`@${raw}`);
                     }}
@@ -446,8 +568,8 @@ export default function WheelOfNames() {
                   submitMutation.mutate({ name: `@${raw}` });
                 }}>
                   <label className="block text-white/40 text-xs mb-1 uppercase tracking-widest">Instagram Handle</label>
-                  <div className="flex items-center border border-white/10 bg-white/5 mb-3 focus-within:border-red-600/50">
-                    <span className="text-white/40 pl-3 text-sm select-none">@</span>
+                  <div className="flex items-center border border-white/10 bg-white/5 mb-3">
+                    <span className="text-white/40 pl-3 text-sm">@</span>
                     <input
                       value={submitHandle.replace(/^@/, "")}
                       onChange={e => setSubmitHandle(e.target.value.replace(/^@/, ""))}
@@ -504,7 +626,7 @@ export default function WheelOfNames() {
                           className="text-white/20 hover:text-red-500 transition-colors ml-2 flex-shrink-0 text-xs"
                           title="Remove"
                         >
-                          x
+                          ×
                         </button>
                       )}
                     </div>
@@ -518,7 +640,7 @@ export default function WheelOfNames() {
               <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">How It Works</div>
               <ul className="space-y-2 text-white/50 text-xs leading-relaxed list-none">
                 <li>Submit your name once per day for free</li>
-                <li>Admin spins the wheel daily at 7 PM</li>
+                <li>Wheel spins live daily at 7 PM — watch it happen!</li>
                 <li>Winner gets free promo on our platform</li>
                 <li>Buy extra entries for more chances ($5 each)</li>
                 <li>Wheel resets after each spin</li>
@@ -532,11 +654,9 @@ export default function WheelOfNames() {
       {showPaidModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#111] border border-white/10 p-6 max-w-sm w-full">
-            {/* Header */}
             <div className="font-['Anton'] text-2xl mb-1">BUY EXTRA ENTRIES</div>
             <div className="text-white/50 text-sm mb-6">$5 per additional spin on the wheel.</div>
 
-            {/* Instagram CTA */}
             <div className="border border-red-600/30 bg-red-600/5 p-4 mb-6">
               <div className="text-xs text-red-500 uppercase tracking-[0.25em] font-semibold mb-2">How to Purchase</div>
               <p className="text-white/70 text-sm leading-relaxed mb-4">
@@ -555,7 +675,6 @@ export default function WheelOfNames() {
               </a>
             </div>
 
-            {/* Pricing note */}
             <div className="text-white/30 text-xs leading-relaxed mb-5">
               Pricing: $5 per extra entry &middot; Payment via CashApp, PayPal, or Zelle &middot; Entries added after payment confirmed
             </div>

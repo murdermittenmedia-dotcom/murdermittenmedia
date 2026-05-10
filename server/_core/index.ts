@@ -143,7 +143,7 @@ async function startServer() {
 
   io.on("connection", (socket) => {
     const room = socket.handshake.query.room as string;
-    const validRooms = ["music_wars", "music_review"];
+    const validRooms = ["music_wars", "music_review", "promo_wheel"];
     if (validRooms.includes(room)) {
       socket.join(room);
     }
@@ -810,8 +810,21 @@ async function startServer() {
         return res.json({ ok: true, skipped: "no entries", timestamp: new Date().toISOString() });
       }
       const winner = entries[Math.floor(Math.random() * entries.length)];
+      const winnerIndex = entries.findIndex(e => e.id === winner.id);
       await createWheelOfNamesSpin(today, winner.userId || null, winner.name);
       await clearWheelOfNamesEntries();
+      // Broadcast live spin to all viewers watching the promo wheel
+      try {
+        const SPIN_DURATION = 9000;
+        io.to("promo_wheel").emit("wof:spin_start", {
+          winnerIndex,
+          names: entries.map(e => e.name),
+          duration: SPIN_DURATION,
+        });
+        setTimeout(() => {
+          io.to("promo_wheel").emit("wof:spin_result", { winnerName: winner.name });
+        }, SPIN_DURATION + 500);
+      } catch {}
       // Notify owner
       try {
         const { notifyOwner } = await import('./notification');
