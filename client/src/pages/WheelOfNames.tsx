@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 // ─── Segment colors ──────────────────────────────────────────
 const SEGMENT_COLORS = [
@@ -420,7 +421,7 @@ export default function WheelOfNames() {
               <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">Enter Today's Wheel</div>
               {!user ? (
                 <div className="text-white/50 text-sm">
-                  <a href="/api/oauth/login" className="text-red-500 hover:text-red-400 underline">Sign in</a> to submit your name for free.
+                  <a href={getLoginUrl()} className="text-red-500 hover:text-red-400 underline">Sign in</a> to submit your Instagram @ for free.
                 </div>
               ) : hasEnteredToday ? (
                 <div className="text-center py-4">

@@ -751,3 +751,6 @@
 
 ## Daily Wheel — Buy Extra Entries Contact (May 2026)
 - [x] Replace automated "Buy Extra Entries" modal with Instagram DM instructions and clickable @murdermittenmedia link
+
+## Daily Wheel — Sign-in Button Fix (May 2026)
+- [x] Fix sign-in button on /daily-wheel page giving 404 — replace hardcoded /api/oauth/login href with getLoginUrl() helper
