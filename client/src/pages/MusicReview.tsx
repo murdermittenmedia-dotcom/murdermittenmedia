@@ -112,7 +112,7 @@ function VideoTile({
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube, reviewedTracks,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -128,10 +128,12 @@ function AdminPanel({
   adminMicBroadcast: ReturnType<typeof import("@/hooks/useAdminMicBroadcast").useAdminMicBroadcast>;
   playTrack: (sub: ReviewSubmission) => void;
   setSelectedYouTube: (val: { url: string; title: string; artist: string } | null) => void;
+  reviewedTracks?: ReviewSubmission[];
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
   const [showStreamSettings, setShowStreamSettings] = useState(false);
+  const audioPlayer = useAudioPlayer();
 
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
@@ -383,7 +385,7 @@ function AdminPanel({
             {/* Transport controls — Pause/Resume, Rewind, Skip */}
             <div className="grid grid-cols-4 gap-2 mb-2">
               <button
-                onClick={() => broadcastRadioPause(0)}
+                onClick={() => broadcastRadioPause(audioPlayer.currentTime)}
                 className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
                 title="Pause for all listeners"
               >
@@ -391,7 +393,7 @@ function AdminPanel({
                 Pause
               </button>
               <button
-                onClick={() => broadcastRadioResume(0)}
+                onClick={() => broadcastRadioResume(audioPlayer.currentTime)}
                 className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
                 title="Resume for all listeners"
               >
@@ -514,6 +516,43 @@ function AdminPanel({
             </div>
           )}
         </div>
+
+        {/* Previously Reviewed — Load to Radio */}
+        {reviewedTracks && reviewedTracks.length > 0 && (
+          <div>
+            <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Previously Reviewed — Load to Radio</div>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {reviewedTracks.map(sub => (
+                <div key={sub.id} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] text-xs">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-semibold truncate">{sub.songTitle}</div>
+                    <div className="text-white/40 truncate">{sub.artistName}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      playTrack(sub);
+                      broadcastReviewActive({
+                        submissionId: sub.id,
+                        artistName: sub.artistName,
+                        songTitle: sub.songTitle,
+                        audioUrl: null,
+                        youtubeUrl: sub.youtubeUrl ?? null,
+                        submissionType: sub.submissionType,
+                        fileKey: sub.fileKey ?? null,
+                        fileUrl: sub.fileUrl ?? null,
+                      });
+                      toast.success(`Loading: ${sub.songTitle}`);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-2 py-0.5 transition-colors flex-shrink-0"
+                    title="Load to Radio"
+                  >
+                    <Play className="w-2.5 h-2.5" /> Load
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Participants mic control */}
         {audioRoom.participants.filter(p => p.role !== "viewer").length > 0 && (
@@ -956,6 +995,7 @@ export default function MusicReview() {
                   adminMicBroadcast={adminMicBroadcast}
                   playTrack={playTrack}
                   setSelectedYouTube={setSelectedYouTube}
+                  reviewedTracks={reviewedTracks ?? []}
                 />
               </div>
             )}

@@ -765,3 +765,14 @@
 
 ## Music Wars — Duplicate Participant Bug (May 2026)
 - [x] Fix: same user appears twice in Voice Chat / Room Participants list — deduplicate by userId in getRoomList (useAdminMicBroadcast creates a second socket)
+
+## Admin Player Controls & Load to Radio (May 2026)
+- [ ] Fix admin Wars Radio controls: last song, skip, seek, pause/resume not working correctly
+- [ ] Add "Load to Radio" button on all previously submitted songs (review submissions list)
+- [ ] Add "Load to Radio" button on all queue entries in the Music Wars queue
+
+## Admin Player Controls Fix & Load to Radio Buttons
+- [x] Fix MusicWarsAdminHub: pause/resume now sends actual audioPlayer.currentTime instead of hardcoded 0
+- [x] Fix MusicReview AdminPanel: pause/resume now sends actual audioPlayer.currentTime instead of hardcoded 0
+- [x] MusicReview AdminPanel: add "Previously Reviewed — Load to Radio" section with Load buttons for all reviewed tracks
+- [x] MusicWars Entries tab: add Load to Radio (▶) button for any entry with a songUrl (active, eliminated, winner, pending)

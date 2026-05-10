@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useAudioRoom, type AudioParticipant } from "@/hooks/useAudioRoom";
 import { getLoginUrl } from "@/const";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 // ─── Live Stream Panel (offline-aware) ────────────────────────────────
 interface EventData {
   title: string | null;
@@ -1217,6 +1218,7 @@ function MusicWarsAdminHub({
   const [c2, setC2] = useState("");
   const [c3, setC3] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
+  const audioPlayer = useAudioPlayer();
   const activeEntries = entries.filter(e => e.status === "active");
 
   return (
@@ -1274,11 +1276,11 @@ function MusicWarsAdminHub({
                       <Rewind className="w-3.5 h-3.5" />
                     </button>
                     {warsRadioState.isPlaying ? (
-                      <button onClick={() => adminPause(0)} className="flex items-center justify-center border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs transition-colors" title="Pause">
+                      <button onClick={() => adminPause(audioPlayer.currentTime)} className="flex items-center justify-center border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs transition-colors" title="Pause">
                         <Pause className="w-3.5 h-3.5" />
                       </button>
                     ) : (
-                      <button onClick={() => adminResume(0)} className="flex items-center justify-center border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs transition-colors" title="Play">
+                      <button onClick={() => adminResume(audioPlayer.currentTime)} className="flex items-center justify-center border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs transition-colors" title="Play">
                         <Play className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -1427,6 +1429,15 @@ function MusicWarsAdminHub({
                       )}
                       {entry.status === "active" && (
                         <button onClick={() => onUpdateStatus(entry.id, "eliminated")} className="border border-red-600/50 text-red-400 px-2 py-1 hover:bg-red-600/20 transition-colors">Eliminate</button>
+                      )}
+                      {entry.songUrl && (
+                        <button
+                          onClick={() => onLoadToRadio(entry.artistName, entry.songTitle, entry.songUrl!, entries.indexOf(entry) + 1)}
+                          className="flex items-center gap-0.5 text-[10px] uppercase tracking-wider border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 px-1.5 py-0.5 transition-colors"
+                          title="Load to Radio"
+                        >
+                          <Play className="w-2.5 h-2.5" />
+                        </button>
                       )}
                       <span className={`px-1.5 py-0.5 text-xs uppercase ${
                         entry.status === "active" ? "text-green-400" : entry.status === "winner" ? "text-yellow-400" : entry.status === "eliminated" ? "text-red-400" : "text-white/30"
