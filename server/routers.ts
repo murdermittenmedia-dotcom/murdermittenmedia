@@ -37,6 +37,10 @@ import {
   getSkipLineOrders, getWheelPaidOrders,
   getAdminAnalytics,
   deleteUser, resetAllStats, resetAllSubmissions,
+  addWheelOfNamesEntry, getWheelOfNamesEntries, getUserWheelOfNamesEntry,
+  clearWheelOfNamesEntries, getLastWheelOfNamesWinner, createWheelOfNamesSpin,
+  getTodaysWheelOfNamesSpin, createWheelOfNamesPaidEntryRequest,
+  getPendingWheelOfNamesPaidEntries, confirmWheelOfNamesPaidEntry,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -574,7 +578,7 @@ export const appRouter = router({
   }),
 
   // -- Music Wars Wheel -----------------------------------------
-  wheel: router({
+  warsWheel: router({
     getEntries: publicProcedure.query(async () => {
       const [entries, settings] = await Promise.all([
         getActiveWheelEntries(),
@@ -1594,6 +1598,56 @@ export const appRouter = router({
           targetId: 0,
           reason: "Admin reset all submissions",
         });
+        return { success: true };
+      }),
+  }),
+
+  // -- Daily Free Promo Wheel -----
+  promoWheel: router({
+    // Submit user's name to the wheel (1 free entry per account)
+    submitName: protectedProcedure
+      .input(z.object({ name: z.string().min(1).max(128) }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await getUserWheelOfNamesEntry(ctx.user.id);
+        if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "You already have a free entry in the wheel" });
+        await addWheelOfNamesEntry(ctx.user.id, input.name, false);
+        return { success: true };
+      }),
+
+    // Get all current wheel entries
+    getEntries: publicProcedure.query(async () => {
+      return getWheelOfNamesEntries();
+    }),
+
+    // Get the last winner
+    getLastWinner: publicProcedure.query(async () => {
+      return getLastWheelOfNamesWinner();
+    }),
+
+    // Get today's spin result (if already spun)
+    getTodaysSpin: publicProcedure.query(async () => {
+      return getTodaysWheelOfNamesSpin();
+    }),
+
+    // Buy additional entries ($5 per entry)
+    buyEntries: protectedProcedure
+      .input(z.object({ quantity: z.number().min(1).max(100) }))
+      .mutation(async ({ input, ctx }) => {
+        const amountPaid = input.quantity * 500; // $5 = 500 cents
+        await createWheelOfNamesPaidEntryRequest(ctx.user.id, input.quantity, amountPaid);
+        return { success: true, amountPaid };
+      }),
+
+    // Admin: get pending paid entry requests
+    getPendingPaidEntries: adminProcedure.query(async () => {
+      return getPendingWheelOfNamesPaidEntries();
+    }),
+
+    // Admin: confirm a paid entry (after payment is verified)
+    confirmPayment: adminProcedure
+      .input(z.object({ entryId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await confirmWheelOfNamesPaidEntry(input.entryId, ctx.user.id);
         return { success: true };
       }),
   }),

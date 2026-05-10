@@ -141,6 +141,13 @@
       "when": 1778304066470,
       "tag": "0019_free_wind_dancer",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1778383414836,
+      "tag": "0020_noisy_firebird",
+      "breakpoints": true
     }
   ]
 }

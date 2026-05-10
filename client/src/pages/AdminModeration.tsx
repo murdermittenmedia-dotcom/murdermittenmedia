@@ -85,7 +85,7 @@ export default function AdminModeration() {
   const { data: modLogs, refetch: refetchLogs } = trpc.moderation.getLogs.useQuery({ limit: 200 }, { enabled: isAdmin && activeTab === "logs" });
   const { data: queueData, refetch: refetchSubmissions } = trpc.queue.getAll.useQuery(undefined, { enabled: isAdmin && activeTab === "submissions" });
   const submissions = queueData?.submissions;
-  const { data: wheelEntries, refetch: refetchWheel } = trpc.wheel.getAllEntries.useQuery(undefined, { enabled: isAdmin && activeTab === "wheel" });
+  const { data: wheelEntries, refetch: refetchWheel } = trpc.warsWheel.getAllEntries.useQuery(undefined, { enabled: isAdmin && activeTab === "wheel" });
 
   // Mutations
   const deleteForumPost = trpc.moderation.deleteForumPost.useMutation({

@@ -1630,8 +1630,8 @@ export default function MusicWars() {
   const username = user?.artistName || user?.name || "Guest";
   const audioRole = isAdmin ? "admin" : isJudge ? "judge" : isContestant ? "contestant" : "user";
 
-   const { data: wheelData, refetch: refetchWheel } = trpc.wheel.getEntries.useQuery();
-  const { data: allEntries, refetch: refetchAllEntries } = trpc.wheel.getAllEntries.useQuery(undefined, { enabled: isAdmin });
+   const { data: wheelData, refetch: refetchWheel } = trpc.warsWheel.getEntries.useQuery();
+  const { data: allEntries, refetch: refetchAllEntries } = trpc.warsWheel.getAllEntries.useQuery(undefined, { enabled: isAdmin });
   const { data: chatHistory } = trpc.chat.getHistory.useQuery({ room: "music_wars" });
   const { data: eventData, refetch: refetchEvent } = trpc.events.getNext.useQuery();
   const { data: activeBattle, refetch: refetchActiveBattle } = trpc.voting.getActiveBattle.useQuery();
@@ -1648,22 +1648,22 @@ export default function MusicWars() {
   const clearVotesMutation = trpc.voting.clearVotes.useMutation({ onSuccess: () => refetchVotes() });
   const setEventMutation = trpc.events.setNext.useMutation({ onSuccess: () => refetchEvent() });
   const setLiveMutation = trpc.events.setLive.useMutation({ onSuccess: () => refetchEvent() });
-  const submitMutation = trpc.wheel.submit.useMutation();
-  const updateStatusMutation = trpc.wheel.updateStatus.useMutation();
-  const confirmPaymentMutation = trpc.wheel.confirmPayment.useMutation();
-  const setSettingsMutation = trpc.wheel.setSettings.useMutation();
-  const removeEntryMutation = trpc.wheel.removeEntry.useMutation();
-  const resetWarMutation = trpc.wheel.resetCurrentWar.useMutation();
-  const markCalledMutation = trpc.wheel.markCalled.useMutation();
-  const markCalledAndSaveStateMutation = trpc.wheel.markCalledAndSaveState.useMutation();
-  const saveSpinStateMutation = trpc.wheel.saveSpinState.useMutation();
-  const resetSpinStateMutation = trpc.wheel.resetSpinState.useMutation();
-  const setBattleContestantsMutation = trpc.wheel.setBattleContestants.useMutation({
+  const submitMutation = trpc.warsWheel.submit.useMutation();
+  const updateStatusMutation = trpc.warsWheel.updateStatus.useMutation();
+  const confirmPaymentMutation = trpc.warsWheel.confirmPayment.useMutation();
+  const setSettingsMutation = trpc.warsWheel.setSettings.useMutation();
+  const removeEntryMutation = trpc.warsWheel.removeEntry.useMutation();
+  const resetWarMutation = trpc.warsWheel.resetCurrentWar.useMutation();
+  const markCalledMutation = trpc.warsWheel.markCalled.useMutation();
+  const markCalledAndSaveStateMutation = trpc.warsWheel.markCalledAndSaveState.useMutation();
+  const saveSpinStateMutation = trpc.warsWheel.saveSpinState.useMutation();
+  const resetSpinStateMutation = trpc.warsWheel.resetSpinState.useMutation();
+  const setBattleContestantsMutation = trpc.warsWheel.setBattleContestants.useMutation({
     onSuccess: () => { refetchActiveBattle(); refetchVotes(); refetchWheel(); if (isAdmin) refetchAllEntries(); },
   });
 
   // Persistent wheel spin state — loaded from DB on mount, synced via socket
-  const { data: persistedSpinState, refetch: refetchSpinState } = trpc.wheel.getSpinState.useQuery();
+  const { data: persistedSpinState, refetch: refetchSpinState } = trpc.warsWheel.getSpinState.useQuery();
   const [spinCount, setSpinCount] = useState<0 | 1 | 2>(0);
   const [contestant1Entry, setContestant1Entry] = useState<WheelEntry | null>(null);
   const [contestant2Entry, setContestant2Entry] = useState<WheelEntry | null>(null);

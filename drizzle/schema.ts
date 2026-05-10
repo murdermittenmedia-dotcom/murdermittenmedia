@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, date, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -318,3 +318,40 @@ export const moderationLogs = mysqlTable("moderation_logs", {
 });
 export type ModerationLog = typeof moderationLogs.$inferSelect;
 export type InsertModerationLog = typeof moderationLogs.$inferInsert;
+
+
+// Wheel of Names — Daily promo giveaway
+export const wheelOfNamesEntries = mysqlTable("wheel_of_names_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 128 }).notNull(),
+  isPaid: boolean("isPaid").default(false).notNull(),  // true if added via paid entry
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type WheelOfNamesEntry = typeof wheelOfNamesEntries.$inferSelect;
+export type InsertWheelOfNamesEntry = typeof wheelOfNamesEntries.$inferInsert;
+
+// Wheel of Names Spins — daily winners
+export const wheelOfNamesSpins = mysqlTable("wheel_of_names_spins", {
+  id: int("id").autoincrement().primaryKey(),
+  spinDate: varchar("spinDate", { length: 10 }).notNull().unique(),  // YYYY-MM-DD, one spin per day
+  winnerId: int("winnerId"),
+  winnerName: varchar("winnerName", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type WheelOfNamesSpin = typeof wheelOfNamesSpins.$inferSelect;
+export type InsertWheelOfNamesSpin = typeof wheelOfNamesSpins.$inferInsert;
+
+// Wheel of Names Paid Entries — $5 per additional entry
+export const wheelOfNamesPaidEntries = mysqlTable("wheel_of_names_paid_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  quantity: int("quantity").notNull(),  // number of additional entries purchased
+  amountPaid: int("amountPaid").notNull(),  // in cents, e.g., 500 = $5.00
+  adminConfirmed: boolean("adminConfirmed").default(false).notNull(),
+  confirmedAt: timestamp("confirmedAt"),
+  confirmedByAdminId: int("confirmedByAdminId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type WheelOfNamesPaidEntry = typeof wheelOfNamesPaidEntries.$inferSelect;
+export type InsertWheelOfNamesPaidEntry = typeof wheelOfNamesPaidEntries.$inferInsert;

@@ -24,6 +24,7 @@ import Search from "./pages/Search";
 import AdminModeration from "./pages/AdminModeration";
 import AdminPanel from "./pages/AdminPanel";
 import Banned from "./pages/Banned";
+import WheelOfNames from "./pages/WheelOfNames";
 
 function Router() {
   return (
@@ -37,6 +38,9 @@ function Router() {
       <Route path={"/artist-of-the-week"} component={ArtistOfWeek} />
       <Route path={"/live"} component={LiveStream} />
       <Route path={"/music-wars"} component={MusicWars} />
+
+      {/* Daily Free Promo Wheel */}
+      <Route path={"/daily-wheel"} component={WheelOfNames} />
 
       {/* User profile */}
       <Route path={"/profile"} component={UserProfile} />

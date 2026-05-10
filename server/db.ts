@@ -18,6 +18,9 @@ import {
   forumComments, InsertForumComment,
   forumReactions,
   moderationLogs,
+  wheelOfNamesEntries, InsertWheelOfNamesEntry,
+  wheelOfNamesSpins, InsertWheelOfNamesSpin,
+  wheelOfNamesPaidEntries, InsertWheelOfNamesPaidEntry,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1285,4 +1288,118 @@ export async function resetAllSubmissions(): Promise<void> {
   if (battle) await updateActiveBattleStatus(battle.id, "closed");
   // Reset queue state
   await db.update(queueState).set({ currentPlayingId: null, isLive: false });
+}
+
+
+// ─── Wheel of Names Helpers ───────────────────────────────────
+
+export async function addWheelOfNamesEntry(userId: number, name: string, isPaid = false) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(wheelOfNamesEntries).values({
+    userId,
+    name,
+    isPaid,
+  });
+}
+
+export async function getWheelOfNamesEntries() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(wheelOfNamesEntries);
+}
+
+export async function getUserWheelOfNamesEntry(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(wheelOfNamesEntries)
+    .where(and(eq(wheelOfNamesEntries.userId, userId), eq(wheelOfNamesEntries.isPaid, false)))
+    .limit(1);
+  return result[0] || null;
+}
+
+export async function clearWheelOfNamesEntries() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(wheelOfNamesEntries);
+}
+
+export async function getLastWheelOfNamesWinner() {
+  const db = await getDb();
+  if (!db) return null;
+  const spins = await db.select().from(wheelOfNamesSpins)
+    .orderBy(desc(wheelOfNamesSpins.spinDate))
+    .limit(1);
+  return spins[0] || null;
+}
+
+export async function createWheelOfNamesSpin(spinDate: string, winnerId: number | null, winnerName: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(wheelOfNamesSpins).values({
+    spinDate,
+    winnerId,
+    winnerName,
+  });
+}
+
+export async function getTodaysWheelOfNamesSpin() {
+  const db = await getDb();
+  if (!db) return null;
+  const today = new Date().toISOString().split('T')[0];
+  const result = await db.select().from(wheelOfNamesSpins)
+    .where(eq(wheelOfNamesSpins.spinDate, today))
+    .limit(1);
+  return result[0] || null;
+}
+
+export async function createWheelOfNamesPaidEntryRequest(userId: number, quantity: number, amountPaid: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(wheelOfNamesPaidEntries).values({
+    userId,
+    quantity,
+    amountPaid,
+    adminConfirmed: false,
+  });
+}
+
+export async function getPendingWheelOfNamesPaidEntries() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(wheelOfNamesPaidEntries)
+    .where(eq(wheelOfNamesPaidEntries.adminConfirmed, false));
+}
+
+export async function confirmWheelOfNamesPaidEntry(entryId: number, adminId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  
+  const entry = await db.select().from(wheelOfNamesPaidEntries)
+    .where(eq(wheelOfNamesPaidEntries.id, entryId))
+    .limit(1);
+  
+  if (!entry || entry.length === 0) throw new Error("Paid entry not found");
+
+  const paidEntry = entry[0];
+
+  // Update the paid entry as confirmed
+  await db.update(wheelOfNamesPaidEntries)
+    .set({
+      adminConfirmed: true,
+      confirmedAt: new Date(),
+      confirmedByAdminId: adminId,
+    })
+    .where(eq(wheelOfNamesPaidEntries.id, entryId));
+
+  // Add the paid entries to the wheel
+  const user = await getUserById(paidEntry.userId);
+
+  if (user) {
+    for (let i = 0; i < paidEntry.quantity; i++) {
+      await addWheelOfNamesEntry(paidEntry.userId, user.name || `User ${paidEntry.userId}`, true);
+    }
+  }
+
+  return paidEntry;
 }
