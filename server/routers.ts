@@ -41,6 +41,7 @@ import {
   clearWheelOfNamesEntries, getLastWheelOfNamesWinner, createWheelOfNamesSpin,
   getTodaysWheelOfNamesSpin, createWheelOfNamesPaidEntryRequest,
   getPendingWheelOfNamesPaidEntries, confirmWheelOfNamesPaidEntry,
+  removeWheelOfNamesEntry
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -1648,6 +1649,22 @@ export const appRouter = router({
       .input(z.object({ entryId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         await confirmWheelOfNamesPaidEntry(input.entryId, ctx.user.id);
+        return { success: true };
+      }),
+
+    // Admin: remove a name from the wheel
+    adminRemoveName: adminProcedure
+      .input(z.object({ entryId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await removeWheelOfNamesEntry(input.entryId);
+        return { success: true };
+      }),
+
+    // Admin: manually add a name to the wheel
+    adminAddName: adminProcedure
+      .input(z.object({ name: z.string().min(1).max(128) }))
+      .mutation(async ({ input, ctx }) => {
+        await addWheelOfNamesEntry(0, input.name, false);
         return { success: true };
       }),
   }),

@@ -702,18 +702,31 @@
 - [x] Built /banned page: dark editorial style, red ShieldOff icon, BANNED headline, appeal instructions with mailto link to murdermittenmedia@gmail.com
 - [x] Wired /banned route into App.tsx
 
-## Wheel of Names — Daily Promo Giveaway (May 2026)
-- [ ] Database: wheel_of_names_entries (id, userId, name, createdAt, isActive)
-- [ ] Database: wheel_of_names_spins (id, spinDate, winnerId, winnerName, createdAt)
-- [ ] Database: wheel_of_names_paid_entries (id, userId, quantity, amountPaid, adminConfirmed, createdAt)
-- [ ] Server: tRPC wheel.submitName — add user's name to wheel (1 free entry per account, logged-in only)
-- [ ] Server: tRPC wheel.buyAdditionalEntries — create paid entry request ($5 per entry, pending admin confirmation)
-- [ ] Server: tRPC wheel.getEntries — get all active entries for the current wheel
-- [ ] Server: tRPC wheel.getLastWinner — get the previous day's winner
-- [ ] Server: tRPC wheel.getCountdownTime — get time until next 7pm spin
-- [ ] Server: Admin tRPC wheel.confirmPayment — admin confirms a paid entry, adds entries to wheel
-- [ ] Server: Daily 7pm auto-spin job (heartbeat) — randomly select winner from all entries, create spin record, clear entries for next day
-- [ ] Frontend: /wheel-of-names page with spinning wheel visualization, submission form, countdown timer, previous winner display
-- [ ] Frontend: Paid entries modal ($5 per entry, shows pending confirmation status)
-- [ ] Frontend: Wheel widget on home page (mini version, links to full page)
-- [ ] Frontend: Wire /wheel-of-names route into App.tsx
+## Daily Free Promo Wheel — Daily Promo Giveaway (May 2026)
+- [x] Database: wheel_of_names_entries (id, userId, name, createdAt, isActive)
+- [x] Database: wheel_of_names_spins (id, spinDate, winnerId, winnerName, createdAt)
+- [x] Database: wheel_of_names_paid_entries (id, userId, quantity, amountPaid, adminConfirmed, createdAt)
+- [x] Server: tRPC promoWheel.submitName — add user's name to wheel (1 free entry per account, logged-in only)
+- [x] Server: tRPC promoWheel.buyEntries — create paid entry request ($5 per entry, pending admin confirmation)
+- [x] Server: tRPC promoWheel.getEntries — get all active entries for the current wheel
+- [x] Server: tRPC promoWheel.getLastWinner — get the previous day's winner
+- [x] Server: tRPC promoWheel.getTodaysSpin — get time until next 7pm spin
+- [x] Server: Admin tRPC promoWheel.confirmPayment — admin confirms a paid entry, adds entries to wheel
+- [x] Server: Daily 7pm auto-spin job (heartbeat) — randomly select winner from all entries, create spin record, clear entries for next day
+- [x] Frontend: /daily-wheel page with spinning wheel visualization, submission form, countdown timer, previous winner display
+- [x] Frontend: Paid entries modal ($5 per entry, shows pending confirmation status)
+- [x] Frontend: Wheel widget on home page (mini version, links to full page)
+- [x] Frontend: Wire /daily-wheel route into App.tsx
+
+## Daily Free Promo Wheel Integration (May 2026)
+- [ ] Add "Daily Wheel" link to navbar menu (between Music Wars and More)
+- [ ] Add home button to /daily-wheel page (top-left or header)
+- [ ] Add wheel CTA to home page hero (right side free space) — "Try Your Luck" button + short description
+- [ ] Build 7pm auto-spin job using heartbeat/periodic-updates: randomly pick winner, create spin record, clear entries
+- [ ] Add admin manual controls: "Manually Pick Winner" button + "Reset Wheel" button in admin panel
+- [ ] Admin can override auto-spin: pick a specific winner from the entry list or reset the wheel at any time
+
+## Daily Wheel — Admin & UX Enhancements (May 2026)
+- [ ] Admin can manually add names to the wheel via admin panel form (without requiring payment)
+- [ ] Display active names list on wheel page (scrollable, shows all current entries with usernames)
+- [ ] Replace wheel pointer/ticker with knife SVG icon that animates during spin

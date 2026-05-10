@@ -13,7 +13,7 @@ import { useLiveStatus } from "@/hooks/useLiveStatus";
 import {
   User, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
-  LogOut, LogIn, ChevronDown, X, Menu, Shield,
+  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/podcast",           label: "Meeting With The Mitten",     icon: Podcast                       },
   { href: "/review",            label: "Music Reviews",               icon: Music,   liveKey: "review"   },
   { href: "/music-wars",        label: "Music Wars",                  icon: Swords,  liveKey: "wars"     },
+  { href: "/daily-wheel",       label: "Daily Wheel",                 icon: Zap                           },
   { href: "/forum",             label: "Forum",                       icon: MessageSquare                 },
   { href: "/explore",           label: "Explore",                     icon: Search                        },
   { href: "/leaderboard",       label: "Leaderboards",                icon: Trophy                        },

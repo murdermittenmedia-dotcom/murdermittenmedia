@@ -1403,3 +1403,9 @@ export async function confirmWheelOfNamesPaidEntry(entryId: number, adminId: num
 
   return paidEntry;
 }
+
+export async function removeWheelOfNamesEntry(entryId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(wheelOfNamesEntries).where(eq(wheelOfNamesEntries.id, entryId));
+}
