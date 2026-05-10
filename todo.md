@@ -748,3 +748,6 @@
 - [x] Wheel submission form: change name field label to "Instagram @" and validate handle format
 - [x] Server: validate submitName input is a valid Instagram handle (strip leading @, alphanumeric + underscores + dots, 1-30 chars)
 - [x] Display names on wheel and in entry list with @ prefix
+
+## Daily Wheel — Buy Extra Entries Contact (May 2026)
+- [x] Replace automated "Buy Extra Entries" modal with Instagram DM instructions and clickable @murdermittenmedia link
