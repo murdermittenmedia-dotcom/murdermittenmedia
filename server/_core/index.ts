@@ -102,9 +102,31 @@ let lastWarsRadioState: WarsRadioState | null = null;
 const micBroadcasters = new Map<string, string>();
 
 function getRoomList(room: string) {
-  return Array.from(roomParticipants.entries())
+  const all = Array.from(roomParticipants.entries())
     .filter(([, p]) => p.room === room)
     .map(([id, p]) => ({ socketId: id, ...p }));
+
+  // Deduplicate by userId: if the same logged-in user has multiple sockets
+  // (e.g. useAudioRoom + useAdminMicBroadcast both create a socket), keep only
+  // the entry where micActive is true, or the first one if none are active.
+  const seen = new Map<number, typeof all[0]>();
+  const anonymous: typeof all = [];
+  for (const entry of all) {
+    if (!entry.userId) {
+      anonymous.push(entry);
+      continue;
+    }
+    const existing = seen.get(entry.userId);
+    if (!existing) {
+      seen.set(entry.userId, entry);
+    } else {
+      // Prefer the entry that has micActive=true (the audio socket)
+      if (entry.micActive && !existing.micActive) {
+        seen.set(entry.userId, entry);
+      }
+    }
+  }
+  return [...Array.from(seen.values()), ...anonymous];
 }
 
 async function startServer() {

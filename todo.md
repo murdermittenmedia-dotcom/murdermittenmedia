@@ -762,3 +762,6 @@
 - [x] Add client-side page view tracker hook (fires on route change + 30s heartbeat)
 - [x] Build /admin/stats page: live active users, total views today/week/all-time, top pages, recent visitors, hourly/daily charts
 - [x] Add "Live Site Stats" button to admin panel header
+
+## Music Wars — Duplicate Participant Bug (May 2026)
+- [x] Fix: same user appears twice in Voice Chat / Room Participants list — deduplicate by userId in getRoomList (useAdminMicBroadcast creates a second socket)
