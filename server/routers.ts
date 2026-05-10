@@ -1605,12 +1605,20 @@ export const appRouter = router({
 
   // -- Daily Free Promo Wheel -----
   promoWheel: router({
-    // Submit user's name to the wheel (1 free entry per account)
+    // Submit user's Instagram handle to the wheel (1 free entry per day)
     submitName: protectedProcedure
-      .input(z.object({ name: z.string().min(1).max(128) }))
+      .input(z.object({
+        name: z.string()
+          .min(1, "Instagram handle is required")
+          .max(31, "Handle too long") // @ + 30 chars
+          .transform(v => v.startsWith("@") ? v : `@${v}`)
+          .refine(v => /^@[a-zA-Z0-9._]{1,30}$/.test(v), {
+            message: "Invalid Instagram handle. Use letters, numbers, underscores, or dots (max 30 characters)."
+          })
+      }))
       .mutation(async ({ input, ctx }) => {
         const existing = await getUserWheelOfNamesEntry(ctx.user.id);
-        if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "You already have a free entry in the wheel" });
+        if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "You already have a free entry today. Come back tomorrow!" });
         await addWheelOfNamesEntry(ctx.user.id, input.name, false);
         return { success: true };
       }),

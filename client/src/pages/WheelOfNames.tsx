@@ -233,13 +233,13 @@ export default function WheelOfNames() {
   const [spinResult, setSpinResult] = useState<{ name: string } | null>(null);
   const [showResult, setShowResult] = useState(false);
 
-  const [submitName, setSubmitName] = useState("");
+  const [submitHandle, setSubmitHandle] = useState("");
   const [adminName, setAdminName] = useState("");
   const [showPaidModal, setShowPaidModal] = useState(false);
   const [paidQty, setPaidQty] = useState(1);
 
   const submitMutation = trpc.promoWheel.submitName.useMutation({
-    onSuccess: () => { setSubmitName(""); refetchEntries(); },
+    onSuccess: () => { setSubmitHandle(""); refetchEntries(); },
   });
 
   const adminSpinMutation = trpc.promoWheel.adminSpin.useMutation({
@@ -392,7 +392,7 @@ export default function WheelOfNames() {
                   <input
                     value={adminName}
                     onChange={e => setAdminName(e.target.value)}
-                    placeholder="Add name manually..."
+                    placeholder="@instagram_handle"
                     maxLength={128}
                     className="flex-1 bg-white/5 border border-white/10 text-white placeholder-white/30 px-3 py-2 text-sm focus:outline-none focus:border-red-600/50"
                   />
@@ -400,6 +400,11 @@ export default function WheelOfNames() {
                     type="submit"
                     disabled={!adminName.trim() || adminAddMutation.isPending}
                     className="bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white px-4 py-2 text-sm font-semibold transition-all"
+                    onClick={e => {
+                      // Normalise: strip leading @ then re-add so it's stored as @handle
+                      const raw = adminName.trim().replace(/^@/, "");
+                      if (raw) setAdminName(`@${raw}`);
+                    }}
                   >
                     Add
                   </button>
@@ -429,17 +434,30 @@ export default function WheelOfNames() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={e => { e.preventDefault(); if (submitName.trim()) submitMutation.mutate({ name: submitName.trim() }); }}>
-                  <input
-                    value={submitName}
-                    onChange={e => setSubmitName(e.target.value)}
-                    placeholder="Your name or artist name..."
-                    maxLength={128}
-                    className="w-full bg-white/5 border border-white/10 text-white placeholder-white/30 px-3 py-2 text-sm mb-3 focus:outline-none focus:border-red-600/50"
-                  />
+                <form onSubmit={e => {
+                  e.preventDefault();
+                  const raw = submitHandle.trim().replace(/^@/, "");
+                  if (!raw) return;
+                  if (!/^[a-zA-Z0-9._]{1,30}$/.test(raw)) {
+                    alert("Please enter a valid Instagram handle (letters, numbers, underscores, dots — max 30 characters).");
+                    return;
+                  }
+                  submitMutation.mutate({ name: `@${raw}` });
+                }}>
+                  <label className="block text-white/40 text-xs mb-1 uppercase tracking-widest">Instagram Handle</label>
+                  <div className="flex items-center border border-white/10 bg-white/5 mb-3 focus-within:border-red-600/50">
+                    <span className="text-white/40 pl-3 text-sm select-none">@</span>
+                    <input
+                      value={submitHandle.replace(/^@/, "")}
+                      onChange={e => setSubmitHandle(e.target.value.replace(/^@/, ""))}
+                      placeholder="yourusername"
+                      maxLength={30}
+                      className="flex-1 bg-transparent text-white placeholder-white/30 px-2 py-2 text-sm focus:outline-none"
+                    />
+                  </div>
                   <button
                     type="submit"
-                    disabled={!submitName.trim() || submitMutation.isPending}
+                    disabled={!submitHandle.trim() || submitMutation.isPending}
                     className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-2 text-sm font-bold uppercase tracking-widest transition-all"
                   >
                     {submitMutation.isPending ? "Submitting..." : "Submit Free Entry"}

@@ -743,3 +743,8 @@
 - [x] Wheel: user submit name form (1 per day, shows "Already entered today" if used)
 - [x] Wheel: show previous winner and countdown to next 7pm spin
 - [x] Set up 7pm daily Heartbeat job handler (deploy first, then run: manus-heartbeat create --name daily-wheel-spin --cron "0 0 23 * * *" --path /api/scheduled/daily-wheel-spin)
+
+## Daily Wheel — Instagram Handle (May 2026)
+- [x] Wheel submission form: change name field label to "Instagram @" and validate handle format
+- [x] Server: validate submitName input is a valid Instagram handle (strip leading @, alphanumeric + underscores + dots, 1-30 chars)
+- [x] Display names on wheel and in entry list with @ prefix
