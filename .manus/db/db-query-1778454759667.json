@@ -1,0 +1,17 @@
+{
+  "query": "SELECT * FROM wheel_of_names_spins ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT * FROM wheel_of_names_spins ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "spinDate": "2026-05-10",
+      "winnerId": "270227",
+      "winnerName": "Test",
+      "createdAt": "2026-05-10 05:49:30"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tspinDate\twinnerId\twinnerName\tcreatedAt\n1\t2026-05-10\t270227\tTest\t2026-05-10 05:49:30\n",
+  "stderr": "",
+  "execution_time_ms": 265
+}

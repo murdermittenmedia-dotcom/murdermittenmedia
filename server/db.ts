@@ -1345,10 +1345,13 @@ export async function getLastWheelOfNamesWinner() {
 export async function createWheelOfNamesSpin(spinDate: string, winnerId: number | null, winnerName: string | null) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  // Use upsert so re-spinning on the same day overwrites the earlier record
   return db.insert(wheelOfNamesSpins).values({
     spinDate,
     winnerId,
     winnerName,
+  }).onDuplicateKeyUpdate({
+    set: { winnerId, winnerName },
   });
 }
 

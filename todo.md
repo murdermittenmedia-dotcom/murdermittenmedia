@@ -776,3 +776,7 @@
 - [x] Fix MusicReview AdminPanel: pause/resume now sends actual audioPlayer.currentTime instead of hardcoded 0
 - [x] MusicReview AdminPanel: add "Previously Reviewed — Load to Radio" section with Load buttons for all reviewed tracks
 - [x] MusicWars Entries tab: add Load to Radio (▶) button for any entry with a songUrl (active, eliminated, winner, pending)
+
+## Wheel Spin Duplicate Date Fix
+- [x] Fix createWheelOfNamesSpin to use upsert (INSERT ... ON DUPLICATE KEY UPDATE) so re-spinning today overwrites the earlier record instead of throwing a duplicate key error
+- [x] Fix auto-spin scheduled job to skip if admin already manually spun today (prevents double-spin)

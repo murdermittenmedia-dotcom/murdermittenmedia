@@ -1,0 +1,22 @@
+{
+  "query": "SHOW CREATE TABLE wheel_of_names_entries;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SHOW CREATE TABLE wheel_of_names_entries;",
+  "rows": [
+    {
+      "Table": "wheel_of_names_entries",
+      "Create Table": "CREATE TABLE `wheel_of_names_entries` ("
+    }
+  ],
+  "messages": [
+    "  `id` int NOT NULL AUTO_INCREMENT,",
+    "  `userId` int NOT NULL,",
+    "  `name` varchar(128) NOT NULL,",
+    "  `isPaid` tinyint(1) NOT NULL DEFAULT '0',",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=300001"
+  ],
+  "stdout": "Table\tCreate Table\nwheel_of_names_entries\tCREATE TABLE `wheel_of_names_entries` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `userId` int NOT NULL,\n  `name` varchar(128) NOT NULL,\n  `isPaid` tinyint(1) NOT NULL DEFAULT '0',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=300001\n",
+  "stderr": "",
+  "execution_time_ms": 272
+}

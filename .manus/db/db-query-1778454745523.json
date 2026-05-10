@@ -1,0 +1,23 @@
+{
+  "query": "SHOW CREATE TABLE wheel_of_names_spins;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SHOW CREATE TABLE wheel_of_names_spins;",
+  "rows": [
+    {
+      "Table": "wheel_of_names_spins",
+      "Create Table": "CREATE TABLE `wheel_of_names_spins` ("
+    }
+  ],
+  "messages": [
+    "  `id` int NOT NULL AUTO_INCREMENT,",
+    "  `spinDate` varchar(10) NOT NULL,",
+    "  `winnerId` int DEFAULT NULL,",
+    "  `winnerName` varchar(128) DEFAULT NULL,",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  UNIQUE KEY `wheel_of_names_spins_spinDate_unique` (`spinDate`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=60001"
+  ],
+  "stdout": "Table\tCreate Table\nwheel_of_names_spins\tCREATE TABLE `wheel_of_names_spins` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `spinDate` varchar(10) NOT NULL,\n  `winnerId` int DEFAULT NULL,\n  `winnerName` varchar(128) DEFAULT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  UNIQUE KEY `wheel_of_names_spins_spinDate_unique` (`spinDate`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=60001\n",
+  "stderr": "",
+  "execution_time_ms": 322
+}

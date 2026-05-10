@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, name, email FROM users WHERE id = 3630001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, name, email FROM users WHERE id = 3630001;",
+  "rows": [
+    {
+      "id": "3630001",
+      "name": "Matthew Ragland",
+      "email": "r45gn7tcp9@privaterelay.appleid.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\n3630001\tMatthew Ragland\tr45gn7tcp9@privaterelay.appleid.com\n",
+  "stderr": "",
+  "execution_time_ms": 310
+}

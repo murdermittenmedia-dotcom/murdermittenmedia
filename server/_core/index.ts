@@ -12,7 +12,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
-import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries } from "../db";
+import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -799,12 +799,17 @@ async function startServer() {
       if (!cronTaskUid) {
         return res.status(403).json({ error: "cron-only endpoint" });
       }
+      const today = new Date().toISOString().split('T')[0];
+      // Skip if admin already manually spun today
+      const existingSpin = await getTodaysWheelOfNamesSpin();
+      if (existingSpin) {
+        return res.json({ ok: true, skipped: "already spun today", winner: existingSpin.winnerName, timestamp: new Date().toISOString() });
+      }
       const entries = await getWheelOfNamesEntries();
       if (entries.length === 0) {
         return res.json({ ok: true, skipped: "no entries", timestamp: new Date().toISOString() });
       }
       const winner = entries[Math.floor(Math.random() * entries.length)];
-      const today = new Date().toISOString().split('T')[0];
       await createWheelOfNamesSpin(today, winner.userId || null, winner.name);
       await clearWheelOfNamesEntries();
       // Notify owner
