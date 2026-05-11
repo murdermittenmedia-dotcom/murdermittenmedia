@@ -21,7 +21,7 @@ import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import LabelBadge from "@/components/LabelBadge";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
-import { registerSeekBroadcast } from "@/contexts/RadioSeekBroadcastContext";
+import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
 type QueueState = { id: number; isLive: boolean; liveMessage: string | null; streamUrl: string | null; currentPlayingId: number | null; updatedAt: Date };
@@ -395,7 +395,7 @@ function AdminPanel({
             {/* Transport controls — Pause/Resume, Rewind, Skip */}
             <div className="grid grid-cols-4 gap-2 mb-2">
               <button
-                onClick={() => broadcastRadioPause(audioPlayer.currentTime)}
+                onClick={() => { audioPlayer.pause(); broadcastRadioPause(audioPlayer.currentTime); }}
                 className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
                 title="Pause for all listeners"
               >
@@ -403,7 +403,7 @@ function AdminPanel({
                 Pause
               </button>
               <button
-                onClick={() => broadcastRadioResume(audioPlayer.currentTime)}
+                onClick={() => { audioPlayer.resume(); broadcastRadioResume(audioPlayer.currentTime); }}
                 className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
                 title="Resume for all listeners"
               >
@@ -411,7 +411,7 @@ function AdminPanel({
                 Play
               </button>
               <button
-                onClick={() => broadcastRadioSeek(0)}
+                onClick={() => { audioPlayer.seek(0); broadcastRadioSeek(0); }}
                 className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
                 title="Rewind to start for all listeners"
               >
@@ -749,34 +749,35 @@ export default function MusicReview() {
       toast.success(`↩ "${data.songTitle}" by ${data.artistName} restored to queue`);
       refetch();
     },
-    // Admin pause/resume/seek — apply to local player for non-admin listeners
+    // Admin pause/resume/seek — apply to ALL clients including admin
     onRadioPaused: (data) => {
-      if (isAdmin) return; // admin controls their own player directly
       audioPlayer.seek(data.pausedAt);
       audioPlayer.pause();
     },
     onRadioResumed: (data) => {
-      if (isAdmin) return;
       // Calculate current position from startedAt
       const elapsed = (Date.now() - data.startedAt) / 1000;
       audioPlayer.seek(Math.max(0, elapsed));
       audioPlayer.resume();
     },
     onRadioSeeked: (data) => {
-      if (isAdmin) return;
       audioPlayer.seek(data.currentTime);
     },
   });
 
-  // Register seek broadcast so FloatingPlayer can broadcast seeks to all listeners
+  // Register admin broadcast functions so FloatingPlayer can control all listeners
   useEffect(() => {
     if (isAdmin) {
       registerSeekBroadcast(broadcastRadioSeek);
+      registerPauseBroadcast(broadcastRadioPause);
+      registerResumeBroadcast(broadcastRadioResume);
     }
     return () => {
       registerSeekBroadcast(null);
+      registerPauseBroadcast(null);
+      registerResumeBroadcast(null);
     };
-  }, [isAdmin, broadcastRadioSeek]);
+  }, [isAdmin, broadcastRadioSeek, broadcastRadioPause, broadcastRadioResume]);
 
   // Admin mic broadcast to radio feed
   const adminMicBroadcast = useAdminMicBroadcast({

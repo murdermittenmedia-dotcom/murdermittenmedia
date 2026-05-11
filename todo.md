@@ -817,3 +817,10 @@
 - [x] DB helper: requeueSubmission(id) — updates status to 'pending', recalculates position
 - [x] MusicReview admin panel: add ↩ Re-queue button next to each song in the "Previously Reviewed" section
 - [x] On re-queue success: toast confirmation, refetch queue, broadcast queue update to all listeners
+
+## Admin Live Radio Control Fixes
+- [x] FloatingPlayer: when isAdmin && isLiveStream, show full scrubable progress bar + pause/play button (same as non-stream) instead of pulsing bar + mute-only
+- [x] FloatingPlayer: when isAdmin && isLiveStream, progress click/drag should call seek() locally AND emitSeekBroadcast()
+- [x] FloatingPlayer: when isAdmin && isLiveStream, play/pause button should call pause()/resume() locally AND emit broadcastRadioPause/Resume via socket
+- [x] MusicReview AdminPanel: Pause/Play/Rewind buttons must also apply to admin's local player (pause(), resume(), seek(0)) in addition to broadcasting
+- [x] MusicReview: remove the `if (isAdmin) return` guard from onRadioPaused/onRadioResumed/onRadioSeeked so admin's player syncs with the broadcast echo

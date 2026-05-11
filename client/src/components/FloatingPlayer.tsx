@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { ArtistLink } from "@/components/ArtistLink";
 import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
-import { emitSeekBroadcast } from "@/contexts/RadioSeekBroadcastContext";
+import { emitSeekBroadcast, emitPauseBroadcast, emitResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || seconds <= 0) return "0:00";
@@ -110,8 +110,11 @@ export default function FloatingPlayer() {
     return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   };
 
+  // Admin can scrub live streams; regular viewers cannot
+  const canScrub = !isLiveStream || isAdmin;
+
   const handleProgressMouseDown = (e: React.MouseEvent) => {
-    if (isLiveStream || duration <= 0) return;
+    if (!canScrub || duration <= 0) return;
     setIsDragging(true);
     setDragProgress(getProgressFromEvent(e));
   };
@@ -131,7 +134,7 @@ export default function FloatingPlayer() {
   };
 
   const handleProgressClick = (e: React.MouseEvent) => {
-    if (isLiveStream || duration <= 0) return;
+    if (!canScrub || duration <= 0) return;
     const pct = getProgressFromEvent(e);
     const time = pct * duration;
     seek(time);
@@ -238,11 +241,12 @@ export default function FloatingPlayer() {
         onMouseUp={handleProgressMouseUp}
         onMouseLeave={() => { if (isDragging) { setIsDragging(false); } }}
       >
-        {/* ── Progress bar ─────────────────────────────────────────────── */}
-        {isLiveStream ? (
-          /* Live stream: pulsing red bar, no scrubbing */
+        {/* ── Progress bar ──────────────────────────────────────────────────────── */}
+        {isLiveStream && !isAdmin ? (
+          /* Live stream (viewer): pulsing red bar, no scrubbing */
           <div className="w-full h-1.5 bg-red-600/60 animate-pulse" />
         ) : (
+          /* Admin or non-stream: full scrubable progress bar */
           <div
             ref={progressRef}
             className="w-full h-1.5 bg-white/10 cursor-pointer group relative"
@@ -363,9 +367,9 @@ export default function FloatingPlayer() {
             </div>
           )}
 
-          {/* Playback controls — HIDDEN for live stream (admin controls for everyone) */}
+          {/* Playback controls */}
           {isLiveStream ? (
-            /* Live stream: play/pause (mute/unmute) + volume control + YouTube toggle */
+            /* Live stream controls */
             <div className="flex items-center gap-0.5 flex-shrink-0">
               {/* YouTube toggle — shown only for YouTube live tracks */}
               {isYouTubeTrack && (
@@ -385,22 +389,49 @@ export default function FloatingPlayer() {
                 </button>
               )}
 
-              {/* Mute/Unmute — local only for live stream, never pauses the actual stream */}
-              <button
-                onClick={isLocallyMuted ? localUnmuteStream : localMuteStream}
-                disabled={isLoading}
-                className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
-                aria-label={isLocallyMuted ? "Unmute" : "Mute"}
-                title={isLocallyMuted ? "Unmute stream (local)" : "Mute stream (local only)"}
-              >
-                {isLoading ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : isLocallyMuted ? (
-                  <VolumeX className="w-4 h-4 text-white" />
-                ) : (
-                  <Pause className="w-4 h-4 text-white" />
-                )}
-              </button>
+              {isAdmin ? (
+                /* Admin: real pause/play that broadcasts to all listeners */
+                <button
+                  onClick={() => {
+                    if (isPlaying) {
+                      pause();
+                      emitPauseBroadcast(currentTime);
+                    } else {
+                      resume();
+                      emitResumeBroadcast(currentTime);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
+                  aria-label={isPlaying ? "Pause (broadcasts to all)" : "Play (broadcasts to all)"}
+                  title={isPlaying ? "Pause for all listeners" : "Resume for all listeners"}
+                >
+                  {isLoading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : isPlaying ? (
+                    <Pause className="w-4 h-4 text-white" />
+                  ) : (
+                    <Play className="w-4 h-4 text-white ml-0.5" />
+                  )}
+                </button>
+              ) : (
+                /* Viewer: mute/unmute local only, never pauses the actual stream */
+                <button
+                  onClick={isLocallyMuted ? localUnmuteStream : localMuteStream}
+                  disabled={isLoading}
+                  className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
+                  aria-label={isLocallyMuted ? "Unmute" : "Mute"}
+                  title={isLocallyMuted ? "Unmute stream (local)" : "Mute stream (local only)"}
+                >
+                  {isLoading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : isLocallyMuted ? (
+                    <VolumeX className="w-4 h-4 text-white" />
+                  ) : (
+                    <Pause className="w-4 h-4 text-white" />
+                  )}
+                </button>
+              )}
 
               {/* Volume */}
               <button
