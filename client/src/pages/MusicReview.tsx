@@ -709,7 +709,7 @@ export default function MusicReview() {
     username: chatUsername,
     userId: user?.id,
     isAdmin,
-    accountLabel: (user as { accountLabel?: string | null } | null)?.accountLabel ?? null,
+    accountLabels: (() => { const raw = (user as { accountLabels?: string | null } | null)?.accountLabels; if (!raw) return []; try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })(),
     initialMessages: (chatHistory || []).map(m => ({
       id: m.id, username: m.username, message: m.message,
       room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
@@ -1578,7 +1578,7 @@ export default function MusicReview() {
                       <ArtistStatModal artistName={msg.username}>
                         <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
                       </ArtistStatModal>
-                      {msg.accountLabel && <span className="ml-1"><LabelBadge label={msg.accountLabel} size="xs" /></span>}:
+                      {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}:
                     </span>{" "}
                     <span className="text-white/80">{msg.message}</span>
                   </div>

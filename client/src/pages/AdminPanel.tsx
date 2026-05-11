@@ -77,9 +77,9 @@ function UsersTab() {
     onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Role updated"); },
     onError: (e) => toast.error(e.message),
   });
-  const setAccountLabel = trpc.admin.setAccountLabel.useMutation({
-    onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Label updated"); },
-    onError: (e) => toast.error(e.message),
+  const setAccountLabelsMutation = trpc.admin.setAccountLabels.useMutation({
+    onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Labels updated"); },
+    onError: (e: { message: string }) => toast.error(e.message),
   });
 
   const banUser = trpc.admin.banUser.useMutation({
@@ -154,23 +154,30 @@ function UsersTab() {
                 <div className="border-t border-white/10 p-4 bg-white/[0.02] space-y-4">
                   {/* Role change */}
                   <div>
-                    <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Grant Account Label</p>
+                    <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Grant Account Labels <span className="text-white/30 normal-case font-normal">(multi-select)</span></p>
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {ALL_LABEL_OPTIONS.map(opt => (
-                        <Button
-                          key={opt.value}
-                          size="sm"
-                          variant={(user as { accountLabel?: string | null }).accountLabel === opt.value ? "default" : "outline"}
-                          className={(user as { accountLabel?: string | null }).accountLabel === opt.value ? "bg-red-600 hover:bg-red-700 text-white" : "border-white/20 text-white/60 hover:text-white"}
-                          onClick={() => {
-                            const current = (user as { accountLabel?: string | null }).accountLabel;
-                            setAccountLabel.mutate({ userId: user.id, label: current === opt.value ? null : opt.value as AccountLabel });
-                          }}
-                          disabled={setAccountLabel.isPending}
-                        >
-                          {opt.display}
-                        </Button>
-                      ))}
+                      {ALL_LABEL_OPTIONS.map(opt => {
+                        const rawLabels = (user as { accountLabels?: string | null }).accountLabels;
+                        const userLabels: string[] = rawLabels ? (() => { try { const p = JSON.parse(rawLabels); return Array.isArray(p) ? p : []; } catch { return []; } })() : [];
+                        const isActive = userLabels.includes(opt.value);
+                        return (
+                          <Button
+                            key={opt.value}
+                            size="sm"
+                            variant={isActive ? "default" : "outline"}
+                            className={isActive ? "bg-red-600 hover:bg-red-700 text-white" : "border-white/20 text-white/60 hover:text-white"}
+                            onClick={() => {
+                              const next = isActive
+                                ? userLabels.filter(l => l !== opt.value)
+                                : [...userLabels, opt.value];
+                              setAccountLabelsMutation.mutate({ userId: user.id, labels: next as AccountLabel[] });
+                            }}
+                            disabled={setAccountLabelsMutation.isPending}
+                          >
+                            {opt.display}
+                          </Button>
+                        );
+                      })}
                     </div>
                     <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Change Role</p>
                     <div className="flex flex-wrap gap-2">

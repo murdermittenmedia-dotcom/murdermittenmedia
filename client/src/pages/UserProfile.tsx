@@ -407,12 +407,12 @@ export default function UserProfile() {
     },
   });
 
-  const setLabelMutation = trpc.profile.setLabel.useMutation({
+  const setLabelsMutation = trpc.profile.setLabels.useMutation({
     onSuccess: () => {
-      toast.success("Account label updated!");
+      toast.success("Account labels updated!");
       refetchOwnProfile();
     },
-    onError: (err) => toast.error("Failed to update label: " + err.message),
+    onError: (err: unknown) => toast.error("Failed to update labels: " + (err instanceof Error ? err.message : String(err))),
   });
 
   const uploadAvatarMutation = trpc.profile.uploadAvatar.useMutation({
@@ -467,7 +467,8 @@ export default function UserProfile() {
   const userCity = (displayProfile?.user as { city?: string | null } | undefined)?.city;
   const avatarUrl = (isOwnProfile ? avatarPreview : null) || displayProfile?.user.avatarUrl || null;
   const initials = displayName.slice(0, 2).toUpperCase();
-  const currentLabel = (displayProfile?.user as { accountLabel?: AccountLabel | null } | undefined)?.accountLabel;
+  const rawLabels = (displayProfile?.user as { accountLabels?: string | null } | undefined)?.accountLabels;
+  const currentLabels: AccountLabel[] = rawLabels ? (() => { try { const p = JSON.parse(rawLabels); return Array.isArray(p) ? p as AccountLabel[] : []; } catch { return []; } })() : [];
 
   if (authLoading) {
     return (
@@ -604,36 +605,44 @@ export default function UserProfile() {
                   </button>
                 </div>
 
-                {/* Account label picker — saved immediately on change */}
+                {/* Account label picker — multi-select, saved immediately on toggle */}
                 <div className="pt-2 border-t border-white/10">
-                  <label className="text-xs text-white/40 uppercase tracking-widest block mb-2">Account Type Label</label>
+                  <label className="text-xs text-white/40 uppercase tracking-widest block mb-2">Account Type Labels <span className="text-white/30 normal-case font-normal">(pick all that apply)</span></label>
                   <div className="flex flex-wrap gap-2">
-                    {USER_LABEL_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => {
-                          const next = currentLabel === opt.value ? null : opt.value as "fan" | "artist" | "producer" | "videographer" | "blogger" | "brand_owner";
-                          setLabelMutation.mutate({ label: next });
-                        }}
-                        className={`px-2.5 py-1 text-xs font-bold border tracking-wider transition-all ${
-                          currentLabel === opt.value
-                            ? "bg-red-600 border-red-500 text-white"
-                            : "border-white/20 text-white/50 hover:border-white/50 hover:text-white/80"
-                        }`}
-                      >
-                        {opt.display}
-                      </button>
-                    ))}
+                    {USER_LABEL_OPTIONS.map(opt => {
+                      const isSelected = currentLabels.includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            type UserLabel = "fan" | "artist" | "producer" | "videographer" | "blogger" | "brand_owner" | "audio_engineer";
+                            const USER_ONLY = new Set<string>(["fan","artist","producer","videographer","blogger","brand_owner","audio_engineer"]);
+                            const userOnly = currentLabels.filter(l => USER_ONLY.has(l)) as UserLabel[];
+                            const next: UserLabel[] = isSelected
+                              ? userOnly.filter(l => l !== opt.value)
+                              : [...userOnly, opt.value as UserLabel];
+                            setLabelsMutation.mutate({ labels: next });
+                          }}
+                          className={`px-2.5 py-1 text-xs font-bold border tracking-wider transition-all ${
+                            isSelected
+                              ? "bg-red-600 border-red-500 text-white"
+                              : "border-white/20 text-white/50 hover:border-white/50 hover:text-white/80"
+                          }`}
+                        >
+                          {opt.display}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className="text-white/30 text-xs mt-1.5">Click to select or deselect. Appears next to your name everywhere.</p>
+                  <p className="text-white/30 text-xs mt-1.5">Click to select or deselect. All selected labels appear next to your name everywhere.</p>
                 </div>
               </div>
             ) : (
               <div>
                 <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start mb-1">
                   <h1 className="font-['Anton'] text-3xl uppercase">{displayName}</h1>
-                  <LabelBadge label={currentLabel} />
+                  <LabelBadge labels={currentLabels} />
                   {isOwnProfile && (
                     <button
                       className="text-white/30 hover:text-red-500 transition-colors"

@@ -418,20 +418,44 @@ export async function setUserRole(userId: number, role: "user" | "admin" | "judg
 
 // -- Account Label ------------------------------------------
 
-const USER_SELECTABLE_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner"] as const;
-const ALL_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "judge", "admin"] as const;
+export const USER_SELECTABLE_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer"] as const;
+export const ALL_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin"] as const;
 export type AccountLabel = typeof ALL_LABELS[number];
 
-export async function setAccountLabel(userId: number, label: typeof USER_SELECTABLE_LABELS[number] | null) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  return db.update(users).set({ accountLabel: label ?? undefined }).where(eq(users.id, userId));
+/** Serialize labels array to JSON string for DB storage */
+function serializeLabels(labels: AccountLabel[]): string {
+  return JSON.stringify(labels);
 }
 
-export async function setAccountLabelAdmin(userId: number, label: AccountLabel | null) {
+/** Deserialize labels from DB JSON string */
+export function parseAccountLabels(raw: string | null | undefined): AccountLabel[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((l): l is AccountLabel => (ALL_LABELS as readonly string[]).includes(l));
+  } catch {
+    return [];
+  }
+}
+
+export async function setAccountLabels(userId: number, labels: typeof USER_SELECTABLE_LABELS[number][]) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  return db.update(users).set({ accountLabel: label ?? undefined }).where(eq(users.id, userId));
+  // Filter to only user-selectable labels, deduplicate
+  const valid = Array.from(new Set(labels.filter((l): l is typeof USER_SELECTABLE_LABELS[number] =>
+    (USER_SELECTABLE_LABELS as readonly string[]).includes(l)
+  )));
+  return db.update(users).set({ accountLabels: serializeLabels(valid) }).where(eq(users.id, userId));
+}
+
+export async function setAccountLabelsAdmin(userId: number, labels: AccountLabel[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const valid = Array.from(new Set(labels.filter((l): l is AccountLabel =>
+    (ALL_LABELS as readonly string[]).includes(l)
+  )));
+  return db.update(users).set({ accountLabels: serializeLabels(valid) }).where(eq(users.id, userId));
 }
 
 // -- Active Battle (admin-controlled matchup) ------------------

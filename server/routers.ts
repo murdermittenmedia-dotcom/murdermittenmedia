@@ -43,7 +43,7 @@ import {
   getPendingWheelOfNamesPaidEntries, confirmWheelOfNamesPaidEntry,
   removeWheelOfNamesEntry,
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
-  setAccountLabel, setAccountLabelAdmin,
+  setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -123,12 +123,12 @@ export const appRouter = router({
       }),
 
     // Set own account type label (user-selectable options only)
-    setLabel: protectedProcedure
+    setLabels: protectedProcedure
       .input(z.object({
-        label: z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner"]).nullable(),
+        labels: z.array(z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer"])),
       }))
       .mutation(async ({ ctx, input }) => {
-        await setAccountLabel(ctx.user.id, input.label);
+        await setAccountLabels(ctx.user.id, input.labels);
         return { success: true };
       }),
 
@@ -934,14 +934,14 @@ export const appRouter = router({
         await setUserRole(input.userId, input.role);
         return { success: true };
       }),
-    // Grant any account label including ADMIN/JUDGE (admin only)
-    setAccountLabel: adminProcedure
+    // Grant any account labels including ADMIN/JUDGE (admin only)
+    setAccountLabels: adminProcedure
       .input(z.object({
         userId: z.number(),
-        label: z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "judge", "admin"]).nullable(),
+        labels: z.array(z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin"])),
       }))
       .mutation(async ({ input }) => {
-        await setAccountLabelAdmin(input.userId, input.label);
+        await setAccountLabelsAdmin(input.userId, input.labels);
         return { success: true };
       }),
   }),
@@ -1623,14 +1623,14 @@ export const appRouter = router({
         });
         return { success: true };
       }),
-    // Grant any account label including ADMIN/JUDGE (admin only)
-    setAccountLabel: adminProcedure
+    // Grant any account labels including ADMIN/JUDGE (admin only)
+    setAccountLabels: adminProcedure
       .input(z.object({
         userId: z.number(),
-        label: z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "judge", "admin"]).nullable(),
+        labels: z.array(z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin"])),
       }))
       .mutation(async ({ input }) => {
-        await setAccountLabelAdmin(input.userId, input.label);
+        await setAccountLabelsAdmin(input.userId, input.labels);
         return { success: true };
       }),
   }),

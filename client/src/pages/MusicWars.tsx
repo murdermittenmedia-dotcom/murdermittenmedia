@@ -413,7 +413,7 @@ function SpinWheel({
 function ChatPanel({
   messages, isConnected, onSend, username,
 }: {
-  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; accountLabel?: string | null; createdAt: Date }>;
+  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; accountLabels?: string[] | null; createdAt: Date }>;
   isConnected: boolean;
   onSend: (msg: string) => void;
   username: string;
@@ -449,7 +449,7 @@ function ChatPanel({
               <ArtistStatModal artistName={msg.username}>
                 <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
               </ArtistStatModal>
-              {msg.accountLabel && <span className="ml-1"><LabelBadge label={msg.accountLabel} size="xs" /></span>}:
+              {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}:
             </span>
             <span className="text-white/80 break-words min-w-0">{msg.message}</span>
           </div>
@@ -1704,10 +1704,10 @@ export default function MusicWars() {
     username,
     userId: user?.id,
     isAdmin,
-    accountLabel: (user as { accountLabel?: string | null } | null)?.accountLabel ?? null,
+    accountLabels: (() => { const raw = (user as { accountLabels?: string | null } | null)?.accountLabels; if (!raw) return []; try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })(),
     initialMessages: (chatHistory || []).map(m => ({
       id: m.id, username: m.username, message: m.message,
-      room: m.room, isAdmin: m.isAdmin, accountLabel: null, createdAt: new Date(m.createdAt),
+      room: m.room, isAdmin: m.isAdmin, accountLabels: null, createdAt: new Date(m.createdAt),
     })),
     onSpinStateChange: (state) => {
       setSpinCount(state.spinCount);

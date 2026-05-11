@@ -799,3 +799,15 @@
 - [x] LabelBadge component: colored pill badge for each label type (distinct colors per label)
 - [x] Show LabelBadge next to username in: live chat messages, wheel entries list, battle leaderboard, ArtistStatModal, user profile header
 - [x] Ensure ADMIN and JUDGE labels are visually distinct (gold/yellow) vs user labels
+
+## Account Labels — Multi-Select + Audio Engineer (May 2026)
+- [ ] DB: change accountLabel (varchar) to accountLabels (JSON array) in users table
+- [ ] DB: push migration
+- [ ] Add AUDIO ENGINEER to label options (user-selectable)
+- [ ] tRPC: profile.setAccountLabels — accepts array of labels, validates each is user-selectable
+- [ ] tRPC: admin.setAccountLabels — accepts array, can include JUDGE/ADMIN
+- [ ] LabelBadge: support rendering multiple badges side by side
+- [ ] Profile page: multi-select toggle UI (click to add/remove labels)
+- [ ] Admin panel: multi-select for label grant
+- [ ] SiteNav: render all user labels next to name
+- [ ] Chat messages: render all labels next to username
