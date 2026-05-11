@@ -1,11 +1,19 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
 // Generate login URL at runtime so redirect URI reflects the current origin.
-export const getLoginUrl = () => {
+// The state param encodes both the redirectUri (required by OAuth) and the
+// returnPath (the page the user was on) so the callback can redirect back.
+export const getLoginUrl = (returnPath?: string) => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(redirectUri);
+  const path =
+    returnPath ??
+    (typeof window !== "undefined"
+      ? window.location.pathname + window.location.search
+      : "/");
+  // Encode both redirectUri and returnPath in state as JSON (base64)
+  const state = btoa(JSON.stringify({ redirectUri, returnPath: path }));
 
   const url = new URL(`${oauthPortalUrl}/app-auth`);
   url.searchParams.set("appId", appId);

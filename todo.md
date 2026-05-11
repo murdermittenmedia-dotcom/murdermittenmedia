@@ -824,3 +824,10 @@
 - [x] FloatingPlayer: when isAdmin && isLiveStream, play/pause button should call pause()/resume() locally AND emit broadcastRadioPause/Resume via socket
 - [x] MusicReview AdminPanel: Pause/Play/Rewind buttons must also apply to admin's local player (pause(), resume(), seek(0)) in addition to broadcasting
 - [x] MusicReview: remove the `if (isAdmin) return` guard from onRadioPaused/onRadioResumed/onRadioSeeked so admin's player syncs with the broadcast echo
+
+## Login Reliability Fixes
+- [x] sdk.ts: throttle lastSignedIn upsert — only write if last update was >5 min ago (in-memory cache per openId)
+- [x] sdk.ts: add retry with exponential backoff for getUserInfoWithJwt on rate limit (429)
+- [x] oauth.ts: redirect to returnPath after login (encode returnPath in state alongside redirectUri)
+- [x] oauth.ts: show user-friendly HTML error page instead of raw JSON on callback failure
+- [x] const.ts: encode current page path in state so user returns to the page they were on after login

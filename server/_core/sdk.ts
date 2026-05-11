@@ -14,6 +14,7 @@ import type {
   GetUserInfoWithJwtRequest,
   GetUserInfoWithJwtResponse,
 } from "./types/manusTypes";
+
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
@@ -28,6 +29,55 @@ const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
+// ─── lastSignedIn throttle ────────────────────────────────────────────────────
+// Only write lastSignedIn to DB once every 5 minutes per user to avoid
+// hammering the DB on every tRPC request (pages fire 5-10 simultaneous calls).
+const LAST_SIGNED_IN_THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
+const lastSignedInCache = new Map<string, number>(); // openId -> last write timestamp
+
+function shouldUpdateLastSignedIn(openId: string): boolean {
+  const last = lastSignedInCache.get(openId);
+  if (!last) return true;
+  return Date.now() - last > LAST_SIGNED_IN_THROTTLE_MS;
+}
+
+function markLastSignedInUpdated(openId: string): void {
+  lastSignedInCache.set(openId, Date.now());
+  // Prevent unbounded growth — evict oldest entries when cache exceeds 10k
+  if (lastSignedInCache.size > 10_000) {
+    const oldest = Array.from(lastSignedInCache.entries())
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, 1000)
+      .map(([k]) => k);
+    oldest.forEach(k => lastSignedInCache.delete(k));
+  }
+}
+
+// ─── Retry helper for rate-limited external calls ─────────────────────────────
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 500
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const status = error?.response?.status ?? error?.status;
+      // Only retry on 429 (rate limit) or 5xx (transient server errors)
+      if (status !== 429 && (status < 500 || status >= 600)) throw error;
+      if (attempt < maxAttempts - 1) {
+        const delay = baseDelayMs * Math.pow(2, attempt); // 500ms, 1000ms
+        console.warn(`[Auth] Rate limited (${status}), retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
     console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
@@ -38,9 +88,38 @@ class OAuthService {
     }
   }
 
-  private decodeState(state: string): string {
-    const redirectUri = atob(state);
-    return redirectUri;
+  private decodeState(state: string): { redirectUri: string; returnPath?: string } {
+    try {
+      const decoded = atob(state);
+      // New format: JSON with redirectUri + returnPath
+      const parsed = JSON.parse(decoded);
+      if (parsed && typeof parsed.redirectUri === "string") {
+        return parsed;
+      }
+      // Legacy format: plain redirectUri string
+      return { redirectUri: decoded };
+    } catch {
+      // Fallback: treat as plain redirectUri
+      return { redirectUri: atob(state) };
+    }
+  }
+
+  getReturnPath(state: string): string {
+    try {
+      const { returnPath } = this.decodeState(state);
+      return returnPath || "/";
+    } catch {
+      return "/";
+    }
+  }
+
+  getRedirectUri(state: string): string {
+    try {
+      const { redirectUri } = this.decodeState(state);
+      return redirectUri;
+    } catch {
+      return atob(state);
+    }
   }
 
   async getTokenByCode(
@@ -51,28 +130,30 @@ class OAuthService {
       clientId: ENV.appId,
       grantType: "authorization_code",
       code,
-      redirectUri: this.decodeState(state),
+      redirectUri: this.getRedirectUri(state),
     };
 
-    const { data } = await this.client.post<ExchangeTokenResponse>(
-      EXCHANGE_TOKEN_PATH,
-      payload
-    );
-
-    return data;
+    return withRetry(async () => {
+      const { data } = await this.client.post<ExchangeTokenResponse>(
+        EXCHANGE_TOKEN_PATH,
+        payload
+      );
+      return data;
+    });
   }
 
   async getUserInfoByToken(
     token: ExchangeTokenResponse
   ): Promise<GetUserInfoResponse> {
-    const { data } = await this.client.post<GetUserInfoResponse>(
-      GET_USER_INFO_PATH,
-      {
-        accessToken: token.accessToken,
-      }
-    );
-
-    return data;
+    return withRetry(async () => {
+      const { data } = await this.client.post<GetUserInfoResponse>(
+        GET_USER_INFO_PATH,
+        {
+          accessToken: token.accessToken,
+        }
+      );
+      return data;
+    });
   }
 }
 
@@ -115,8 +196,6 @@ class SDKServer {
 
   /**
    * Exchange OAuth authorization code for access token
-   * @example
-   * const tokenResponse = await sdk.exchangeCodeForToken(code, state);
    */
   async exchangeCodeForToken(
     code: string,
@@ -126,9 +205,14 @@ class SDKServer {
   }
 
   /**
+   * Get the return path from the OAuth state parameter
+   */
+  getReturnPathFromState(state: string): string {
+    return this.oauthService.getReturnPath(state);
+  }
+
+  /**
    * Get user information using access token
-   * @example
-   * const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
    */
   async getUserInfo(accessToken: string): Promise<GetUserInfoResponse> {
     const data = await this.oauthService.getUserInfoByToken({
@@ -161,8 +245,6 @@ class SDKServer {
 
   /**
    * Create a session token for a Manus user openId
-   * @example
-   * const sessionToken = await sdk.createSessionToken(userInfo.openId);
    */
   async createSessionToken(
     openId: string,
@@ -240,20 +322,21 @@ class SDKServer {
       projectId: ENV.appId,
     };
 
-    const { data } = await this.client.post<GetUserInfoWithJwtResponse>(
-      GET_USER_INFO_WITH_JWT_PATH,
-      payload
-    );
-
-    const loginMethod = this.deriveLoginMethod(
-      (data as any)?.platforms,
-      (data as any)?.platform ?? data.platform ?? null
-    );
-    return {
-      ...(data as any),
-      platform: loginMethod,
-      loginMethod,
-    } as GetUserInfoWithJwtResponse;
+    return withRetry(async () => {
+      const { data } = await this.client.post<GetUserInfoWithJwtResponse>(
+        GET_USER_INFO_WITH_JWT_PATH,
+        payload
+      );
+      const loginMethod = this.deriveLoginMethod(
+        (data as any)?.platforms,
+        (data as any)?.platform ?? data.platform ?? null
+      );
+      return {
+        ...(data as any),
+        platform: loginMethod,
+        loginMethod,
+      } as GetUserInfoWithJwtResponse;
+    });
   }
 
   async authenticateRequest(req: Request): Promise<User> {
@@ -270,7 +353,7 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
+    // If user not in DB, sync from OAuth server automatically (first login)
     if (!user) {
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
@@ -281,6 +364,7 @@ class SDKServer {
           loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
           lastSignedIn: signedInAt,
         });
+        markLastSignedInUpdated(userInfo.openId);
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
         console.error("[Auth] Failed to sync user from OAuth:", error);
@@ -292,10 +376,15 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    await db.upsertUser({
-      openId: user.openId,
-      lastSignedIn: signedInAt,
-    });
+    // Throttle lastSignedIn updates — only write once every 5 minutes per user
+    // to avoid a DB write on every single tRPC request (pages fire 5-10 at once)
+    if (shouldUpdateLastSignedIn(user.openId)) {
+      await db.upsertUser({
+        openId: user.openId,
+        lastSignedIn: signedInAt,
+      });
+      markLastSignedInUpdated(user.openId);
+    }
 
     return user;
   }
