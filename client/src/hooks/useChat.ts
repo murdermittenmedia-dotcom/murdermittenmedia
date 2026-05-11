@@ -55,6 +55,7 @@ interface UseChatOptions {
   onRadioPaused?: (data: { pausedAt: number }) => void;
   onRadioResumed?: (data: { startedAt: number }) => void;
   onRadioSeeked?: (data: { currentTime: number; startedAt: number }) => void;
+  onReactionsUpdated?: (data: { submissionId: number }) => void;
 }
 
 export function useChat({
@@ -72,6 +73,7 @@ export function useChat({
   onRadioPaused,
   onRadioResumed,
   onRadioSeeked,
+  onReactionsUpdated,
 }: UseChatOptions) {
   const socketRef = useRef<Socket | null>(null);
   const onSpinStateRef = useRef(onSpinStateChange);
@@ -90,6 +92,8 @@ export function useChat({
   onRadioResumedRef.current = onRadioResumed;
   const onRadioSeekedRef = useRef(onRadioSeeked);
   onRadioSeekedRef.current = onRadioSeeked;
+  const onReactionsUpdatedRef = useRef(onReactionsUpdated);
+  onReactionsUpdatedRef.current = onReactionsUpdated;
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isConnected, setIsConnected] = useState(false);
@@ -160,6 +164,11 @@ export function useChat({
       onRadioSeekedRef.current?.(data);
     });
 
+    // Reactions/votes updated — refetch counts for all viewers
+    socket.on("review:reactions_updated", (data: { submissionId: number }) => {
+      onReactionsUpdatedRef.current?.(data);
+    });
+
     // Admin: last song restored to queue
     socket.on("radio:last_song_restored", (data: LastSongRestoredData) => {
       onLastSongRestoredRef.current?.(data);
@@ -221,6 +230,11 @@ export function useChat({
     socketRef.current?.emit("review:queue_updated");
   }, []);
 
+  // Broadcast that reactions have been updated for a submission
+  const broadcastReactionsUpdated = useCallback((submissionId: number) => {
+    socketRef.current?.emit("review:reactions_updated", { submissionId });
+  }, []);
+
   // Admin: restore last played song to queue
   const broadcastLastSong = useCallback(() => {
     socketRef.current?.emit("radio:last_song");
@@ -240,6 +254,7 @@ export function useChat({
     broadcastRadioSeek,
     broadcastReviewPlayback,
     broadcastReviewQueueUpdated,
+    broadcastReactionsUpdated,
     broadcastLastSong,
     socket: socketRef.current,
   };

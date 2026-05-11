@@ -837,3 +837,11 @@
 - [x] FloatingPlayer viewer button: change icons from VolumeX/Pause to Play/Stop (disguised as play/stop but actually mute/unmute)
 - [x] Ensure viewers have NO access to seek, progress scrub, or any playback control besides the mute button
 - [x] Admin mic should not interrupt or pause the music — it overlays on top
+
+## Queue / Votes / Now-Playing Sync Fixes
+- [x] Reduce queue poll interval from 15s to 5s for faster fallback sync
+- [x] Initialize liveReviewActive from DB currentPlaying on page load (so late joiners see the current song immediately)
+- [x] Add socket event for vote changes so all clients see live vote counts without waiting for poll
+- [x] Reduce reaction poll interval from 5s to 3s as secondary fallback
+- [x] Ensure queue refetch happens immediately on radio:playing event (not just review:queue_updated)
+- [x] Add a useEffect that syncs liveReviewActive from currentPlaying when liveReviewActive is null but currentPlaying exists

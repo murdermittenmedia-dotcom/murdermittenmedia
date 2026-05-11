@@ -635,7 +635,7 @@ export default function MusicReview() {
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, {
-    refetchInterval: 15000,
+    refetchInterval: 5000,
   });
 
   // Previously reviewed tracks — the ONLY place on the site with independent playback
@@ -658,6 +658,8 @@ export default function MusicReview() {
       refetch();
       refetchMyReaction();
       refetchReactions();
+      // Broadcast to all clients so their vote counts update in real-time
+      if (currentPlayingId) broadcastReactionsUpdated(currentPlayingId);
     },
     onError: (err) => {
       if (err.message.includes("Already voted")) {
@@ -677,11 +679,11 @@ export default function MusicReview() {
   const currentPlayingId = data?.currentPlaying?.id ?? null;
   const { data: myReaction, refetch: refetchMyReaction } = trpc.queue.getMyReaction.useQuery(
     { submissionId: currentPlayingId! },
-    { enabled: !!user && !!currentPlayingId, refetchInterval: 5000 }
+    { enabled: !!user && !!currentPlayingId, refetchInterval: 3000 }
   );
   const { data: reactionCounts, refetch: refetchReactions } = trpc.queue.getReactions.useQuery(
     { submissionId: currentPlayingId! },
-    { enabled: !!currentPlayingId, refetchInterval: 5000 }
+    { enabled: !!currentPlayingId, refetchInterval: 3000 }
   );
 
   // Auto-mark as reviewed when a queued track finishes playing
@@ -725,7 +727,7 @@ export default function MusicReview() {
   const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong } = useChat({
+  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastReactionsUpdated, broadcastLastSong } = useChat({
     room: "music_review",
     username: chatUsername,
     userId: user?.id,
@@ -737,6 +739,10 @@ export default function MusicReview() {
     })),
     onReviewActiveChanged: (item: LiveReviewActiveItem) => {
       setLiveReviewActive(item.submissionId === null ? null : item);
+      // Immediately refetch queue + reactions when the current song changes
+      refetch();
+      refetchReactions();
+      refetchMyReaction();
     },
     onReviewPlayback: (data: LiveReviewPlayback) => {
       if (!liveAudioRef.current) return;
@@ -763,7 +769,28 @@ export default function MusicReview() {
     onRadioSeeked: (data) => {
       audioPlayer.seek(data.currentTime);
     },
+    onReactionsUpdated: () => {
+      refetchReactions();
+      refetchMyReaction();
+    },
   });
+
+  // Initialize liveReviewActive from DB when page loads (for late joiners)
+  useEffect(() => {
+    if (!liveReviewActive && data?.currentPlaying) {
+      const cp = data.currentPlaying;
+      setLiveReviewActive({
+        submissionId: cp.id,
+        artistName: cp.artistName,
+        songTitle: cp.songTitle,
+        audioUrl: cp.fileUrl ?? null,
+        youtubeUrl: cp.youtubeUrl ?? null,
+        submissionType: cp.submissionType,
+        fileKey: cp.fileKey ?? null,
+        fileUrl: cp.fileUrl ?? null,
+      });
+    }
+  }, [data?.currentPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register admin broadcast functions so FloatingPlayer can control all listeners
   useEffect(() => {

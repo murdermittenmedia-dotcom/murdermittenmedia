@@ -606,6 +606,10 @@ async function startServer() {
     socket.on("review:queue_updated", () => {
       io.to("music_review").emit("review:queue_updated");
     });
+    // Broadcast reaction/vote changes to all clients in the room
+    socket.on("review:reactions_updated", (data: { submissionId: number }) => {
+      io.to("music_review").emit("review:reactions_updated", data);
+    });
 
     // ── Music Wars Radio Events ─────────────────────────────────
     // Admin loads battle tracks (auto-called when battle is set)
