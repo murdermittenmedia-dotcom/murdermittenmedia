@@ -239,21 +239,27 @@ export function useAdminMicBroadcast({
     micGain.connect(destination);
 
     // Source 2: Music (from the audio player element)
+    // Use captureStream() instead of createMediaElementSource() to avoid
+    // disconnecting the audio element from its default output.
+    // captureStream() creates a copy of the audio output as a MediaStream
+    // WITHOUT affecting the original playback — admin still hears music normally.
     const audioEl = getAudioElement?.();
     if (audioEl) {
       try {
-        const musicSource = ctx.createMediaElementSource(audioEl);
-        const musicGain = ctx.createGain();
-        musicGain.gain.value = 1.0; // Full music volume
-        musicSource.connect(musicGain);
-        musicGain.connect(destination);
-        // IMPORTANT: also connect music back to default output so admin still hears it locally
-        musicSource.connect(ctx.destination);
+        // captureStream() is available on HTMLMediaElement in modern browsers
+        const capturedStream = (audioEl as any).captureStream?.() || (audioEl as any).mozCaptureStream?.();
+        if (capturedStream && capturedStream.getAudioTracks().length > 0) {
+          const musicSource = ctx.createMediaStreamSource(capturedStream);
+          const musicGain = ctx.createGain();
+          musicGain.gain.value = 1.0; // Full music volume in the mix
+          musicSource.connect(musicGain);
+          musicGain.connect(destination);
+        } else {
+          console.warn("[AdminMicBroadcast] captureStream() returned no audio tracks");
+        }
       } catch (err) {
-        // If the audio element is already connected to another AudioContext,
-        // we can't re-capture it. In that case, just broadcast mic only.
-        console.warn("[AdminMicBroadcast] Could not capture music element (may already be connected):", err);
-        // Fallback: just broadcast mic
+        console.warn("[AdminMicBroadcast] Could not capture music stream:", err);
+        // Fallback: just broadcast mic only
       }
     }
 
