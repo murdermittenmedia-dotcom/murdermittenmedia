@@ -74,6 +74,8 @@ type AudioPlayerContextType = AudioPlayerState & {
   localMuteStream: () => void;
   /** For live streams: unmute local audio */
   localUnmuteStream: () => void;
+  /** Get the underlying HTMLAudioElement for Web Audio API integration (e.g. mic mixing) */
+  getAudioElement: () => HTMLAudioElement | null;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -461,7 +463,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay, unlockThenSwap, localMuteStream, localUnmuteStream }}>
+    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay, unlockThenSwap, localMuteStream, localUnmuteStream, getAudioElement: () => audioRef.current }}>
       {children}
     </AudioPlayerContext.Provider>
   );

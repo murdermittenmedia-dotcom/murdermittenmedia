@@ -786,6 +786,7 @@ export default function MusicReview() {
     enabled: true,
     username: user?.artistName || user?.name || "Admin",
     userId: user?.id,
+    getAudioElement: audioPlayer.getAudioElement,
   });
 
   useEffect(() => {

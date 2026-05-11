@@ -1,24 +1,19 @@
 /**
  * useAdminMicBroadcast
  *
- * Enables the admin to broadcast their microphone audio to all radio listeners
- * using a one-to-many WebRTC pattern:
+ * Enables the admin to broadcast their microphone audio MIXED with the music
+ * into a single WebRTC stream for all radio listeners.
  *
- * Admin side:
- *   - Captures mic via getUserMedia
- *   - Signals `radio:mic_broadcast_start` to server
- *   - Creates a WebRTC PeerConnection for each new listener that connects
- *   - Sends mic audio track to each listener
+ * Architecture:
+ * - Admin side: captures mic via getUserMedia, routes both mic and the music
+ *   HTMLAudioElement through Web Audio API (AudioContext), mixes them into a
+ *   single MediaStream via MediaStreamDestination, then sends that combined
+ *   stream to each listener via WebRTC peer connections.
+ * - Listener side: receives the combined stream and plays it through an <audio>
+ *   element. The listener hears both music + admin mic as one stream.
  *
- * Listener side:
- *   - Connects to the same socket room
- *   - Receives `radio:mic_broadcast_active` when admin starts broadcasting
- *   - Creates a WebRTC PeerConnection to the admin broadcaster
- *   - Receives the mic audio stream and plays it via an <audio> element
- *
- * Usage:
- *   const { isBroadcasting, isAdminMicLive, toggleBroadcast, adminMicVolume, setAdminMicVolume }
- *     = useAdminMicBroadcast({ room: "music_review", isAdmin, socketRef })
+ * The music continues playing through the admin's local speakers normally —
+ * the Web Audio API capture doesn't interrupt playback.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
@@ -32,18 +27,27 @@ interface UseAdminMicBroadcastOptions {
   room: "music_review" | "music_wars";
   isAdmin: boolean;
   enabled?: boolean;
-  /** Username of the admin — needed so the server registers them as a room participant */
   username?: string;
-  /** User ID of the admin */
   userId?: number;
+  /** Function to get the music HTMLAudioElement for mixing */
+  getAudioElement?: () => HTMLAudioElement | null;
 }
 
-export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username = "Admin", userId }: UseAdminMicBroadcastOptions) {
+export function useAdminMicBroadcast({
+  room,
+  isAdmin,
+  enabled = true,
+  username = "Admin",
+  userId,
+  getAudioElement,
+}: UseAdminMicBroadcastOptions) {
   const socketRef = useRef<Socket | null>(null);
 
   // Admin state
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const mixedStreamRef = useRef<MediaStream | null>(null);
   // Map of listener socketId → RTCPeerConnection (admin side)
   const listenerPeersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
 
@@ -55,12 +59,12 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
   const [adminMicVolume, setAdminMicVolume] = useState(0.9);
 
   // ── Create admin→listener peer connection ──────────────────────────────
-  const createListenerPeer = useCallback((listenerSocketId: string, micStream: MediaStream) => {
+  const createListenerPeer = useCallback((listenerSocketId: string, stream: MediaStream) => {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
-    // Add mic tracks to the peer connection
-    micStream.getAudioTracks().forEach(track => {
-      pc.addTrack(track, micStream);
+    // Add the mixed stream tracks to the peer connection
+    stream.getAudioTracks().forEach(track => {
+      pc.addTrack(track, stream);
     });
 
     pc.onicecandidate = (event) => {
@@ -101,7 +105,6 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
 
     socket.on("connect", () => {
       // Register as a participant so the server knows our role
-      // This is required for radio:mic_broadcast_start to work (server checks participant.role === "admin")
       socket.emit("room:join", {
         username,
         role: isAdmin ? "admin" : "viewer",
@@ -112,13 +115,9 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
       socket.emit("radio:mic_get_state", { room });
     });
 
-    // ── Admin side: a new listener wants to receive the broadcast ──────────
+    // ── Listener side: admin mic is live ──────────────────────────────────
     socket.on("radio:mic_broadcast_active", (data: { broadcasterSocketId: string }) => {
-      if (isAdmin) {
-        // Another admin connected — ignore (we are the broadcaster)
-        return;
-      }
-      // Listener: admin mic is live, initiate WebRTC connection to broadcaster
+      if (isAdmin) return; // We are the broadcaster
       setIsAdminMicLive(true);
       setBroadcasterSocketId(data.broadcasterSocketId);
     });
@@ -126,7 +125,6 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
     socket.on("radio:mic_broadcast_inactive", () => {
       setIsAdminMicLive(false);
       setBroadcasterSocketId(null);
-      // Clean up listener peer connection
       if (listenerPcRef.current) {
         listenerPcRef.current.close();
         listenerPcRef.current = null;
@@ -149,7 +147,6 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
     socket.on("radio:mic_offer", async ({ from, offer }: { from: string; offer: RTCSessionDescriptionInit }) => {
       if (isAdmin) return;
 
-      // Create or reuse peer connection to the broadcaster
       if (listenerPcRef.current) {
         listenerPcRef.current.close();
       }
@@ -158,7 +155,7 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
       listenerPcRef.current = pc;
 
       pc.ontrack = (event) => {
-        // Play the admin's mic audio
+        // Play the combined (music + mic) stream
         if (!adminAudioRef.current) {
           adminAudioRef.current = new Audio();
           adminAudioRef.current.autoplay = true;
@@ -202,12 +199,9 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
     });
 
     // ── Admin side: new listener joined while broadcasting ─────────────────
-    // When a new listener connects and we're broadcasting, they'll receive
-    // radio:mic_broadcast_active and send us a request to get an offer.
-    // We handle this by listening for a "radio:mic_listener_ready" event.
     socket.on("radio:mic_listener_ready", ({ listenerSocketId }: { listenerSocketId: string }) => {
-      if (!isAdmin || !isBroadcasting || !micStreamRef.current) return;
-      createListenerPeer(listenerSocketId, micStreamRef.current);
+      if (!isAdmin || !mixedStreamRef.current) return;
+      createListenerPeer(listenerSocketId, mixedStreamRef.current);
     });
 
     return () => {
@@ -224,12 +218,55 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
     }
   }, [adminMicVolume]);
 
+  // ── Admin: create mixed stream (mic + music) using Web Audio API ────────
+  const createMixedStream = useCallback(async (): Promise<MediaStream> => {
+    // Get mic stream
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    micStreamRef.current = micStream;
+
+    // Create AudioContext for mixing
+    const ctx = new AudioContext();
+    audioContextRef.current = ctx;
+
+    // Create a destination node that produces a MediaStream
+    const destination = ctx.createMediaStreamDestination();
+
+    // Source 1: Microphone
+    const micSource = ctx.createMediaStreamSource(micStream);
+    const micGain = ctx.createGain();
+    micGain.gain.value = 1.0; // Full mic volume
+    micSource.connect(micGain);
+    micGain.connect(destination);
+
+    // Source 2: Music (from the audio player element)
+    const audioEl = getAudioElement?.();
+    if (audioEl) {
+      try {
+        const musicSource = ctx.createMediaElementSource(audioEl);
+        const musicGain = ctx.createGain();
+        musicGain.gain.value = 1.0; // Full music volume
+        musicSource.connect(musicGain);
+        musicGain.connect(destination);
+        // IMPORTANT: also connect music back to default output so admin still hears it locally
+        musicSource.connect(ctx.destination);
+      } catch (err) {
+        // If the audio element is already connected to another AudioContext,
+        // we can't re-capture it. In that case, just broadcast mic only.
+        console.warn("[AdminMicBroadcast] Could not capture music element (may already be connected):", err);
+        // Fallback: just broadcast mic
+      }
+    }
+
+    const mixed = destination.stream;
+    mixedStreamRef.current = mixed;
+    return mixed;
+  }, [getAudioElement]);
+
   // ── Admin: start/stop broadcasting ─────────────────────────────────────
   const startBroadcast = useCallback(async () => {
     if (!isAdmin) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      micStreamRef.current = stream;
+      const stream = await createMixedStream();
       setIsBroadcasting(true);
 
       // Tell server we're broadcasting
@@ -238,11 +275,14 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
       // The server will notify all current listeners via radio:mic_broadcast_active.
       // Each listener will then send radio:mic_listener_ready back to us,
       // and we'll create peer connections for each.
+      // Also create peers for any listeners already connected
+      // (they'll receive the broadcast_active event and send listener_ready)
+      void stream; // stream is stored in mixedStreamRef
     } catch (err) {
-      console.error("[AdminMicBroadcast] Failed to get mic:", err);
+      console.error("[AdminMicBroadcast] Failed to start broadcast:", err);
       throw err;
     }
-  }, [isAdmin]);
+  }, [isAdmin, createMixedStream]);
 
   const stopBroadcast = useCallback(() => {
     if (!isAdmin) return;
@@ -252,6 +292,15 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
       micStreamRef.current.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
     }
+
+    // Close AudioContext
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+
+    // Clear mixed stream
+    mixedStreamRef.current = null;
 
     // Close all listener peer connections
     listenerPeersRef.current.forEach(pc => pc.close());
@@ -270,8 +319,6 @@ export function useAdminMicBroadcast({ room, isAdmin, enabled = true, username =
   }, [isBroadcasting, startBroadcast, stopBroadcast]);
 
   // ── Listener: signal to admin that we're ready to receive ──────────────
-  // When isAdminMicLive becomes true (from radio:mic_broadcast_active),
-  // tell the admin we're ready so they can send us an offer.
   useEffect(() => {
     if (!isAdminMicLive || isAdmin || !broadcasterSocketId || !socketRef.current) return;
     socketRef.current.emit("radio:mic_listener_ready", {

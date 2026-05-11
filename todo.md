@@ -831,3 +831,9 @@
 - [x] oauth.ts: redirect to returnPath after login (encode returnPath in state alongside redirectUri)
 - [x] oauth.ts: show user-friendly HTML error page instead of raw JSON on callback failure
 - [x] const.ts: encode current page path in state so user returns to the page they were on after login
+
+## Mic-to-Radio & Viewer Controls Fix
+- [x] Redesign mic broadcast: admin mic audio should be mixed with music using Web Audio API so listeners hear one combined stream (not a separate audio element)
+- [x] FloatingPlayer viewer button: change icons from VolumeX/Pause to Play/Stop (disguised as play/stop but actually mute/unmute)
+- [x] Ensure viewers have NO access to seek, progress scrub, or any playback control besides the mute button
+- [x] Admin mic should not interrupt or pause the music — it overlays on top

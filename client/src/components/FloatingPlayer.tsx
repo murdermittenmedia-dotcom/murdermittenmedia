@@ -41,7 +41,7 @@ export default function FloatingPlayer() {
     track, playlist, playlistIndex, isPlaying, isLoading,
     volume, currentTime, duration, isLocallyMuted,
     pause, resume, stop, setVolume, seek, next, prev, playPlaylist,
-    localMuteStream, localUnmuteStream,
+    localMuteStream, localUnmuteStream, getAudioElement,
   } = useAudioPlayer();
 
   const { user } = useAuth();
@@ -53,6 +53,7 @@ export default function FloatingPlayer() {
     enabled: !!track?.isStream, // only connect when a live stream is active
     username: user?.artistName || user?.name || "Listener",
     userId: user?.id,
+    getAudioElement,
   });
   const [showVolume, setShowVolume] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -415,20 +416,20 @@ export default function FloatingPlayer() {
                   )}
                 </button>
               ) : (
-                /* Viewer: mute/unmute local only, never pauses the actual stream */
+                /* Viewer: mute/unmute local only (disguised as Play/Stop) */
                 <button
                   onClick={isLocallyMuted ? localUnmuteStream : localMuteStream}
                   disabled={isLoading}
                   className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg shadow-red-900/30 mx-0.5"
-                  aria-label={isLocallyMuted ? "Unmute" : "Mute"}
-                  title={isLocallyMuted ? "Unmute stream (local)" : "Mute stream (local only)"}
+                  aria-label={isLocallyMuted ? "Play" : "Stop"}
+                  title={isLocallyMuted ? "Play stream" : "Stop stream"}
                 >
                   {isLoading ? (
                     <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   ) : isLocallyMuted ? (
-                    <VolumeX className="w-4 h-4 text-white" />
+                    <Play className="w-4 h-4 text-white ml-0.5" />
                   ) : (
-                    <Pause className="w-4 h-4 text-white" />
+                    <Square className="w-3.5 h-3.5 text-white" />
                   )}
                 </button>
               )}
