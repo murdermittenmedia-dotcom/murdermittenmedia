@@ -21,6 +21,7 @@ import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import LabelBadge from "@/components/LabelBadge";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
+import { registerSeekBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
 type QueueState = { id: number; isLive: boolean; liveMessage: string | null; streamUrl: string | null; currentPlayingId: number | null; updatedAt: Date };
@@ -728,7 +729,34 @@ export default function MusicReview() {
       toast.success(`↩ "${data.songTitle}" by ${data.artistName} restored to queue`);
       refetch();
     },
+    // Admin pause/resume/seek — apply to local player for non-admin listeners
+    onRadioPaused: (data) => {
+      if (isAdmin) return; // admin controls their own player directly
+      audioPlayer.seek(data.pausedAt);
+      audioPlayer.pause();
+    },
+    onRadioResumed: (data) => {
+      if (isAdmin) return;
+      // Calculate current position from startedAt
+      const elapsed = (Date.now() - data.startedAt) / 1000;
+      audioPlayer.seek(Math.max(0, elapsed));
+      audioPlayer.resume();
+    },
+    onRadioSeeked: (data) => {
+      if (isAdmin) return;
+      audioPlayer.seek(data.currentTime);
+    },
   });
+
+  // Register seek broadcast so FloatingPlayer can broadcast seeks to all listeners
+  useEffect(() => {
+    if (isAdmin) {
+      registerSeekBroadcast(broadcastRadioSeek);
+    }
+    return () => {
+      registerSeekBroadcast(null);
+    };
+  }, [isAdmin, broadcastRadioSeek]);
 
   // Admin mic broadcast to radio feed
   const adminMicBroadcast = useAdminMicBroadcast({

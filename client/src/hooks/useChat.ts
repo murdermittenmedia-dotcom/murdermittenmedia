@@ -52,6 +52,9 @@ interface UseChatOptions {
   onReviewPlayback?: (data: LiveReviewPlayback) => void;
   onReviewQueueUpdated?: () => void;
   onLastSongRestored?: (data: LastSongRestoredData) => void;
+  onRadioPaused?: (data: { pausedAt: number }) => void;
+  onRadioResumed?: (data: { startedAt: number }) => void;
+  onRadioSeeked?: (data: { currentTime: number; startedAt: number }) => void;
 }
 
 export function useChat({
@@ -66,6 +69,9 @@ export function useChat({
   onReviewPlayback,
   onReviewQueueUpdated,
   onLastSongRestored,
+  onRadioPaused,
+  onRadioResumed,
+  onRadioSeeked,
 }: UseChatOptions) {
   const socketRef = useRef<Socket | null>(null);
   const onSpinStateRef = useRef(onSpinStateChange);
@@ -78,6 +84,12 @@ export function useChat({
   onReviewQueueUpdatedRef.current = onReviewQueueUpdated;
   const onLastSongRestoredRef = useRef(onLastSongRestored);
   onLastSongRestoredRef.current = onLastSongRestored;
+  const onRadioPausedRef = useRef(onRadioPaused);
+  onRadioPausedRef.current = onRadioPaused;
+  const onRadioResumedRef = useRef(onRadioResumed);
+  onRadioResumedRef.current = onRadioResumed;
+  const onRadioSeekedRef = useRef(onRadioSeeked);
+  onRadioSeekedRef.current = onRadioSeeked;
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isConnected, setIsConnected] = useState(false);
@@ -135,6 +147,17 @@ export function useChat({
     });
     socket.on("radio:stopped", () => {
       onReviewActiveRef.current?.({ submissionId: null });
+    });
+
+    // Admin pause/resume/seek — broadcast to all listeners
+    socket.on("radio:paused", (data: { pausedAt: number }) => {
+      onRadioPausedRef.current?.(data);
+    });
+    socket.on("radio:resumed", (data: { startedAt: number }) => {
+      onRadioResumedRef.current?.(data);
+    });
+    socket.on("radio:seeked", (data: { currentTime: number; startedAt: number }) => {
+      onRadioSeekedRef.current?.(data);
     });
 
     // Admin: last song restored to queue

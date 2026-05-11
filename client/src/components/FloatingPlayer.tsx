@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { ArtistLink } from "@/components/ArtistLink";
 import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
+import { emitSeekBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || seconds <= 0) return "0:00";
@@ -124,13 +125,17 @@ export default function FloatingPlayer() {
     if (!isDragging) return;
     setIsDragging(false);
     const pct = getProgressFromEvent(e);
-    seek(pct * duration);
+    const time = pct * duration;
+    seek(time);
+    emitSeekBroadcast(time);
   };
 
   const handleProgressClick = (e: React.MouseEvent) => {
     if (isLiveStream || duration <= 0) return;
     const pct = getProgressFromEvent(e);
-    seek(pct * duration);
+    const time = pct * duration;
+    seek(time);
+    emitSeekBroadcast(time);
   };
 
   // ── Render guards ──────────────────────────────────────────────────────────

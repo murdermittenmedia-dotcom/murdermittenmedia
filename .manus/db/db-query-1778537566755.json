@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, name, email, role FROM users WHERE role = 'admin' ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, name, email, role FROM users WHERE role = 'admin' ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Murder Mitten",
+      "email": "murdermittenmedia@gmail.com",
+      "role": "admin"
+    },
+    {
+      "id": "2370046",
+      "name": "YOUNG LIVINGGOATS",
+      "email": "younglivinggoats@gmail.com",
+      "role": "admin"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n1\tMurder Mitten\tmurdermittenmedia@gmail.com\tadmin\n2370046\tYOUNG LIVINGGOATS\tyounglivinggoats@gmail.com\tadmin\n",
+  "stderr": "",
+  "execution_time_ms": 264
+}

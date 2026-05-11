@@ -1,0 +1,171 @@
+{
+  "query": "SELECT id, name, email, role, openId FROM users ORDER BY createdAt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, name, email, role, openId FROM users ORDER BY createdAt DESC;",
+  "rows": [
+    {
+      "id": "4350001",
+      "name": "backwoodrolling247",
+      "email": "backwoodrolling247@gmail.com",
+      "role": "user",
+      "openId": "dcXqBnuunBZj6bNqgDX8i8"
+    },
+    {
+      "id": "4200008",
+      "name": "Kayden Defauw",
+      "email": "kaydendefauw08@gmail.com",
+      "role": "contestant",
+      "openId": "PRBMKZmRuQQ9vJngxs44AG"
+    },
+    {
+      "id": "4170001",
+      "name": "merrow62",
+      "email": "merrow62@yahoo.com",
+      "role": "contestant",
+      "openId": "2gBGNqgKzijsds5Ejx6ofB"
+    },
+    {
+      "id": "4140001",
+      "name": "Domino Jamal",
+      "email": "dominojamal9@gmail.com",
+      "role": "contestant",
+      "openId": "5pkh4V5nDpb4VgCs5JaynB"
+    },
+    {
+      "id": "4020001",
+      "name": "Why Not Rob",
+      "email": "mitchnerrober@gmail.com",
+      "role": "contestant",
+      "openId": "f5mZLDYL4zRnEVYBwXRHWE"
+    },
+    {
+      "id": "3990001",
+      "name": "Meechie LoC",
+      "email": "meechie4462@icloud.com",
+      "role": "contestant",
+      "openId": "hocmZGRA9LU7ZCwUk6uSBs"
+    },
+    {
+      "id": "3630001",
+      "name": "Matthew Ragland",
+      "email": "r45gn7tcp9@privaterelay.appleid.com",
+      "role": "contestant",
+      "openId": "oParmrq6Q5sppyhxH4W3Ad"
+    },
+    {
+      "id": "3420001",
+      "name": "busycat8787",
+      "email": "busycat8787@gmail.com",
+      "role": "contestant",
+      "openId": "3kCkmHUSLZMgk4qSpauEQ4"
+    },
+    {
+      "id": "3360001",
+      "name": "noahturner717",
+      "email": "noahturner717@gmail.com",
+      "role": "contestant",
+      "openId": "keCqqy53UhVmFJ7a64RQgV"
+    },
+    {
+      "id": "3330038",
+      "name": "Zy'mere Gee",
+      "email": "zymeregee5@gmail.com",
+      "role": "contestant",
+      "openId": "ceeKbhcy3iKZ8xoP6VxdZB"
+    },
+    {
+      "id": "3330014",
+      "name": "granbabii45",
+      "email": "granbabii45@gmail.com",
+      "role": "contestant",
+      "openId": "byGJF5itnmyyxq9s5XtWEG"
+    },
+    {
+      "id": "3330003",
+      "name": "jboogie412",
+      "email": "jboogie412@yahoo.com",
+      "role": "contestant",
+      "openId": "hLUJT7ygjchB58Uweh5puy"
+    },
+    {
+      "id": "3240006",
+      "name": "Skizy Mo",
+      "email": "guapbmo@gmail.com",
+      "role": "contestant",
+      "openId": "LTHTXoy49cuGvNJU4nTDdC"
+    },
+    {
+      "id": "3240001",
+      "name": "J Hardaway",
+      "email": "jhardaway202@gmail.com",
+      "role": "contestant",
+      "openId": "JNHcYeRkycDyvFMny8s4Af"
+    },
+    {
+      "id": "3120010",
+      "name": "Mar M",
+      "email": "vdy4xrs68x@privaterelay.appleid.com",
+      "role": "contestant",
+      "openId": "hLHa2AYXQ6bGVAmDbJozjH"
+    },
+    {
+      "id": "2700001",
+      "name": "Cold Marino",
+      "email": "coldmarino47@gmail.com",
+      "role": "contestant",
+      "openId": "BEVsCFgjskgwvBvAXYsFHE"
+    },
+    {
+      "id": "2550028",
+      "name": "YpsiMade Slap",
+      "email": "hotboyslap@gmail.com",
+      "role": "contestant",
+      "openId": "KN9J28og6TpRod5HqPVkci"
+    },
+    {
+      "id": "2430001",
+      "name": "Mar B",
+      "email": "42wgdfp98h@privaterelay.appleid.com",
+      "role": "contestant",
+      "openId": "Wt9DUy2hdB3GmfxgzTwKPw"
+    },
+    {
+      "id": "2370046",
+      "name": "YOUNG LIVINGGOATS",
+      "email": "younglivinggoats@gmail.com",
+      "role": "admin",
+      "openId": "ZaMedmzXzBxdBtyfiZa2YH"
+    },
+    {
+      "id": "810001",
+      "name": "jules johnson",
+      "email": "wyhn5qywm6@privaterelay.appleid.com",
+      "role": "judge",
+      "openId": "8vEb7xwN3dVG6ud9SvahXq"
+    },
+    {
+      "id": "720001",
+      "name": "Papi Liriani",
+      "email": "alexanderei0133@gmail.com",
+      "role": "contestant",
+      "openId": "eM4CaNJVgAdfweUD4msBF5"
+    },
+    {
+      "id": "270227",
+      "name": "Murder Mitten",
+      "email": "8n4vbrd4j8@privaterelay.appleid.com",
+      "role": "user",
+      "openId": "aeAq4ivTLraWKVzbDFgpWt"
+    },
+    {
+      "id": "1",
+      "name": "Murder Mitten",
+      "email": "murdermittenmedia@gmail.com",
+      "role": "admin",
+      "openId": "HbKRJjebNjk2sqsozoQTYW"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\topenId\n4350001\tbackwoodrolling247\tbackwoodrolling247@gmail.com\tuser\tdcXqBnuunBZj6bNqgDX8i8\n4200008\tKayden Defauw\tkaydendefauw08@gmail.com\tcontestant\tPRBMKZmRuQQ9vJngxs44AG\n4170001\tmerrow62\tmerrow62@yahoo.com\tcontestant\t2gBGNqgKzijsds5Ejx6ofB\n4140001\tDomino Jamal\tdominojamal9@gmail.com\tcontestant\t5pkh4V5nDpb4VgCs5JaynB\n4020001\tWhy Not Rob\tmitchnerrober@gmail.com\tcontestant\tf5mZLDYL4zRnEVYBwXRHWE\n3990001\tMeechie LoC\tmeechie4462@icloud.com\tcontestant\thocmZGRA9LU7ZCwUk6uSBs\n3630001\tMatthew Ragland\tr45gn7tcp9@privaterelay.appleid.com\tcontestant\toParmrq6Q5sppyhxH4W3Ad\n3420001\tbusycat8787\tbusycat8787@gmail.com\tcontestant\t3kCkmHUSLZMgk4qSpauEQ4\n3360001\tnoahturner717\tnoahturner717@gmail.com\tcontestant\tkeCqqy53UhVmFJ7a64RQgV\n3330038\tZy'mere Gee\tzymeregee5@gmail.com\tcontestant\tceeKbhcy3iKZ8xoP6VxdZB\n3330014\tgranbabii45\tgranbabii45@gmail.com\tcontestant\tbyGJF5itnmyyxq9s5XtWEG\n3330003\tjboogie412\tjboogie412@yahoo.com\tcontestant\thLUJT7ygjchB58Uweh5puy\n3240006\tSkizy Mo\tguapbmo@gmail.com\tcontestant\tLTHTXoy49cuGvNJU4nTDdC\n3240001\tJ Hardaway\tjhardaway202@gmail.com\tcontestant\tJNHcYeRkycDyvFMny8s4Af\n3120010\tMar M\tvdy4xrs68x@privaterelay.appleid.com\tcontestant\thLHa2AYXQ6bGVAmDbJozjH\n2700001\tCold Marino\tcoldmarino47@gmail.com\tcontestant\tBEVsCFgjskgwvBvAXYsFHE\n2550028\tYpsiMade Slap\thotboyslap@gmail.com\tcontestant\tKN9J28og6TpRod5HqPVkci\n2430001\tMar B\t42wgdfp98h@privaterelay.appleid.com\tcontestant\tWt9DUy2hdB3GmfxgzTwKPw\n2370046\tYOUNG LIVINGGOATS\tyounglivinggoats@gmail.com\tadmin\tZaMedmzXzBxdBtyfiZa2YH\n810001\tjules johnson\twyhn5qywm6@privaterelay.appleid.com\tjudge\t8vEb7xwN3dVG6ud9SvahXq\n720001\tPapi Liriani\talexanderei0133@gmail.com\tcontestant\teM4CaNJVgAdfweUD4msBF5\n270227\tMurder Mitten\t8n4vbrd4j8@privaterelay.appleid.com\tuser\taeAq4ivTLraWKVzbDFgpWt\n1\tMurder Mitten\tmurdermittenmedia@gmail.com\tadmin\tHbKRJjebNjk2sqsozoQTYW\n",
+  "stderr": "",
+  "execution_time_ms": 275
+}
