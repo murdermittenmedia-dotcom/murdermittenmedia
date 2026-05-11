@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `accountLabel` enum('fan','artist','producer','videographer','blogger','brand_owner','judge','admin');

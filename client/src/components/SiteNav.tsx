@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useLiveStatus } from "@/hooks/useLiveStatus";
+import LabelBadge from "@/components/LabelBadge";
 import {
   User, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
@@ -170,6 +171,9 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                     </span>
                   )}
                   <span className="max-w-[80px] truncate font-medium">{displayName}</span>
+                  {(user as { accountLabel?: string | null } | null)?.accountLabel && (
+                    <LabelBadge label={(user as { accountLabel?: string | null })?.accountLabel} size="xs" />
+                  )}
                 </a>
 
                 {user?.role === "admin" && (
@@ -267,6 +271,9 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-white/40 uppercase tracking-widest mb-0.5">My Profile</div>
                 <div className="text-sm font-semibold text-white truncate">{displayName}</div>
+                {(user as { accountLabel?: string | null } | null)?.accountLabel && (
+                  <LabelBadge label={(user as { accountLabel?: string | null })?.accountLabel} size="xs" />
+                )}
               </div>
               <ChevronDown className="w-4 h-4 text-white/30 -rotate-90 group-hover:text-white/60 transition-colors flex-shrink-0" />
             </a>

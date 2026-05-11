@@ -155,6 +155,7 @@ async function startServer() {
       room: string;
       userId?: number;
       isAdmin?: boolean;
+      accountLabel?: string | null;
     }) => {
       if (!data.message?.trim() || !data.username?.trim()) return;
       if (data.message.length > 500) return;
@@ -165,6 +166,7 @@ async function startServer() {
         message: data.message.slice(0, 500),
         room: data.room,
         isAdmin: data.isAdmin || false,
+        accountLabel: data.accountLabel ?? null,
         createdAt: new Date(),
       };
 

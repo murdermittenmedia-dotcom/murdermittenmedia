@@ -12,6 +12,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { toast } from "sonner";
+import LabelBadge, { USER_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
 import {
   Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X,
   Instagram, Trophy, Mic, MapPin, Upload, Plus, Globe, Eye, EyeOff,
@@ -353,6 +354,7 @@ export default function UserProfile() {
   const [igInput, setIgInput] = useState("");
   const [cityInput, setCityInput] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [labelInput, setLabelInput] = useState<AccountLabel | "" >("");
 
   // Avatar upload state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -403,6 +405,14 @@ export default function UserProfile() {
       toast.error("Failed to update: " + err.message);
       setSavingProfile(false);
     },
+  });
+
+  const setLabelMutation = trpc.profile.setLabel.useMutation({
+    onSuccess: () => {
+      toast.success("Account label updated!");
+      refetchOwnProfile();
+    },
+    onError: (err) => toast.error("Failed to update label: " + err.message),
   });
 
   const uploadAvatarMutation = trpc.profile.uploadAvatar.useMutation({
@@ -457,6 +467,7 @@ export default function UserProfile() {
   const userCity = (displayProfile?.user as { city?: string | null } | undefined)?.city;
   const avatarUrl = (isOwnProfile ? avatarPreview : null) || displayProfile?.user.avatarUrl || null;
   const initials = displayName.slice(0, 2).toUpperCase();
+  const currentLabel = (displayProfile?.user as { accountLabel?: AccountLabel | null } | undefined)?.accountLabel;
 
   if (authLoading) {
     return (
@@ -592,11 +603,37 @@ export default function UserProfile() {
                     <X className="w-4 h-4" /> Cancel
                   </button>
                 </div>
+
+                {/* Account label picker — saved immediately on change */}
+                <div className="pt-2 border-t border-white/10">
+                  <label className="text-xs text-white/40 uppercase tracking-widest block mb-2">Account Type Label</label>
+                  <div className="flex flex-wrap gap-2">
+                    {USER_LABEL_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          const next = currentLabel === opt.value ? null : opt.value as "fan" | "artist" | "producer" | "videographer" | "blogger" | "brand_owner";
+                          setLabelMutation.mutate({ label: next });
+                        }}
+                        className={`px-2.5 py-1 text-xs font-bold border tracking-wider transition-all ${
+                          currentLabel === opt.value
+                            ? "bg-red-600 border-red-500 text-white"
+                            : "border-white/20 text-white/50 hover:border-white/50 hover:text-white/80"
+                        }`}
+                      >
+                        {opt.display}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-white/30 text-xs mt-1.5">Click to select or deselect. Appears next to your name everywhere.</p>
+                </div>
               </div>
             ) : (
               <div>
-                <div className="flex items-center gap-3 justify-center sm:justify-start mb-1">
+                <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start mb-1">
                   <h1 className="font-['Anton'] text-3xl uppercase">{displayName}</h1>
+                  <LabelBadge label={currentLabel} />
                   {isOwnProfile && (
                     <button
                       className="text-white/30 hover:text-red-500 transition-colors"

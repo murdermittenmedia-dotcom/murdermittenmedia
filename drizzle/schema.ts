@@ -15,6 +15,8 @@ export const users = mysqlTable("users", {
   profileComplete: boolean("profileComplete").default(false).notNull(),
   isBanned: boolean("isBanned").default(false).notNull(),
   banReason: varchar("banReason", { length: 256 }),
+  // Visible account type label shown next to username everywhere
+  accountLabel: mysqlEnum("accountLabel", ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "judge", "admin"]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

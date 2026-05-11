@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import LabelBadge, { ALL_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,10 @@ function UsersTab() {
 
   const setRole = trpc.admin.setRole.useMutation({
     onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Role updated"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const setAccountLabel = trpc.admin.setAccountLabel.useMutation({
+    onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Label updated"); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -149,6 +154,24 @@ function UsersTab() {
                 <div className="border-t border-white/10 p-4 bg-white/[0.02] space-y-4">
                   {/* Role change */}
                   <div>
+                    <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Grant Account Label</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {ALL_LABEL_OPTIONS.map(opt => (
+                        <Button
+                          key={opt.value}
+                          size="sm"
+                          variant={(user as { accountLabel?: string | null }).accountLabel === opt.value ? "default" : "outline"}
+                          className={(user as { accountLabel?: string | null }).accountLabel === opt.value ? "bg-red-600 hover:bg-red-700 text-white" : "border-white/20 text-white/60 hover:text-white"}
+                          onClick={() => {
+                            const current = (user as { accountLabel?: string | null }).accountLabel;
+                            setAccountLabel.mutate({ userId: user.id, label: current === opt.value ? null : opt.value as AccountLabel });
+                          }}
+                          disabled={setAccountLabel.isPending}
+                        >
+                          {opt.display}
+                        </Button>
+                      ))}
+                    </div>
                     <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Change Role</p>
                     <div className="flex flex-wrap gap-2">
                       {(["user", "judge", "contestant", "admin"] as const).map(role => (

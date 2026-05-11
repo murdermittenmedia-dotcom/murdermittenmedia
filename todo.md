@@ -788,3 +788,14 @@
 - [x] All connected viewers see the wheel spin in real-time simultaneously (promo_wheel Socket.io room)
 - [x] 7 PM auto-spin triggers the same live animation for all connected viewers
 - [x] Winner reveal: confetti burst + winner banner after wheel stops (wof:spin_result event)
+
+## Account Type Labels (May 2026)
+- [x] DB: add accountLabel column to users table (enum: fan | artist | producer | videographer | blogger | brand_owner | judge | admin | null)
+- [x] DB: push migration with pnpm db:push
+- [x] tRPC: profile.setAccountLabel — protected, user sets own label (fan/artist/producer/videographer/blogger/brand_owner only)
+- [x] tRPC: admin.setAccountLabel — admin-only, can set any label including judge/admin
+- [x] Profile page / onboarding modal: label picker dropdown with 6 user-selectable options
+- [x] Admin user management panel: label column + dropdown to grant ADMIN or JUDGE label
+- [x] LabelBadge component: colored pill badge for each label type (distinct colors per label)
+- [x] Show LabelBadge next to username in: live chat messages, wheel entries list, battle leaderboard, ArtistStatModal, user profile header
+- [x] Ensure ADMIN and JUDGE labels are visually distinct (gold/yellow) vs user labels

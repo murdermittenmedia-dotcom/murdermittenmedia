@@ -43,6 +43,7 @@ import {
   getPendingWheelOfNamesPaidEntries, confirmWheelOfNamesPaidEntry,
   removeWheelOfNamesEntry,
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
+  setAccountLabel, setAccountLabelAdmin,
 } from "./db";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -118,6 +119,16 @@ export const appRouter = router({
           instagramHandle: input.instagramHandle,
           city: input.city,
         });
+        return { success: true };
+      }),
+
+    // Set own account type label (user-selectable options only)
+    setLabel: protectedProcedure
+      .input(z.object({
+        label: z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner"]).nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await setAccountLabel(ctx.user.id, input.label);
         return { success: true };
       }),
 
@@ -923,6 +934,16 @@ export const appRouter = router({
         await setUserRole(input.userId, input.role);
         return { success: true };
       }),
+    // Grant any account label including ADMIN/JUDGE (admin only)
+    setAccountLabel: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        label: z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "judge", "admin"]).nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        await setAccountLabelAdmin(input.userId, input.label);
+        return { success: true };
+      }),
   }),
 
   // -- Players / War Stats ------------------------------------
@@ -1600,6 +1621,16 @@ export const appRouter = router({
           targetId: 0,
           reason: "Admin reset all submissions",
         });
+        return { success: true };
+      }),
+    // Grant any account label including ADMIN/JUDGE (admin only)
+    setAccountLabel: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        label: z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "judge", "admin"]).nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        await setAccountLabelAdmin(input.userId, input.label);
         return { success: true };
       }),
   }),

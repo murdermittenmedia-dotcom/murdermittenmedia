@@ -87,12 +87,12 @@ describe("Promo Wheel — admin spin", () => {
     await createWheelOfNamesSpin(today, winner.userId || null, winner.name);
     await clearWheelOfNamesEntries();
 
-    // userId 0 (admin-added entries) maps to null in the spin record
-    expect(createWheelOfNamesSpin).toHaveBeenCalledWith(
-      today,
-      expect.anything(), // winner.userId || null
-      expect.any(String) // winner.name
-    );
+    // userId 0 (admin-added entries) maps to null in the spin record;
+    // expect.anything() does not match null, so we check the call args directly
+    const callArgs2 = (createWheelOfNamesSpin as any).mock.calls[0];
+    expect(callArgs2[0]).toBe(today);
+    expect(callArgs2[1] === null || typeof callArgs2[1] === 'number').toBe(true); // null for admin-added, number for real users
+    expect(typeof callArgs2[2]).toBe('string');
     // Verify the call was made with the correct date
     const callArgs = (createWheelOfNamesSpin as any).mock.calls[0];
     expect(callArgs[0]).toBe(today);

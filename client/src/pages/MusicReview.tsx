@@ -19,6 +19,7 @@ import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import LabelBadge from "@/components/LabelBadge";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
@@ -708,6 +709,7 @@ export default function MusicReview() {
     username: chatUsername,
     userId: user?.id,
     isAdmin,
+    accountLabel: (user as { accountLabel?: string | null } | null)?.accountLabel ?? null,
     initialMessages: (chatHistory || []).map(m => ({
       id: m.id, username: m.username, message: m.message,
       room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
@@ -1575,7 +1577,8 @@ export default function MusicReview() {
                       {msg.isAdmin && "[ADMIN] "}
                       <ArtistStatModal artistName={msg.username}>
                         <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
-                      </ArtistStatModal>:
+                      </ArtistStatModal>
+                      {msg.accountLabel && <span className="ml-1"><LabelBadge label={msg.accountLabel} size="xs" /></span>}:
                     </span>{" "}
                     <span className="text-white/80">{msg.message}</span>
                   </div>

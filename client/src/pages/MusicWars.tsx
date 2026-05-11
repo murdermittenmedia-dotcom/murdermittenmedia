@@ -14,6 +14,7 @@ import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { TuneInButton } from "@/components/TuneInButton";
 import { useChat } from "@/hooks/useChat";
+import LabelBadge from "@/components/LabelBadge";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
 import { ArtistLink } from "@/components/ArtistLink";
 import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap, Mic, MicOff, ChevronDown, ChevronUp } from "lucide-react";
@@ -412,7 +413,7 @@ function SpinWheel({
 function ChatPanel({
   messages, isConnected, onSend, username,
 }: {
-  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; createdAt: Date }>;
+  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; accountLabel?: string | null; createdAt: Date }>;
   isConnected: boolean;
   onSend: (msg: string) => void;
   username: string;
@@ -447,7 +448,8 @@ function ChatPanel({
               {msg.isAdmin && "[ADMIN] "}
               <ArtistStatModal artistName={msg.username}>
                 <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
-              </ArtistStatModal>:
+              </ArtistStatModal>
+              {msg.accountLabel && <span className="ml-1"><LabelBadge label={msg.accountLabel} size="xs" /></span>}:
             </span>
             <span className="text-white/80 break-words min-w-0">{msg.message}</span>
           </div>
@@ -1702,9 +1704,10 @@ export default function MusicWars() {
     username,
     userId: user?.id,
     isAdmin,
+    accountLabel: (user as { accountLabel?: string | null } | null)?.accountLabel ?? null,
     initialMessages: (chatHistory || []).map(m => ({
       id: m.id, username: m.username, message: m.message,
-      room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
+      room: m.room, isAdmin: m.isAdmin, accountLabel: null, createdAt: new Date(m.createdAt),
     })),
     onSpinStateChange: (state) => {
       setSpinCount(state.spinCount);

@@ -416,6 +416,24 @@ export async function setUserRole(userId: number, role: "user" | "admin" | "judg
   return db.update(users).set({ role }).where(eq(users.id, userId));
 }
 
+// -- Account Label ------------------------------------------
+
+const USER_SELECTABLE_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner"] as const;
+const ALL_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "judge", "admin"] as const;
+export type AccountLabel = typeof ALL_LABELS[number];
+
+export async function setAccountLabel(userId: number, label: typeof USER_SELECTABLE_LABELS[number] | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(users).set({ accountLabel: label ?? undefined }).where(eq(users.id, userId));
+}
+
+export async function setAccountLabelAdmin(userId: number, label: AccountLabel | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(users).set({ accountLabel: label ?? undefined }).where(eq(users.id, userId));
+}
+
 // -- Active Battle (admin-controlled matchup) ------------------
 
 export async function getActiveBattle() {
