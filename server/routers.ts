@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
-  confirmSkipPayment, getQueueState, setCurrentPlaying, setLiveStatus,
+  confirmSkipPayment, requeueSubmission, getQueueState, setCurrentPlaying, setLiveStatus,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
   updateWheelEntryStatus, confirmWheelPayment, getUserWheelEntries,
@@ -432,6 +432,14 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await confirmSkipPayment(input.id);
+        return { success: true };
+      }),
+
+    // Re-queue a previously reviewed submission back to the end of the pending queue
+    requeue: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await requeueSubmission(input.id);
         return { success: true };
       }),
 

@@ -811,3 +811,9 @@
 - [ ] Admin panel: multi-select for label grant
 - [ ] SiteNav: render all user labels next to name
 - [ ] Chat messages: render all labels next to username
+
+## Re-queue Previously Reviewed Songs (Music Review)
+- [x] tRPC: review.requeueSubmission — admin-only, sets a reviewed submission back to pending status and moves it to the end of the queue (highest position + 1)
+- [x] DB helper: requeueSubmission(id) — updates status to 'pending', recalculates position
+- [x] MusicReview admin panel: add ↩ Re-queue button next to each song in the "Previously Reviewed" section
+- [x] On re-queue success: toast confirmation, refetch queue, broadcast queue update to all listeners

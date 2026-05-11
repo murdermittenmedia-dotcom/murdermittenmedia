@@ -134,6 +134,21 @@ export async function confirmSkipPayment(id: number) {
   return db.update(reviewSubmissions).set({ skipPaymentConfirmed: true }).where(eq(reviewSubmissions.id, id));
 }
 
+/** Re-queue a previously reviewed submission: reset to pending and move to end of queue */
+export async function requeueSubmission(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Find the highest current position so we can append to the end
+  const rows = await db
+    .select({ maxPos: sql<number>`MAX(${reviewSubmissions.position})` })
+    .from(reviewSubmissions)
+    .where(ne(reviewSubmissions.status, "removed"));
+  const maxPos = rows[0]?.maxPos ?? 0;
+  return db.update(reviewSubmissions)
+    .set({ status: "pending", position: maxPos + 1, updatedAt: new Date() })
+    .where(eq(reviewSubmissions.id, id));
+}
+
 export async function getQueueState() {
   const db = await getDb();
   if (!db) return null;

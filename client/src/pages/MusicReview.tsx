@@ -141,6 +141,14 @@ function AdminPanel({
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
   const updateStatus = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
   const confirmSkip = trpc.queue.confirmSkip.useMutation({ onSuccess: () => refetch() });
+  const requeueMutation = trpc.queue.requeue.useMutation({
+    onSuccess: (_data, variables) => {
+      refetch();
+      broadcastReviewQueueUpdated();
+      toast.success("Song re-queued to end of queue");
+    },
+    onError: () => toast.error("Failed to re-queue song"),
+  });
 
   const isLive = data?.state?.isLive ?? false;
   const currentPlaying = data?.currentPlaying;
@@ -550,6 +558,14 @@ function AdminPanel({
                   >
                     <Play className="w-2.5 h-2.5" /> Load
                   </button>
+                  <button
+                    onClick={() => requeueMutation.mutate({ id: sub.id })}
+                    disabled={requeueMutation.isPending}
+                    className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-2 py-0.5 transition-colors flex-shrink-0 disabled:opacity-40"
+                    title="Re-queue to end of queue"
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" /> Re-queue
+                  </button>
                 </div>
               ))}
             </div>
@@ -652,6 +668,10 @@ export default function MusicReview() {
     },
   });
   const updateStatusMutation = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
+  const requeueFromHistoryMutation = trpc.queue.requeue.useMutation({
+    onSuccess: () => { refetch(); toast.success("Song re-queued to end of queue"); },
+    onError: () => toast.error("Failed to re-queue song"),
+  });
 
   // Poll queries for the currently playing submission
   const currentPlayingId = data?.currentPlaying?.id ?? null;
@@ -1771,6 +1791,16 @@ export default function MusicReview() {
                       <span>🗑️ {sub.trashCount}</span>
                     </div>
                   </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => requeueFromHistoryMutation.mutate({ id: sub.id })}
+                      disabled={requeueFromHistoryMutation.isPending}
+                      className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-2 py-1 transition-colors flex-shrink-0 disabled:opacity-40"
+                      title="Re-queue to end of queue"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Re-queue
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
