@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { Trophy, Flame, Trash2, Swords, Mic } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { ArtistLink } from "@/components/ArtistLink";
+import { UserBadges } from "@/components/UserBadges";
 
 const RANK_COLORS = [
   "text-yellow-400", // 1st
@@ -108,7 +109,7 @@ export default function Leaderboard() {
                         {getRankBadge(rank)}
                       </span>
                       <div className="flex-1">
-                        <div className="font-semibold text-white"><ArtistLink artistName={entry.artistName} userId={entry.userId} /></div>
+                        <div className="font-semibold text-white inline-flex items-center gap-1"><ArtistLink artistName={entry.artistName} userId={entry.userId} />{entry.userId && <UserBadges userId={entry.userId} size="xs" maxVisible={2} />}</div>
                         {winRate !== null && (
                           <div className="text-xs text-white/40">{winRate}% win rate</div>
                         )}
@@ -135,7 +136,7 @@ export default function Leaderboard() {
                       {getRankBadge(rank)}
                     </span>
                     <div>
-                      <div className="font-semibold text-white"><ArtistLink artistName={entry.artistName} userId={entry.userId} /></div>
+                      <div className="font-semibold text-white inline-flex items-center gap-1"><ArtistLink artistName={entry.artistName} userId={entry.userId} />{entry.userId && <UserBadges userId={entry.userId} size="xs" maxVisible={2} />}</div>
                       {winRate !== null && (
                         <div className="text-xs text-white/30">{winRate}% win rate · {entry.totalReviews} review{entry.totalReviews !== 1 ? "s" : ""}</div>
                       )}

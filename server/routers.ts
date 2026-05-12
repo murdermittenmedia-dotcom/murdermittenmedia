@@ -45,6 +45,13 @@ import {
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
 } from "./db";
+import {
+  awardXP, getAllRewards, getRewardById, createReward, updateReward,
+  getUserRewards, getPublicUserRewards, adminGrantReward, adminRevokeReward,
+  claimReward, getRewardLogs, getUserBadges, adminGrantBadge, adminRemoveBadge,
+  adminSetXP, getRewardsWithProgress, getUserRewardStats, checkAndUnlockRewards,
+  ARTIST_LEVELS, FAN_LEVELS, getArtistLevelInfo, getFanLevelInfo, getNextArtistLevel,
+} from "./rewards";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 interface IgPost {
@@ -405,9 +412,10 @@ export const appRouter = router({
         } catch (e) {
           console.warn("[queue.submit] Failed to auto-save to catalogue:", e);
         }
+        // Award XP for submitting a song to the review queue
+        awardXP(ctx.user.id, "review_submission").catch(() => {});
         return { success: true };
       }),
-
     setPlaying: adminProcedure
       .input(z.object({ submissionId: z.number().nullable() }))
       .mutation(async ({ input }) => {
@@ -541,10 +549,11 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         await castSongReaction(input.submissionId, ctx.user.id, input.reaction);
+        // Award fan XP for voting on a song
+        awardXP(ctx.user.id, "vote_cast", { amount: 2 }).catch(() => {});
         return { success: true };
       }),
-
-    // Get fire/trash counts for a submission
+    // Get fire/trash counts for a submissionn
     getReactions: publicProcedure
       .input(z.object({ submissionId: z.number() }))
       .query(async ({ input }) => {
@@ -1006,6 +1015,8 @@ export const appRouter = router({
           weight,
           voterName: ctx.user.name ?? ctx.user.email ?? "Anonymous",
         });
+        // Award fan XP for casting a battle vote
+        awardXP(ctx.user.id, "vote_cast").catch(() => {});
         return { success: true, weight };
       }),
 
@@ -1222,7 +1233,7 @@ export const appRouter = router({
         audioTitle: z.string().max(256).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        await createForumPost({
+         await createForumPost({
           userId: ctx.user.id,
           title: input.title,
           body: input.body,
@@ -1230,9 +1241,10 @@ export const appRouter = router({
           audioUrl: input.audioUrl ?? null,
           audioTitle: input.audioTitle ?? null,
         });
+        // Award XP for creating a forum post
+        awardXP(ctx.user.id, "forum_post").catch(() => {});
         return { success: true };
       }),
-
     // Delete a post (own post or admin)
     deletePost: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -1264,10 +1276,11 @@ export const appRouter = router({
           audioUrl: input.audioUrl ?? null,
           audioTitle: input.audioTitle ?? null,
         });
+        // Award XP for commenting on a forum post
+        awardXP(ctx.user.id, "forum_comment").catch(() => {});
         return { success: true };
       }),
-
-    // Delete a comment (own or admin)
+    // Delete a comment (own or admin))
     deleteComment: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -1286,6 +1299,8 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const result = await reactToForumItem(ctx.user.id, input.targetType, input.targetId, input.reaction);
+        // Award fan XP for reacting to forum content
+        awardXP(ctx.user.id, "vote_cast", { amount: 1 }).catch(() => {});
         return result;
       }),
   }),
@@ -1796,6 +1811,197 @@ export const appRouter = router({
     // Admin: get full site stats
     getStats: adminProcedure.query(async () => {
       return getSiteStats();
+    }),
+  }),
+
+  // ── Rewards & Badges ─────────────────────────────────────────
+  rewards: router({
+    // Public: get all active rewards (for display)
+    getAll: publicProcedure.query(async () => {
+      return getAllRewards();
+    }),
+
+    // Public: get level config
+    getLevels: publicProcedure.query(async () => {
+      return { artistLevels: ARTIST_LEVELS, fanLevels: FAN_LEVELS };
+    }),
+
+    // Protected: get own rewards with progress
+    myRewards: protectedProcedure.query(async ({ ctx }) => {
+      return getRewardsWithProgress(ctx.user.id);
+    }),
+
+    // Protected: get own stats (XP, level, streak, etc.)
+    myStats: protectedProcedure.query(async ({ ctx }) => {
+      return getUserRewardStats(ctx.user.id);
+    }),
+
+    // Public: get public rewards for any user
+    getPublicForUser: publicProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getPublicUserRewards(input.userId);
+      }),
+
+    // Public: get badges for any user
+    getBadgesForUser: publicProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getUserBadges(input.userId);
+      }),
+    // Public: get XP/level stats for any user (for profile display)
+    getStatsByUserId: publicProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getUserRewardStats(input.userId);
+      }),
+
+    // Protected: claim an unlocked reward
+    claim: protectedProcedure
+      .input(z.object({ rewardId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await claimReward(ctx.user.id, input.rewardId);
+        return { success: true };
+      }),
+
+    // Protected: manually trigger reward check (e.g. after profile update)
+    checkUnlocks: protectedProcedure.mutation(async ({ ctx }) => {
+      await checkAndUnlockRewards(ctx.user.id);
+      return { success: true };
+    }),
+
+    // Admin: create a reward
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1).max(128),
+        description: z.string().max(1024).optional(),
+        type: z.enum(["level", "achievement", "promo", "wars", "review", "supporter", "verified", "rare"]),
+        rarity: z.enum(["common", "rare", "epic", "legendary", "hall_of_fame"]),
+        requirements: z.record(z.string(), z.unknown()),
+        requiresAdminApproval: z.boolean().default(false),
+        expiresAt: z.date().optional(),
+        badgeIcon: z.string().max(64).optional(),
+        badgeColor: z.string().max(32).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await createReward({
+          ...input,
+          requirements: input.requirements as Record<string, number>,
+        });
+        return { success: true };
+      }),
+
+    // Admin: update a reward
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).max(128).optional(),
+        description: z.string().max(1024).optional(),
+        requirements: z.record(z.string(), z.unknown()).optional(),
+        isActive: z.boolean().optional(),
+        isPaused: z.boolean().optional(),
+        requiresAdminApproval: z.boolean().optional(),
+        expiresAt: z.date().nullable().optional(),
+        badgeIcon: z.string().max(64).optional(),
+        badgeColor: z.string().max(32).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateReward(id, data as Parameters<typeof updateReward>[1]);
+        return { success: true };
+      }),
+
+    // Admin: grant reward to user
+    adminGrant: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        rewardId: z.number(),
+        notes: z.string().max(512).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await adminGrantReward(ctx.user.id, input.userId, input.rewardId, input.notes);
+        return { success: true };
+      }),
+
+    // Admin: revoke reward from user
+    adminRevoke: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        rewardId: z.number(),
+        notes: z.string().max(512).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await adminRevokeReward(ctx.user.id, input.userId, input.rewardId, input.notes);
+        return { success: true };
+      }),
+
+    // Admin: get all user rewards for a user
+    adminGetUserRewards: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getUserRewards(input.userId);
+      }),
+
+    // Admin: override XP for a user
+    adminSetXP: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        xp: z.number().min(0),
+        notes: z.string().max(512).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await adminSetXP(ctx.user.id, input.userId, input.xp, input.notes);
+        return { success: true };
+      }),
+
+    // Admin: grant badge to user
+    adminGrantBadge: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        badge: z.string().min(1).max(64),
+        label: z.string().max(64).optional(),
+        rarity: z.enum(["common", "rare", "epic", "legendary", "hall_of_fame"]),
+        badgeIcon: z.string().max(64).optional(),
+        badgeColor: z.string().max(32).optional(),
+        expiresAt: z.date().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await adminGrantBadge(ctx.user.id, input.userId, input);
+        return { success: true };
+      }),
+
+    // Admin: remove badge
+    adminRemoveBadge: adminProcedure
+      .input(z.object({ badgeId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await adminRemoveBadge(ctx.user.id, input.badgeId);
+        return { success: true };
+      }),
+
+    // Admin: get reward logs
+    adminGetLogs: adminProcedure
+      .input(z.object({ limit: z.number().min(1).max(500).default(100) }))
+      .query(async ({ input }) => {
+        return getRewardLogs(input.limit);
+      }),
+
+    // Admin: get all users with their reward stats
+    adminGetAllUserStats: adminProcedure.query(async () => {
+      const { getDb } = await import("./db");
+      const { users } = await import("../drizzle/schema");
+      const { asc } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: users.id,
+        name: users.name,
+        artistName: users.artistName,
+        xp: users.xp,
+        fanXP: users.fanXP,
+        level: users.level,
+        fanLevel: users.fanLevel,
+        streak: users.streak,
+      }).from(users).orderBy(asc(users.id));
     }),
   }),
 });

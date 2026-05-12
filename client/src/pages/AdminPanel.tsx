@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import LabelBadge, { ALL_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
+import { AdminRewardsTab } from "@/components/AdminRewardsTab";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
-  ChevronDown, ChevronUp, Eye, EyeOff, Trash2
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -750,13 +751,14 @@ function DangerZoneTab() {
 }
 
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger";
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "settings", label: "Site Settings", icon: Settings },
   { id: "danger", label: "Danger Zone", icon: AlertTriangle },
+  { id: "rewards", label: "Rewards", icon: Trophy },
 ];
 
 export default function AdminPanel() {
@@ -837,6 +839,7 @@ export default function AdminPanel() {
         {activeTab === "analytics" && <AnalyticsTab />}
         {activeTab === "settings" && <SiteSettingsTab />}
         {activeTab === "danger" && <DangerZoneTab />}
+        {activeTab === "rewards" && <AdminRewardsTab />}
       </div>
     </div>
   );

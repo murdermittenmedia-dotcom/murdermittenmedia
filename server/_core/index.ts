@@ -167,6 +167,7 @@ async function startServer() {
         room: data.room,
         isAdmin: data.isAdmin || false,
         accountLabels: Array.isArray(data.accountLabels) ? data.accountLabels.slice(0, 8) : [],
+        userId: data.userId ?? null,
         createdAt: new Date(),
       };
 

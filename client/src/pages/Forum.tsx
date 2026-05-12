@@ -18,6 +18,7 @@ import { MessageSquare, ThumbsUp, ThumbsDown, Eye, Plus, Flame, Pin, Music, X, U
 import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { ArtistLink } from "@/components/ArtistLink";
+import { UserBadges } from "@/components/UserBadges";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -313,8 +314,9 @@ export default function Forum() {
 
                       {/* Meta row */}
                       <div className="flex items-center gap-4 text-xs text-white/40">
-                        <span className="font-medium text-white/60">
+                        <span className="font-medium text-white/60 inline-flex items-center gap-1">
                           <ArtistLink artistName={post.author?.artistName ?? post.author?.name ?? "Anonymous"} userId={post.author?.id} />
+                          {post.author?.id && <UserBadges userId={post.author.id} size="xs" maxVisible={2} />}
                         </span>
                         <span>{timeAgo(post.createdAt)}</span>
                         <span className="flex items-center gap-1">

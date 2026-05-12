@@ -849,3 +849,124 @@
 ## Forum Audio Files Fix
 - [x] ForumPost.tsx: replace ForumAudioPlayer (Tune In redirect) with AudioPlayButton so audio actually plays inline
 - [x] ForumPost.tsx: ensure both post-level and comment-level audio attachments use AudioPlayButton
+
+## Ecosystem Expansion — Gamified Live Music Platform
+
+### Artist XP + Progression System
+- [ ] DB schema: add `xp` (int), `level` (enum: bronze/verified/trending/city_motion/mitten_elite/hall_of_fame), `streak` (int), `lastActiveDate` (date) to users table
+- [ ] DB schema: add `artistBadges` table (userId, badge, earnedAt)
+- [ ] DB helper: `awardXP(userId, amount, reason)` — adds XP, recalculates level, awards badges on milestones
+- [ ] XP triggers: award XP on song upload, battle win, review submission, daily login, forum post, vote cast
+- [ ] tRPC: `profile.getXPStats` — returns xp, level, streak, badges for a user
+- [ ] Profile page: show XP bar, level badge, streak counter, earned badges/trophies
+- [ ] Level badge component: color-coded badge (Bronze=brown, Verified=blue, Trending=orange, City Motion=purple, Mitten Elite=gold, Hall of Fame=red/crimson)
+
+### Enhanced Leaderboard
+- [ ] DB helper: `getCombinedLeaderboard` — add time filter (weekly/monthly/all-time) and city filter params
+- [ ] Leaderboard page: add filter tabs (All-Time / Monthly / Weekly) and city dropdown
+- [ ] Leaderboard: add momentum indicators (↑ trending up, ↓ cooling off, 🔥 exploding) based on rank change
+- [ ] Leaderboard: store previous rank snapshot (weekly) to calculate rank change delta
+- [ ] Leaderboard: add "Trending Now" category tab showing biggest rank movers this week
+
+### Live Activity Feed
+- [ ] DB schema: add `activityFeed` table (id, type, message, metadata JSON, createdAt)
+- [ ] DB helper: `createActivityEvent(type, message, metadata)` — inserts activity event
+- [ ] Activity triggers: emit events on song submission, battle start/end, review session start, forum post, new user join
+- [ ] Socket: broadcast `activity:new_event` to all clients when activity event is created
+- [ ] ActivityFeed component: scrolling ticker/feed showing live events with icons and timestamps
+- [ ] Homepage: add live activity feed section showing recent platform events
+- [ ] SiteNav or FloatingPlayer: add mini activity ticker showing latest event
+
+### Broadcast Mode Views
+- [ ] Route `/broadcast/review` — full-screen broadcast view for Music Review (large text, high contrast, current song + queue + reactions)
+- [ ] Route `/broadcast/radio` — full-screen broadcast view for Radio (now playing, next up, listener count, reactions)
+- [ ] Route `/broadcast/rankings` — full-screen broadcast view for Rankings (top artists, trending, heat meters)
+- [ ] Route `/broadcast/wars` — full-screen broadcast view for Music Wars (matchup, voting, scores)
+- [ ] Broadcast views: no nav, no footer, no floating player — clean overlay-style layout
+- [ ] Broadcast views: large Anton font, high contrast (#080808 bg, white/red text), animated counters
+- [ ] Broadcast views: safe margins for Instagram crop (16:9 safe zone)
+- [ ] Add `/broadcast` link in admin panel for easy access during streams
+
+### FloatingPlayer Enhancements
+- [ ] FloatingPlayer: show live listener count when a live stream is active
+- [ ] FloatingPlayer: add expanded mode (click to expand showing queue, reactions, chat preview)
+- [ ] FloatingPlayer: animated pulsing LIVE badge when radio is live
+- [ ] FloatingPlayer: show "Murder Mitten Radio" branding when in live stream mode
+
+### Fan Supporter System
+- [ ] DB schema: add `fanXP` (int), `fanLevel` (enum: supporter/top_supporter/biggest_fan/early_supporter/verified_tastemaker) to users table
+- [ ] Fan XP triggers: award fan XP on vote, forum post, daily login, watching stream
+- [ ] tRPC: `leaderboard.topFans` — returns top fans by XP with level badges
+- [ ] Leaderboard page: add "Top Fans" tab showing fan leaderboard
+
+### Live Platform Activity Indicators
+- [ ] Homepage: animated "X users online now" counter (use socket connection count)
+- [ ] Homepage: "X songs submitted today" live counter
+- [ ] Music Review page: show live viewer count prominently
+- [ ] Site-wide: show "LIVE" badge in nav when any live session is active
+
+## Reward Tracking / Auto-Unlock System
+
+### Phase 1 — DB Schema
+- [ ] DB: add `xp` (int default 0), `level` (varchar default 'bronze'), `streak` (int default 0), `lastActiveDate` (date) to users table
+- [ ] DB: add `fanXP` (int default 0), `fanLevel` (varchar default 'supporter') to users table
+- [ ] DB: create `rewards` table (id, name, description, type: level|achievement|promo|wars|review|supporter|verified|rare, rarity: common|rare|epic|legendary|hall_of_fame, requirements JSON, isActive, requiresAdminApproval, expiresAt, createdAt)
+- [ ] DB: create `user_rewards` table (id, userId, rewardId, status: locked|unlocked|claimable|active|redeemed|expired|revoked, unlockedAt, claimedAt, redeemedAt, revokedAt, grantedBy, notes, earnedVia)
+- [ ] DB: create `user_badges` table (id, userId, badge, rarity, grantedBy, grantedAt, isVisible, expiresAt)
+- [ ] DB: create `xp_events` table (id, userId, amount, reason, metadata JSON, createdAt) — audit log
+- [ ] DB: create `reward_logs` table (id, userId, rewardId, action, performedBy, notes, createdAt)
+- [ ] Push all migrations with `pnpm db:push`
+
+### Phase 2 — DB Helpers & tRPC Procedures
+- [ ] DB helper: `awardXP(userId, amount, reason, metadata?)` — adds XP, logs to xp_events, recalculates level, triggers checkAndUnlockRewards
+- [ ] DB helper: `checkAndUnlockRewards(userId, stats)` — evaluates all active rewards' requirements against user stats, auto-unlocks eligible ones, logs to reward_logs, sends notification
+- [ ] DB helper: `getUserRewardStats(userId)` — aggregates all stats needed for requirement checking (xp, level, wins, plays, votes, etc.)
+- [ ] DB helper: `getRewardsByUser(userId)` — returns unlocked + locked rewards with progress toward each
+- [ ] DB helper: `getBadgesByUser(userId)` — returns all visible badges for a user
+- [ ] tRPC: `rewards.getMyRewards` — protected, returns user's rewards with status and progress
+- [ ] tRPC: `rewards.getMyBadges` — protected, returns user's badges
+- [ ] tRPC: `rewards.claimReward` — protected, marks unlocked reward as claimable/active
+- [ ] tRPC: `profile.getPublicRewards(userId)` — public, returns unlocked rewards + badges for profile display
+- [ ] tRPC: `admin.rewards.list` — admin, list all rewards with stats
+- [ ] tRPC: `admin.rewards.create` — admin, create new reward with requirements JSON
+- [ ] tRPC: `admin.rewards.update` — admin, edit reward (name, desc, requirements, isActive, expiresAt)
+- [ ] tRPC: `admin.rewards.grantToUser` — admin, manually grant reward to user
+- [ ] tRPC: `admin.rewards.revokeFromUser` — admin, revoke reward from user with notes
+- [ ] tRPC: `admin.rewards.getLogs` — admin, view reward audit log
+- [ ] tRPC: `admin.badges.grantBadge` — admin, assign badge to user
+- [ ] tRPC: `admin.badges.removeBadge` — admin, remove badge from user
+- [ ] tRPC: `admin.xp.override` — admin, manually set or adjust user XP
+
+### Phase 3 — XP Award Triggers
+- [ ] Song upload → awardXP(userId, 50, 'song_upload')
+- [ ] Battle win → awardXP(userId, 150, 'battle_win')
+- [ ] Battle participation → awardXP(userId, 25, 'battle_participation')
+- [ ] Review submission → awardXP(userId, 30, 'review_submission')
+- [ ] Fire vote received → awardXP(userId, 10, 'fire_vote_received')
+- [ ] Forum post → awardXP(userId, 15, 'forum_post')
+- [ ] Forum comment → awardXP(userId, 5, 'forum_comment')
+- [ ] Vote cast → awardXP(userId, 5, 'vote_cast') — fan XP
+- [ ] Daily login streak → awardXP(userId, 10 * streakDays, 'daily_streak')
+- [ ] Referral → awardXP(userId, 100, 'referral')
+
+### Phase 4 — RewardBadge Component & Global Display
+- [x] `UserBadge` component: shows level badge + top earned badge inline next to username (compact, 16px height)
+- [x] Inject UserBadge next to usernames in: live chat, forum posts, forum comments, review queue, leaderboard, Music Wars brackets, artist cards, ArtistStatModal, profile previews
+- [x] Badge tooltip on hover: shows badge name, rarity, and how it was earned
+
+### Phase 5 — Profile Reward Display
+- [x] Profile page: XP progress bar (current XP / XP needed for next level)
+- [x] Profile page: level badge with label (Bronze Artist, Verified Artist, etc.)
+- [x] Profile page: streak counter with flame icon
+- [x] Profile page: badge collection grid (unlocked badges with rarity glow)
+- [x] Profile page: locked rewards section (greyed out with progress %)
+- [x] Profile page: reward history tab (when earned, how earned)
+- [x] Profile page: active promo rewards section
+
+### Phase 6 — Admin Reward Control Panel
+- [x] Admin panel: "Rewards" tab — list all rewards, create new, edit, pause/activate
+- [x] Admin panel: reward create/edit form — name, description, type, rarity, requirements (JSON editor or form fields), requiresAdminApproval, expiresAt
+- [x] Admin panel: "User Rewards" tab — search by user, see all their rewards/badges/XP, grant/revoke
+- [x] Admin panel: "Reward Logs" tab — audit trail of all unlock/grant/revoke events
+- [x] Admin panel: XP override form — set user XP directly with reason note
+- [x] Admin panel: badge assign form — pick badge type + rarity, assign to user

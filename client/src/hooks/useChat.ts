@@ -8,6 +8,7 @@ export interface ChatMessage {
   room: string;
   isAdmin: boolean;
   accountLabels?: string[] | null;
+  userId?: number | null;
   createdAt: Date;
 }
 

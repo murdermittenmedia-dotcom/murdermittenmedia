@@ -20,6 +20,13 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  // Gamification / XP
+  xp: int("xp").default(0).notNull(),
+  fanXP: int("fanXP").default(0).notNull(),
+  level: varchar("level", { length: 32 }).default("bronze").notNull(),  // bronze|verified|trending|city_motion|mitten_elite|hall_of_fame
+  fanLevel: varchar("fanLevel", { length: 32 }).default("supporter").notNull(), // supporter|top_supporter|biggest_fan|early_supporter|verified_tastemaker
+  streak: int("streak").default(0).notNull(),
+  lastActiveDate: varchar("lastActiveDate", { length: 10 }),  // YYYY-MM-DD for streak tracking
 });
 
 export type User = typeof users.$inferSelect;
@@ -379,3 +386,87 @@ export const activeSessions = mysqlTable("active_sessions", {
   lastSeen: timestamp("lastSeen").defaultNow().notNull(),
 });
 export type ActiveSession = typeof activeSessions.$inferSelect;
+
+// ─── Reward System ────────────────────────────────────────────
+
+// Rewards — configurable reward definitions with requirements
+export const rewards = mysqlTable("rewards", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  description: text("description"),
+  type: mysqlEnum("type", ["level", "achievement", "promo", "wars", "review", "supporter", "verified", "rare"]).default("achievement").notNull(),
+  rarity: mysqlEnum("rarity", ["common", "rare", "epic", "legendary", "hall_of_fame"]).default("common").notNull(),
+  // Requirements stored as JSON: { xp?: number, level?: string, battleWins?: number, fireVotes?: number, ... }
+  requirements: text("requirements").notNull().default("{}"),
+  requiresAdminApproval: boolean("requiresAdminApproval").default(false).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  isPaused: boolean("isPaused").default(false).notNull(),
+  expiresAt: timestamp("expiresAt"),
+  badgeIcon: varchar("badgeIcon", { length: 64 }),  // emoji or icon name
+  badgeColor: varchar("badgeColor", { length: 32 }),  // hex color
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Reward = typeof rewards.$inferSelect;
+export type InsertReward = typeof rewards.$inferInsert;
+
+// User Rewards — tracks which rewards each user has and their status
+export const userRewards = mysqlTable("user_rewards", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  rewardId: int("rewardId").notNull(),
+  status: mysqlEnum("status", ["locked", "unlocked", "claimable", "active", "redeemed", "expired", "revoked"]).default("locked").notNull(),
+  unlockedAt: timestamp("unlockedAt"),
+  claimedAt: timestamp("claimedAt"),
+  redeemedAt: timestamp("redeemedAt"),
+  revokedAt: timestamp("revokedAt"),
+  grantedBy: int("grantedBy"),  // admin userId who manually granted (null = auto)
+  earnedVia: varchar("earnedVia", { length: 256 }),  // description of how it was earned
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserReward = typeof userRewards.$inferSelect;
+export type InsertUserReward = typeof userRewards.$inferInsert;
+
+// User Badges — individual badges granted to users (can have multiples)
+export const userBadges = mysqlTable("user_badges", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  badge: varchar("badge", { length: 64 }).notNull(),  // badge identifier
+  label: varchar("label", { length: 64 }),  // display label
+  rarity: mysqlEnum("rarity", ["common", "rare", "epic", "legendary", "hall_of_fame"]).default("common").notNull(),
+  badgeIcon: varchar("badgeIcon", { length: 64 }),
+  badgeColor: varchar("badgeColor", { length: 32 }),
+  isVisible: boolean("isVisible").default(true).notNull(),
+  grantedBy: int("grantedBy"),  // admin userId (null = auto)
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+});
+export type UserBadge = typeof userBadges.$inferSelect;
+export type InsertUserBadge = typeof userBadges.$inferInsert;
+
+// XP Events — audit log of every XP award
+export const xpEvents = mysqlTable("xp_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amount: int("amount").notNull(),
+  reason: varchar("reason", { length: 128 }).notNull(),  // e.g. 'song_upload', 'battle_win'
+  metadata: text("metadata"),  // JSON with extra context
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type XpEvent = typeof xpEvents.$inferSelect;
+export type InsertXpEvent = typeof xpEvents.$inferInsert;
+
+// Reward Logs — audit trail for all reward actions
+export const rewardLogs = mysqlTable("reward_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  rewardId: int("rewardId"),
+  action: varchar("action", { length: 64 }).notNull(),  // 'unlocked', 'granted', 'revoked', 'claimed', 'redeemed'
+  performedBy: int("performedBy"),  // admin userId (null = auto)
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RewardLog = typeof rewardLogs.$inferSelect;
+export type InsertRewardLog = typeof rewardLogs.$inferInsert;

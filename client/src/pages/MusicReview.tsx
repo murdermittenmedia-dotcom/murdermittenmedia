@@ -20,6 +20,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import LabelBadge from "@/components/LabelBadge";
+import { UserBadges } from "@/components/UserBadges";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 // Types inferred from tRPC query
@@ -1655,7 +1656,8 @@ export default function MusicReview() {
                       <ArtistStatModal artistName={msg.username}>
                         <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
                       </ArtistStatModal>
-                      {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}:
+                      {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}
+                      {msg.userId && <span className="ml-1"><UserBadges userId={msg.userId} size="xs" maxVisible={2} /></span>}:
                     </span>{" "}
                     <span className="text-white/80">{msg.message}</span>
                   </div>

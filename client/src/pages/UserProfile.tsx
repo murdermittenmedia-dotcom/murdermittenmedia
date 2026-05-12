@@ -13,6 +13,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { toast } from "sonner";
 import LabelBadge, { USER_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
+import { ProfileRewards } from "@/components/ProfileRewards";
 import {
   Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X,
   Instagram, Trophy, Mic, MapPin, Upload, Plus, Globe, Eye, EyeOff,
@@ -731,6 +732,13 @@ export default function UserProfile() {
           </div>
         )}
 
+        {/* ── Rewards & Achievements ─────────────────────── */}
+        {displayProfile?.user?.id && (
+          <ProfileRewards
+            userId={displayProfile.user.id}
+            isOwnProfile={isOwnProfile}
+          />
+        )}
         {/* ── Music Catalogue ─────────────────────────────── */}
         <div className="mb-12">
           <MusicCatalogue

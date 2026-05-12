@@ -23,6 +23,11 @@ import {
   wheelOfNamesPaidEntries, InsertWheelOfNamesPaidEntry,
   pageViews, InsertPageView,
   activeSessions,
+  rewards, Reward,
+  userRewards, UserReward,
+  userBadges,
+  xpEvents,
+  rewardLogs,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 

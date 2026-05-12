@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ThumbsUp, ThumbsDown, MessageSquare, Trash2, Reply, Music, X, Upload, Play, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { ArtistLink } from "@/components/ArtistLink";
+import { UserBadges } from "@/components/UserBadges";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
@@ -105,8 +106,9 @@ function CommentItem({ comment, currentUserId, isAdmin, onReply, onDelete, onRea
           <div className="flex-1 min-w-0">
             {/* Author + time */}
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold text-white/80">
+              <span className="text-xs font-semibold text-white/80 inline-flex items-center gap-1">
                 <ArtistLink artistName={comment.author?.artistName ?? comment.author?.name ?? 'Anonymous'} userId={comment.author?.id} />
+                {comment.author?.id && <UserBadges userId={comment.author.id} size="xs" maxVisible={2} />}
               </span>
               <span className="text-xs text-white/30">{timeAgo(comment.createdAt)}</span>
             </div>
@@ -363,8 +365,9 @@ export default function ForumPost({ params }: ForumPostProps) {
                 )}
               </div>
               <div>
-                <div className="text-sm font-semibold text-white/80">
+                <div className="text-sm font-semibold text-white/80 inline-flex items-center gap-1">
                   <ArtistLink artistName={post.author?.artistName ?? post.author?.name ?? 'Anonymous'} userId={post.author?.id} />
+                  {post.author?.id && <UserBadges userId={post.author.id} size="xs" maxVisible={2} />}
                 </div>
                 <div className="text-xs text-white/40">{timeAgo(post.createdAt)}</div>
               </div>

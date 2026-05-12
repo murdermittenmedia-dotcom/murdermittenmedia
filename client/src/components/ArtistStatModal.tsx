@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { MapPin, ExternalLink, X, ChevronDown, ChevronUp } from "lucide-react";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { UserBadges } from "@/components/UserBadges";
 
 interface ArtistStatModalProps {
   artistName: string;
@@ -368,7 +369,10 @@ export function ArtistStatModal({ artistName, userId, children }: ArtistStatModa
                   )}
                 </div>
                 <div>
-                  <h2 className="font-['Anton'] text-2xl uppercase">{displayName}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-['Anton'] text-2xl uppercase">{displayName}</h2>
+                    {userId && <UserBadges userId={userId} maxVisible={4} size="xs" />}
+                  </div>
                   {/* City */}
                   {city && (
                     <div className="flex items-center gap-1 text-white/40 text-xs mt-0.5">
