@@ -855,7 +855,7 @@
 ### Artist XP + Progression System
 - [ ] DB schema: add `xp` (int), `level` (enum: bronze/verified/trending/city_motion/mitten_elite/hall_of_fame), `streak` (int), `lastActiveDate` (date) to users table
 - [ ] DB schema: add `artistBadges` table (userId, badge, earnedAt)
-- [ ] DB helper: `awardXP(userId, amount, reason)` — adds XP, recalculates level, awards badges on milestones
+- [x] DB helper: `awardXP(userId, amount, reason)` — adds XP, recalculates level, awards badges on milestones
 - [ ] XP triggers: award XP on song upload, battle win, review submission, daily login, forum post, vote cast
 - [ ] tRPC: `profile.getXPStats` — returns xp, level, streak, badges for a user
 - [ ] Profile page: show XP bar, level badge, streak counter, earned badges/trophies
@@ -903,50 +903,50 @@
 - [ ] Homepage: animated "X users online now" counter (use socket connection count)
 - [ ] Homepage: "X songs submitted today" live counter
 - [ ] Music Review page: show live viewer count prominently
-- [ ] Site-wide: show "LIVE" badge in nav when any live session is active
+- [x] Site-wide: show "LIVE" badge in nav when any live session is active
 
 ## Reward Tracking / Auto-Unlock System
 
 ### Phase 1 — DB Schema
-- [ ] DB: add `xp` (int default 0), `level` (varchar default 'bronze'), `streak` (int default 0), `lastActiveDate` (date) to users table
-- [ ] DB: add `fanXP` (int default 0), `fanLevel` (varchar default 'supporter') to users table
-- [ ] DB: create `rewards` table (id, name, description, type: level|achievement|promo|wars|review|supporter|verified|rare, rarity: common|rare|epic|legendary|hall_of_fame, requirements JSON, isActive, requiresAdminApproval, expiresAt, createdAt)
-- [ ] DB: create `user_rewards` table (id, userId, rewardId, status: locked|unlocked|claimable|active|redeemed|expired|revoked, unlockedAt, claimedAt, redeemedAt, revokedAt, grantedBy, notes, earnedVia)
-- [ ] DB: create `user_badges` table (id, userId, badge, rarity, grantedBy, grantedAt, isVisible, expiresAt)
-- [ ] DB: create `xp_events` table (id, userId, amount, reason, metadata JSON, createdAt) — audit log
-- [ ] DB: create `reward_logs` table (id, userId, rewardId, action, performedBy, notes, createdAt)
-- [ ] Push all migrations with `pnpm db:push`
+- [x] DB: add `xp` (int default 0), `level` (varchar default 'bronze'), `streak` (int default 0), `lastActiveDate` (date) to users table
+- [x] DB: add `fanXP` (int default 0), `fanLevel` (varchar default 'supporter') to users table
+- [x] DB: create `rewards` table (id, name, description, type: level|achievement|promo|wars|review|supporter|verified|rare, rarity: common|rare|epic|legendary|hall_of_fame, requirements JSON, isActive, requiresAdminApproval, expiresAt, createdAt)
+- [x] DB: create `user_rewards` table (id, userId, rewardId, status: locked|unlocked|claimable|active|redeemed|expired|revoked, unlockedAt, claimedAt, redeemedAt, revokedAt, grantedBy, notes, earnedVia)
+- [x] DB: create `user_badges` table (id, userId, badge, rarity, grantedBy, grantedAt, isVisible, expiresAt)
+- [x] DB: create `xp_events` table (id, userId, amount, reason, metadata JSON, createdAt) — audit log
+- [x] DB: create `reward_logs` table (id, userId, rewardId, action, performedBy, notes, createdAt)
+- [x] Push all migrations with `pnpm db:push`
 
 ### Phase 2 — DB Helpers & tRPC Procedures
-- [ ] DB helper: `awardXP(userId, amount, reason, metadata?)` — adds XP, logs to xp_events, recalculates level, triggers checkAndUnlockRewards
-- [ ] DB helper: `checkAndUnlockRewards(userId, stats)` — evaluates all active rewards' requirements against user stats, auto-unlocks eligible ones, logs to reward_logs, sends notification
-- [ ] DB helper: `getUserRewardStats(userId)` — aggregates all stats needed for requirement checking (xp, level, wins, plays, votes, etc.)
-- [ ] DB helper: `getRewardsByUser(userId)` — returns unlocked + locked rewards with progress toward each
-- [ ] DB helper: `getBadgesByUser(userId)` — returns all visible badges for a user
-- [ ] tRPC: `rewards.getMyRewards` — protected, returns user's rewards with status and progress
-- [ ] tRPC: `rewards.getMyBadges` — protected, returns user's badges
-- [ ] tRPC: `rewards.claimReward` — protected, marks unlocked reward as claimable/active
-- [ ] tRPC: `profile.getPublicRewards(userId)` — public, returns unlocked rewards + badges for profile display
-- [ ] tRPC: `admin.rewards.list` — admin, list all rewards with stats
-- [ ] tRPC: `admin.rewards.create` — admin, create new reward with requirements JSON
-- [ ] tRPC: `admin.rewards.update` — admin, edit reward (name, desc, requirements, isActive, expiresAt)
-- [ ] tRPC: `admin.rewards.grantToUser` — admin, manually grant reward to user
-- [ ] tRPC: `admin.rewards.revokeFromUser` — admin, revoke reward from user with notes
-- [ ] tRPC: `admin.rewards.getLogs` — admin, view reward audit log
-- [ ] tRPC: `admin.badges.grantBadge` — admin, assign badge to user
-- [ ] tRPC: `admin.badges.removeBadge` — admin, remove badge from user
-- [ ] tRPC: `admin.xp.override` — admin, manually set or adjust user XP
+- [x] DB helper: `awardXP(userId, amount, reason, metadata?)` — adds XP, logs to xp_events, recalculates level, triggers checkAndUnlockRewards
+- [x] DB helper: `checkAndUnlockRewards(userId, stats)` — evaluates all active rewards' requirements against user stats, auto-unlocks eligible ones, logs to reward_logs, sends notification
+- [x] DB helper: `getUserRewardStats(userId)` — aggregates all stats needed for requirement checking (xp, level, wins, plays, votes, etc.)
+- [x] DB helper: `getRewardsByUser(userId)` — returns unlocked + locked rewards with progress toward each
+- [x] DB helper: `getBadgesByUser(userId)` — returns all visible badges for a user
+- [x] tRPC: `rewards.getMyRewards` — protected, returns user's rewards with status and progress
+- [x] tRPC: `rewards.getMyBadges` — protected, returns user's badges
+- [x] tRPC: `rewards.claimReward` — protected, marks unlocked reward as claimable/active
+- [x] tRPC: `profile.getPublicRewards(userId)` — public, returns unlocked rewards + badges for profile display
+- [x] tRPC: `admin.rewards.list` — admin, list all rewards with stats
+- [x] tRPC: `admin.rewards.create` — admin, create new reward with requirements JSON
+- [x] tRPC: `admin.rewards.update` — admin, edit reward (name, desc, requirements, isActive, expiresAt)
+- [x] tRPC: `admin.rewards.grantToUser` — admin, manually grant reward to user
+- [x] tRPC: `admin.rewards.revokeFromUser` — admin, revoke reward from user with notes
+- [x] tRPC: `admin.rewards.getLogs` — admin, view reward audit log
+- [x] tRPC: `admin.badges.grantBadge` — admin, assign badge to user
+- [x] tRPC: `admin.badges.removeBadge` — admin, remove badge from user
+- [x] tRPC: `admin.xp.override` — admin, manually set or adjust user XP
 
 ### Phase 3 — XP Award Triggers
-- [ ] Song upload → awardXP(userId, 50, 'song_upload')
-- [ ] Battle win → awardXP(userId, 150, 'battle_win')
-- [ ] Battle participation → awardXP(userId, 25, 'battle_participation')
-- [ ] Review submission → awardXP(userId, 30, 'review_submission')
-- [ ] Fire vote received → awardXP(userId, 10, 'fire_vote_received')
-- [ ] Forum post → awardXP(userId, 15, 'forum_post')
-- [ ] Forum comment → awardXP(userId, 5, 'forum_comment')
-- [ ] Vote cast → awardXP(userId, 5, 'vote_cast') — fan XP
-- [ ] Daily login streak → awardXP(userId, 10 * streakDays, 'daily_streak')
+- [x] Song upload → awardXP(userId, 50, 'song_upload')
+- [x] Battle win → awardXP(userId, 150, 'battle_win')
+- [x] Battle participation → awardXP(userId, 25, 'battle_participation')
+- [x] Review submission → awardXP(userId, 30, 'review_submission')
+- [x] Fire vote received → awardXP(userId, 10, 'fire_vote_received')
+- [x] Forum post → awardXP(userId, 15, 'forum_post')
+- [x] Forum comment → awardXP(userId, 5, 'forum_comment')
+- [x] Vote cast → awardXP(userId, 5, 'vote_cast') — fan XP
+- [x] Daily login streak → awardXP(userId, 10 * streakDays, 'daily_streak')
 - [ ] Referral → awardXP(userId, 100, 'referral')
 
 ### Phase 4 — RewardBadge Component & Global Display

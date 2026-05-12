@@ -51,6 +51,7 @@ import {
   claimReward, getRewardLogs, getUserBadges, adminGrantBadge, adminRemoveBadge,
   adminSetXP, getRewardsWithProgress, getUserRewardStats, checkAndUnlockRewards,
   ARTIST_LEVELS, FAN_LEVELS, getArtistLevelInfo, getFanLevelInfo, getNextArtistLevel,
+  updateStreak,
 } from "./rewards";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -103,7 +104,17 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(async (opts) => {
+      // Trigger daily streak + XP on each login check (non-blocking)
+      if (opts.ctx.user) {
+        updateStreak(opts.ctx.user.id).then(streakDays => {
+          if (streakDays > 0) {
+            awardXP(opts.ctx.user!.id, "daily_streak", { amount: 10 * streakDays }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+      return opts.ctx.user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -234,6 +245,7 @@ export const appRouter = router({
           genre: input.genre ?? null,
           isPublic: input.isPublic,
         });
+        awardXP(ctx.user.id, "song_upload").catch(() => {});
         return { success: true };
       }),
 
@@ -266,6 +278,7 @@ export const appRouter = router({
           genre: input.genre ?? null,
           isPublic: input.isPublic,
         });
+        awardXP(ctx.user.id, "song_upload").catch(() => {});
         return { success: true, url };
       }),
 
@@ -340,6 +353,9 @@ export const appRouter = router({
           notes: input.notes ?? null,
           battleDate: new Date(),
         });
+        // Award XP to winner and loser
+        if (input.winnerId) awardXP(input.winnerId, "battle_win").catch(() => {});
+        if (input.loserId) awardXP(input.loserId, "battle_participation").catch(() => {});
         return { success: true };
       }),
   }),
@@ -549,8 +565,21 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         await castSongReaction(input.submissionId, ctx.user.id, input.reaction);
-        // Award fan XP for voting on a song
+        // Award fan XP to voter
         awardXP(ctx.user.id, "vote_cast", { amount: 2 }).catch(() => {});
+        // Award artist XP to submission owner when they receive a fire vote
+        if (input.reaction === "fire") {
+          const { getDb } = await import("./db");
+          const { reviewSubmissions: rs } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          const db = await getDb();
+          if (db) {
+            const [sub] = await db.select({ userId: rs.userId }).from(rs).where(eq(rs.id, input.submissionId)).limit(1);
+            if (sub?.userId && sub.userId !== ctx.user.id) {
+              awardXP(sub.userId, "fire_vote_received").catch(() => {});
+            }
+          }
+        }
         return { success: true };
       }),
     // Get fire/trash counts for a submissionn
