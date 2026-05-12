@@ -98,7 +98,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
           </a>
 
           {/* ── Desktop nav ── */}
-          <div className="hidden lg:flex items-center gap-1 text-sm font-medium">
+          <div className="hidden md:flex items-center gap-1 text-sm font-medium">
             {DESKTOP_PRIMARY.map(link => {
               const isLive = isLiveForKey((link as any).liveKey);
               return (
@@ -205,7 +205,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
             {/* Mobile hamburger */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden text-white/70 hover:text-white p-2 rounded transition-colors"
+              className="md:hidden text-white/70 hover:text-white p-2 rounded transition-colors"
               aria-label="Toggle menu"
             >
               {menuOpen
@@ -220,14 +220,14 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
       {/* ── Mobile menu overlay ── */}
       {menuOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
           onClick={() => setMenuOpen(false)}
         />
       )}
 
       {/* ── Mobile menu drawer ── */}
       <div
-        className={`lg:hidden fixed top-0 right-0 bottom-0 z-50 w-[300px] max-w-[90vw] bg-[#0a0a0a] border-l border-white/10 flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed top-0 right-0 bottom-0 z-50 w-[300px] max-w-[90vw] bg-[#0a0a0a] border-l border-white/10 flex flex-col transition-transform duration-300 ease-in-out ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
