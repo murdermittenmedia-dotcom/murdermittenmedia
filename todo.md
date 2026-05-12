@@ -845,3 +845,7 @@
 - [x] Reduce reaction poll interval from 5s to 3s as secondary fallback
 - [x] Ensure queue refetch happens immediately on radio:playing event (not just review:queue_updated)
 - [x] Add a useEffect that syncs liveReviewActive from currentPlaying when liveReviewActive is null but currentPlaying exists
+
+## Forum Audio Files Fix
+- [x] ForumPost.tsx: replace ForumAudioPlayer (Tune In redirect) with AudioPlayButton so audio actually plays inline
+- [x] ForumPost.tsx: ensure both post-level and comment-level audio attachments use AudioPlayButton

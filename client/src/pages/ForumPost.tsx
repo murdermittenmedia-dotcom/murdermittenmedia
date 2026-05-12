@@ -15,24 +15,31 @@ import { SiteNav } from "@/components/SiteNav";
 import { ArtistLink } from "@/components/ArtistLink";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { TuneInButton } from "@/components/TuneInButton";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
 
-// ── Audio attachment — redirects to live radio station ──────────────────────
+// ── Audio attachment — inline playable audio ──────────────────────
 function ForumAudioPlayer({
-  audioTitle, large = false
+  audioUrl, audioTitle, artist, large = false
 }: {
   audioUrl: string; audioTitle: string; artist: string;
   sourcePage: string; sourceUrl: string; large?: boolean;
 }) {
   return (
     <div className={`mt-2 border border-red-600/20 bg-red-950/10 rounded p-2.5 flex items-center gap-3 ${large ? "mt-4 p-3" : ""}`}>
-      <TuneInButton size={large ? "md" : "sm"} />
+      <AudioPlayButton
+        url={audioUrl}
+        title={audioTitle}
+        artist={artist}
+        sourcePage="Forum"
+        sourceUrl="/forum"
+        size={large ? "md" : "sm"}
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <Music className={`flex-shrink-0 text-red-400 ${large ? "w-4 h-4" : "w-3 h-3"}`} />
           <span className={`text-red-400 font-medium truncate ${large ? "text-sm" : "text-xs"}`}>{audioTitle}</span>
         </div>
-        <div className="text-xs text-white/30 mt-0.5">Tune in to hear this on the radio</div>
+        <div className="text-xs text-white/30 mt-0.5">Click to play</div>
       </div>
     </div>
   );
