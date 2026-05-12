@@ -1120,10 +1120,12 @@ export async function getCombinedLeaderboard() {
   };
 
   for (const b of battles) {
-    ensureArtist(b.winnerArtistName, b.winnerId).wins++;
-    ensureArtist(b.winnerArtistName, b.winnerId).totalBattles++;
-    ensureArtist(b.loserArtistName, b.loserId).losses++;
-    ensureArtist(b.loserArtistName, b.loserId).totalBattles++;
+    const winner = ensureArtist(b.winnerArtistName, b.winnerId);
+    winner.wins++;
+    winner.totalBattles++;
+    const loser = ensureArtist(b.loserArtistName, b.loserId);
+    loser.losses++;
+    loser.totalBattles++;
   }
 
   for (const s of submissions) {
