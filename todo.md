@@ -123,26 +123,26 @@
 - [ ] Admin can set active battle matchup from admin panel (names + round number)
 
 ## Past Wars Tab Fix
-- [ ] Past Wars tab: replace YouTube playlist embed with battle records from DB (grouped by round, showing winner/loser/songs/date)
-- [ ] Past Wars tab: show "No battles recorded yet" when DB is empty, with note that admin records results after each live battle
-- [ ] Past Wars tab: each battle card shows round #, date, winner (green), loser (red), songs used, clickable artist names opening ArtistStatModal
+- [x] Past Wars tab: replace YouTube playlist embed with battle records from DB (grouped by round, showing winner/loser/songs/date)
+- [x] Past Wars tab: show "No battles recorded yet" when DB is empty, with note that admin records results after each live battle
+- [x] Past Wars tab: each battle card shows round #, date, winner (green), loser (red), songs used, clickable artist names opening ArtistStatModal
 
 ## Live Stream Offline State & Event Scheduler
-- [ ] DB: add nextEventDate + nextEventTitle fields to site_settings (or reuse key-value store)
-- [ ] tRPC: admin.setNextEvent — admin sets next Music Wars date/time and title
-- [ ] tRPC: public.getNextEvent — returns next event date/time and title
-- [ ] Music Wars stream section: when offline, show "MUSIC WARS OFFLINE" branded screen instead of broken YouTube embed
-- [ ] Offline screen: show countdown timer (days/hours/minutes/seconds) to next scheduled event
-- [ ] Offline screen: show next event title set by admin
-- [ ] Admin panel: "Schedule Next Event" form — date/time picker + event title + YouTube stream URL (for when live)
-- [ ] Admin panel: toggle isLive on/off to switch between live embed and offline screen
-- [ ] When isLive=true: show YouTube embed with the configured stream URL
-- [ ] When isLive=false: show offline screen with countdown
+- [x] DB: add nextEventDate + nextEventTitle fields to site_settings (or reuse key-value store)
+- [x] tRPC: admin.setNextEvent — admin sets next Music Wars date/time and title
+- [x] tRPC: public.getNextEvent — returns next event date/time and title
+- [x] Music Wars stream section: when offline, show "MUSIC WARS OFFLINE" branded screen instead of broken YouTube embed
+- [x] Offline screen: show countdown timer (days/hours/minutes/seconds) to next scheduled event
+- [x] Offline screen: show next event title set by admin
+- [x] Admin panel: "Schedule Next Event" form — date/time picker + event title + YouTube stream URL (for when live)
+- [x] Admin panel: toggle isLive on/off to switch between live embed and offline screen
+- [x] When isLive=true: show YouTube embed with the configured stream URL
+- [x] When isLive=false: show offline screen with countdown
 
 ## Music Wars Entry Form MP3 Upload
-- [ ] Wheel entry form: add tab toggle between "Link" (YouTube/SoundCloud URL) and "Upload MP3" (.mp3/.wav file, max 15MB)
-- [ ] tRPC: wheel.submitWithFile — upload audio to S3, store fileUrl on wheel entry
-- [ ] WheelEntry DB: ensure songUrl can store S3 URL from upload (already varchar 512, OK)
+- [x] Wheel entry form: add tab toggle between "Link" (YouTube/SoundCloud URL) and "Upload MP3" (.mp3/.wav file, max 15MB)
+- [x] tRPC: wheel.submitWithFile — upload audio to S3, store fileUrl on wheel entry
+- [x] WheelEntry DB: ensure songUrl can store S3 URL from upload (already varchar 512, OK)
 
 ## Auto-Link Wheel Entry Songs to Profile
 - [ ] When a logged-in user submits a wheel entry with a song (URL or uploaded MP3), auto-add it to their user_songs catalogue
@@ -150,51 +150,51 @@
 - [ ] ArtistStatModal: show both catalogue songs AND songs from past battle submissions (deduplicated by title)
 
 ## Admin Wheel Controls
-- [ ] Admin panel: X button on each wheel entry to remove/eliminate individual names instantly
-- [ ] Admin panel: "Reset Current War" button — removes all active wheel entries + clears current vote results, but preserves battle_records and all-time leaderboard
-- [ ] tRPC: wheel.removeEntry — admin removes a single wheel entry by id
-- [ ] tRPC: wheel.resetCurrentWar — admin clears all wheel entries (status != 'winner') + clears active battle votes
+- [x] Admin panel: X button on each wheel entry to remove/eliminate individual names instantly
+- [x] Admin panel: "Reset Current War" button — removes all active wheel entries + clears current vote results, but preserves battle_records and all-time leaderboard
+- [x] tRPC: wheel.removeEntry — admin removes a single wheel entry by id
+- [x] tRPC: wheel.resetCurrentWar — admin clears all wheel entries (status != 'winner') + clears active battle votes
 
 ## Music Review — Fire/Trash Voting & Artist Profiles
-- [ ] DB schema: song_reactions table (id, submissionId, userId, reaction: 'fire'|'trash', createdAt) — one per user per submission
-- [ ] DB: add fireCount + trashCount columns to review_submissions for career totals
+- [x] DB schema: song_reactions table (id, submissionId, userId, reaction: 'fire'|'trash', createdAt) — one per user per submission
+- [x] DB: add fireCount + trashCount columns to review_submissions for career totals
 - [x] tRPC: review.react — cast fire/trash vote on a submission (one per user, locked after voting)
-- [ ] tRPC: review.getReactions — get fire/trash counts for a submission
-- [ ] Music Review page: 🔥 / 🗑️ buttons on currently playing song, disabled after vote cast
-- [ ] Music Review page: show live fire/trash tally updating in real-time (poll every 3s)
-- [ ] Music Review page: clickable artist names in queue → ArtistStatModal popup (W/L record + songs)
+- [x] tRPC: review.getReactions — get fire/trash counts for a submission
+- [x] Music Review page: 🔥 / 🗑️ buttons on currently playing song, disabled after vote cast
+- [x] Music Review page: show live fire/trash tally updating in real-time (poll every 3s)
+- [x] Music Review page: clickable artist names in queue → ArtistStatModal popup (W/L record + songs)
 - [ ] ArtistStatModal: show career fire/trash totals on each song in the catalogue
 
 ## Live Vote Visibility
-- [ ] Vote results panel visible to ALL viewers (not just logged-in users)
-- [ ] Show individual judge votes with JUDGE badge + their name + which contestant they picked
-- [ ] Show audience vote count separately from judge vote count
-- [ ] tRPC: voting.getDetailedResults — returns vote breakdown with judge names/votes visible to public
-- [ ] DB: store voterName on votes table so judge names can be displayed publicly
+- [x] Vote results panel visible to ALL viewers (not just logged-in users)
+- [x] Show individual judge votes with JUDGE badge + their name + which contestant they picked
+- [x] Show audience vote count separately from judge vote count
+- [x] tRPC: voting.getDetailedResults — returns vote breakdown with judge names/votes visible to public
+- [x] DB: store voterName on votes table so judge names can be displayed publicly
 
 ## Vote Weight Correction
 - [x] All votes (judge + audience) carry equal weight = 1
-- [ ] Remove weight=3 for judges in DB and vote calculation logic
-- [ ] Judge votes still shown with JUDGE badge + name for visibility, but counted as 1 vote
+- [x] Remove weight=3 for judges in DB and vote calculation logic
+- [x] Judge votes still shown with JUDGE badge + name for visibility, but counted as 1 vote
 
 ## Nav Label & Order Update
 - [x] Rename "Mic" → "Murder Mitten Mic Performances"
 - [x] Rename "Review" → "Live Music Reviews"
 - [x] Rename "Podcast" → "Meeting with the Mitten Podcast"
-- [ ] Swap order: Live Music Reviews before Murder Mitten Mic Performances
-- [ ] Nav order: Live Stream, Artist of the Week, Music Wars, Live Music Reviews, Murder Mitten Mic Performances, Meeting with the Mitten Podcast, Get Promoted
+- [x] Swap order: Live Music Reviews before Murder Mitten Mic Performances
+- [x] Nav order: Live Stream, Artist of the Week, Music Wars, Live Music Reviews, Murder Mitten Mic Performances, Meeting with the Mitten Podcast, Get Promoted
 
 ## Detroit → Michigan Text Fix
 - [x] Replace all "Detroit's hardest" / "Detroit's" / "Detroit" in page descriptions and taglines with "Michigan" throughout the site (not in addresses/history context, only in branding/descriptions)
 
 ## My Profile Nav Option
-- [ ] Add "My Profile" link in nav (desktop + mobile) when user is logged in — opens ArtistStatModal for own profile
-- [ ] Show username/artist name next to profile link in nav
+- [x] Add "My Profile" link in nav (desktop + mobile) when user is logged in — opens ArtistStatModal for own profile
+- [x] Show username/artist name next to profile link in nav
 
 ## Profile Picture
-- [ ] Add avatarUrl column to users table in schema; push migration
-- [ ] tRPC: profile.uploadAvatar — upload image to S3, save URL to users.avatarUrl
-- [ ] ArtistStatModal: show avatar at top, upload button when viewing own profile
+- [x] Add avatarUrl column to users table in schema; push migration
+- [x] tRPC: profile.uploadAvatar — upload image to S3, save URL to users.avatarUrl
+- [x] ArtistStatModal: show avatar at top, upload button when viewing own profile
 - [ ] SiteNav: show avatar circle instead of letter initial when avatarUrl is set
 - [ ] Chat messages: show tiny avatar next to username
 - [ ] Leaderboard: show avatar next to artist name
@@ -241,58 +241,58 @@
 - [ ] Players tab on Music Wars page showing Active and Eliminated sections
 - [ ] Each player card shows: artist name, current war record (W/L this session), lifetime record (all-time W/L)
 - [ ] Active players: still on the wheel, sorted by wheel position
-- [ ] Eliminated players: knocked out this war, sorted by elimination order
-- [ ] Clicking a player name opens ArtistStatModal with full profile
+- [x] Eliminated players: knocked out this war, sorted by elimination order
+- [x] Clicking a player name opens ArtistStatModal with full profile
 - [ ] Real-time updates as players get eliminated or win battles
 
 ## Profile Picture Edit
-- [ ] Profile picture upload/edit button visible in ArtistStatModal when viewing own profile
-- [ ] Clicking avatar or edit button opens file picker for image upload
-- [ ] Uploaded image stored in S3, URL saved to users.avatarUrl
-- [ ] Avatar shown in nav, chat messages, leaderboard, and artist popup
+- [x] Profile picture upload/edit button visible in ArtistStatModal when viewing own profile
+- [x] Clicking avatar or edit button opens file picker for image upload
+- [x] Uploaded image stored in S3, URL saved to users.avatarUrl
+- [x] Avatar shown in nav, chat messages, leaderboard, and artist popup
 
 ## Audio Room Speaker Indicators & Mute Controls
 - [ ] 🔊 animated speaker emoji on participant card when actively speaking (Web Audio API voice activity detection)
 - [ ] 🔇 muted speaker emoji when participant is intentionally muted
-- [ ] Self-mute/unmute button for all participants in the audio room
+- [x] Self-mute/unmute button for all participants in the audio room
 - [ ] Admin can mute or unmute any participant from the room panel
 - [ ] Mute state synced via Socket.io so all viewers see current mute status
 
 ## Artist of the Week — Audio Player
-- [ ] Add audio player to Artist of the Week page for direct in-browser playback
-- [ ] Support MP3/audio file URL (HTML5 audio element with play/pause/scrub/volume)
-- [ ] Support YouTube links (embedded iframe player)
-- [ ] Admin can set both a video URL and a separate audio track URL per artist
-- [ ] Audio player shows artist name, song title, and album art if available
+- [x] Add audio player to Artist of the Week page for direct in-browser playback
+- [x] Support MP3/audio file URL (HTML5 audio element with play/pause/scrub/volume)
+- [x] Support YouTube links (embedded iframe player)
+- [x] Admin can set both a video URL and a separate audio track URL per artist
+- [x] Audio player shows artist name, song title, and album art if available
 
 ## Reset War — Battle Records
-- [ ] Reset war also deletes battle_records for the current war session (by warId/roundNumber)
-- [ ] Lifetime all-time battle records are preserved (different roundNumber/warId)
+- [x] Reset war also deletes battle_records for the current war session (by warId/roundNumber)
+- [x] Lifetime all-time battle records are preserved (different roundNumber/warId)
 
 ## User Profile Page (Clickable from Nav)
 - [x] Fix 13 TypeScript errors in MusicReview.tsx (data type, implicit any, onSuccess refetch)
-- [ ] Add profile.updateProfile procedure (name + avatarUrl upload to S3)
-- [ ] Add profile.getUserStats procedure (submission counts, fire/trash totals)
-- [ ] Add profile.getUserSubmissions procedure (all submissions for a user)
-- [ ] Build UserProfile page: edit name, profile picture upload, playable submissions history, lifetime stats
-- [ ] Wire SiteNav "My Profile" menu item to /profile route
-- [ ] Add /profile route in App.tsx
+- [x] Add profile.updateProfile procedure (name + avatarUrl upload to S3)
+- [x] Add profile.getUserStats procedure (submission counts, fire/trash totals)
+- [x] Add profile.getUserSubmissions procedure (all submissions for a user)
+- [x] Build UserProfile page: edit name, profile picture upload, playable submissions history, lifetime stats
+- [x] Wire SiteNav "My Profile" menu item to /profile route
+- [x] Add /profile route in App.tsx
 
 ## Submission Form Artist Name Auto-Fill
-- [ ] Remove artist name input from MusicReview submission form — auto-use logged-in user's registered name
-- [ ] Remove artist name input from MusicWars SubmissionForm — auto-use logged-in user's registered name
-- [ ] Update queue.submit, queue.uploadAudio, wheel.submit server procedures to accept optional userId and auto-resolve artistName from user profile when userId is present
+- [x] Remove artist name input from MusicReview submission form — auto-use logged-in user's registered name
+- [x] Remove artist name input from MusicWars SubmissionForm — auto-use logged-in user's registered name
+- [x] Update queue.submit, queue.uploadAudio, wheel.submit server procedures to accept optional userId and auto-resolve artistName from user profile when userId is present
 
 ## Music Wars Bug Fixes
-- [ ] Fix Music Wars wheel winner accuracy — winner determined by pointer position after spin, not random pick
-- [ ] Fix vote reset on war clear — broadcast war:reset socket event so all clients clear local vote state
+- [x] Fix Music Wars wheel winner accuracy — winner determined by pointer position after spin, not random pick
+- [x] Fix vote reset on war clear — broadcast war:reset socket event so all clients clear local vote state
 - [ ] Add songs.byArtistName tRPC procedure for name-only artists (no userId)
 - [ ] Add clickable wheel slice to show artist profile preview modal
-- [ ] Fix uploaded file playback - use presigned URLs so audio actually loads in player
-- [ ] Fix Music Review file upload to work same as Music Wars (base64 inline upload)
-- [ ] Build pop-out floating audio player that appears when a song loads/plays
+- [x] Fix uploaded file playback - use presigned URLs so audio actually loads in player
+- [x] Fix Music Review file upload to work same as Music Wars (base64 inline upload)
+- [x] Build pop-out floating audio player that appears when a song loads/plays
 - [ ] Auto-remove song from queue after it finishes playing
-- [ ] Add city field to user DB schema, profile update procedure, onboarding modal, and UserProfile display
+- [x] Add city field to user DB schema, profile update procedure, onboarding modal, and UserProfile display
 
 ## Session 4 — May 2026
 - [x] Remove artist name input from Music Wars submission form — auto-use registered profile name
@@ -314,56 +314,56 @@
 - [x] Add io to tRPC context so procedures can emit socket events
 
 ## Session 5 — May 2026
-- [ ] Fix Music Review file upload: default to "Upload File" tab, fix mobile accept attribute
+- [x] Fix Music Review file upload: default to "Upload File" tab, fix mobile accept attribute
 - [ ] Add missing One Mics to the Mic tab
 - [ ] Add missing One Mics to the Mic tab
-- [ ] Build Latest News feed on home page with Instagram posts (thumbnails, full captions, links)
+- [x] Build Latest News feed on home page with Instagram posts (thumbnails, full captions, links)
 
 ## Session 6 — Major Feature Sprint
-- [ ] Fix desktop nav: remove ugly horizontal scroll, make clean responsive nav
+- [x] Fix desktop nav: remove ugly horizontal scroll, make clean responsive nav
 - [ ] YouTube in-page player (modal embed) on MurderMittenMic
-- [ ] MP3 player for uploaded audio on all pages
-- [ ] Forum tab: posts, comments, Reddit-style UI
-- [ ] Latest Posts tab: Instagram carousel embeds with individual post pages
-- [ ] Global search: users and songs
-- [ ] Live review active viewer profiles (clickable)
+- [x] MP3 player for uploaded audio on all pages
+- [x] Forum tab: posts, comments, Reddit-style UI
+- [x] Latest Posts tab: Instagram carousel embeds with individual post pages
+- [x] Global search: users and songs
+- [x] Live review active viewer profiles (clickable)
 - [x] Music Wars wheel: auto-assign Contestant 1 & 2, auto-add to poll, remove from wheel
 
 ## Session 7 — Preserve Style Patch Sprint
-- [ ] Fix SiteNav desktop overflow: shorten labels, add More dropdown, no horizontal scroll bar
+- [x] Fix SiteNav desktop overflow: shorten labels, add More dropdown, no horizontal scroll bar
 - [x] Music Wars wheel: 1st spin = Contestant 1, 2nd spin = Contestant 2 (no "Winner" label)
-- [ ] Music Wars wheel: auto-call setBattleContestants after 2nd spin (auto-add to poll)
+- [x] Music Wars wheel: auto-call setBattleContestants after 2nd spin (auto-add to poll)
 - [x] Music Wars wheel: remove picked artist from wheel immediately after each spin
-- [ ] Add Forum page (posts + comments, matching existing dark style)
-- [ ] Add Latest Posts page (Instagram embeds with individual post pages)
-- [ ] Add Search page (users + songs)
-- [ ] Live review active viewer profiles (clickable, shows ArtistStatModal)
-- [ ] YouTube links open in in-page modal on MurderMittenMic
-- [ ] Music Review default to Upload File tab (fix accept attribute for mobile)
+- [x] Add Forum page (posts + comments, matching existing dark style)
+- [x] Add Latest Posts page (Instagram embeds with individual post pages)
+- [x] Add Search page (users + songs)
+- [x] Live review active viewer profiles (clickable, shows ArtistStatModal)
+- [x] YouTube links open in in-page modal on MurderMittenMic
+- [x] Music Review default to Upload File tab (fix accept attribute for mobile)
 
 ## Session 7 Additions
-- [ ] FloatingPlayer: show clickable artist name that opens ArtistStatModal
-- [ ] FloatingPlayer: show Fire/Trash rating buttons for the currently playing submission
-- [ ] MusicReview live queue: Fire/Trash rating buttons on currently playing song (and past played)
-- [ ] Fire/Trash stats tracked on user profile (total fires, total trashes per song and career total)
-- [ ] Site-wide Leaderboard page (/leaderboard): every contestant with W/L record, fire count, trash count, battle stats
-- [ ] Add Leaderboard link to SiteNav More dropdown
+- [x] FloatingPlayer: show clickable artist name that opens ArtistStatModal
+- [x] FloatingPlayer: show Fire/Trash rating buttons for the currently playing submission
+- [x] MusicReview live queue: Fire/Trash rating buttons on currently playing song (and past played)
+- [x] Fire/Trash stats tracked on user profile (total fires, total trashes per song and career total)
+- [x] Site-wide Leaderboard page (/leaderboard): every contestant with W/L record, fire count, trash count, battle stats
+- [x] Add Leaderboard link to SiteNav More dropdown
 
 ## Session 7 — Live Page & Profile Fixes
-- [ ] Fix Live page: smart redirect — if Music Wars is live go to /music-wars, if Music Review is live go to /review, else show live stream embed with chat
-- [ ] Fix UserProfile "Submit Music" button 404 — wire to correct route
+- [x] Fix Live page: smart redirect — if Music Wars is live go to /music-wars, if Music Review is live go to /review, else show live stream embed with chat
+- [x] Fix UserProfile "Submit Music" button 404 — wire to correct route
 
 ## Session 8 — Persistent Audio Player Redesign
-- [ ] Redesign AudioPlayerContext: Personal queue (user-specific, local) + Live Radio mode (shared, admin-controlled)
-- [ ] Add liveRadioState DB table + server procedures (getLiveRadioState, setLiveTrack, addToLiveQueue, skipLive, pauseLive, stopLive)
-- [ ] Rewrite FloatingPlayer: Personal/Live modes, queue display, admin live radio controls panel
-- [ ] Wire addToQueue() across Music Review, Music Wars, ArtistStatModal, profile tracks, search results
-- [ ] Auto-remove finished songs from personal queue (ended event → remove → play next)
-- [ ] Live Radio Mode: poll getLiveRadioState every 5s while in live mode, sync to admin's current track
-- [ ] Admin live radio control area: add tracks, reorder, remove, skip, pause/resume, stop, set current
-- [ ] Personal queue: user-specific or local state, never interrupted by admin changes
-- [ ] FloatingPlayer: show Personal/Live mode indicator, Live button to jump to admin broadcast
-- [ ] Bottom player: fixed viewport bottom, high z-index, enough padding on page wrapper
+- [x] Redesign AudioPlayerContext: Personal queue (user-specific, local) + Live Radio mode (shared, admin-controlled)
+- [x] Add liveRadioState DB table + server procedures (getLiveRadioState, setLiveTrack, addToLiveQueue, skipLive, pauseLive, stopLive)
+- [x] Rewrite FloatingPlayer: Personal/Live modes, queue display, admin live radio controls panel
+- [x] Wire addToQueue() across Music Review, Music Wars, ArtistStatModal, profile tracks, search results
+- [x] Auto-remove finished songs from personal queue (ended event → remove → play next)
+- [x] Live Radio Mode: poll getLiveRadioState every 5s while in live mode, sync to admin's current track
+- [x] Admin live radio control area: add tracks, reorder, remove, skip, pause/resume, stop, set current
+- [x] Personal queue: user-specific or local state, never interrupted by admin changes
+- [x] FloatingPlayer: show Personal/Live mode indicator, Live button to jump to admin broadcast
+- [x] Bottom player: fixed viewport bottom, high z-index, enough padding on page wrapper
 
 ## Session 5 — New Pages & Features
 - [x] Forum page (/forum) — posts list, category filters, create post modal, upvote/downvote
@@ -445,13 +445,13 @@
 - [x] Verify all pages have working audio playback
 
 ## Session 9 — Music Review + Music Wars + Audio Fix
-- [ ] Fix audio playback: usePlayTrack presigned URL resolution not loading into global player
-- [ ] Music Review admin: "Load to Now Playing" button per submission
-- [ ] Music Review admin: "Disable" button removes submission from active queue (soft disable, not delete)
-- [ ] Music Review: inline YouTube player on same page (no new window)
-- [ ] Add Music Wars to SiteNav More dropdown
-- [ ] Music Wars: show contestant 1 and contestant 2 audio submissions, auto-queue both when battle starts
-- [ ] Music Wars: play buttons for each contestant's submission using global player
+- [x] Fix audio playback: usePlayTrack presigned URL resolution not loading into global player
+- [x] Music Review admin: "Load to Now Playing" button per submission
+- [x] Music Review admin: "Disable" button removes submission from active queue (soft disable, not delete)
+- [x] Music Review: inline YouTube player on same page (no new window)
+- [x] Add Music Wars to SiteNav More dropdown
+- [x] Music Wars: show contestant 1 and contestant 2 audio submissions, auto-queue both when battle starts
+- [x] Music Wars: play buttons for each contestant's submission using global player
 
 ## Session 9 Continued — Catalogue + Forum + UI
 - [x] Add Music Wars to SiteNav More dropdown
@@ -491,21 +491,21 @@
 - [x] MusicWars: AudioPlayButton already correct for contestant audio (handles all URL types)
 
 ## Music Review Live Radio Rebuild
-- [ ] Server: resolve presigned URL server-side before broadcasting (not client-side)
-- [ ] Server: radio:play event — broadcasts { trackUrl, fileKey, title, artist, submissionId, startedAt }
-- [ ] Server: radio:pause event — broadcasts { pausedAt (seconds) }
-- [ ] Server: radio:seek event — broadcasts { seekTo (seconds) }
-- [ ] Server: radio:skip event — advances to next pending submission, broadcasts radio:play
-- [ ] Server: radio:state query — returns current radio state for late-joining viewers
-- [ ] Server: auto-advance — when admin marks track done, next pending track auto-loads
-- [ ] Client: useLiveRadio hook — connects socket, listens for radio:* events, syncs FloatingPlayer
-- [ ] Client: FloatingPlayer — LIVE badge when radio active, synced position
-- [ ] MusicReview admin: big play/pause/skip/rewind controls (admin only)
-- [ ] MusicReview admin: auto-advance toggle (plays next track when current ends)
-- [ ] MusicReview viewer: NOW PLAYING banner with track info (no play button — audio auto-plays)
-- [ ] MusicReview viewer: Fire/Trash poll visible when track is playing
-- [ ] MusicReview viewer: queue list shows position, no individual play buttons
-- [ ] MusicReview: past played tracks section with clickable artist names
+- [x] Server: resolve presigned URL server-side before broadcasting (not client-side)
+- [x] Server: radio:play event — broadcasts { trackUrl, fileKey, title, artist, submissionId, startedAt }
+- [x] Server: radio:pause event — broadcasts { pausedAt (seconds) }
+- [x] Server: radio:seek event — broadcasts { seekTo (seconds) }
+- [x] Server: radio:skip event — advances to next pending submission, broadcasts radio:play
+- [x] Server: radio:state query — returns current radio state for late-joining viewers
+- [x] Server: auto-advance — when admin marks track done, next pending track auto-loads
+- [x] Client: useLiveRadio hook — connects socket, listens for radio:* events, syncs FloatingPlayer
+- [x] Client: FloatingPlayer — LIVE badge when radio active, synced position
+- [x] MusicReview admin: big play/pause/skip/rewind controls (admin only)
+- [x] MusicReview admin: auto-advance toggle (plays next track when current ends)
+- [x] MusicReview viewer: NOW PLAYING banner with track info (no play button — audio auto-plays)
+- [x] MusicReview viewer: Fire/Trash poll visible when track is playing
+- [x] MusicReview viewer: queue list shows position, no individual play buttons
+- [x] MusicReview: past played tracks section with clickable artist names
 
 ## Music Review — Admin Controls & Live Radio Fix (Current)
 
@@ -517,7 +517,7 @@
 
 - [x] Make artist names clickable everywhere (links to /profile/:userId)
 - [x] Fix music catalogue audio playback on profile page (iOS autoplay policy fix with unlockThenSwap)
-- [ ] Ensure every user gets a profile page at /profile/:userId on signup
+- [x] Ensure every user gets a profile page at /profile/:userId on signup
 
 ## Session 11 — iOS Audio Fix, Crown Stat, Stats Reset
 
@@ -684,7 +684,7 @@
 - [x] Fix: useLivePlayer and useWarsLivePlayer both pass youtubeUrl + submissionType on the AudioTrack
 
 ## Audio Fix — Live Stream Pause, Mic Broadcast, Voice+Radio Mix
-- [ ] Fix: Live stream pause/stop in FloatingPlayer should only mute local audio, not broadcast a pause to all listeners
+- [x] Fix: Live stream pause/stop in FloatingPlayer should only mute local audio, not broadcast a pause to all listeners
 - [ ] Fix: Admin Mic → Radio broadcast pipeline not working (investigate useAdminMicBroadcast + socket server)
 - [ ] Feature: Allow voice chat (WebRTC audio room) and radio feed to play simultaneously
 - [ ] Feature: Add voice chat mix volume knob so users can balance voice chat vs radio volume
@@ -767,9 +767,9 @@
 - [x] Fix: same user appears twice in Voice Chat / Room Participants list — deduplicate by userId in getRoomList (useAdminMicBroadcast creates a second socket)
 
 ## Admin Player Controls & Load to Radio (May 2026)
-- [ ] Fix admin Wars Radio controls: last song, skip, seek, pause/resume not working correctly
-- [ ] Add "Load to Radio" button on all previously submitted songs (review submissions list)
-- [ ] Add "Load to Radio" button on all queue entries in the Music Wars queue
+- [x] Fix admin Wars Radio controls: last song, skip, seek, pause/resume not working correctly
+- [x] Add "Load to Radio" button on all previously submitted songs (review submissions list)
+- [x] Add "Load to Radio" button on all queue entries in the Music Wars queue
 
 ## Admin Player Controls Fix & Load to Radio Buttons
 - [x] Fix MusicWarsAdminHub: pause/resume now sends actual audioPlayer.currentTime instead of hardcoded 0
@@ -801,16 +801,16 @@
 - [x] Ensure ADMIN and JUDGE labels are visually distinct (gold/yellow) vs user labels
 
 ## Account Labels — Multi-Select + Audio Engineer (May 2026)
-- [ ] DB: change accountLabel (varchar) to accountLabels (JSON array) in users table
-- [ ] DB: push migration
-- [ ] Add AUDIO ENGINEER to label options (user-selectable)
-- [ ] tRPC: profile.setAccountLabels — accepts array of labels, validates each is user-selectable
-- [ ] tRPC: admin.setAccountLabels — accepts array, can include JUDGE/ADMIN
-- [ ] LabelBadge: support rendering multiple badges side by side
-- [ ] Profile page: multi-select toggle UI (click to add/remove labels)
-- [ ] Admin panel: multi-select for label grant
-- [ ] SiteNav: render all user labels next to name
-- [ ] Chat messages: render all labels next to username
+- [x] DB: change accountLabel (varchar) to accountLabels (JSON array) in users table
+- [x] DB: push migration
+- [x] Add AUDIO ENGINEER to label options (user-selectable)
+- [x] tRPC: profile.setAccountLabels — accepts array of labels, validates each is user-selectable
+- [x] tRPC: admin.setAccountLabels — accepts array, can include JUDGE/ADMIN
+- [x] LabelBadge: support rendering multiple badges side by side
+- [x] Profile page: multi-select toggle UI (click to add/remove labels)
+- [x] Admin panel: multi-select for label grant
+- [x] SiteNav: render all user labels next to name
+- [x] Chat messages: render all labels next to username
 
 ## Re-queue Previously Reviewed Songs (Music Review)
 - [x] tRPC: review.requeueSubmission — admin-only, sets a reviewed submission back to pending status and moves it to the end of the queue (highest position + 1)
@@ -853,13 +853,13 @@
 ## Ecosystem Expansion — Gamified Live Music Platform
 
 ### Artist XP + Progression System
-- [ ] DB schema: add `xp` (int), `level` (enum: bronze/verified/trending/city_motion/mitten_elite/hall_of_fame), `streak` (int), `lastActiveDate` (date) to users table
-- [ ] DB schema: add `artistBadges` table (userId, badge, earnedAt)
+- [x] DB schema: add `xp` (int), `level` (enum: bronze/verified/trending/city_motion/mitten_elite/hall_of_fame), `streak` (int), `lastActiveDate` (date) to users table
+- [x] DB schema: add `artistBadges` table (userId, badge, earnedAt)
 - [x] DB helper: `awardXP(userId, amount, reason)` — adds XP, recalculates level, awards badges on milestones
-- [ ] XP triggers: award XP on song upload, battle win, review submission, daily login, forum post, vote cast
-- [ ] tRPC: `profile.getXPStats` — returns xp, level, streak, badges for a user
-- [ ] Profile page: show XP bar, level badge, streak counter, earned badges/trophies
-- [ ] Level badge component: color-coded badge (Bronze=brown, Verified=blue, Trending=orange, City Motion=purple, Mitten Elite=gold, Hall of Fame=red/crimson)
+- [x] XP triggers: award XP on song upload, battle win, review submission, daily login, forum post, vote cast
+- [x] tRPC: `profile.getXPStats` — returns xp, level, streak, badges for a user
+- [x] Profile page: show XP bar, level badge, streak counter, earned badges/trophies
+- [x] Level badge component: color-coded badge (Bronze=brown, Verified=blue, Trending=orange, City Motion=purple, Mitten Elite=gold, Hall of Fame=red/crimson)
 
 ### Enhanced Leaderboard
 - [ ] DB helper: `getCombinedLeaderboard` — add time filter (weekly/monthly/all-time) and city filter params
@@ -888,13 +888,13 @@
 - [ ] Add `/broadcast` link in admin panel for easy access during streams
 
 ### FloatingPlayer Enhancements
-- [ ] FloatingPlayer: show live listener count when a live stream is active
+- [x] FloatingPlayer: show live listener count when a live stream is active
 - [ ] FloatingPlayer: add expanded mode (click to expand showing queue, reactions, chat preview)
-- [ ] FloatingPlayer: animated pulsing LIVE badge when radio is live
-- [ ] FloatingPlayer: show "Murder Mitten Radio" branding when in live stream mode
+- [x] FloatingPlayer: animated pulsing LIVE badge when radio is live
+- [x] FloatingPlayer: show "Murder Mitten Radio" branding when in live stream mode
 
 ### Fan Supporter System
-- [ ] DB schema: add `fanXP` (int), `fanLevel` (enum: supporter/top_supporter/biggest_fan/early_supporter/verified_tastemaker) to users table
+- [x] DB schema: add `fanXP` (int), `fanLevel` (enum: supporter/top_supporter/biggest_fan/early_supporter/verified_tastemaker) to users table
 - [ ] Fan XP triggers: award fan XP on vote, forum post, daily login, watching stream
 - [ ] tRPC: `leaderboard.topFans` — returns top fans by XP with level badges
 - [ ] Leaderboard page: add "Top Fans" tab showing fan leaderboard
