@@ -1202,24 +1202,31 @@ export default function MusicReview() {
                Shown to ALL viewers when admin is reviewing a track live.
                This is the main interactive element — big, unmissable, full-width.
             ─────────────────────────────────────────────────────────────────── */}
-            {liveReviewActive && liveReviewActive.submissionId !== null && (
+            {liveReviewActive && liveReviewActive.submissionId !== null && (() => {
+              const bigPollVoted = !!myReaction;
+              const bigPollMyVote = myReaction?.reaction ?? null;
+              return (
               <div className="mb-6 border border-white/10 bg-white/[0.02] overflow-hidden">
                 <div className="px-5 pt-4 pb-2 border-b border-white/10 flex items-center gap-2">
                   <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Rate This Track</span>
-                  <span className="text-white/20 text-xs">— Your vote is live</span>
+                  <span className="text-white/20 text-xs">{bigPollVoted ? (bigPollMyVote === "fire" ? "🔥 You voted Fire" : "🗑️ You voted Trash") : "— Your vote is live"}</span>
                 </div>
                 <div className="grid grid-cols-2">
                   {/* FIRE */}
                   <button
                     onClick={() => {
                       if (!user) { toast.error("Login to vote"); return; }
+                      if (bigPollVoted) { toast.error("You already voted!"); return; }
                       reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction: "fire" });
                     }}
-                    className="group flex flex-col items-center justify-center gap-3 py-10 border-r border-white/10 hover:bg-orange-500/10 active:bg-orange-500/20 transition-all duration-200"
+                    disabled={bigPollVoted || reactMutation.isPending}
+                    className={`group flex flex-col items-center justify-center gap-3 py-10 border-r border-white/10 transition-all duration-200 ${
+                      bigPollMyVote === "fire" ? "bg-orange-500/20 cursor-default" : bigPollVoted ? "opacity-40 cursor-not-allowed" : "hover:bg-orange-500/10 active:bg-orange-500/20 cursor-pointer"
+                    }`}
                   >
-                    <span className="text-7xl group-hover:scale-125 group-active:scale-110 transition-transform duration-200 select-none">🔥</span>
+                    <span className={`text-7xl transition-transform duration-200 select-none ${bigPollMyVote === "fire" ? "scale-125" : bigPollVoted ? "" : "group-hover:scale-125 group-active:scale-110"}`}>🔥</span>
                     <div className="text-center">
-                      <div className="font-['Anton'] text-3xl text-orange-400 group-hover:text-orange-300 transition-colors">FIRE</div>
+                      <div className={`font-['Anton'] text-3xl transition-colors ${bigPollMyVote === "fire" ? "text-orange-300" : "text-orange-400 group-hover:text-orange-300"}`}>FIRE</div>
                       <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">This a banger</div>
                     </div>
                   </button>
@@ -1227,13 +1234,17 @@ export default function MusicReview() {
                   <button
                     onClick={() => {
                       if (!user) { toast.error("Login to vote"); return; }
+                      if (bigPollVoted) { toast.error("You already voted!"); return; }
                       reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction: "trash" });
                     }}
-                    className="group flex flex-col items-center justify-center gap-3 py-10 hover:bg-blue-500/10 active:bg-blue-500/20 transition-all duration-200"
+                    disabled={bigPollVoted || reactMutation.isPending}
+                    className={`group flex flex-col items-center justify-center gap-3 py-10 transition-all duration-200 ${
+                      bigPollMyVote === "trash" ? "bg-blue-500/20 cursor-default" : bigPollVoted ? "opacity-40 cursor-not-allowed" : "hover:bg-blue-500/10 active:bg-blue-500/20 cursor-pointer"
+                    }`}
                   >
-                    <span className="text-7xl group-hover:scale-125 group-active:scale-110 transition-transform duration-200 select-none">🗑️</span>
+                    <span className={`text-7xl transition-transform duration-200 select-none ${bigPollMyVote === "trash" ? "scale-125" : bigPollVoted ? "" : "group-hover:scale-125 group-active:scale-110"}`}>🗑️</span>
                     <div className="text-center">
-                      <div className="font-['Anton'] text-3xl text-blue-400 group-hover:text-blue-300 transition-colors">TRASH</div>
+                      <div className={`font-['Anton'] text-3xl transition-colors ${bigPollMyVote === "trash" ? "text-blue-300" : "text-blue-400 group-hover:text-blue-300"}`}>TRASH</div>
                       <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Next track please</div>
                     </div>
                   </button>
@@ -1266,7 +1277,8 @@ export default function MusicReview() {
                   );
                 })()}
               </div>
-            )}
+              );
+            })()}
 
             {/* Currently playing banner with Fire/Trash poll */}
             {!liveReviewActive && currentPlaying && (() => {

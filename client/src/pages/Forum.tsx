@@ -220,7 +220,7 @@ export default function Forum() {
             <h1 className="font-['Anton'] text-2xl tracking-wider">
               COMMUNITY <span className="text-red-600">FORUM</span>
             </h1>
-            <p className="text-white/40 text-xs uppercase tracking-widest mt-0.5">Detroit Rap · Culture · Discussion</p>
+            <p className="text-white/40 text-xs uppercase tracking-widest mt-0.5">Michigan Rap · Culture · Discussion</p>
           </div>
           <CreatePostModal onCreated={() => refetch()} />
         </div>

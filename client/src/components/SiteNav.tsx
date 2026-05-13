@@ -22,16 +22,16 @@ const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 // Ordered menu items — used for both desktop and mobile
 // liveKey: matches the key returned by useLiveStatus to show LIVE badge
 const NAV_ITEMS = [
-  { href: "/artist-of-the-week",label: "Artist of the Week",          icon: Star                          },
-  { href: "/mic",               label: "Mic Drops",                   icon: Mic2                          },
-  { href: "/podcast",           label: "Meeting With The Mitten",     icon: Podcast                       },
-  { href: "/review",            label: "Music Reviews",               icon: Music,   liveKey: "review"   },
-  { href: "/music-wars",        label: "Music Wars",                  icon: Swords,  liveKey: "wars"     },
-  { href: "/daily-wheel",       label: "Daily Wheel",                 icon: Zap                           },
-  { href: "/forum",             label: "Forum",                       icon: MessageSquare                 },
-  { href: "/explore",           label: "Explore",                     icon: Search                        },
-  { href: "/leaderboard",       label: "Leaderboards",                icon: Trophy                        },
-  { href: "/promo",             label: "Get Promoted",                icon: Tag                           },
+  { href: "/artist-of-the-week",label: "Artist of the Week",                   icon: Star                          },
+  { href: "/music-wars",        label: "Music Wars",                           icon: Swords,  liveKey: "wars"     },
+  { href: "/review",            label: "Live Music Reviews",                   icon: Music,   liveKey: "review"   },
+  { href: "/mic",               label: "Murder Mitten Mic",                    icon: Mic2                          },
+  { href: "/podcast",           label: "Meeting with the Mitten",              icon: Podcast                       },
+  { href: "/promo",             label: "Get Promoted",                         icon: Tag                           },
+  { href: "/daily-wheel",       label: "Daily Wheel",                          icon: Zap                           },
+  { href: "/forum",             label: "Forum",                                icon: MessageSquare                 },
+  { href: "/explore",           label: "Explore",                              icon: Search                        },
+  { href: "/leaderboard",       label: "Leaderboards",                         icon: Trophy                        },
 ];
 
 // Desktop primary (visible without More dropdown)

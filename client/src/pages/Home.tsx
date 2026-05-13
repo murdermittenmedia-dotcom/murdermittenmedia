@@ -115,7 +115,7 @@ export default function Home() {
             {/* Tagline */}
             <p className="text-white/60 text-lg md:text-xl font-light leading-relaxed mb-10 border-l-2 border-red-600 pl-4">
               Where the Industry Watches the Trenches.<br />
-              <span className="text-white/30 text-base">Rap · Culture · Viral Content · Detroit</span>
+              <span className="text-white/30 text-base">Rap · Culture · Viral Content · Michigan</span>
             </p>
 
             {/* CTA buttons */}
@@ -299,7 +299,7 @@ export default function Home() {
                 CEO<br /><span className="text-red-600">STEW</span>
               </h2>
               <p className="text-white/50 leading-relaxed mb-8 text-sm">
-                One of Detroit's most consistent voices right now. CEO Stew brings raw Eastside energy with
+                One of Michigan's most consistent voices right now. CEO Stew brings raw Eastside energy with
                 polished delivery -- a member of Money Bag Boys who is quickly building his own lane in Michigan rap.
                 This week we put the spotlight on him.
               </p>

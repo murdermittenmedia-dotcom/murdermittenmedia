@@ -21,7 +21,7 @@ const ARTIST = {
   spotify: "https://open.spotify.com/artist/445wiVeb0kmovnsXj6MqHZ",
   appleMusic: "https://music.apple.com/us/artist/ceo-stew/1610942961",
   imageUrl: "", // placeholder -- no public image URL available
-  tagline: "Eastside Detroit's Most Consistent Voice",
+  tagline: "Michigan's Most Consistent Voice",
   article: `
 There's a certain kind of rapper that doesn't need a co-sign to be felt -- the type that lets the music do the talking while everyone else is chasing clout. CEO Stew, born and raised on the Eastside of Detroit, is exactly that type of artist. And this week, Murder Mitten Media is putting the city on notice: Stew is the one to watch.
 

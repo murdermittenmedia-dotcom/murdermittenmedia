@@ -393,9 +393,11 @@ function SpinWheel({
             >
               {isSpinning
                 ? "Spinning..."
-                : entries.length === 1 && (spinCount ?? 0) === 1
+                : (spinCount ?? 0) === 0
+                ? "SPIN FOR CONTESTANT 1"
+                : (spinCount ?? 0) === 1
                 ? "SPIN FOR CONTESTANT 2"
-                : "SPIN THE WHEEL"}
+                : "SPIN FOR CONTESTANT 3"}
             </button>
           )}
         </>
@@ -1051,10 +1053,26 @@ function VotingPanel({
             )}
           </div>
 
+          {/* Audience vs Judge vote breakdown */}
+          {(voteResults?.total ?? 0) > 0 && (
+            <div className="border-t border-white/10 pt-3 mb-3">
+              <div className="flex justify-between text-[10px] text-white/30 uppercase tracking-widest mb-1">
+                <span>Audience</span>
+                <span>Judges</span>
+              </div>
+              <div className="flex justify-between text-xs text-white/50">
+                <span>
+                  {activeBattle?.contestant1Name}: {voteResults?.audienceContestant1 ?? 0} &nbsp;·&nbsp; {activeBattle?.contestant2Name}: {voteResults?.audienceContestant2 ?? 0}
+                  {isTriple && activeBattle?.contestant3Name ? ` · ${activeBattle.contestant3Name}: ${voteResults?.audienceContestant3 ?? 0}` : ""}
+                </span>
+                <span className="text-yellow-400/70">{voteResults?.judgeVotes?.length ?? 0} vote{(voteResults?.judgeVotes?.length ?? 0) !== 1 ? "s" : ""}</span>
+              </div>
+            </div>
+          )}
           {/* Judge votes — visible to all viewers */}
           {voteResults?.judgeVotes && voteResults.judgeVotes.length > 0 && (
             <div className="border-t border-white/10 pt-3">
-              <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Judge Votes</p>
+              <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Judge Votes (public)</p>
               <div className="space-y-1">
                 {voteResults.judgeVotes.map((jv: { name: string; role: string; candidate: string }, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-xs">

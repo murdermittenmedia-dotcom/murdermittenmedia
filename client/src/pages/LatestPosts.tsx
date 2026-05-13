@@ -87,7 +87,7 @@ export default function LatestPosts() {
             <Instagram className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p className="text-lg font-['Anton'] tracking-wider">Instagram feed not configured</p>
             <p className="text-sm mt-2 max-w-md mx-auto text-white/30">
-              Follow us directly on Instagram for the latest content from Detroit's premier rap media brand.
+              Follow us directly on Instagram for the latest content from Michigan's premier rap media brand.
             </p>
             <a
               href="https://www.instagram.com/murdermittenmedia/"

@@ -158,7 +158,7 @@
 ## Music Review — Fire/Trash Voting & Artist Profiles
 - [ ] DB schema: song_reactions table (id, submissionId, userId, reaction: 'fire'|'trash', createdAt) — one per user per submission
 - [ ] DB: add fireCount + trashCount columns to review_submissions for career totals
-- [ ] tRPC: review.react — cast fire/trash vote on a submission (one per user, locked after voting)
+- [x] tRPC: review.react — cast fire/trash vote on a submission (one per user, locked after voting)
 - [ ] tRPC: review.getReactions — get fire/trash counts for a submission
 - [ ] Music Review page: 🔥 / 🗑️ buttons on currently playing song, disabled after vote cast
 - [ ] Music Review page: show live fire/trash tally updating in real-time (poll every 3s)
@@ -173,19 +173,19 @@
 - [ ] DB: store voterName on votes table so judge names can be displayed publicly
 
 ## Vote Weight Correction
-- [ ] All votes (judge + audience) carry equal weight = 1
+- [x] All votes (judge + audience) carry equal weight = 1
 - [ ] Remove weight=3 for judges in DB and vote calculation logic
 - [ ] Judge votes still shown with JUDGE badge + name for visibility, but counted as 1 vote
 
 ## Nav Label & Order Update
-- [ ] Rename "Mic" → "Murder Mitten Mic Performances"
-- [ ] Rename "Review" → "Live Music Reviews"
-- [ ] Rename "Podcast" → "Meeting with the Mitten Podcast"
+- [x] Rename "Mic" → "Murder Mitten Mic Performances"
+- [x] Rename "Review" → "Live Music Reviews"
+- [x] Rename "Podcast" → "Meeting with the Mitten Podcast"
 - [ ] Swap order: Live Music Reviews before Murder Mitten Mic Performances
 - [ ] Nav order: Live Stream, Artist of the Week, Music Wars, Live Music Reviews, Murder Mitten Mic Performances, Meeting with the Mitten Podcast, Get Promoted
 
 ## Detroit → Michigan Text Fix
-- [ ] Replace all "Detroit's hardest" / "Detroit's" / "Detroit" in page descriptions and taglines with "Michigan" throughout the site (not in addresses/history context, only in branding/descriptions)
+- [x] Replace all "Detroit's hardest" / "Detroit's" / "Detroit" in page descriptions and taglines with "Michigan" throughout the site (not in addresses/history context, only in branding/descriptions)
 
 ## My Profile Nav Option
 - [ ] Add "My Profile" link in nav (desktop + mobile) when user is logged in — opens ArtistStatModal for own profile
@@ -200,7 +200,7 @@
 - [ ] Leaderboard: show avatar next to artist name
 
 ## Wheel Auto-Remove & Queue Notifications
-- [ ] Auto-remove name from wheel after it's spun (mark status "called" on spin)
+- [x] Auto-remove name from wheel after it's spun (mark status "called" on spin)
 - [ ] Winners auto-advance: admin "Start Next War" button copies all battle winners back to wheel as new entries
 - [ ] Song play button on each wheel entry card (judges/viewers can listen inline)
 - [ ] Song play button in active battle matchup panel
@@ -270,7 +270,7 @@
 - [ ] Lifetime all-time battle records are preserved (different roundNumber/warId)
 
 ## User Profile Page (Clickable from Nav)
-- [ ] Fix 13 TypeScript errors in MusicReview.tsx (data type, implicit any, onSuccess refetch)
+- [x] Fix 13 TypeScript errors in MusicReview.tsx (data type, implicit any, onSuccess refetch)
 - [ ] Add profile.updateProfile procedure (name + avatarUrl upload to S3)
 - [ ] Add profile.getUserStats procedure (submission counts, fire/trash totals)
 - [ ] Add profile.getUserSubmissions procedure (all submissions for a user)
@@ -327,13 +327,13 @@
 - [ ] Latest Posts tab: Instagram carousel embeds with individual post pages
 - [ ] Global search: users and songs
 - [ ] Live review active viewer profiles (clickable)
-- [ ] Music Wars wheel: auto-assign Contestant 1 & 2, auto-add to poll, remove from wheel
+- [x] Music Wars wheel: auto-assign Contestant 1 & 2, auto-add to poll, remove from wheel
 
 ## Session 7 — Preserve Style Patch Sprint
 - [ ] Fix SiteNav desktop overflow: shorten labels, add More dropdown, no horizontal scroll bar
-- [ ] Music Wars wheel: 1st spin = Contestant 1, 2nd spin = Contestant 2 (no "Winner" label)
+- [x] Music Wars wheel: 1st spin = Contestant 1, 2nd spin = Contestant 2 (no "Winner" label)
 - [ ] Music Wars wheel: auto-call setBattleContestants after 2nd spin (auto-add to poll)
-- [ ] Music Wars wheel: remove picked artist from wheel immediately after each spin
+- [x] Music Wars wheel: remove picked artist from wheel immediately after each spin
 - [ ] Add Forum page (posts + comments, matching existing dark style)
 - [ ] Add Latest Posts page (Instagram embeds with individual post pages)
 - [ ] Add Search page (users + songs)
