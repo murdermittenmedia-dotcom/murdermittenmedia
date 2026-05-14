@@ -1,10 +1,11 @@
 /* ============================================================
-   MURDER MITTEN MEDIA -- Music Review
-   Full streamer platform: admin controls, live video/audio room,
-   real file upload, persistent player, queue management
+   MURDER MITTEN MEDIA — Music Review (Revamped)
+   Clean, functional layout for viewers and admin.
+   Admin: compact top bar, now-playing card, drag queue
+   Viewer: hero, now-being-reviewed banner, fire/trash poll,
+           queue list, submit form, chat sidebar
    ============================================================ */
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
@@ -23,15 +24,17 @@ import LabelBadge from "@/components/LabelBadge";
 import { UserBadges } from "@/components/UserBadges";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
+
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
 type QueueState = { id: number; isLive: boolean; liveMessage: string | null; streamUrl: string | null; currentPlayingId: number | null; updatedAt: Date };
-
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
+
 import {
-  Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward, SkipBack,
+  Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
   ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw, Music,
+  GripVertical, X, Send, LogIn,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -40,6 +43,11 @@ const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
 
 type SubmitTab = "queue" | "submit" | "skip-info";
+
+// ── Helpers ───────────────────────────────────────────────────
+function extractYouTubeId(url: string): string | null {
+  return url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1] ?? null;
+}
 
 // ── Status badge ─────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
@@ -54,62 +62,6 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`text-xs border px-2 py-0.5 uppercase tracking-wider font-semibold rounded-sm ${s.cls}`}>
       {s.label}
     </span>
-  );
-}
-
-// ── Video grid tile ───────────────────────────────────────────
-function VideoTile({
-  stream, username, role, avatarUrl, isMuted, isLocal = false,
-}: {
-  stream?: MediaStream | null;
-  username: string;
-  role: string;
-  avatarUrl?: string;
-  isMuted?: boolean;
-  isLocal?: boolean;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
-
-  const roleColor = role === "admin" ? "text-red-400" : role === "judge" ? "text-yellow-400" : "text-white/60";
-  const roleLabel = role === "admin" ? "HOST" : role === "judge" ? "JUDGE" : "CONTESTANT";
-
-  return (
-    <div className="relative bg-black border border-white/10 rounded overflow-hidden aspect-video">
-      {stream ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isLocal}
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-[#111]">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={username} className="w-16 h-16 rounded-full object-cover opacity-60" />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center">
-              <span className="font-['Anton'] text-2xl text-red-500">{username[0]?.toUpperCase()}</span>
-            </div>
-          )}
-        </div>
-      )}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="text-white text-xs font-semibold truncate">{username}</span>
-          <span className={`text-[10px] font-bold uppercase ${roleColor}`}>{roleLabel}</span>
-          {isMuted && <MicOff className="w-3 h-3 text-white/40 ml-auto" />}
-        </div>
-      </div>
-      {isLocal && (
-        <div className="absolute top-1 right-1 bg-black/60 text-white/40 text-[10px] px-1 rounded">YOU</div>
-      )}
-    </div>
   );
 }
 
@@ -136,6 +88,7 @@ function AdminPanel({
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
   const [showStreamSettings, setShowStreamSettings] = useState(false);
+  const [showReviewed, setShowReviewed] = useState(false);
   const audioPlayer = useAudioPlayer();
 
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
@@ -143,11 +96,7 @@ function AdminPanel({
   const updateStatus = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
   const confirmSkip = trpc.queue.confirmSkip.useMutation({ onSuccess: () => refetch() });
   const requeueMutation = trpc.queue.requeue.useMutation({
-    onSuccess: (_data, variables) => {
-      refetch();
-      broadcastReviewQueueUpdated();
-      toast.success("Song re-queued to end of queue");
-    },
+    onSuccess: () => { refetch(); broadcastReviewQueueUpdated(); toast.success("Song re-queued"); },
     onError: () => toast.error("Failed to re-queue song"),
   });
 
@@ -155,13 +104,12 @@ function AdminPanel({
   const currentPlaying = data?.currentPlaying;
   const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? [];
 
-  // Drag-to-reorder state (must come after queue is defined)
+  // Drag-to-reorder state
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [localQueue, setLocalQueue] = useState<ReviewSubmission[]>([]);
-  // Keep localQueue in sync with server queue (unless mid-drag)
   useEffect(() => {
     if (draggedId === null) setLocalQueue(queue);
-  }, [queue, draggedId]);
+  }, [queue, draggedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reorderMutation = trpc.queue.reorder.useMutation({
     onSuccess: () => { refetch(); broadcastReviewQueueUpdated(); },
@@ -184,6 +132,7 @@ function AdminPanel({
     setDraggedId(null);
     reorderMutation.mutate({ orderedIds: localQueue.map(s => s.id) });
   };
+
   const pendingSkips: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.skippedLine && !s.skipPaymentConfirmed && s.status === "pending") ?? [];
 
   const handleGoLive = () => {
@@ -191,21 +140,17 @@ function AdminPanel({
     toast.success(isLive ? "Stream ended" : "You're now live!");
   };
 
-  const utils = trpc.useUtils();
   const handleSetPlaying = async (id: number) => {
     const sub = queue.find(s => s.id === id);
     if (!sub) return;
-
     setPlaying.mutate({ submissionId: id }, {
       onSuccess: () => {
-        // For admin's own player: play locally
         playTrack(sub);
-        // Broadcast via radio:load — server resolves presigned URL and emits to ALL clients
         broadcastReviewActive({
           submissionId: sub.id,
           artistName: sub.artistName,
           songTitle: sub.songTitle,
-          audioUrl: null, // server will resolve this
+          audioUrl: null,
           youtubeUrl: sub.youtubeUrl ?? null,
           submissionType: sub.submissionType,
           fileKey: sub.fileKey ?? null,
@@ -214,9 +159,7 @@ function AdminPanel({
         broadcastReviewQueueUpdated();
         toast.success(`Now playing: ${sub.songTitle}`);
       },
-      onError: (err) => {
-        toast.error("Failed to set playing: " + err.message);
-      }
+      onError: (err) => toast.error("Failed to set playing: " + err.message),
     });
   };
 
@@ -229,7 +172,6 @@ function AdminPanel({
         setPlaying.mutate({ submissionId: next.id }, {
           onSuccess: () => {
             playTrack(next);
-            // Server resolves presigned URL via radio:load
             broadcastReviewActive({
               submissionId: next.id,
               artistName: next.artistName,
@@ -245,7 +187,9 @@ function AdminPanel({
         });
       }, 300);
     } else {
-      setPlaying.mutate({ submissionId: null }, { onSuccess: () => { broadcastReviewActive({ submissionId: null }); broadcastReviewQueueUpdated(); } });
+      setPlaying.mutate({ submissionId: null }, {
+        onSuccess: () => { broadcastReviewActive({ submissionId: null }); broadcastReviewQueueUpdated(); }
+      });
     }
     broadcastReviewPlayback({ action: "skip" });
     toast.success("Skipped to next track");
@@ -256,35 +200,31 @@ function AdminPanel({
     toast.success("Removed from queue");
   };
 
-  const handleMarkReviewed = (id: number) => {
-    updateStatus.mutate({ id, status: "reviewed" });
-    if (currentPlaying?.id === id) setPlaying.mutate({ submissionId: null });
-    toast.success("Marked as reviewed");
-  };
-
   return (
-    <div className="border border-red-600/30 bg-red-600/5 rounded">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-red-600/20">
+    <div className="border border-red-600/40 bg-[#0d0000] rounded-sm mb-8">
+      {/* ── Admin header bar ── */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-red-600/20 bg-red-600/5">
         <div className="flex items-center gap-2">
-          <Crown className="w-4 h-4 text-red-500" />
+          <Crown className="w-3.5 h-3.5 text-red-500" />
           <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Admin Controls</span>
         </div>
-        {isLive && (
-          <span className="flex items-center gap-1.5 text-red-500 text-xs font-bold">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            LIVE
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {isLive && (
+            <span className="flex items-center gap-1.5 text-red-500 text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              LIVE
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Go Live button */}
-        <div className="flex gap-2">
+        {/* ── Row 1: Go Live + Stream URL inline ── */}
+        <div className="flex gap-2 items-stretch">
           <button
             onClick={handleGoLive}
             disabled={setLive.isPending}
-            className={`flex-1 py-3 text-sm font-bold uppercase tracking-widest transition-all ${
+            className={`flex-shrink-0 px-5 py-2.5 text-xs font-bold uppercase tracking-widest transition-all ${
               isLive
                 ? "bg-red-600/20 border border-red-600/60 text-red-400 hover:bg-red-600/30"
                 : "bg-red-600 hover:bg-red-700 text-white shadow-[0_0_20px_rgba(209,0,0,0.3)]"
@@ -292,28 +232,25 @@ function AdminPanel({
           >
             {isLive ? "⏹ End Stream" : "🔴 Go Live"}
           </button>
+          <input
+            type="url"
+            value={streamUrlInput}
+            onChange={e => setStreamUrlInput(e.target.value)}
+            placeholder="Stream URL (YouTube Live / HLS)"
+            className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
+          />
           <button
             onClick={() => setShowStreamSettings(v => !v)}
-            className="border border-white/20 text-white/40 hover:text-white px-3 transition-colors"
-            title="Stream settings"
+            className="border border-white/20 text-white/40 hover:text-white px-3 transition-colors flex-shrink-0"
+            title="More stream settings"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Stream settings */}
+        {/* Stream settings (collapsible) */}
         {showStreamSettings && (
-          <div className="border border-white/10 bg-black/30 p-3 space-y-3">
-            <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Stream URL (YouTube Live / HLS)</label>
-              <input
-                type="url"
-                value={streamUrlInput}
-                onChange={e => setStreamUrlInput(e.target.value)}
-                placeholder="https://youtube.com/watch?v=... or HLS stream URL"
-                className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20"
-              />
-            </div>
+          <div className="border border-white/10 bg-black/30 p-3 space-y-2">
             <div>
               <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Live Message</label>
               <input
@@ -321,7 +258,7 @@ function AdminPanel({
                 value={liveMsg}
                 onChange={e => setLiveMsg(e.target.value)}
                 placeholder="e.g. Submitting tracks now — drop yours below!"
-                className="w-full bg-white/5 border border-white/10 text-white text-sm px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20"
+                className="w-full bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20"
               />
             </div>
             <button
@@ -329,65 +266,63 @@ function AdminPanel({
                 setLive.mutate({ isLive, message: liveMsg || undefined, streamUrl: streamUrlInput || undefined });
                 toast.success("Settings saved");
               }}
-              className="w-full border border-white/20 text-white/60 hover:text-white py-2 text-xs uppercase tracking-widest transition-colors"
+              className="w-full border border-white/20 text-white/60 hover:text-white py-1.5 text-xs uppercase tracking-widest transition-colors"
             >
               Save Settings
             </button>
           </div>
         )}
 
-        {/* Mic + Camera controls */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* ── Row 2: Mic / Camera / Mic→Radio in one row ── */}
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={audioRoom.toggleMic}
-            className={`flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-wider border transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-wider border transition-all ${
               audioRoom.isMuted
                 ? "border-white/20 text-white/40 hover:border-white/40"
                 : "border-green-500/50 bg-green-500/10 text-green-400"
             }`}
           >
-            {audioRoom.isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+            {audioRoom.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
             {audioRoom.isMuted ? "Mic Off" : "Mic On"}
           </button>
           <button
             onClick={videoRoom.toggleCamera}
-            className={`flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-wider border transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-wider border transition-all ${
               videoRoom.cameraActive
                 ? "border-blue-500/50 bg-blue-500/10 text-blue-400"
                 : "border-white/20 text-white/40 hover:border-white/40"
             }`}
           >
-            {videoRoom.cameraActive ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+            {videoRoom.cameraActive ? <Video className="w-3 h-3" /> : <VideoOff className="w-3 h-3" />}
             {videoRoom.cameraActive ? "Cam On" : "Cam Off"}
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                await adminMicBroadcast.toggleBroadcast();
+                if (!adminMicBroadcast.isBroadcasting) {
+                  toast.success("🎙 Mic broadcasting to radio");
+                } else {
+                  toast("Mic broadcast stopped");
+                }
+              } catch {
+                toast.error("Could not access microphone");
+              }
+            }}
+            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-wider border transition-all ${
+              adminMicBroadcast.isBroadcasting
+                ? "border-red-500/60 bg-red-500/15 text-red-400 animate-pulse"
+                : "border-white/20 text-white/40 hover:border-red-500/40 hover:text-red-400"
+            }`}
+            title={adminMicBroadcast.isBroadcasting ? "Stop mic broadcast" : "Broadcast mic to radio"}
+          >
+            {adminMicBroadcast.isBroadcasting ? <Mic className="w-3 h-3" /> : <Radio className="w-3 h-3" />}
+            {adminMicBroadcast.isBroadcasting ? "Mic Live" : "Mic→Radio"}
           </button>
         </div>
 
-        {/* Mic to Radio broadcast button */}
-        <button
-          onClick={async () => {
-            try {
-              await adminMicBroadcast.toggleBroadcast();
-              if (!adminMicBroadcast.isBroadcasting) {
-                toast.success("🎙 Mic is now broadcasting to the radio feed");
-              } else {
-                toast("Mic broadcast stopped");
-              }
-            } catch {
-              toast.error("Could not access microphone — check browser permissions");
-            }
-          }}
-          className={`w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-wider border transition-all ${
-            adminMicBroadcast.isBroadcasting
-              ? "border-red-500/60 bg-red-500/15 text-red-400 animate-pulse"
-              : "border-white/20 text-white/40 hover:border-red-500/40 hover:text-red-400"
-          }`}
-          title={adminMicBroadcast.isBroadcasting ? "Stop broadcasting mic to radio" : "Broadcast your mic to all radio listeners"}
-        >
-          {adminMicBroadcast.isBroadcasting ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
-          {adminMicBroadcast.isBroadcasting ? "🔴 Mic → Radio (Live)" : "Mic → Radio"}
-        </button>
-
-        {/* Pending skip payments */}
+        {/* ── Pending skip payments ── */}
         {pendingSkips.length > 0 && (
           <div className="border border-yellow-500/30 bg-yellow-500/5 p-3">
             <div className="text-yellow-400 text-xs uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
@@ -411,90 +346,71 @@ function AdminPanel({
           </div>
         )}
 
-        {/* Now playing controls */}
-        {currentPlaying && (
-          <div className="border border-red-600/30 bg-red-600/5 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-red-400 text-xs uppercase tracking-wider font-bold">Now Playing</div>
-              <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold">
+        {/* ── Now Playing card ── */}
+        {currentPlaying ? (
+          <div className="border border-red-600/40 bg-red-600/8 p-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-red-400 text-xs uppercase tracking-wider font-bold flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                LIVE
+                Now Playing
               </span>
             </div>
-            <div className="text-white font-semibold text-sm truncate">{currentPlaying.songTitle}</div>
+            <div className="text-white font-semibold text-sm truncate mb-0.5">{currentPlaying.songTitle}</div>
             <div className="text-white/50 text-xs mb-3">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
-            {/* Transport controls — Pause/Resume, Rewind, Skip */}
-            <div className="grid grid-cols-4 gap-2 mb-2">
+            {/* Transport controls */}
+            <div className="grid grid-cols-4 gap-1.5">
               <button
                 onClick={() => { audioPlayer.pause(); broadcastRadioPause(audioPlayer.currentTime); }}
-                className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
+                className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
                 title="Pause for all listeners"
               >
-                <Pause className="w-3.5 h-3.5" />
+                <Pause className="w-3 h-3" />
                 Pause
               </button>
               <button
                 onClick={() => { audioPlayer.resume(); broadcastRadioResume(audioPlayer.currentTime); }}
-                className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
+                className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
                 title="Resume for all listeners"
               >
-                <Play className="w-3.5 h-3.5" />
+                <Play className="w-3 h-3" />
                 Play
               </button>
               <button
                 onClick={() => { audioPlayer.seek(0); broadcastRadioSeek(0); }}
-                className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
-                title="Rewind to start for all listeners"
+                className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
+                title="Rewind to start"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3 h-3" />
                 Rewind
               </button>
               <button
                 onClick={handleSkip}
-                className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-xs uppercase tracking-wider transition-colors"
+                className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-[10px] uppercase tracking-wider transition-colors"
                 title="Skip to next track"
               >
-                <SkipForward className="w-3.5 h-3.5" />
-                Next
+                <SkipForward className="w-3 h-3" />
+                Skip
               </button>
             </div>
-            {/* Last Song button */}
-            <button
-              onClick={broadcastLastSong}
-              className="w-full flex items-center justify-center gap-1.5 border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 py-2 text-xs uppercase tracking-wider transition-colors mb-2"
-              title="Restore previous song to queue"
-            >
-              <SkipBack className="w-3.5 h-3.5" />
-              Last Song
-            </button>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleMarkReviewed(currentPlaying.id)}
-                className="flex-1 flex items-center justify-center gap-1.5 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-xs uppercase tracking-wider transition-colors"
-              >
-                <CheckCircle className="w-3.5 h-3.5" />
-                Reviewed
-              </button>
-              <button
-                onClick={() => handleRemove(currentPlaying.id)}
-                className="border border-red-600/30 text-red-400/60 hover:text-red-400 px-3 py-2 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+          </div>
+        ) : (
+          <div className="border border-white/10 bg-white/[0.02] p-3 text-center">
+            <span className="text-white/30 text-xs uppercase tracking-wider">No track loaded — select from queue below</span>
           </div>
         )}
 
-        {/* Queue management */}
+        {/* ── Queue with drag handles ── */}
         <div>
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            Queue ({localQueue.length})
-            <span className="text-white/20 text-[10px] normal-case">drag to reorder</span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white/50 text-xs uppercase tracking-wider font-semibold">
+              Queue ({localQueue.length})
+            </span>
+            <span className="text-white/20 text-[10px]">Drag to reorder</span>
           </div>
           {localQueue.length === 0 ? (
-            <div className="text-white/20 text-xs text-center py-4">Queue is empty</div>
+            <div className="text-center py-4 text-white/20 text-xs border border-white/10">Queue is empty</div>
           ) : (
-            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            <div className="space-y-1">
               {localQueue.map((sub, i) => (
                 <div
                   key={sub.id}
@@ -503,61 +419,48 @@ function AdminPanel({
                   onDragOver={(e) => handleDragOver(e, sub.id)}
                   onDrop={handleDrop}
                   onDragEnd={() => setDraggedId(null)}
-                  className={`flex items-center gap-2 p-2 border text-xs cursor-grab active:cursor-grabbing transition-opacity ${
-                    draggedId === sub.id ? "opacity-40" :
+                  className={`flex items-center gap-2 p-2 border text-xs cursor-grab active:cursor-grabbing transition-all ${
+                    draggedId === sub.id ? "opacity-30 scale-95" :
                     sub.status === "playing"
-                      ? "border-red-600/40 bg-red-600/10"
+                      ? "border-red-600/50 bg-red-600/10"
                       : sub.skipPaymentConfirmed
                       ? "border-yellow-500/30 bg-yellow-500/5"
-                      : "border-white/10 bg-white/[0.02]"
+                      : "border-white/10 bg-white/[0.02] hover:border-white/20"
                   }`}
                 >
-                  <span className="text-white/30 w-4 text-center flex-shrink-0">
+                  <GripVertical className="w-3 h-3 text-white/20 flex-shrink-0" />
+                  <span className="text-white/30 w-4 text-center flex-shrink-0 font-mono">
                     {sub.status === "playing" ? "▶" : i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="text-white font-semibold truncate">{sub.songTitle}</div>
-                    <div className="text-white/40 truncate"><ArtistLink artistName={sub.artistName} userId={sub.userId} /></div>
+                    <div className="text-white/40 truncate text-[10px]">
+                      <ArtistLink artistName={sub.artistName} userId={sub.userId} />
+                    </div>
                   </div>
                   {sub.skippedLine && (
-                    <span className={`text-[10px] font-bold px-1 flex-shrink-0 ${sub.skipPaymentConfirmed ? "text-yellow-400" : "text-yellow-600"}`}>
-                      ⚡
-                    </span>
-                  )}
-                  {sub.submissionType === "youtube" && sub.youtubeUrl && (
-                    <button
-                      onClick={() => setSelectedYouTube({ url: sub.youtubeUrl!, title: sub.songTitle, artist: sub.artistName })}
-                      className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0" title="Preview YouTube inline">
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  )}
-                  {sub.fileUrl && (
-                    <AudioPlayButton
-                      url={sub.fileUrl}
-                      urlSource="queue"
-                      title={sub.songTitle}
-                      artist={sub.artistName}
-                      submissionId={sub.id}
-                      sourcePage="Music Review"
-                      sourceUrl="/review"
-                      size="sm"
-                    />
+                    <span className={`text-[10px] font-bold flex-shrink-0 ${sub.skipPaymentConfirmed ? "text-yellow-400" : "text-yellow-600"}`}>⚡</span>
                   )}
                   <div className="flex gap-1 flex-shrink-0">
                     {sub.status !== "playing" && (
-                      <button onClick={() => handleSetPlaying(sub.id)}
-                        className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-green-500/40 text-green-400 hover:bg-green-500/10 px-2 py-0.5 transition-colors" title="Load to Now Playing — broadcasts to all viewers">
-                        <Play className="w-2.5 h-2.5" />
-                        Load
+                      <button
+                        onClick={() => handleSetPlaying(sub.id)}
+                        className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-green-500/40 text-green-400 hover:bg-green-500/10 px-1.5 py-0.5 transition-colors"
+                        title="Load to Now Playing"
+                      >
+                        <Play className="w-2.5 h-2.5" /> Load
                       </button>
                     )}
                     {sub.status === "playing" && (
-                      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-red-500/40 text-red-400 px-2 py-0.5">
+                      <span className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-red-500/40 text-red-400 px-1.5 py-0.5">
                         ▶ Live
                       </span>
                     )}
-                    <button onClick={() => handleRemove(sub.id)}
-                      className="text-white/30 hover:text-red-400 transition-colors p-0.5" title="Remove">
+                    <button
+                      onClick={() => handleRemove(sub.id)}
+                      className="text-white/20 hover:text-red-400 transition-colors p-0.5"
+                      title="Remove"
+                    >
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -567,61 +470,68 @@ function AdminPanel({
           )}
         </div>
 
-        {/* Previously Reviewed — Load to Radio */}
+        {/* ── Previously Reviewed (collapsible) ── */}
         {reviewedTracks && reviewedTracks.length > 0 && (
           <div>
-            <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Previously Reviewed — Load to Radio</div>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
-              {reviewedTracks.map(sub => (
-                <div key={sub.id} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] text-xs">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white font-semibold truncate">{sub.songTitle}</div>
-                    <div className="text-white/40 truncate">{sub.artistName}</div>
+            <button
+              onClick={() => setShowReviewed(v => !v)}
+              className="flex items-center justify-between w-full text-white/40 text-xs uppercase tracking-wider hover:text-white/60 transition-colors py-1"
+            >
+              <span>Previously Reviewed ({reviewedTracks.length})</span>
+              {showReviewed ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+            {showReviewed && (
+              <div className="space-y-1 mt-2 max-h-48 overflow-y-auto">
+                {reviewedTracks.map(sub => (
+                  <div key={sub.id} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] text-xs">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white font-semibold truncate">{sub.songTitle}</div>
+                      <div className="text-white/40 truncate text-[10px]">{sub.artistName}</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        playTrack(sub);
+                        broadcastReviewActive({
+                          submissionId: sub.id,
+                          artistName: sub.artistName,
+                          songTitle: sub.songTitle,
+                          audioUrl: null,
+                          youtubeUrl: sub.youtubeUrl ?? null,
+                          submissionType: sub.submissionType,
+                          fileKey: sub.fileKey ?? null,
+                          fileUrl: sub.fileUrl ?? null,
+                        });
+                        toast.success(`Loading: ${sub.songTitle}`);
+                      }}
+                      className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-1.5 py-0.5 transition-colors flex-shrink-0"
+                    >
+                      <Play className="w-2.5 h-2.5" /> Load
+                    </button>
+                    <button
+                      onClick={() => requeueMutation.mutate({ id: sub.id })}
+                      disabled={requeueMutation.isPending}
+                      className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-1.5 py-0.5 transition-colors flex-shrink-0 disabled:opacity-40"
+                    >
+                      <RotateCcw className="w-2.5 h-2.5" /> Re-queue
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      playTrack(sub);
-                      broadcastReviewActive({
-                        submissionId: sub.id,
-                        artistName: sub.artistName,
-                        songTitle: sub.songTitle,
-                        audioUrl: null,
-                        youtubeUrl: sub.youtubeUrl ?? null,
-                        submissionType: sub.submissionType,
-                        fileKey: sub.fileKey ?? null,
-                        fileUrl: sub.fileUrl ?? null,
-                      });
-                      toast.success(`Loading: ${sub.songTitle}`);
-                    }}
-                    className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-2 py-0.5 transition-colors flex-shrink-0"
-                    title="Load to Radio"
-                  >
-                    <Play className="w-2.5 h-2.5" /> Load
-                  </button>
-                  <button
-                    onClick={() => requeueMutation.mutate({ id: sub.id })}
-                    disabled={requeueMutation.isPending}
-                    className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-2 py-0.5 transition-colors flex-shrink-0 disabled:opacity-40"
-                    title="Re-queue to end of queue"
-                  >
-                    <RotateCcw className="w-2.5 h-2.5" /> Re-queue
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Participants mic control */}
+        {/* ── Participants ── */}
         {audioRoom.participants.filter(p => p.role !== "viewer").length > 0 && (
           <div>
             <div className="text-white/40 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Users className="w-3 h-3" />
               Room Participants
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {audioRoom.participants.filter(p => p.role !== "viewer").map(p => (
                 <div key={p.socketId} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] text-xs">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
                   <div className="flex-1 min-w-0">
                     <span className="text-white font-semibold">{p.username}</span>
                     <span className={`ml-2 text-[10px] uppercase font-bold ${
@@ -649,22 +559,124 @@ function AdminPanel({
   );
 }
 
+// ── Fire/Trash Poll ───────────────────────────────────────────
+function FireTrashPoll({
+  submissionId,
+  songTitle,
+  artistName,
+  artistUserId,
+  fireCount,
+  trashCount,
+  myReaction,
+  onVote,
+  isPending,
+  user,
+}: {
+  submissionId: number;
+  songTitle: string;
+  artistName: string;
+  artistUserId?: number | null;
+  fireCount: number;
+  trashCount: number;
+  myReaction: string | null;
+  onVote: (reaction: "fire" | "trash") => void;
+  isPending: boolean;
+  user: { id: number } | null;
+}) {
+  const total = fireCount + trashCount;
+  const firePct = total > 0 ? Math.round((fireCount / total) * 100) : 50;
+  const trashPct = total > 0 ? 100 - firePct : 50;
+  const hasVoted = !!myReaction;
+
+  return (
+    <div className="border border-white/10 bg-white/[0.02] overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between">
+        <span className="text-white/50 text-xs uppercase tracking-widest font-semibold">Rate This Track</span>
+        {hasVoted && (
+          <span className="text-xs font-semibold">
+            {myReaction === "fire" ? <span className="text-orange-400">🔥 You voted Fire</span> : <span className="text-blue-400">🗑️ You voted Trash</span>}
+          </span>
+        )}
+      </div>
+
+      {/* Vote buttons */}
+      <div className="grid grid-cols-2 divide-x divide-white/10">
+        <button
+          onClick={() => {
+            if (!user) { toast.error("Login to vote"); return; }
+            if (hasVoted) { toast.error("You already voted!"); return; }
+            onVote("fire");
+          }}
+          disabled={hasVoted || isPending}
+          className={`group flex flex-col items-center justify-center gap-3 py-10 transition-all duration-200 ${
+            myReaction === "fire" ? "bg-orange-500/20 cursor-default" :
+            hasVoted ? "opacity-40 cursor-not-allowed" :
+            "hover:bg-orange-500/10 active:bg-orange-500/20 cursor-pointer"
+          }`}
+        >
+          <span className={`text-6xl transition-transform duration-200 select-none ${
+            myReaction === "fire" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
+          }`}>🔥</span>
+          <div className="text-center">
+            <div className={`font-['Anton'] text-3xl transition-colors ${
+              myReaction === "fire" ? "text-orange-300" : "text-orange-400 group-hover:text-orange-300"
+            }`}>FIRE</div>
+            <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">This a banger</div>
+          </div>
+        </button>
+        <button
+          onClick={() => {
+            if (!user) { toast.error("Login to vote"); return; }
+            if (hasVoted) { toast.error("You already voted!"); return; }
+            onVote("trash");
+          }}
+          disabled={hasVoted || isPending}
+          className={`group flex flex-col items-center justify-center gap-3 py-10 transition-all duration-200 ${
+            myReaction === "trash" ? "bg-blue-500/20 cursor-default" :
+            hasVoted ? "opacity-40 cursor-not-allowed" :
+            "hover:bg-blue-500/10 active:bg-blue-500/20 cursor-pointer"
+          }`}
+        >
+          <span className={`text-6xl transition-transform duration-200 select-none ${
+            myReaction === "trash" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
+          }`}>🗑️</span>
+          <div className="text-center">
+            <div className={`font-['Anton'] text-3xl transition-colors ${
+              myReaction === "trash" ? "text-blue-300" : "text-blue-400 group-hover:text-blue-300"
+            }`}>TRASH</div>
+            <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Next track please</div>
+          </div>
+        </button>
+      </div>
+
+      {/* Live results bar */}
+      <div className="border-t border-white/10">
+        <div className="flex">
+          <div className="h-2 bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700" style={{ width: `${firePct}%` }} />
+          <div className="h-2 bg-gradient-to-l from-blue-600 to-blue-400 transition-all duration-700" style={{ width: `${trashPct}%` }} />
+        </div>
+        <div className="flex justify-between px-4 py-2 text-xs">
+          <span className="text-orange-400 font-bold">🔥 {fireCount} ({firePct}%)</span>
+          <span className="text-white/30">{total} vote{total !== 1 ? "s" : ""}</span>
+          <span className="text-blue-400 font-bold">{trashPct}% ({trashCount}) 🗑️</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────
 export default function MusicReview() {
   const [tab, setTab] = useState<SubmitTab>("queue");
   const [submitType, setSubmitType] = useState<"youtube" | "file">("file");
-  const [form, setForm] = useState({
-    songTitle: "",
-    youtubeUrl: "",
-    contactInfo: "",
-    wantsSkip: false,
-  });
+  const [form, setForm] = useState({ songTitle: "", youtubeUrl: "", contactInfo: "", wantsSkip: false });
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showVideoGrid, setShowVideoGrid] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  // Inline YouTube embed state — set when a YouTube submission is "played"
+  const [voiceJoined, setVoiceJoined] = useState(false);
+  const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [selectedYouTube, setSelectedYouTube] = useState<{ url: string; title: string; artist: string } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -674,52 +686,36 @@ export default function MusicReview() {
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
-  const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, {
-    refetchInterval: 5000,
-  });
-
-  // Previously reviewed tracks — the ONLY place on the site with independent playback
-  const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, {
-    refetchInterval: 30000,
-  });
+  const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
 
   const submitMutation = trpc.queue.submit.useMutation({
     onSuccess: () => { setSubmitted(true); setSubmitting(false); refetch(); },
     onError: (err) => { toast.error("Submission failed: " + err.message); setSubmitting(false); },
   });
-
   const uploadAudioMutation = trpc.queue.uploadAudio.useMutation({
     onSuccess: () => { setSubmitted(true); setSubmitting(false); refetch(); },
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
   });
-
   const reactMutation = trpc.queue.react.useMutation({
     onSuccess: () => {
-      refetch();
-      refetchMyReaction();
-      refetchReactions();
-      // Broadcast to all clients so their vote counts update in real-time
+      refetch(); refetchMyReaction(); refetchReactions();
       if (currentPlayingId) broadcastReactionsUpdated(currentPlayingId);
     },
     onError: (err) => {
-      if (err.message.includes("Already voted")) {
-        toast.error("You already voted on this track!");
-      } else {
-        toast.error(err.message);
-      }
+      if (err.message.includes("Already voted")) toast.error("You already voted on this track!");
+      else toast.error(err.message);
     },
   });
-  const updateStatusMutation = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
   const requeueFromHistoryMutation = trpc.queue.requeue.useMutation({
-    onSuccess: () => { refetch(); toast.success("Song re-queued to end of queue"); },
+    onSuccess: () => { refetch(); toast.success("Song re-queued"); },
     onError: () => toast.error("Failed to re-queue song"),
   });
 
-  // The active submission ID for voting — kept in state so it can be updated
-  // immediately from the socket (onReviewActiveChanged) without waiting for the DB poll.
-  // This is the single source of truth for which submission the vote poll targets.
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
+  const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
   const currentPlayingId = activeSubmissionId ?? data?.currentPlaying?.id ?? null;
+
   const { data: myReaction, refetch: refetchMyReaction } = trpc.queue.getMyReaction.useQuery(
     { submissionId: currentPlayingId! },
     { enabled: !!user && !!currentPlayingId, refetchInterval: 3000 }
@@ -729,11 +725,9 @@ export default function MusicReview() {
     { enabled: !!currentPlayingId, refetchInterval: 3000 }
   );
 
-  // Auto-mark as reviewed when a queued track finishes playing — ADMIN ONLY
-  // CRITICAL: Viewers must NOT trigger this. If a viewer's audio element fires "ended"
-  // (e.g. network drop, buffering hiccup) it would corrupt the queue for everyone.
+  // Auto-mark as reviewed when track finishes — ADMIN ONLY
   useEffect(() => {
-    if (!isAdmin) return; // Guard: only the admin session can advance the queue
+    if (!isAdmin) return;
     const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
       const queue = data?.submissions ?? [];
       const match = queue.find(
@@ -742,55 +736,58 @@ export default function MusicReview() {
           s.artistName === finishedTrack.artist
       );
       if (match) {
-        updateStatusMutation.mutate({ id: match.id, status: "reviewed" });
+        // Mark as reviewed silently
+        fetch("/api/trpc/queue.updateStatus", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: match.id, status: "reviewed" }),
+        }).then(() => refetch()).catch(() => {});
       }
     });
     return unsubscribe;
-  }, [audioPlayer, data, updateStatusMutation, isAdmin]);
+  }, [isAdmin, data?.submissions, audioPlayer, refetch]);
 
-  const chatUsername = user?.artistName || user?.name || "Guest";
+  const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [voiceJoined, setVoiceJoined] = useState(false);
+  const chatUsername = user?.artistName || user?.name || "Anonymous";
+
   const audioRoom = useAudioRoom({
-    enabled: voiceJoined || isAdmin,
     room: "music_review",
     username: chatUsername,
-    role: isAdmin ? "admin" : "user",
+    role: isAdmin ? "admin" : voiceJoined ? "user" : "viewer",
     userId: user?.id,
+    enabled: isAdmin || voiceJoined,
   });
 
   const videoRoom = useVideoRoom({
-    enabled: isAdmin || false,
     room: "music_review",
     username: chatUsername,
     role: isAdmin ? "admin" : "viewer",
     userId: user?.id,
-    avatarUrl: user?.avatarUrl ?? undefined,
+    enabled: isAdmin,
   });
 
-  const { data: chatHistory } = trpc.chat.getHistory.useQuery({ room: "music_review" });
-  // Live review state — synced via socket for all viewers
-  const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
-  const liveAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  const { messages: chatMessages, isConnected: chatConnected, sendMessage, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastReactionsUpdated, broadcastLastSong } = useChat({
+  const {
+    messages: chatMessages,
+    sendMessage,
+    isConnected: chatConnected,
+    broadcastReviewActive,
+    broadcastRadioPause,
+    broadcastRadioResume,
+    broadcastRadioSeek,
+    broadcastReviewPlayback,
+    broadcastReviewQueueUpdated,
+    broadcastLastSong,
+    broadcastReactionsUpdated,
+  } = useChat({
     room: "music_review",
     username: chatUsername,
     userId: user?.id,
     isAdmin,
-    accountLabels: (() => { const raw = (user as { accountLabels?: string | null } | null)?.accountLabels; if (!raw) return []; try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })(),
-    initialMessages: (chatHistory || []).map(m => ({
-      id: m.id, username: m.username, message: m.message,
-      room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
-    })),
-    onReviewActiveChanged: (item: LiveReviewActiveItem) => {
-      // Update both the display state and the vote-target ID atomically from the socket event.
-      // This ensures the fire/trash poll always targets the song that is actually playing,
-      // without waiting up to 5s for the DB poll to catch up.
-      const newId = item.submissionId ?? null;
-      setActiveSubmissionId(newId);
-      setLiveReviewActive(newId === null ? null : item);
-      // Immediately refetch queue + reactions when the current song changes
+    onReviewActiveChanged: (item) => {
+      setActiveSubmissionId(item.submissionId);
+      setLiveReviewActive(item);
       refetch();
       refetchReactions();
       refetchMyReaction();
@@ -806,13 +803,11 @@ export default function MusicReview() {
       toast.success(`↩ "${data.songTitle}" by ${data.artistName} restored to queue`);
       refetch();
     },
-    // Admin pause/resume/seek — apply to ALL clients including admin
     onRadioPaused: (data) => {
       audioPlayer.seek(data.pausedAt);
       audioPlayer.pause();
     },
     onRadioResumed: (data) => {
-      // Calculate current position from startedAt
       const elapsed = (Date.now() - data.startedAt) / 1000;
       audioPlayer.seek(Math.max(0, elapsed));
       audioPlayer.resume();
@@ -826,9 +821,7 @@ export default function MusicReview() {
     },
   });
 
-  // Initialize liveReviewActive + activeSubmissionId from DB when page loads (for late joiners).
-  // The socket event fires for real-time updates; this handles the case where the user
-  // joins mid-session and the socket event has already fired before they connected.
+  // Initialize from DB for late joiners
   useEffect(() => {
     if (!liveReviewActive && data?.currentPlaying) {
       const cp = data.currentPlaying;
@@ -846,7 +839,7 @@ export default function MusicReview() {
     }
   }, [data?.currentPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Register admin broadcast functions so FloatingPlayer can control all listeners
+  // Register admin broadcast functions for FloatingPlayer
   useEffect(() => {
     if (isAdmin) {
       registerSeekBroadcast(broadcastRadioSeek);
@@ -860,7 +853,6 @@ export default function MusicReview() {
     };
   }, [isAdmin, broadcastRadioSeek, broadcastRadioPause, broadcastRadioResume]);
 
-  // Admin mic broadcast to radio feed
   const adminMicBroadcast = useAdminMicBroadcast({
     room: "music_review",
     isAdmin,
@@ -882,22 +874,10 @@ export default function MusicReview() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      toast.error("Please login to submit your track");
-      return;
-    }
-    if (!form.songTitle) {
-      toast.error("Please fill in song title");
-      return;
-    }
-    if (submitType === "youtube" && !form.youtubeUrl) {
-      toast.error("Please enter a YouTube link");
-      return;
-    }
-    if (submitType === "file" && !audioFile) {
-      toast.error("Please select an audio file");
-      return;
-    }
+    if (!user) { toast.error("Please login to submit your track"); return; }
+    if (!form.songTitle) { toast.error("Please fill in song title"); return; }
+    if (submitType === "youtube" && !form.youtubeUrl) { toast.error("Please enter a YouTube link"); return; }
+    if (submitType === "file" && !audioFile) { toast.error("Please select an audio file"); return; }
     setSubmitting(true);
 
     if (submitType === "file" && audioFile) {
@@ -931,16 +911,12 @@ export default function MusicReview() {
   const liveMessage = data?.state?.liveMessage;
   const streamUrl = data?.state?.streamUrl;
 
-  const utils = trpc.useUtils();
-  // Play a submission: resolves presigned URL for files, embeds YouTube inline
   const playTrack = useCallback(async (sub: ReviewSubmission) => {
     if (sub.submissionType === "youtube" && sub.youtubeUrl) {
-      // Show inline YouTube embed instead of opening new tab
       setSelectedYouTube({ url: sub.youtubeUrl, title: sub.songTitle, artist: sub.artistName });
       return;
     }
     if (sub.fileUrl) {
-      // Use fileUrl (has hash suffix) not fileKey (original key without hash)
       await resolveAndPlay({
         url: sub.fileUrl,
         urlSource: "queue",
@@ -968,18 +944,23 @@ export default function MusicReview() {
     }
   }, [streamUrl, audioPlayer]);
 
-  const videoParticipants = videoRoom.participants.filter(p => p.cameraActive);
+  // Derived vote data for the active track
+  const activeTrackData = currentPlayingId
+    ? data?.submissions?.find(s => s.id === currentPlayingId)
+    : null;
+  const fire = reactionCounts?.fire ?? activeTrackData?.fireCount ?? 0;
+  const trash = reactionCounts?.trash ?? activeTrackData?.trashCount ?? 0;
 
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden pb-24">
       <SiteNav />
-      {/* Live banner — only shown to non-admin viewers when stream is offline on this page */}
       {!isAdmin && !isLive && <LiveRadioBanner filter="review" />}
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className="pt-20 pb-8 border-b border-white/10">
+      <section className="pt-20 pb-6 border-b border-white/10">
         <div className="container">
-          <div className="flex items-center gap-3 mb-4">
+          {/* Status + title */}
+          <div className="flex items-center gap-3 mb-3">
             {isLive ? (
               <>
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -992,16 +973,16 @@ export default function MusicReview() {
               </>
             )}
           </div>
-          <h1 className="font-['Anton'] text-5xl md:text-7xl uppercase mb-3">
+          <h1 className="font-['Anton'] text-5xl md:text-7xl uppercase mb-2">
             MUSIC <span className="text-red-600">REVIEW</span>
           </h1>
-          <p className="text-white/50 text-base max-w-xl mb-6">
-            Submit your track for a live review by Murder Mitten Media. Get in line, or skip to the front for $10.
+          <p className="text-white/40 text-sm max-w-xl mb-5">
+            Submit your track for a live review. Get in line, or skip to the front for $10.
           </p>
 
-          {/* Stream section */}
+          {/* Stream embed / live radio card */}
           {isLive && streamUrl ? (
-            <div className="mb-6">
+            <div className="mb-2">
               {(streamUrl.includes("youtube.com") || streamUrl.includes("youtu.be")) ? (
                 <div className="relative w-full aspect-video max-w-3xl bg-black border border-white/10">
                   <iframe
@@ -1016,139 +997,75 @@ export default function MusicReview() {
                   />
                 </div>
               ) : (
-                <div className="border border-red-600/30 bg-red-600/5 p-6 max-w-3xl">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center flex-shrink-0">
-                      <Radio className="w-5 h-5 text-red-500" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-['Anton'] text-xl uppercase">Murder Mitten Media — LIVE</div>
-                      {liveMessage && <div className="text-white/50 text-sm mt-0.5">{liveMessage}</div>}
-                    </div>
-                    <button
-                      onClick={playStream}
-                      className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 text-sm font-semibold uppercase tracking-wider transition-all flex items-center gap-2"
-                    >
-                      <Play className="w-4 h-4" />
-                      Listen Live
-                    </button>
+                <div className="border border-red-600/30 bg-red-600/5 p-5 max-w-3xl flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center flex-shrink-0">
+                    <Radio className="w-5 h-5 text-red-500" />
                   </div>
+                  <div className="flex-1">
+                    <div className="font-['Anton'] text-lg uppercase">Murder Mitten Media — LIVE</div>
+                    {liveMessage && <div className="text-white/50 text-sm mt-0.5">{liveMessage}</div>}
+                  </div>
+                  <button
+                    onClick={playStream}
+                    className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-2"
+                  >
+                    <Play className="w-3.5 h-3.5" /> Listen Live
+                  </button>
                 </div>
               )}
             </div>
           ) : isLive ? (
-            <div className="border border-red-600/30 bg-red-600/5 p-4 max-w-3xl mb-6 flex items-center gap-3">
+            <div className="border border-red-600/30 bg-red-600/5 p-4 max-w-3xl mb-2 flex items-center gap-3">
               <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
               <div>
                 <div className="text-red-400 text-sm font-semibold">Session is Live</div>
                 {liveMessage && <div className="text-white/40 text-xs mt-0.5">{liveMessage}</div>}
               </div>
             </div>
-          ) : (
-            <div className="border border-white/10 bg-white/[0.02] p-6 max-w-3xl mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-                  <Radio className="w-5 h-5 text-white/20" />
-                </div>
-                <div>
-                  <div className="text-white/40 text-sm font-semibold uppercase tracking-wider">Stream Offline</div>
-                  <div className="text-white/20 text-xs mt-0.5">Submit your track below — we'll review it next session</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Video grid */}
-          {(videoParticipants.length > 0 || videoRoom.cameraActive) && (
-            <div className="mb-6 max-w-3xl">
-              <button
-                onClick={() => setShowVideoGrid(v => !v)}
-                className="flex items-center gap-2 text-white/40 hover:text-white text-xs uppercase tracking-wider mb-3 transition-colors"
-              >
-                <Video className="w-3.5 h-3.5" />
-                Live Video ({videoParticipants.length + (videoRoom.cameraActive ? 1 : 0)})
-                {showVideoGrid ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
-              {showVideoGrid && (
-                <div className={`grid gap-2 ${
-                  videoParticipants.length + (videoRoom.cameraActive ? 1 : 0) === 1
-                    ? "grid-cols-1 max-w-sm"
-                    : "grid-cols-2 md:grid-cols-3"
-                }`}>
-                  {videoRoom.cameraActive && (
-                    <VideoTile
-                      stream={null}
-                      username={chatUsername}
-                      role={isAdmin ? "admin" : "viewer"}
-                      avatarUrl={user?.avatarUrl ?? undefined}
-                      isMuted={audioRoom.isMuted}
-                      isLocal={true}
-                    />
-                  )}
-                  {videoRoom.remoteStreams.map(rs => {
-                    const participant = videoRoom.participants.find(p => p.socketId === rs.socketId);
-                    return (
-                      <VideoTile
-                        key={rs.socketId}
-                        stream={rs.stream}
-                        username={rs.username}
-                        role={rs.role}
-                        avatarUrl={rs.avatarUrl}
-                        isMuted={!participant?.micActive}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          ) : null}
         </div>
       </section>
 
       {/* ── MAIN CONTENT ──────────────────────────────────────── */}
-      <div className="container py-8">
-        <div className="grid lg:grid-cols-[1fr_380px] gap-8">
-          {/* Left: Queue + Submit */}
-          <div>
+      <div className="container py-6">
+        <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+
+          {/* ── LEFT COLUMN ── */}
+          <div className="min-w-0">
+
             {/* Admin panel */}
             {isAdmin && (
-              <div className="mb-8">
-                <AdminPanel
-                  data={data}
-                  refetch={refetch}
-                  audioRoom={audioRoom}
-                  videoRoom={videoRoom}
-                  broadcastReviewActive={broadcastReviewActive}
-                  broadcastRadioPause={broadcastRadioPause}
-                  broadcastRadioResume={broadcastRadioResume}
-                  broadcastRadioSeek={broadcastRadioSeek}
-                  broadcastReviewPlayback={broadcastReviewPlayback}
-                  broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
-                  broadcastLastSong={broadcastLastSong}
-                  adminMicBroadcast={adminMicBroadcast}
-                  playTrack={playTrack}
-                  setSelectedYouTube={setSelectedYouTube}
-                  reviewedTracks={reviewedTracks ?? []}
-                />
-              </div>
+              <AdminPanel
+                data={data}
+                refetch={refetch}
+                audioRoom={audioRoom}
+                videoRoom={videoRoom}
+                broadcastReviewActive={broadcastReviewActive}
+                broadcastRadioPause={broadcastRadioPause}
+                broadcastRadioResume={broadcastRadioResume}
+                broadcastRadioSeek={broadcastRadioSeek}
+                broadcastReviewPlayback={broadcastReviewPlayback}
+                broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
+                broadcastLastSong={broadcastLastSong}
+                adminMicBroadcast={adminMicBroadcast}
+                playTrack={playTrack}
+                setSelectedYouTube={setSelectedYouTube}
+                reviewedTracks={reviewedTracks ?? []}
+              />
             )}
 
-            {/* Inline YouTube embed — shown when user clicks play on a YouTube submission */}
+            {/* Inline YouTube embed */}
             {selectedYouTube && (() => {
-              const ytId = selectedYouTube.url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1];
+              const ytId = extractYouTubeId(selectedYouTube.url);
               return (
-                <div className="mb-6 border border-white/20 bg-black/60 p-4 relative">
+                <div className="mb-5 border border-white/20 bg-black/60 p-4 relative">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <div className="font-['Anton'] text-lg uppercase">{selectedYouTube.title}</div>
                       <div className="text-white/50 text-xs">by {selectedYouTube.artist}</div>
                     </div>
-                    <button
-                      onClick={() => setSelectedYouTube(null)}
-                      className="text-white/30 hover:text-white text-xl leading-none px-2"
-                      title="Close"
-                    >
-                      ✕
+                    <button onClick={() => setSelectedYouTube(null)} className="text-white/30 hover:text-white text-xl leading-none px-2" title="Close">
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                   {ytId ? (
@@ -1163,58 +1080,33 @@ export default function MusicReview() {
                     </div>
                   ) : (
                     <div className="text-white/40 text-sm py-4 text-center">
-                      Could not parse YouTube ID.{" "}
-                      <a href={selectedYouTube.url} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">
-                        Open on YouTube →
-                      </a>
+                      <a href={selectedYouTube.url} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">Open on YouTube →</a>
                     </div>
                   )}
-                  <a
-                    href={selectedYouTube.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-red-400 transition-colors mt-3"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    Open on YouTube
-                  </a>
                 </div>
               );
             })()}
 
-            {/* Live Review Banner — shown to all viewers when admin is reviewing a track */}
+            {/* ── NOW BEING REVIEWED banner ── */}
             {liveReviewActive && liveReviewActive.submissionId !== null && (
-              <div className="mb-6 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
+              <div className="mb-5 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent animate-pulse" />
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                   <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Being Reviewed</span>
                 </div>
-                <div className="font-['Anton'] text-2xl uppercase">{liveReviewActive.songTitle}</div>
-                <div className="text-white/60 text-sm mb-3">by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={null} /></div>
-                {liveReviewActive.audioUrl && (
-                  <div className="mt-3">
-                    {isAdmin ? (
-                      <AudioPlayButton
-                        url={liveReviewActive.audioUrl}
-                        urlSource="queue"
-                        title={liveReviewActive.songTitle ?? "Live Review"}
-                        artist={liveReviewActive.artistName}
-                        submissionId={liveReviewActive.submissionId ?? undefined}
-                        sourcePage="Music Review"
-                        sourceUrl="/review"
-                        size="lg"
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2 text-red-400 text-sm">
-                        <Radio className="w-4 h-4 animate-pulse" />
-                        <span className="font-semibold">Playing Live — synced to admin</span>
-                      </div>
-                    )}
+                <div className="font-['Anton'] text-2xl md:text-3xl uppercase mb-0.5">{liveReviewActive.songTitle}</div>
+                <div className="text-white/60 text-sm mb-3">
+                  by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={null} />
+                </div>
+                {liveReviewActive.audioUrl && !isAdmin && (
+                  <div className="flex items-center gap-2 text-red-400 text-sm">
+                    <Radio className="w-4 h-4 animate-pulse" />
+                    <span className="font-semibold text-xs uppercase tracking-wider">Playing Live — synced to admin</span>
                   </div>
                 )}
                 {liveReviewActive.youtubeUrl && (() => {
-                  const ytId = liveReviewActive.youtubeUrl?.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1];
+                  const ytId = extractYouTubeId(liveReviewActive.youtubeUrl!);
                   return ytId ? (
                     <div className="mt-3">
                       <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
@@ -1226,230 +1118,68 @@ export default function MusicReview() {
                           title={liveReviewActive.songTitle ?? 'YouTube'}
                         />
                       </div>
-                      <a
-                        href={liveReviewActive.youtubeUrl!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-red-400 transition-colors mt-2"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Open on YouTube
+                      <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-red-400 transition-colors mt-2">
+                        <ExternalLink className="w-3 h-3" /> Open on YouTube
                       </a>
                     </div>
                   ) : (
-                    <a
-                      href={liveReviewActive.youtubeUrl!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Open on YouTube
+                    <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1">
+                      <ExternalLink className="w-3.5 h-3.5" /> Open on YouTube
                     </a>
                   );
                 })()}
               </div>
             )}
 
-            {/* ── BIG FIRE / TRASH POLL ─────────────────────────────────────────
-               Shown to ALL viewers when admin is reviewing a track live.
-               This is the main interactive element — big, unmissable, full-width.
-            ─────────────────────────────────────────────────────────────────── */}
-            {liveReviewActive && liveReviewActive.submissionId !== null && (() => {
-              const bigPollVoted = !!myReaction;
-              const bigPollMyVote = myReaction?.reaction ?? null;
-              return (
-              <div className="mb-6 border border-white/10 bg-white/[0.02] overflow-hidden">
-                <div className="px-5 pt-4 pb-2 border-b border-white/10 flex items-center gap-2">
-                  <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Rate This Track</span>
-                  <span className="text-white/20 text-xs">{bigPollVoted ? (bigPollMyVote === "fire" ? "🔥 You voted Fire" : "🗑️ You voted Trash") : "— Your vote is live"}</span>
-                </div>
-                <div className="grid grid-cols-2">
-                  {/* FIRE */}
-                  <button
-                    onClick={() => {
-                      if (!user) { toast.error("Login to vote"); return; }
-                      if (bigPollVoted) { toast.error("You already voted!"); return; }
-                      reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction: "fire" });
-                    }}
-                    disabled={bigPollVoted || reactMutation.isPending}
-                    className={`group flex flex-col items-center justify-center gap-3 py-10 border-r border-white/10 transition-all duration-200 ${
-                      bigPollMyVote === "fire" ? "bg-orange-500/20 cursor-default" : bigPollVoted ? "opacity-40 cursor-not-allowed" : "hover:bg-orange-500/10 active:bg-orange-500/20 cursor-pointer"
-                    }`}
-                  >
-                    <span className={`text-7xl transition-transform duration-200 select-none ${bigPollMyVote === "fire" ? "scale-125" : bigPollVoted ? "" : "group-hover:scale-125 group-active:scale-110"}`}>🔥</span>
-                    <div className="text-center">
-                      <div className={`font-['Anton'] text-3xl transition-colors ${bigPollMyVote === "fire" ? "text-orange-300" : "text-orange-400 group-hover:text-orange-300"}`}>FIRE</div>
-                      <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">This a banger</div>
-                    </div>
-                  </button>
-                  {/* TRASH */}
-                  <button
-                    onClick={() => {
-                      if (!user) { toast.error("Login to vote"); return; }
-                      if (bigPollVoted) { toast.error("You already voted!"); return; }
-                      reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction: "trash" });
-                    }}
-                    disabled={bigPollVoted || reactMutation.isPending}
-                    className={`group flex flex-col items-center justify-center gap-3 py-10 transition-all duration-200 ${
-                      bigPollMyVote === "trash" ? "bg-blue-500/20 cursor-default" : bigPollVoted ? "opacity-40 cursor-not-allowed" : "hover:bg-blue-500/10 active:bg-blue-500/20 cursor-pointer"
-                    }`}
-                  >
-                    <span className={`text-7xl transition-transform duration-200 select-none ${bigPollMyVote === "trash" ? "scale-125" : bigPollVoted ? "" : "group-hover:scale-125 group-active:scale-110"}`}>🗑️</span>
-                    <div className="text-center">
-                      <div className={`font-['Anton'] text-3xl transition-colors ${bigPollMyVote === "trash" ? "text-blue-300" : "text-blue-400 group-hover:text-blue-300"}`}>TRASH</div>
-                      <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Next track please</div>
-                    </div>
-                  </button>
-                </div>
-                {/* Live vote counts */}
-                {(() => {
-                  const sub = data?.submissions?.find(s => s.id === liveReviewActive.submissionId);
-                  if (!sub) return null;
-                  const total = (sub.fireCount ?? 0) + (sub.trashCount ?? 0);
-                  const firePct = total > 0 ? Math.round(((sub.fireCount ?? 0) / total) * 100) : 50;
-                  const trashPct = total > 0 ? 100 - firePct : 50;
-                  return (
-                    <div className="border-t border-white/10">
-                      <div className="flex">
-                        <div
-                          className="h-2 bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700"
-                          style={{ width: `${firePct}%` }}
-                        />
-                        <div
-                          className="h-2 bg-gradient-to-l from-blue-600 to-blue-400 transition-all duration-700"
-                          style={{ width: `${trashPct}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between px-5 py-2 text-xs">
-                        <span className="text-orange-400 font-bold">🔥 {sub.fireCount ?? 0} Fire ({firePct}%)</span>
-                        <span className="text-white/30">{total} votes</span>
-                        <span className="text-blue-400 font-bold">{trashPct}% Trash 🗑️ {sub.trashCount ?? 0}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
+            {/* ── FIRE / TRASH POLL ── */}
+            {liveReviewActive && liveReviewActive.submissionId !== null && (
+              <div className="mb-5">
+                <FireTrashPoll
+                  submissionId={liveReviewActive.submissionId}
+                  songTitle={liveReviewActive.songTitle ?? ""}
+                  artistName={liveReviewActive.artistName ?? ""}
+                  fireCount={fire}
+                  trashCount={trash}
+                  myReaction={myReaction?.reaction ?? null}
+                  onVote={(reaction) => reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction })}
+                  isPending={reactMutation.isPending}
+                  user={user}
+                />
               </div>
-              );
-            })()}
+            )}
 
-            {/* Currently playing banner with Fire/Trash poll */}
-            {!liveReviewActive && currentPlaying && (() => {
-              const fire = reactionCounts?.fire ?? currentPlaying.fireCount ?? 0;
-              const trash = reactionCounts?.trash ?? currentPlaying.trashCount ?? 0;
-              const total = fire + trash;
-              const firePct = total > 0 ? Math.round((fire / total) * 100) : 50;
-              const trashPct = total > 0 ? 100 - firePct : 50;
-              const hasVoted = !!myReaction;
-              const myVote = myReaction?.reaction ?? null;
-              return (
-                <div className="mb-6 border border-red-600/50 bg-red-600/10 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent animate-pulse" />
-                  {/* Header */}
-                  <div className="p-5 pb-3">
-                    <div className="flex items-center gap-3 mb-1">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Playing</span>
-                    </div>
-                    <div className="font-['Anton'] text-2xl uppercase">{currentPlaying.songTitle}</div>
-                    <div className="text-white/60 text-sm mb-3">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
-                    {currentPlaying.fileUrl && (
-                      <div className="inline-flex items-center gap-2 text-xs text-red-400 font-semibold uppercase tracking-widest border border-red-600/40 px-3 py-1.5 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                        Playing Live — Synced to Admin
-                      </div>
-                    )}
-                    {currentPlaying.youtubeUrl && !currentPlaying.fileUrl && (
-                      <a href={currentPlaying.youtubeUrl} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1">
-                        <ExternalLink className="w-3.5 h-3.5" /> Open on YouTube
-                      </a>
-                    )}
-                  </div>
-                  {/* Poll divider */}
-                  <div className="border-t border-white/10 mx-5" />
-                  {/* Poll label */}
-                  <div className="px-5 pt-4 pb-2 text-center">
-                    <span className="text-white/40 text-xs uppercase tracking-[0.2em] font-semibold">
-                      {hasVoted ? (myVote === "fire" ? "🔥 You voted Fire" : "🗑️ You voted Trash") : "Cast Your Vote"}
-                    </span>
-                  </div>
-                  {/* Vote buttons */}
-                  <div className="grid grid-cols-2 divide-x divide-white/10">
-                    <button
-                      onClick={() => {
-                        if (!user) { toast.error("Login to vote"); return; }
-                        if (hasVoted) { toast.error("You already voted!"); return; }
-                        reactMutation.mutate({ submissionId: currentPlaying.id, reaction: "fire" });
-                      }}
-                      disabled={hasVoted || reactMutation.isPending}
-                      className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
-                        myVote === "fire"
-                          ? "bg-orange-500/20 cursor-default"
-                          : hasVoted
-                          ? "opacity-40 cursor-not-allowed"
-                          : "hover:bg-orange-500/10 active:bg-orange-500/20 cursor-pointer"
-                      }`}
-                    >
-                      <span className={`text-6xl transition-transform duration-200 select-none ${
-                        myVote === "fire" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
-                      }`}>🔥</span>
-                      <div className="text-center">
-                        <div className={`font-['Anton'] text-2xl transition-colors ${
-                          myVote === "fire" ? "text-orange-300" : "text-orange-400 group-hover:text-orange-300"
-                        }`}>FIRE</div>
-                        <div className="text-white/30 text-xs uppercase tracking-widest">This a banger</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!user) { toast.error("Login to vote"); return; }
-                        if (hasVoted) { toast.error("You already voted!"); return; }
-                        reactMutation.mutate({ submissionId: currentPlaying.id, reaction: "trash" });
-                      }}
-                      disabled={hasVoted || reactMutation.isPending}
-                      className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
-                        myVote === "trash"
-                          ? "bg-blue-500/20 cursor-default"
-                          : hasVoted
-                          ? "opacity-40 cursor-not-allowed"
-                          : "hover:bg-blue-500/10 active:bg-blue-500/20 cursor-pointer"
-                      }`}
-                    >
-                      <span className={`text-6xl transition-transform duration-200 select-none ${
-                        myVote === "trash" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
-                      }`}>🗑️</span>
-                      <div className="text-center">
-                        <div className={`font-['Anton'] text-2xl transition-colors ${
-                          myVote === "trash" ? "text-blue-300" : "text-blue-400 group-hover:text-blue-300"
-                        }`}>TRASH</div>
-                        <div className="text-white/30 text-xs uppercase tracking-widest">Next track please</div>
-                      </div>
-                    </button>
-                  </div>
-                  {/* Live results bar */}
-                  <div className="border-t border-white/10">
-                    <div className="flex">
-                      <div className="h-2 bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700" style={{ width: `${firePct}%` }} />
-                      <div className="h-2 bg-gradient-to-l from-blue-600 to-blue-400 transition-all duration-700" style={{ width: `${trashPct}%` }} />
-                    </div>
-                    <div className="flex justify-between px-5 py-2.5 text-xs">
-                      <span className="text-orange-400 font-bold">🔥 {fire} Fire ({firePct}%)</span>
-                      <span className="text-white/30">{total} vote{total !== 1 ? "s" : ""} · updates live</span>
-                      <span className="text-blue-400 font-bold">{trashPct}% Trash 🗑️ {trash}</span>
-                    </div>
-                  </div>
+            {/* Fallback poll for currentPlaying when liveReviewActive is not set */}
+            {!liveReviewActive && currentPlaying && (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="font-['Anton'] text-lg uppercase">{currentPlaying.songTitle}</span>
+                  <span className="text-white/40 text-xs">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></span>
                 </div>
-              );
-            })()}
+                <FireTrashPoll
+                  submissionId={currentPlaying.id}
+                  songTitle={currentPlaying.songTitle}
+                  artistName={currentPlaying.artistName}
+                  artistUserId={currentPlaying.userId}
+                  fireCount={fire}
+                  trashCount={trash}
+                  myReaction={myReaction?.reaction ?? null}
+                  onVote={(reaction) => reactMutation.mutate({ submissionId: currentPlaying.id, reaction })}
+                  isPending={reactMutation.isPending}
+                  user={user}
+                />
+              </div>
+            )}
 
-            {/* Tabs */}
-            <div className="flex gap-0 mb-6 border border-white/10">
+            {/* ── TABS: Queue / Submit / Skip Line ── */}
+            <div className="flex gap-0 mb-4 border border-white/10">
               {(["queue", "submit", "skip-info"] as SubmitTab[]).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`flex-1 py-3 text-xs uppercase tracking-widest font-semibold transition-all border-r last:border-r-0 border-white/10 ${
+                  className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold transition-all border-r last:border-r-0 border-white/10 ${
                     tab === t
                       ? "bg-red-600 text-white"
                       : t === "skip-info"
@@ -1457,85 +1187,75 @@ export default function MusicReview() {
                       : "text-white/40 hover:text-white"
                   }`}
                 >
-                  {t === "queue" ? `View Queue (${pendingQueue.length})` : t === "submit" ? "Submit Track" : "⚡ Skip Line ($10)"}
+                  {t === "queue" ? `Queue (${pendingQueue.length})` : t === "submit" ? "Submit Track" : "⚡ Skip Line ($10)"}
                 </button>
               ))}
             </div>
 
-            {/* Queue view */}
+            {/* ── QUEUE VIEW ── */}
             {tab === "queue" && (
               <div>
                 {isLoading ? (
-                  <div className="text-center py-16 text-white/30">Loading queue...</div>
+                  <div className="text-center py-16 text-white/30 text-sm">Loading queue...</div>
                 ) : pendingQueue.length === 0 ? (
-                  <div className="text-center py-16 border border-white/10 bg-white/[0.02]">
+                  <div className="text-center py-12 border border-white/10 bg-white/[0.02]">
                     <div className="font-['Anton'] text-2xl uppercase mb-2">Queue is Empty</div>
-                    <p className="text-white/40 text-sm mb-6">Be the first to submit your track!</p>
+                    <p className="text-white/40 text-sm mb-5">Be the first to submit your track!</p>
                     <button
                       onClick={() => setTab("submit")}
-                      className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-xs font-semibold uppercase tracking-widest transition-all"
+                      className="bg-red-600 hover:bg-red-700 text-white px-8 py-2.5 text-xs font-semibold uppercase tracking-widest transition-all"
                     >
                       Submit Your Track →
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {pendingQueue.map((sub, i) => (
                       <div
                         key={sub.id}
-                        className={`flex items-center gap-4 p-4 border transition-all ${
+                        className={`flex items-center gap-3 p-3 border transition-all ${
                           sub.status === "playing"
                             ? "border-red-600/60 bg-red-600/10"
                             : sub.skipPaymentConfirmed
                             ? "border-yellow-500/40 bg-yellow-500/5"
-                            : "border-white/10 bg-white/[0.02]"
+                            : "border-white/10 bg-white/[0.02] hover:border-white/20"
                         }`}
                       >
-                        <div className={`w-10 h-10 flex items-center justify-center font-['Anton'] text-xl flex-shrink-0 ${
-                          sub.status === "playing" ? "text-red-500" : "text-white/30"
+                        {/* Position number */}
+                        <div className={`w-8 h-8 flex items-center justify-center font-['Anton'] text-lg flex-shrink-0 ${
+                          sub.status === "playing" ? "text-red-500" : "text-white/20"
                         }`}>
                           {sub.status === "playing" ? "▶" : i + 1}
                         </div>
+                        {/* Song info */}
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-white truncate">{sub.songTitle}</div>
+                          <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
                           <div className="text-white/50 text-xs truncate">
                             <ArtistLink artistName={sub.artistName} userId={sub.userId} />
                             {sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-400 font-bold">⚡ Skip Confirmed</span>}
                             {sub.skippedLine && !sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-600">⚡ Pending Payment</span>}
                           </div>
                         </div>
+                        {/* Status + reactions */}
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <StatusBadge status={sub.status} />
-                          <button
-                            onClick={() => user ? reactMutation.mutate({ submissionId: sub.id, reaction: "fire" }) : toast.error("Login to react")}
-                            className="flex items-center gap-1 text-xs text-white/30 hover:text-orange-400 transition-colors"
-                          >
-                            <Flame className="w-3.5 h-3.5" />
-                            <span>{sub.fireCount}</span>
-                          </button>
-                          <button
-                            onClick={() => user ? reactMutation.mutate({ submissionId: sub.id, reaction: "trash" }) : toast.error("Login to react")}
-                            className="flex items-center gap-1 text-xs text-white/30 hover:text-blue-400 transition-colors"
-                          >
-                            <ThumbsDown className="w-3.5 h-3.5" />
-                            <span>{sub.trashCount}</span>
-                          </button>
-                          {sub.submissionType === "youtube" && sub.youtubeUrl ? (
+                          <span className="flex items-center gap-1 text-xs text-white/30">
+                            <Flame className="w-3 h-3 text-orange-500/60" />
+                            {sub.fireCount}
+                          </span>
+                          <span className="flex items-center gap-1 text-xs text-white/30">
+                            <ThumbsDown className="w-3 h-3 text-blue-500/60" />
+                            {sub.trashCount}
+                          </span>
+                          {sub.submissionType === "youtube" && sub.youtubeUrl && (
                             <button
                               onClick={() => setSelectedYouTube({ url: sub.youtubeUrl!, title: sub.songTitle, artist: sub.artistName })}
-                              className="flex items-center gap-1 text-white/30 hover:text-red-400 transition-colors"
+                              className="text-white/30 hover:text-red-400 transition-colors"
                               title="Watch on page"
                             >
                               <Play className="w-3.5 h-3.5" />
                             </button>
-                          ) : sub.fileUrl ? (
-                            sub.status === "playing" ? (
-                              <div className="inline-flex items-center gap-1 text-[10px] text-red-400 font-bold uppercase tracking-widest border border-red-600/40 px-2 py-1">
-                                <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                                Live
-                              </div>
-                            ) : null
-                          ) : null}
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1544,14 +1264,14 @@ export default function MusicReview() {
               </div>
             )}
 
-            {/* Submit form */}
+            {/* ── SUBMIT FORM ── */}
             {tab === "submit" && (
               <div>
                 {submitted ? (
-                  <div className="text-center py-16 border border-green-500/30 bg-green-500/5">
-                    <div className="text-4xl mb-4">✅</div>
+                  <div className="text-center py-12 border border-green-500/30 bg-green-500/5">
+                    <div className="text-4xl mb-3">✅</div>
                     <div className="font-['Anton'] text-3xl uppercase mb-2">You're in the Queue!</div>
-                    <p className="text-white/50 text-sm mb-6">We'll review your track during the next live session.</p>
+                    <p className="text-white/50 text-sm mb-5">We'll review your track during the next live session.</p>
                     <div className="flex gap-3 justify-center">
                       <button
                         onClick={() => { setSubmitted(false); setForm({ songTitle: "", youtubeUrl: "", contactInfo: "", wantsSkip: false }); setAudioFile(null); }}
@@ -1568,11 +1288,12 @@ export default function MusicReview() {
                     </div>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* File / YouTube toggle */}
                     <div className="flex gap-0 border border-white/10">
-                      {(["youtube", "file"] as const).map(t => (
+                      {(["file", "youtube"] as const).map(t => (
                         <button key={t} type="button" onClick={() => setSubmitType(t)}
-                          className={`flex-1 py-3 text-xs uppercase tracking-widest font-semibold transition-all ${
+                          className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold transition-all ${
                             submitType === t ? "bg-red-600 text-white" : "text-white/40 hover:text-white"
                           }`}>
                           {t === "youtube" ? "YouTube Link" : "Upload File"}
@@ -1580,27 +1301,29 @@ export default function MusicReview() {
                       ))}
                     </div>
 
-                    {/* Artist name auto-filled from registered profile */}
-                    <div className="bg-white/5 border border-white/10 px-4 py-3">
-                      <div className="text-white/30 text-[10px] uppercase tracking-wider mb-0.5">Submitting as</div>
-                      <div className="text-white font-semibold text-sm">{user?.artistName || user?.name || "Unknown Artist"}</div>
+                    {/* Submitting as */}
+                    <div className="bg-white/5 border border-white/10 px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-white/30 text-xs uppercase tracking-wider">Submitting as</span>
+                      <span className="text-white font-semibold text-sm">{user?.artistName || user?.name || "Unknown Artist"}</span>
                     </div>
 
+                    {/* Song title */}
                     <div>
                       <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">Song Title *</label>
                       <input type="text" value={form.songTitle}
                         onChange={e => setForm(f => ({ ...f, songTitle: e.target.value }))}
                         placeholder="Track name" required
-                        className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20" />
+                        className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
                     </div>
 
+                    {/* File or YouTube */}
                     {submitType === "youtube" ? (
                       <div>
                         <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">YouTube Link *</label>
                         <input type="url" value={form.youtubeUrl}
                           onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))}
                           placeholder="https://youtube.com/watch?v=..." required
-                          className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20" />
+                          className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
                       </div>
                     ) : (
                       <div>
@@ -1620,12 +1343,13 @@ export default function MusicReview() {
                             </div>
                           ) : (
                             <div>
-                              <div className="text-white/30 text-sm mb-1">Tap to select audio file</div>
-                              <div className="text-white/20 text-xs">MP3, WAV, M4A, OGG — max 20MB</div>
+                              <Music className="w-8 h-8 text-white/20 mx-auto mb-2" />
+                              <div className="text-white/40 text-sm mb-1">Tap to select audio file</div>
+                              <div className="text-white/20 text-xs">MP3, WAV, M4A — max 20MB</div>
                             </div>
                           )}
                         </div>
-                        <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,.ogg,.aac,.flac,audio/*" className="hidden"
+                        <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a" className="hidden"
                           onChange={e => {
                             const f = e.target.files?.[0];
                             if (!f) return;
@@ -1635,16 +1359,18 @@ export default function MusicReview() {
                       </div>
                     )}
 
+                    {/* Contact */}
                     <div>
                       <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">Instagram / Contact (Optional)</label>
                       <input type="text" value={form.contactInfo}
                         onChange={e => setForm(f => ({ ...f, contactInfo: e.target.value }))}
                         placeholder="@yourinstagram or phone number"
-                        className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20" />
+                        className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
                     </div>
 
+                    {/* Skip the line */}
                     <div
-                      className={`border p-4 cursor-pointer transition-all ${form.wantsSkip ? "border-yellow-500/50 bg-yellow-500/10" : "border-white/10 bg-white/[0.02] hover:border-yellow-500/30"}`}
+                      className={`border p-4 cursor-pointer transition-all ${form.wantsSkip ? "border-yellow-500/50 bg-yellow-500/5" : "border-white/10 hover:border-yellow-500/30"}`}
                       onClick={() => setForm(f => ({ ...f, wantsSkip: !f.wantsSkip }))}
                     >
                       <div className="flex items-center gap-3">
@@ -1660,24 +1386,32 @@ export default function MusicReview() {
                       </div>
                     </div>
 
-                    <button type="submit" disabled={submitting}
-                      className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-4 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(209,0,0,0.4)]">
-                      {submitting ? "Submitting..." : "Submit to Queue →"}
-                    </button>
+                    {!user && (
+                      <a href={getLoginUrl()} className="flex items-center justify-center gap-2 w-full border border-white/20 text-white/60 hover:text-white py-3 text-xs uppercase tracking-widest transition-colors">
+                        <LogIn className="w-3.5 h-3.5" /> Login to Submit
+                      </a>
+                    )}
+
+                    {user && (
+                      <button type="submit" disabled={submitting}
+                        className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3.5 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(209,0,0,0.4)]">
+                        {submitting ? "Submitting..." : "Submit to Queue →"}
+                      </button>
+                    )}
                   </form>
                 )}
               </div>
             )}
 
-            {/* Skip info */}
+            {/* ── SKIP INFO ── */}
             {tab === "skip-info" && (
               <div className="border border-yellow-500/30 bg-yellow-500/5 p-8">
-                <div className="text-center mb-8">
+                <div className="text-center mb-7">
                   <div className="text-4xl mb-3">⚡</div>
                   <h2 className="font-['Anton'] text-4xl uppercase mb-2">Skip the <span className="text-yellow-400">Line</span></h2>
-                  <p className="text-white/50">Move your submission to the front of the review queue for just $10.</p>
+                  <p className="text-white/50 text-sm">Move your submission to the front of the review queue for just $10.</p>
                 </div>
-                <div className="grid md:grid-cols-3 gap-4 mb-8">
+                <div className="grid md:grid-cols-3 gap-3 mb-7">
                   {[
                     { label: "CashApp", value: CASHAPP, icon: "💸" },
                     { label: "PayPal", value: PAYPAL, icon: "🅿" },
@@ -1692,7 +1426,7 @@ export default function MusicReview() {
                 </div>
                 <button
                   onClick={() => { setTab("submit"); setForm(f => ({ ...f, wantsSkip: true })); }}
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4 text-sm font-bold uppercase tracking-widest transition-all"
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 text-sm font-bold uppercase tracking-widest transition-all"
                 >
                   Submit & Skip the Line →
                 </button>
@@ -1700,9 +1434,10 @@ export default function MusicReview() {
             )}
           </div>
 
-          {/* Right: Live Chat */}
-          <div className="flex flex-col">
-            <div className="border border-white/10 bg-white/[0.02] flex flex-col" style={{ height: "520px" }}>
+          {/* ── RIGHT COLUMN: Chat + Voice ── */}
+          <div className="flex flex-col gap-4">
+            {/* Live Chat */}
+            <div className="border border-white/10 bg-white/[0.02] flex flex-col" style={{ height: "500px" }}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
                 <span className="text-white/60 text-xs uppercase tracking-widest font-semibold">Live Chat</span>
                 <span className={`flex items-center gap-1.5 text-xs ${chatConnected ? "text-green-400" : "text-white/20"}`}>
@@ -1712,17 +1447,18 @@ export default function MusicReview() {
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
                 {chatMessages.length === 0 && (
-                  <p className="text-white/20 text-xs text-center py-6">No messages yet</p>
+                  <p className="text-white/20 text-xs text-center py-6">No messages yet — be the first!</p>
                 )}
                 {chatMessages.map(msg => (
                   <div key={msg.id} className="text-xs leading-relaxed">
-                    <span className={`font-semibold ${msg.isAdmin ? "text-red-400" : "text-white/60"}`}>
-                      {msg.isAdmin && "[ADMIN] "}
+                    <span className={`font-semibold ${msg.isAdmin ? "text-red-400" : "text-white/70"}`}>
+                      {msg.isAdmin && <span className="text-red-500 text-[10px] font-bold uppercase mr-1">[HOST]</span>}
                       <ArtistStatModal artistName={msg.username}>
                         <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
                       </ArtistStatModal>
                       {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}
-                      {msg.userId && <span className="ml-1"><UserBadges userId={msg.userId} size="xs" maxVisible={2} /></span>}:
+                      {msg.userId && <span className="ml-1"><UserBadges userId={msg.userId} size="xs" maxVisible={2} /></span>}
+                      <span className="text-white/30">:</span>
                     </span>{" "}
                     <span className="text-white/80">{msg.message}</span>
                   </div>
@@ -1730,114 +1466,130 @@ export default function MusicReview() {
                 <div ref={chatBottomRef} />
               </div>
               <div className="border-t border-white/10 flex gap-1.5 p-2 flex-shrink-0">
-                <input
-                  type="text" value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleSendChat()}
-                  placeholder={user ? "Chat..." : "Login to chat"}
-                  disabled={!user} maxLength={500}
-                  className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none focus:border-red-600/50 placeholder-white/20 disabled:opacity-40"
-                />
-                <button onClick={handleSendChat} disabled={!user || !chatInput.trim()}
-                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-3 py-1.5 text-xs font-semibold uppercase transition-colors">
-                  Send
-                </button>
+                {user ? (
+                  <>
+                    <input
+                      type="text" value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleSendChat()}
+                      placeholder="Say something..."
+                      maxLength={500}
+                      className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20"
+                    />
+                    <button onClick={handleSendChat} disabled={!chatInput.trim()}
+                      className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-3 py-2 transition-colors">
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <a href={getLoginUrl()} className="flex-1 flex items-center justify-center gap-2 text-white/40 hover:text-white text-xs py-2 transition-colors">
+                    <LogIn className="w-3.5 h-3.5" /> Login to chat
+                  </a>
+                )}
               </div>
             </div>
 
-            {/* Voice Chat Panel — open to all logged-in users */}
-            <div className="mt-4 border border-white/10 bg-white/[0.02] p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-white/60 text-xs uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                  <Mic className="w-3 h-3" />
+            {/* Voice Chat Panel */}
+            <div className="border border-white/10 bg-white/[0.02]">
+              <button
+                onClick={() => setShowVoicePanel(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-xs uppercase tracking-widest font-semibold text-white/50 hover:text-white transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Mic className="w-3.5 h-3.5" />
                   Voice Chat
-                </div>
-                <div className="flex items-center gap-1.5">
                   <span className={`w-1.5 h-1.5 rounded-full ${audioRoom.isConnected ? "bg-green-400 animate-pulse" : "bg-white/20"}`} />
-                  <span className="text-xs text-white/30">{audioRoom.participants.length} in room</span>
+                  <span className="text-white/30 normal-case font-normal">{audioRoom.participants.length} in room</span>
                 </div>
-              </div>
-              {audioRoom.error && (
-                <div className="text-red-400 text-xs bg-red-900/20 border border-red-600/20 p-2 mb-2">{audioRoom.error}</div>
-              )}
-              {!user ? (
-                <a href={getLoginUrl()} className="block w-full text-center text-xs bg-red-600 hover:bg-red-700 text-white py-2 uppercase tracking-widest transition-colors">Login to Join Voice</a>
-              ) : !voiceJoined && !isAdmin ? (
-                <button onClick={() => setVoiceJoined(true)} className="w-full bg-red-600 hover:bg-red-700 text-white py-2 text-xs font-semibold uppercase tracking-widest transition-colors">
-                  Join Voice Chat
-                </button>
-              ) : (
-                <>
-                  <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
-                    {audioRoom.participants.length === 0 && <p className="text-white/20 text-xs text-center py-2">No one in voice yet</p>}
-                    {audioRoom.participants.map(p => (
-                      <div key={p.userId || p.socketId} className="flex items-center justify-between py-1 border-b border-white/5">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
-                          <span className="text-xs text-white/70">{p.username}</span>
-                          {p.role === "admin" && <span className="text-[10px] text-red-400 font-bold uppercase">HOST</span>}
-                        </div>
-                        {isAdmin && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => audioRoom.adminToggleParticipantMic(p.socketId, !p.micActive)}
-                              className={`text-[10px] px-1.5 py-0.5 border transition-colors ${p.micActive ? "border-red-600/40 text-red-400 hover:bg-red-600/20" : "border-green-600/40 text-green-400 hover:bg-green-600/20"}`}
-                            >
-                              {p.micActive ? "Mute" : "Unmute"}
-                            </button>
-                            <button
-                              onClick={() => audioRoom.kickParticipant(p.socketId)}
-                              className="text-[10px] px-1.5 py-0.5 border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors"
-                            >
-                              Kick
-                            </button>
+                {showVoicePanel ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {showVoicePanel && (
+                <div className="px-4 pb-4 border-t border-white/10 pt-3">
+                  {audioRoom.error && (
+                    <div className="text-red-400 text-xs bg-red-900/20 border border-red-600/20 p-2 mb-3">{audioRoom.error}</div>
+                  )}
+                  {!user ? (
+                    <a href={getLoginUrl()} className="block w-full text-center text-xs bg-red-600 hover:bg-red-700 text-white py-2 uppercase tracking-widest transition-colors">
+                      Login to Join Voice
+                    </a>
+                  ) : !voiceJoined && !isAdmin ? (
+                    <button onClick={() => setVoiceJoined(true)} className="w-full bg-red-600 hover:bg-red-700 text-white py-2 text-xs font-semibold uppercase tracking-widest transition-colors">
+                      Join Voice Chat
+                    </button>
+                  ) : (
+                    <>
+                      <div className="space-y-1 mb-3 max-h-28 overflow-y-auto">
+                        {audioRoom.participants.length === 0 && <p className="text-white/20 text-xs text-center py-2">No one in voice yet</p>}
+                        {audioRoom.participants.map(p => (
+                          <div key={p.userId || p.socketId} className="flex items-center justify-between py-1 border-b border-white/5">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-1.5 h-1.5 rounded-full ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
+                              <span className="text-xs text-white/70">{p.username}</span>
+                              {p.role === "admin" && <span className="text-[10px] text-red-400 font-bold uppercase">HOST</span>}
+                            </div>
+                            {isAdmin && (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => audioRoom.adminToggleParticipantMic(p.socketId, !p.micActive)}
+                                  className={`text-[10px] px-1.5 py-0.5 border transition-colors ${p.micActive ? "border-red-600/40 text-red-400 hover:bg-red-600/20" : "border-green-600/40 text-green-400 hover:bg-green-600/20"}`}
+                                >
+                                  {p.micActive ? "Mute" : "Unmute"}
+                                </button>
+                                <button
+                                  onClick={() => audioRoom.kickParticipant(p.socketId)}
+                                  className="text-[10px] px-1.5 py-0.5 border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors"
+                                >
+                                  Kick
+                                </button>
+                              </div>
+                            )}
                           </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          onClick={audioRoom.toggleMic}
+                          className={`flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border transition-colors ${
+                            audioRoom.isMuted ? "border-white/20 text-white/40 hover:border-green-600 hover:text-green-400" : "border-green-600 text-green-400 hover:bg-green-600/20"
+                          }`}
+                        >
+                          {audioRoom.isMuted ? <><MicOff className="w-3 h-3 inline mr-1" />Mic Off</> : <><Mic className="w-3 h-3 inline mr-1" />Mic On</>}
+                        </button>
+                        {!isAdmin && (
+                          <button onClick={() => setVoiceJoined(false)} className="flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors">
+                            Leave
+                          </button>
                         )}
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={audioRoom.toggleMic}
-                      className={`flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border transition-colors ${
-                        audioRoom.isMuted ? "border-white/20 text-white/40 hover:border-green-600 hover:text-green-400" : "border-green-600 text-green-400 hover:bg-green-600/20"
-                      }`}
-                    >
-                      {audioRoom.isMuted ? <><MicOff className="w-3 h-3 inline mr-1" />Mic Off</> : <><Mic className="w-3 h-3 inline mr-1" />Mic On</>}
-                    </button>
-                    {!isAdmin && (
-                      <button onClick={() => setVoiceJoined(false)} className="flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors">
-                        Leave
-                      </button>
-                    )}
-                  </div>
-                  {/* Voice Chat Mix Volume */}
-                  <div className="mt-2 pt-2 border-t border-white/10">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] text-white/40 uppercase tracking-widest">Voice Mix</span>
-                      <span className="text-[10px] text-white/60 font-mono">{Math.round(audioRoom.voiceVolume * 100)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0" max="1" step="0.05"
-                      value={audioRoom.voiceVolume}
-                      onChange={e => audioRoom.setVoiceVolume(parseFloat(e.target.value))}
-                      className="w-full h-1.5 accent-red-600 cursor-pointer"
-                      title="Voice chat volume (does not affect radio)"
-                    />
-                  </div>
-                </>
+                      {/* Voice mix volume */}
+                      <div className="pt-2 border-t border-white/10">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] text-white/40 uppercase tracking-widest">Voice Mix Volume</span>
+                          <span className="text-[10px] text-white/60 font-mono">{Math.round(audioRoom.voiceVolume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="1" step="0.05"
+                          value={audioRoom.voiceVolume}
+                          onChange={e => audioRoom.setVoiceVolume(parseFloat(e.target.value))}
+                          className="w-full h-1.5 accent-red-600 cursor-pointer"
+                          title="Voice chat volume (does not affect radio)"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── PREVIOUSLY REVIEWED TRACKS — Only place with independent playback ── */}
+      {/* ── PREVIOUSLY REVIEWED TRACKS ── */}
       {reviewedTracks && reviewedTracks.length > 0 && (
-        <section className="border-t border-white/10 py-12">
-          <div className="container max-w-5xl mx-auto px-4">
-            <div className="flex items-center gap-3 mb-6">
+        <section className="border-t border-white/10 py-10">
+          <div className="container">
+            <div className="flex items-center gap-3 mb-5">
               <div className="w-1 h-8 bg-red-600" />
               <div>
                 <h2 className="font-['Anton'] text-2xl uppercase">Previously Submitted Tracks</h2>
@@ -1850,7 +1602,6 @@ export default function MusicReview() {
                   key={sub.id}
                   className="border border-white/10 bg-white/[0.02] hover:border-red-600/30 hover:bg-white/[0.04] transition-all duration-200 p-4 flex items-center gap-3"
                 >
-                  {/* Independent play button — ONLY allowed here */}
                   {sub.fileUrl ? (
                     <AudioPlayButton
                       url={sub.fileUrl}
@@ -1891,8 +1642,7 @@ export default function MusicReview() {
                     <button
                       onClick={() => requeueFromHistoryMutation.mutate({ id: sub.id })}
                       disabled={requeueFromHistoryMutation.isPending}
-                      className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-2 py-1 transition-colors flex-shrink-0 disabled:opacity-40"
-                      title="Re-queue to end of queue"
+                      className="flex items-center gap-1 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-2 py-1 transition-colors flex-shrink-0 disabled:opacity-40"
                     >
                       <RotateCcw className="w-3 h-3" /> Re-queue
                     </button>
@@ -1904,8 +1654,8 @@ export default function MusicReview() {
         </section>
       )}
 
-      {/* ── FOOTER ────────────────────────────────────────────── */}
-      <footer className="border-t border-white/10 py-10 mt-8">
+      {/* ── FOOTER ── */}
+      <footer className="border-t border-white/10 py-8 mt-4">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3">
             <img src={LOGO} alt="Murder Mitten Media" className="w-8 h-8 rounded-full object-cover" />
@@ -1913,7 +1663,7 @@ export default function MusicReview() {
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
           </a>
-          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
+          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Michigan</div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YouTube</a>

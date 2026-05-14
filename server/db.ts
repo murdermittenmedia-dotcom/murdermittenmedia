@@ -142,7 +142,15 @@ export async function getReviewedSubmissions(limit = 50) {
 export async function addSubmission(data: InsertReviewSubmission) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  return db.insert(reviewSubmissions).values(data);
+  // Auto-assign position to end of queue so new submissions always go to the bottom.
+  // Skip-line submissions still jump to the front via skipPaymentConfirmed ordering.
+  const rows = await db
+    .select({ maxPos: sql<number>`MAX(${reviewSubmissions.position})` })
+    .from(reviewSubmissions)
+    .where(ne(reviewSubmissions.status, "removed"));
+  const maxPos = rows[0]?.maxPos ?? 0;
+  const position = (data.position && data.position > 0) ? data.position : maxPos + 1;
+  return db.insert(reviewSubmissions).values({ ...data, position });
 }
 
 export async function updateSubmissionStatus(id: number, status: "pending" | "playing" | "reviewed" | "removed") {
