@@ -3,6 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <!-- PWA / Home Screen -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#D10000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- iOS Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MMM" />
+    <link rel="apple-touch-icon" href="/manus-storage/apple-touch-icon_b1780d1e.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/manus-storage/icon-152x152_8496b753.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/manus-storage/apple-touch-icon_b1780d1e.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/manus-storage/icon-192x192_e0ea7a54.png" />
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/manus-storage/favicon-32x32_5c10f74f.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/manus-storage/favicon-16x16_35e95df3.png" />
+    <!-- Windows / MS Tiles -->
+    <meta name="msapplication-TileColor" content="#D10000" />
+    <meta name="msapplication-TileImage" content="/manus-storage/icon-144x144_895ce763.png" />
     <title>Murder Mitten Media | Where the Industry Watches the Trenches</title>
     <meta name="description" content="Murder Mitten Media — Michigan's #1 rap, culture, and viral content media brand. EST. 2022. Detroit, MI. 4.5M+ views." />
     <meta property="og:title" content="Murder Mitten Media" />
@@ -19,5 +37,14 @@
       defer
       src="%VITE_ANALYTICS_ENDPOINT%/umami"
       data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(function(reg) { console.log('[MMM SW] Registered:', reg.scope); })
+            .catch(function(err) { console.warn('[MMM SW] Registration failed:', err); });
+        });
+      }
+    </script>
   </body>
 </html>

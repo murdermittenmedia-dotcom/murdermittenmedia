@@ -1,0 +1,92 @@
+{
+  "name": "Murder Mitten Media",
+  "short_name": "MMM",
+  "description": "Where the Industry Watches the Trenches. Michigan rap, culture & viral content.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#D10000",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["entertainment", "music", "news"],
+  "icons": [
+    {
+      "src": "/manus-storage/icon-72x72_ec54726c.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-96x96_07b3b09b.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-128x128_766559dd.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-144x144_895ce763.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-152x152_8496b753.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-192x192_e0ea7a54.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-384x384_6793b44f.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-512x512_59f87d9f.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-maskable-512x512_68898edd.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Music Reviews",
+      "short_name": "Reviews",
+      "description": "Submit your track for a live review",
+      "url": "/review",
+      "icons": [{ "src": "/manus-storage/icon-96x96_07b3b09b.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Music Wars",
+      "short_name": "Wars",
+      "description": "Vote on head-to-head rap battles",
+      "url": "/wars",
+      "icons": [{ "src": "/manus-storage/icon-96x96_07b3b09b.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Artist of the Week",
+      "short_name": "AOTW",
+      "description": "This week's featured artist",
+      "url": "/artist-of-week",
+      "icons": [{ "src": "/manus-storage/icon-96x96_07b3b09b.png", "sizes": "96x96" }]
+    }
+  ]
+}

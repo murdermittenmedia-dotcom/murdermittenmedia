@@ -27,6 +27,7 @@ import AdminPanel from "./pages/AdminPanel";
 import AdminSiteStats from "./pages/AdminSiteStats";
 import Banned from "./pages/Banned";
 import WheelOfNames from "./pages/WheelOfNames";
+import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 function Router() {
   return (
@@ -102,6 +103,7 @@ function App() {
             <PageTrackerMount />
             <Router />
             <FloatingPlayer />
+            <PWAInstallBanner />
           </TooltipProvider>
         </AudioPlayerProvider>
       </ThemeProvider>
