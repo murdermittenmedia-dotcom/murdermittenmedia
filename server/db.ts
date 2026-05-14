@@ -109,7 +109,25 @@ export async function getQueueSubmissions() {
   if (!db) return [];
   return db.select().from(reviewSubmissions)
     .where(ne(reviewSubmissions.status, "removed"))
-    .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.createdAt));
+    .orderBy(
+      desc(reviewSubmissions.skipPaymentConfirmed), // skip-line always first
+      asc(reviewSubmissions.position),              // admin drag-reorder
+      asc(reviewSubmissions.createdAt)              // fallback: submission time
+    );
+}
+
+/** Bulk-update position values for queue reordering (admin drag-and-drop) */
+export async function reorderQueueSubmissions(orderedIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Update each submission's position to match its index in the new order
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      db.update(reviewSubmissions)
+        .set({ position: index + 1 })
+        .where(eq(reviewSubmissions.id, id))
+    )
+  );
 }
 
 export async function getReviewedSubmissions(limit = 50) {

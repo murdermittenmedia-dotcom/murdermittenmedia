@@ -192,10 +192,27 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     });
 
     navigator.mediaSession.setActionHandler("play", () => {
-      audioRef.current?.play();
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (stateRef.current.track?.isStream && stateRef.current.isLocallyMuted) {
+        // For live streams: unmute instead of play
+        audio.muted = false;
+        setState(s => ({ ...s, isLocallyMuted: false }));
+      } else {
+        audio.play().catch(console.error);
+      }
     });
     navigator.mediaSession.setActionHandler("pause", () => {
-      audioRef.current?.pause();
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (stateRef.current.track?.isStream) {
+        // For live streams: mute locally WITHOUT pausing the stream
+        // Pausing a live stream causes it to stop buffering and fall behind
+        audio.muted = true;
+        setState(s => ({ ...s, isLocallyMuted: true }));
+      } else {
+        audio.pause();
+      }
     });
 
     if (!track.isStream) {

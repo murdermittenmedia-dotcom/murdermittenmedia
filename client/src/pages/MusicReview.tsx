@@ -154,6 +154,36 @@ function AdminPanel({
   const isLive = data?.state?.isLive ?? false;
   const currentPlaying = data?.currentPlaying;
   const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? [];
+
+  // Drag-to-reorder state (must come after queue is defined)
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [localQueue, setLocalQueue] = useState<ReviewSubmission[]>([]);
+  // Keep localQueue in sync with server queue (unless mid-drag)
+  useEffect(() => {
+    if (draggedId === null) setLocalQueue(queue);
+  }, [queue, draggedId]);
+
+  const reorderMutation = trpc.queue.reorder.useMutation({
+    onSuccess: () => { refetch(); broadcastReviewQueueUpdated(); },
+    onError: () => { toast.error("Failed to reorder queue"); setLocalQueue(queue); },
+  });
+
+  const handleDragStart = (id: number) => setDraggedId(id);
+  const handleDragOver = (e: React.DragEvent, targetId: number) => {
+    e.preventDefault();
+    if (draggedId === null || draggedId === targetId) return;
+    const newQueue = [...localQueue];
+    const fromIdx = newQueue.findIndex(s => s.id === draggedId);
+    const toIdx = newQueue.findIndex(s => s.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = newQueue.splice(fromIdx, 1);
+    newQueue.splice(toIdx, 0, moved);
+    setLocalQueue(newQueue);
+  };
+  const handleDrop = () => {
+    setDraggedId(null);
+    reorderMutation.mutate({ orderedIds: localQueue.map(s => s.id) });
+  };
   const pendingSkips: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.skippedLine && !s.skipPaymentConfirmed && s.status === "pending") ?? [];
 
   const handleGoLive = () => {
@@ -457,15 +487,24 @@ function AdminPanel({
 
         {/* Queue management */}
         <div>
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Queue ({queue.length})</div>
-          {queue.length === 0 ? (
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            Queue ({localQueue.length})
+            <span className="text-white/20 text-[10px] normal-case">drag to reorder</span>
+          </div>
+          {localQueue.length === 0 ? (
             <div className="text-white/20 text-xs text-center py-4">Queue is empty</div>
           ) : (
             <div className="space-y-1.5 max-h-64 overflow-y-auto">
-              {queue.map((sub, i) => (
+              {localQueue.map((sub, i) => (
                 <div
                   key={sub.id}
-                  className={`flex items-center gap-2 p-2 border text-xs ${
+                  draggable
+                  onDragStart={() => handleDragStart(sub.id)}
+                  onDragOver={(e) => handleDragOver(e, sub.id)}
+                  onDrop={handleDrop}
+                  onDragEnd={() => setDraggedId(null)}
+                  className={`flex items-center gap-2 p-2 border text-xs cursor-grab active:cursor-grabbing transition-opacity ${
+                    draggedId === sub.id ? "opacity-40" :
                     sub.status === "playing"
                       ? "border-red-600/40 bg-red-600/10"
                       : sub.skipPaymentConfirmed
@@ -687,8 +726,11 @@ export default function MusicReview() {
     { enabled: !!currentPlayingId, refetchInterval: 3000 }
   );
 
-  // Auto-mark as reviewed when a queued track finishes playing
+  // Auto-mark as reviewed when a queued track finishes playing — ADMIN ONLY
+  // CRITICAL: Viewers must NOT trigger this. If a viewer's audio element fires "ended"
+  // (e.g. network drop, buffering hiccup) it would corrupt the queue for everyone.
   useEffect(() => {
+    if (!isAdmin) return; // Guard: only the admin session can advance the queue
     const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
       const queue = data?.submissions ?? [];
       const match = queue.find(
@@ -701,7 +743,7 @@ export default function MusicReview() {
       }
     });
     return unsubscribe;
-  }, [audioPlayer, data, updateStatusMutation]);
+  }, [audioPlayer, data, updateStatusMutation, isAdmin]);
 
   const chatUsername = user?.artistName || user?.name || "Guest";
 

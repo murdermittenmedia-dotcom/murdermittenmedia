@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
-  confirmSkipPayment, requeueSubmission, getQueueState, setCurrentPlaying, setLiveStatus,
+  confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
   updateWheelEntryStatus, confirmWheelPayment, getUserWheelEntries,
@@ -467,6 +467,14 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await requeueSubmission(input.id);
+        return { success: true };
+      }),
+
+    // Reorder queue — admin drag-and-drop
+    reorder: adminProcedure
+      .input(z.object({ orderedIds: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        await reorderQueueSubmissions(input.orderedIds);
         return { success: true };
       }),
 
