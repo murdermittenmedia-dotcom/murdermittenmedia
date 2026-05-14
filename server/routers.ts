@@ -44,7 +44,10 @@ import {
   removeWheelOfNamesEntry,
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
+  getDb,
 } from "./db";
+import { users } from "../drizzle/schema";
+import { desc as drizzleDesc, sql } from "drizzle-orm";
 import {
   awardXP, getAllRewards, getRewardById, createReward, updateReward,
   getUserRewards, getPublicUserRewards, adminGrantReward, adminRevokeReward,
@@ -1353,6 +1356,41 @@ export const appRouter = router({
   leaderboard: router({
     combined: publicProcedure.query(async () => {
       return getCombinedLeaderboard();
+    }),
+
+    // Top fans by fan XP
+    topFans: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const fans = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          artistName: users.artistName,
+          avatarUrl: users.avatarUrl,
+          fanXP: users.fanXP,
+          fanLevel: users.fanLevel,
+          accountLabels: users.accountLabels,
+        })
+        .from(users)
+        .where(sql`${users.fanXP} > 0`)
+        .orderBy(drizzleDesc(users.fanXP))
+        .limit(50);
+      return fans.map((f, idx) => ({
+        rank: idx + 1,
+        id: f.id,
+        displayName: f.artistName ?? f.name ?? "Anonymous",
+        avatarUrl: f.avatarUrl ?? null,
+        fanXP: f.fanXP ?? 0,
+        fanLevel: f.fanLevel ?? "supporter",
+        accountLabels: f.accountLabels ? JSON.parse(f.accountLabels) as string[] : [],
+      }));
+    }),
+
+    // Record that the current user watched a live stream (awards fan XP once per session)
+    recordStreamWatch: protectedProcedure.mutation(async ({ ctx }) => {
+      awardXP(ctx.user.id, "stream_watch").catch(() => {});
+      return { ok: true };
     }),
   }),
 

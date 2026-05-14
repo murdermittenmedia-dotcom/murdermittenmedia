@@ -70,7 +70,8 @@ export function getNextArtistLevel(xp: number) {
 export type XpReason =
   | "song_upload" | "battle_win" | "battle_participation" | "review_submission"
   | "fire_vote_received" | "forum_post" | "forum_comment" | "vote_cast"
-  | "daily_streak" | "referral" | "admin_grant" | "radio_play" | "review_win";
+  | "daily_streak" | "referral" | "admin_grant" | "radio_play" | "review_win"
+  | "stream_watch";
 
 const XP_AMOUNTS: Record<XpReason, number> = {
   song_upload:          50,
@@ -86,6 +87,7 @@ const XP_AMOUNTS: Record<XpReason, number> = {
   admin_grant:          0,   // amount passed explicitly
   radio_play:           20,
   review_win:           75,
+  stream_watch:         5,   // fan XP for watching a live stream
 };
 
 /**
@@ -103,7 +105,9 @@ export async function awardXP(
   const amount = opts.amount ?? XP_AMOUNTS[reason];
   if (amount === 0) return;
 
-  const isFanXP = reason === "vote_cast";
+  // Fan XP reasons: these go to fanXP instead of artist XP
+  const FAN_XP_REASONS: XpReason[] = ["vote_cast", "forum_post", "forum_comment", "stream_watch"];
+  const isFanXP = FAN_XP_REASONS.includes(reason);
 
   // Log the XP event
   await db.insert(xpEvents).values({
@@ -123,8 +127,16 @@ export async function awardXP(
     // Recalculate fanLevel
     const rows = await db.select({ fanXP: users.fanXP }).from(users).where(eq(users.id, userId)).limit(1);
     if (rows[0]) {
-      const newFanLevel = calcFanLevel(rows[0].fanXP + amount);
+      const currentFanXP = rows[0].fanXP ?? 0;
+      const newFanXP = currentFanXP + amount;
+      const oldFanLevel = calcFanLevel(currentFanXP);
+      const newFanLevel = calcFanLevel(newFanXP);
       await db.update(users).set({ fanLevel: newFanLevel }).where(eq(users.id, userId));
+      // Emit level-up notification if fan level changed
+      if (oldFanLevel !== newFanLevel) {
+        const levelInfo = getFanLevelInfo(newFanLevel);
+        notifyOwner({ title: "Fan Level Up!", content: `User #${userId} reached fan level: ${levelInfo.label}` }).catch(() => {});
+      }
     }
   } else {
     await db.execute(sql`
