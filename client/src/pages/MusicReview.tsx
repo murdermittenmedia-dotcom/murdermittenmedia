@@ -715,8 +715,11 @@ export default function MusicReview() {
     onError: () => toast.error("Failed to re-queue song"),
   });
 
-  // Poll queries for the currently playing submission
-  const currentPlayingId = data?.currentPlaying?.id ?? null;
+  // The active submission ID for voting — kept in state so it can be updated
+  // immediately from the socket (onReviewActiveChanged) without waiting for the DB poll.
+  // This is the single source of truth for which submission the vote poll targets.
+  const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
+  const currentPlayingId = activeSubmissionId ?? data?.currentPlaying?.id ?? null;
   const { data: myReaction, refetch: refetchMyReaction } = trpc.queue.getMyReaction.useQuery(
     { submissionId: currentPlayingId! },
     { enabled: !!user && !!currentPlayingId, refetchInterval: 3000 }
@@ -781,7 +784,12 @@ export default function MusicReview() {
       room: m.room, isAdmin: m.isAdmin, createdAt: new Date(m.createdAt),
     })),
     onReviewActiveChanged: (item: LiveReviewActiveItem) => {
-      setLiveReviewActive(item.submissionId === null ? null : item);
+      // Update both the display state and the vote-target ID atomically from the socket event.
+      // This ensures the fire/trash poll always targets the song that is actually playing,
+      // without waiting up to 5s for the DB poll to catch up.
+      const newId = item.submissionId ?? null;
+      setActiveSubmissionId(newId);
+      setLiveReviewActive(newId === null ? null : item);
       // Immediately refetch queue + reactions when the current song changes
       refetch();
       refetchReactions();
@@ -818,10 +826,13 @@ export default function MusicReview() {
     },
   });
 
-  // Initialize liveReviewActive from DB when page loads (for late joiners)
+  // Initialize liveReviewActive + activeSubmissionId from DB when page loads (for late joiners).
+  // The socket event fires for real-time updates; this handles the case where the user
+  // joins mid-session and the socket event has already fired before they connected.
   useEffect(() => {
     if (!liveReviewActive && data?.currentPlaying) {
       const cp = data.currentPlaying;
+      setActiveSubmissionId(cp.id);
       setLiveReviewActive({
         submissionId: cp.id,
         artistName: cp.artistName,
