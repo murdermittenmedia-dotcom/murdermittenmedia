@@ -12,7 +12,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
-import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin } from "../db";
+import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, setCurrentPlaying } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -404,8 +404,9 @@ async function startServer() {
       submissionType?: string;
     }) => {
       if (data.submissionId === null) {
-        // Admin cleared the deck
+        // Admin cleared the deck — also reset any playing songs in DB
         radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null };
+        try { await setCurrentPlaying(null); } catch (e) { /* non-fatal */ }
         io.emit("radio:stopped");
         io.emit("live:now_playing", null);
         return;
@@ -429,6 +430,16 @@ async function startServer() {
 
       // Save current state as last before overwriting
       if (radioState.submissionId) lastRadioState = { ...radioState };
+
+      // Sync DB status: reset any previously-playing submission to 'pending',
+      // then mark the new one as 'playing'. This ensures only one song ever
+      // shows the LIVE badge in the queue, regardless of which button was used.
+      try {
+        await updateSubmissionStatus(data.submissionId, "playing");
+        await setCurrentPlaying(data.submissionId);
+      } catch (e) {
+        console.error("[radio:load] Failed to update DB status:", e);
+      }
 
       radioState = {
         submissionId: data.submissionId,
