@@ -974,3 +974,6 @@
 ## Music Review — Multiple LIVE Badge Bug (May 2026)
 - [x] Fix: multiple queue items show LIVE badge simultaneously — only the currently playing submission should show LIVE
 - [x] Root cause: updateSubmissionStatus never reset previous 'playing' rows — fixed by resetting all other 'playing' rows to 'pending' before setting new one; also ran DB cleanup to fix existing stuck rows
+
+## Music Review — Auto-Advance Bug (May 2026)
+- [x] Fix: queue does not auto-play next song after current song finishes — moved onEnded handler into AdminPanel with proper tRPC mutations and auto-advance logic

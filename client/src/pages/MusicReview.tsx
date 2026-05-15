@@ -200,6 +200,55 @@ function AdminPanel({
     toast.success("Removed from queue");
   };
 
+  // Auto-advance: when a track finishes, mark it reviewed and load the next one
+  useEffect(() => {
+    const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
+      const match = queue.find(
+        s => (s.status === "pending" || s.status === "playing") &&
+          s.songTitle === finishedTrack.title &&
+          s.artistName === finishedTrack.artist
+      );
+      if (!match) return;
+      // Mark finished song as reviewed, then load next
+      updateStatus.mutate({ id: match.id, status: "reviewed" }, {
+        onSuccess: () => {
+          refetch();
+          const next = queue.find(s => s.status === "pending" && s.id !== match.id);
+          if (next) {
+            setTimeout(() => {
+              setPlaying.mutate({ submissionId: next.id }, {
+                onSuccess: () => {
+                  playTrack(next);
+                  broadcastReviewActive({
+                    submissionId: next.id,
+                    artistName: next.artistName,
+                    songTitle: next.songTitle,
+                    audioUrl: null,
+                    youtubeUrl: next.youtubeUrl ?? null,
+                    submissionType: next.submissionType,
+                    fileKey: next.fileKey ?? null,
+                    fileUrl: next.fileUrl ?? null,
+                  });
+                  broadcastReviewQueueUpdated();
+                  toast.success(`\u25b6 Auto-advancing to: ${next.songTitle}`);
+                }
+              });
+            }, 600);
+          } else {
+            setPlaying.mutate({ submissionId: null }, {
+              onSuccess: () => {
+                broadcastReviewActive({ submissionId: null });
+                broadcastReviewQueueUpdated();
+                toast("Queue finished \u2014 all tracks reviewed!");
+              }
+            });
+          }
+        }
+      });
+    });
+    return unsubscribe;
+  }, [audioPlayer, queue, updateStatus, setPlaying, playTrack, broadcastReviewActive, broadcastReviewQueueUpdated, refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="border border-red-600/40 bg-[#0d0000] rounded-sm mb-8">
       {/* ── Admin header bar ── */}
@@ -725,28 +774,7 @@ export default function MusicReview() {
     { enabled: !!currentPlayingId, refetchInterval: 3000 }
   );
 
-  // Auto-mark as reviewed when track finishes — ADMIN ONLY
-  useEffect(() => {
-    if (!isAdmin) return;
-    const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
-      const queue = data?.submissions ?? [];
-      const match = queue.find(
-        s => (s.status === "pending" || s.status === "playing") &&
-          s.songTitle === finishedTrack.title &&
-          s.artistName === finishedTrack.artist
-      );
-      if (match) {
-        // Mark as reviewed silently
-        fetch("/api/trpc/queue.updateStatus", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ id: match.id, status: "reviewed" }),
-        }).then(() => refetch()).catch(() => {});
-      }
-    });
-    return unsubscribe;
-  }, [isAdmin, data?.submissions, audioPlayer, refetch]);
+  // Auto-advance is handled inside AdminPanel where mutations are available
 
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
