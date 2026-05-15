@@ -20,7 +20,7 @@ import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
-  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -759,8 +759,116 @@ function DangerZoneTab() {
   );
 }
 
+// ─── Daily Wheel Tab ─────────────────────────────────────────
+const PRIZE_COLORS: Record<string, string> = {
+  free_story_post:  "text-red-400",
+  bogo_permanent:   "text-red-300",
+  free_page_post:   "text-red-400",
+  line_skip:        "text-blue-400",
+  promo_20off:      "text-orange-400",
+  promo_10off:      "text-orange-300",
+  unlimited_promo:  "text-yellow-400",
+  try_again:        "text-white/40",
+};
+
+function DailyWheelTab() {
+  const [search, setSearch] = useState("");
+  const { data: allSpins, isLoading } = trpc.dailyWheel.adminGetAllSpins.useQuery();
+
+  const filtered = (allSpins ?? []).filter(s => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (s.userName ?? "").toLowerCase().includes(q) ||
+      (s.userEmail ?? "").toLowerCase().includes(q) ||
+      s.prizeLabel.toLowerCase().includes(q) ||
+      s.spinDate.includes(q)
+    );
+  });
+
+  // Summary stats
+  const totalSpins = allSpins?.length ?? 0;
+  const todayDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  const todaySpins = (allSpins ?? []).filter(s => s.spinDate === todayDate).length;
+  const prizeBreakdown = (allSpins ?? []).reduce((acc, s) => {
+    acc[s.prizeLabel] = (acc[s.prizeLabel] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-['Anton'] text-2xl uppercase">Daily Wheel History</h2>
+        <div className="text-white/40 text-sm">
+          <span className="text-white font-semibold">{totalSpins}</span> total spins ·{" "}
+          <span className="text-white font-semibold">{todaySpins}</span> today
+        </div>
+      </div>
+
+      {/* Prize breakdown */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {Object.entries(prizeBreakdown)
+          .sort((a, b) => b[1] - a[1])
+          .map(([label, count]) => (
+            <div key={label} className="border border-white/10 bg-white/[0.03] p-3 rounded">
+              <div className="text-white/40 text-xs mb-1 truncate">{label}</div>
+              <div className="text-white font-bold text-xl">{count}</div>
+            </div>
+          ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name, email, prize, or date…"
+          className="pl-9 bg-white/5 border-white/10 text-white placeholder-white/30"
+        />
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="text-white/30 text-sm py-8 text-center">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-white/30 text-sm py-8 text-center">No spin records found.</div>
+      ) : (
+        <div className="border border-white/10 overflow-hidden">
+          <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-0 text-xs text-white/40 uppercase tracking-widest px-4 py-2 border-b border-white/10 bg-white/[0.02]">
+            <span>User</span>
+            <span>Prize</span>
+            <span>Date</span>
+            <span>Profile</span>
+          </div>
+          <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
+            {filtered.map(spin => (
+              <div key={spin.id} className="grid grid-cols-[1fr_1fr_auto_auto] gap-0 items-center px-4 py-3 hover:bg-white/[0.03] transition-colors">
+                <div>
+                  <div className="text-white text-sm font-semibold truncate">{spin.userName ?? "Unknown"}</div>
+                  <div className="text-white/30 text-xs truncate">{spin.userEmail ?? `User #${spin.userId}`}</div>
+                </div>
+                <div className={`text-sm font-semibold truncate ${PRIZE_COLORS[spin.prizeKey] ?? "text-white/60"}`}>
+                  {spin.prizeLabel}
+                </div>
+                <div className="text-white/40 text-xs whitespace-nowrap px-3">{spin.spinDate}</div>
+                <Link
+                  href={`/profile/${spin.userId}`}
+                  className="text-xs text-red-400 hover:text-red-300 border border-red-600/30 hover:border-red-500/60 px-2.5 py-1 rounded transition-colors font-semibold uppercase tracking-wider whitespace-nowrap"
+                >
+                  Profile
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards";
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
@@ -768,6 +876,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "settings", label: "Site Settings", icon: Settings },
   { id: "danger", label: "Danger Zone", icon: AlertTriangle },
   { id: "rewards", label: "Rewards", icon: Trophy },
+  { id: "dailywheel", label: "Daily Wheel", icon: Disc },
 ];
 
 export default function AdminPanel() {
@@ -849,6 +958,7 @@ export default function AdminPanel() {
         {activeTab === "settings" && <SiteSettingsTab />}
         {activeTab === "danger" && <DangerZoneTab />}
         {activeTab === "rewards" && <AdminRewardsTab />}
+        {activeTab === "dailywheel" && <DailyWheelTab />}
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ import {
   wheelOfNamesEntries, InsertWheelOfNamesEntry,
   wheelOfNamesSpins, InsertWheelOfNamesSpin,
   wheelOfNamesPaidEntries, InsertWheelOfNamesPaidEntry,
+  dailySpins, DailySpin, InsertDailySpin,
   pageViews, InsertPageView,
   activeSessions,
   rewards, Reward,
@@ -1645,4 +1646,66 @@ export async function getSiteStats() {
     dailyMonth: dailyRows,
     recentViews,
   };
+}
+
+// ─── Daily Prize Wheel helpers ────────────────────────────────
+
+/** Returns today's date as YYYY-MM-DD in America/New_York (EST/EDT). */
+export function getTodayEST(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+}
+
+/** Get a user's spin for today (EST). Returns null if not yet spun. */
+export async function getUserDailySpin(userId: number): Promise<DailySpin | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const today = getTodayEST();
+  const rows = await db.select().from(dailySpins)
+    .where(and(eq(dailySpins.userId, userId), eq(dailySpins.spinDate, today)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Record a spin result for a user. Throws on duplicate (already spun today). */
+export async function recordDailySpin(userId: number, prizeKey: string, prizeLabel: string): Promise<DailySpin> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const today = getTodayEST();
+  await db.insert(dailySpins).values({ userId, prizeKey, prizeLabel, spinDate: today });
+  const rows = await db.select().from(dailySpins)
+    .where(and(eq(dailySpins.userId, userId), eq(dailySpins.spinDate, today)))
+    .limit(1);
+  return rows[0]!;
+}
+
+/** Admin: get all spin records with user info, newest first. */
+export async function getAllDailySpins(limit = 200): Promise<Array<DailySpin & { userName: string | null; userEmail: string | null }>> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: dailySpins.id,
+      userId: dailySpins.userId,
+      prizeKey: dailySpins.prizeKey,
+      prizeLabel: dailySpins.prizeLabel,
+      spinDate: dailySpins.spinDate,
+      createdAt: dailySpins.createdAt,
+      userName: users.name,
+      userEmail: users.email,
+    })
+    .from(dailySpins)
+    .leftJoin(users, eq(dailySpins.userId, users.id))
+    .orderBy(desc(dailySpins.createdAt))
+    .limit(limit);
+  return rows as Array<DailySpin & { userName: string | null; userEmail: string | null }>;
+}
+
+/** Admin: get spin history for a specific user. */
+export async function getUserSpinHistory(userId: number): Promise<DailySpin[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(dailySpins)
+    .where(eq(dailySpins.userId, userId))
+    .orderBy(desc(dailySpins.createdAt))
+    .limit(100);
 }

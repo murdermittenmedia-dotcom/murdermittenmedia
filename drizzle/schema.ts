@@ -1,4 +1,4 @@
-import { boolean, date, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, date, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -364,6 +364,21 @@ export const wheelOfNamesPaidEntries = mysqlTable("wheel_of_names_paid_entries",
 });
 export type WheelOfNamesPaidEntry = typeof wheelOfNamesPaidEntries.$inferSelect;
 export type InsertWheelOfNamesPaidEntry = typeof wheelOfNamesPaidEntries.$inferInsert;
+
+// ─── Daily Prize Wheel ──────────────────────────────────────────
+// One spin per user per day (date in EST). Resets automatically at midnight EST.
+export const dailySpins = mysqlTable("daily_spins", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  prizeKey: varchar("prizeKey", { length: 64 }).notNull(),   // e.g. "free_story_post"
+  prizeLabel: varchar("prizeLabel", { length: 128 }).notNull(), // human-readable
+  spinDate: varchar("spinDate", { length: 10 }).notNull(),   // YYYY-MM-DD in EST
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  uniqUserDay: uniqueIndex("daily_spins_user_day_unique").on(t.userId, t.spinDate),
+}));
+export type DailySpin = typeof dailySpins.$inferSelect;
+export type InsertDailySpin = typeof dailySpins.$inferInsert;
 
 // ─── Site Analytics ───────────────────────────────────────────
 export const pageViews = mysqlTable("page_views", {

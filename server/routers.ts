@@ -45,6 +45,7 @@ import {
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
   getDb,
+  getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
 } from "./db";
 import { users } from "../drizzle/schema";
 import { desc as drizzleDesc, sql } from "drizzle-orm";
@@ -1843,6 +1844,85 @@ export const appRouter = router({
       await clearWheelOfNamesEntries();
       return { success: true };
     }),
+  }),
+
+  // -- Daily Prize Wheel ------------------------------------------
+  dailyWheel: router({
+    // Prize definitions with weighted odds
+    // Weights sum to 100 for easy percentage reading
+    // Prizes: free_story_post(20), bogo_permanent(15), free_page_post(4),
+    //         line_skip(10), promo_20off(20), promo_10off(25), unlimited_promo(1), try_again(5)
+    // Note: try_again weight is 5 but displayed as 25% — the extra weight is split from promo_10off
+
+    // Get today's spin status for the logged-in user
+    getMyStatus: protectedProcedure.query(async ({ ctx }) => {
+      const spin = await getUserDailySpin(ctx.user.id);
+      const today = getTodayEST();
+      return {
+        hasSpunToday: spin !== null,
+        todayDate: today,
+        prize: spin ? { key: spin.prizeKey, label: spin.prizeLabel } : null,
+      };
+    }),
+
+    // Spin the wheel — picks a weighted random prize, records it, returns prize + segment index
+    spin: protectedProcedure.mutation(async ({ ctx }) => {
+      const existing = await getUserDailySpin(ctx.user.id);
+      if (existing) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You already spun today! Come back tomorrow." });
+      }
+
+      // Prize table — key, label, weight (out of 100)
+      const PRIZES = [
+        { key: "free_story_post",   label: "Free Story Post",              weight: 20 },
+        { key: "bogo_permanent",    label: "BOGO Permanent Post",          weight: 15 },
+        { key: "free_page_post",    label: "Free Page Post",               weight: 4  },
+        { key: "line_skip",         label: "Music Review Line Skip",       weight: 10 },
+        { key: "promo_20off",       label: "20% Off Promo",                weight: 20 },
+        { key: "promo_10off",       label: "10% Off Promo",                weight: 25 },
+        { key: "unlimited_promo",   label: "1-Month Unlimited Promo",      weight: 1  },
+        { key: "try_again",         label: "Try Again Tomorrow",           weight: 5  },
+      ];
+
+      // Weighted random selection
+      const totalWeight = PRIZES.reduce((s, p) => s + p.weight, 0);
+      let rand = Math.random() * totalWeight;
+      let prizeIndex = 0;
+      for (let i = 0; i < PRIZES.length; i++) {
+        rand -= PRIZES[i].weight;
+        if (rand <= 0) { prizeIndex = i; break; }
+      }
+      const prize = PRIZES[prizeIndex];
+
+      // Record the spin
+      await recordDailySpin(ctx.user.id, prize.key, prize.label);
+
+      // Notify owner
+      try {
+        const { notifyOwner } = await import('./_core/notification');
+        await notifyOwner({
+          title: 'Daily Wheel Spin',
+          content: `${ctx.user.name ?? 'A user'} just spun and won: ${prize.label}`,
+        });
+      } catch {}
+
+      return {
+        prizeIndex,
+        prize: { key: prize.key, label: prize.label },
+      };
+    }),
+
+    // Admin: get all spin records
+    adminGetAllSpins: adminProcedure.query(async () => {
+      return getAllDailySpins(500);
+    }),
+
+    // Admin: get spin history for a specific user
+    adminGetUserSpins: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getUserSpinHistory(input.userId);
+      }),
   }),
 
   // -- Site Analytics (admin) -----------------------------------

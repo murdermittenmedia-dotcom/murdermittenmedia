@@ -1,34 +1,52 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Daily Free Promo Wheel
-   Canvas-based spinning wheel with names drawn on segments
-   Admin-only spin; users submit their name (1 per day)
-   Live broadcast via Socket.io so all viewers see the spin
+   MURDER MITTEN MEDIA — Daily Prize Wheel
+   One spin per user per day (resets midnight EST).
+   No name submission — just click Spin.
+   Weighted prizes rendered on a canvas wheel.
    ============================================================ */
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { io as socketIO, Socket } from "socket.io-client";
+import { SiteNav } from "@/components/SiteNav";
+import { toast } from "sonner";
 
-// ─── Segment colors ──────────────────────────────────────────
-const SEGMENT_COLORS = [
-  "#D10000", "#1a1a1a", "#8B0000", "#2d2d2d",
-  "#FF2222", "#111111", "#C00000", "#333333",
-  "#E50000", "#222222", "#B00000", "#3a3a3a",
+// ─── Prize definitions (must match server order exactly) ─────
+const PRIZES = [
+  { key: "free_story_post",  label: "Free Story Post",         color: "#D10000", textColor: "#fff" },
+  { key: "bogo_permanent",   label: "BOGO Permanent Post",     color: "#1a1a1a", textColor: "#D10000" },
+  { key: "free_page_post",   label: "Free Page Post",          color: "#8B0000", textColor: "#fff" },
+  { key: "line_skip",        label: "Line Skip",               color: "#2d2d2d", textColor: "#D10000" },
+  { key: "promo_20off",      label: "20% Off Promo",           color: "#FF2222", textColor: "#fff" },
+  { key: "promo_10off",      label: "10% Off Promo",           color: "#111111", textColor: "#fff" },
+  { key: "unlimited_promo",  label: "1-Month Unlimited Promo", color: "#C8A000", textColor: "#000" },
+  { key: "try_again",        label: "Try Again Tomorrow",      color: "#333333", textColor: "#aaa" },
 ];
 
-// ─── Countdown timer hook ─────────────────────────────────────
-function useCountdown7pm() {
+// ─── Prize descriptions ───────────────────────────────────────
+const PRIZE_DESCRIPTIONS: Record<string, string> = {
+  free_story_post:  "A free Instagram story post on Murder Mitten Media — DM us to redeem!",
+  bogo_permanent:   "Buy one permanent post, get one free — DM us to redeem!",
+  free_page_post:   "A free permanent page post on Murder Mitten Media — DM us to redeem!",
+  line_skip:        "Skip the line on your next Music Review submission — DM us to redeem!",
+  promo_20off:      "20% off your next promo package — DM us to redeem!",
+  promo_10off:      "10% off your next promo package — DM us to redeem!",
+  unlimited_promo:  "One month of unlimited promo posts — DM us to redeem! (Rare prize!)",
+  try_again:        "No prize today — come back tomorrow for another spin!",
+};
+
+// ─── Countdown to midnight EST ───────────────────────────────
+function useMidnightCountdown() {
   const [timeLeft, setTimeLeft] = useState("");
   useEffect(() => {
     function calc() {
       const now = new Date();
-      const next7pm = new Date();
-      next7pm.setHours(19, 0, 0, 0);
-      if (now >= next7pm) next7pm.setDate(next7pm.getDate() + 1);
-      const diff = next7pm.getTime() - now.getTime();
+      // Get current time in EST
+      const estNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const midnight = new Date(estNow);
+      midnight.setHours(24, 0, 0, 0);
+      const diff = midnight.getTime() - estNow.getTime();
       const h = Math.floor(diff / 3_600_000);
       const m = Math.floor((diff % 3_600_000) / 60_000);
       const s = Math.floor((diff % 60_000) / 1_000);
@@ -41,653 +59,359 @@ function useCountdown7pm() {
   return timeLeft;
 }
 
-// ─── Easing: starts fast, rubber-band deceleration at end ────
+// ─── Easing ───────────────────────────────────────────────────
 function easeOutQuintic(t: number): number {
   return 1 - Math.pow(1 - t, 5);
 }
 
-// ─── Canvas wheel component ───────────────────────────────────
+// ─── Canvas wheel ─────────────────────────────────────────────
 interface WheelCanvasProps {
-  names: string[];
+  targetIndex: number | null;   // null = idle
   spinning: boolean;
-  winnerIndex: number | null;
-  spinDuration: number;   // ms — passed from outside so viewers sync
   onSpinComplete: () => void;
 }
 
-function WheelCanvas({ names, spinning, winnerIndex, spinDuration, onSpinComplete }: WheelCanvasProps) {
+function WheelCanvas({ targetIndex, spinning, onSpinComplete }: WheelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const angleRef = useRef(0);           // current rotation in radians
-  const rafRef = useRef<number | null>(null);
-  const spinningRef = useRef(false);
-  const onSpinCompleteRef = useRef(onSpinComplete);
-  onSpinCompleteRef.current = onSpinComplete;
+  const angleRef = useRef(0);
+  const rafRef = useRef<number>(0);
+  const startTimeRef = useRef<number>(0);
+  const SPIN_DURATION = 5000; // ms
+  const SEG = (2 * Math.PI) / PRIZES.length;
 
-  // ── Draw ──────────────────────────────────────────────────
-  const drawWheel = useCallback((angle: number) => {
+  const draw = useCallback((rotation: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const W = canvas.width;
-    const H = canvas.height;
-    const cx = W / 2;
-    const cy = H / 2;
-    const r = Math.min(cx, cy) - 8;
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const r = cx - 8;
 
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (names.length === 0) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fill();
-      ctx.strokeStyle = "#D10000";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.fillStyle = "#ffffff44";
-      ctx.font = "bold 18px 'DM Sans', sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("No entries yet", cx, cy);
-      return;
-    }
+    // Outer glow ring
+    ctx.save();
+    ctx.shadowColor = "#D10000";
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 4, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#D10000";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
 
-    const segAngle = (Math.PI * 2) / names.length;
-
-    names.forEach((name, i) => {
-      const startAngle = angle + i * segAngle;
-      const endAngle = startAngle + segAngle;
+    // Segments
+    for (let i = 0; i < PRIZES.length; i++) {
+      const startAngle = rotation + i * SEG;
+      const endAngle = startAngle + SEG;
+      const prize = PRIZES[i];
 
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, r, startAngle, endAngle);
       ctx.closePath();
-      ctx.fillStyle = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+      ctx.fillStyle = prize.color;
       ctx.fill();
       ctx.strokeStyle = "#080808";
       ctx.lineWidth = 2;
       ctx.stroke();
 
+      // Label
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.rotate(startAngle + segAngle / 2);
+      ctx.rotate(startAngle + SEG / 2);
       ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-
-      const fontSize = names.length > 20 ? 9 : names.length > 12 ? 11 : names.length > 8 ? 13 : 15;
+      ctx.fillStyle = prize.textColor;
+      const fontSize = Math.max(10, Math.min(13, r * 0.11));
       ctx.font = `bold ${fontSize}px 'DM Sans', sans-serif`;
-      ctx.fillStyle = "#ffffff";
-      ctx.shadowColor = "rgba(0,0,0,0.8)";
-      ctx.shadowBlur = 3;
-
-      const textR = r - 12;
-      const maxWidth = textR * 0.75;
-      const displayName = name.length > 18 ? name.slice(0, 16) + "..." : name;
-      ctx.fillText(displayName, textR, 0, maxWidth);
-      ctx.restore();
-    });
-
-    // Center hub
-    ctx.beginPath();
-    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-    ctx.fillStyle = "#D10000";
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-  }, [names]);
-
-  useEffect(() => {
-    drawWheel(angleRef.current);
-  }, [names, drawWheel]);
-
-  // ── Spin animation ────────────────────────────────────────
-  useEffect(() => {
-    if (!spinning || names.length === 0) return;
-    if (spinningRef.current) return;
-    spinningRef.current = true;
-
-    const segAngle = (Math.PI * 2) / names.length;
-    const targetIdx = winnerIndex !== null ? winnerIndex : Math.floor(Math.random() * names.length);
-
-    // The ticker (knife) is at the RIGHT side of the wheel (3 o'clock = 0 radians).
-    // We want the CENTER of the winner's segment to land at 0 radians.
-    // Segment i starts at (angle + i * segAngle) and its center is at (angle + i * segAngle + segAngle/2).
-    // We need: angle + targetIdx * segAngle + segAngle/2 ≡ 0  (mod 2π)
-    // So: targetAngle = -(targetIdx * segAngle + segAngle/2)
-    // Then normalise to [0, 2π) and add extra full rotations for drama.
-
-    const currentAngle = angleRef.current % (Math.PI * 2);
-    const targetAngleRaw = -(targetIdx * segAngle + segAngle / 2);
-    // Normalise target into [0, 2π)
-    const targetAngleNorm = ((targetAngleRaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    // How far do we need to rotate forward from current position?
-    let delta = targetAngleNorm - currentAngle;
-    if (delta <= 0) delta += Math.PI * 2;
-    // Add 8 full extra rotations for drama (≈ 8 × 360° before settling)
-    delta += Math.PI * 2 * 8;
-
-    const totalAngle = delta;
-    const duration = spinDuration;
-    let startTime: number | null = null;
-    const startAngle = angleRef.current;
-
-    function frame(ts: number) {
-      if (!startTime) startTime = ts;
-      const elapsed = ts - startTime;
-      const t = Math.min(elapsed / duration, 1);
-      angleRef.current = startAngle + totalAngle * easeOutQuintic(t);
-      drawWheel(angleRef.current);
-
-      if (t < 1) {
-        rafRef.current = requestAnimationFrame(frame);
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 4;
+      // Wrap long labels
+      const words = prize.label.split(" ");
+      if (words.length <= 2) {
+        ctx.fillText(prize.label, r - 12, 4);
       } else {
-        spinningRef.current = false;
-        onSpinCompleteRef.current();
+        const line1 = words.slice(0, Math.ceil(words.length / 2)).join(" ");
+        const line2 = words.slice(Math.ceil(words.length / 2)).join(" ");
+        ctx.fillText(line1, r - 12, -3);
+        ctx.fillText(line2, r - 12, 10);
       }
+      ctx.restore();
     }
 
-    rafRef.current = requestAnimationFrame(frame);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    // Center cap
+    ctx.beginPath();
+    ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
+    ctx.fillStyle = "#080808";
+    ctx.fill();
+    ctx.strokeStyle = "#D10000";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Center logo text
+    ctx.fillStyle = "#D10000";
+    ctx.font = "bold 10px 'Anton', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("MMM", cx, cy);
+  }, [SEG]);
+
+  // Draw idle wheel
+  useEffect(() => {
+    draw(angleRef.current);
+  }, [draw]);
+
+  // Spin animation
+  useEffect(() => {
+    if (!spinning || targetIndex === null) return;
+
+    cancelAnimationFrame(rafRef.current);
+    startTimeRef.current = performance.now();
+
+    // Calculate target angle: land pointer (top = -π/2) on the center of targetIndex segment
+    const currentAngle = angleRef.current % (2 * Math.PI);
+    // The pointer is at top (-π/2). Segment i starts at rotation + i*SEG.
+    // We want the center of segment targetIndex to be at -π/2.
+    // Center of segment i in wheel coords: i*SEG + SEG/2
+    // We need: rotation + i*SEG + SEG/2 ≡ -π/2 (mod 2π)
+    // rotation = -π/2 - i*SEG - SEG/2
+    const targetAngle = -Math.PI / 2 - targetIndex * SEG - SEG / 2;
+    // Normalize to be > currentAngle + 5 full rotations
+    const minSpins = 5 * 2 * Math.PI;
+    let delta = ((targetAngle - currentAngle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+    if (delta < 0.1) delta += 2 * Math.PI;
+    const totalDelta = minSpins + delta;
+
+    const animate = (now: number) => {
+      const elapsed = now - startTimeRef.current;
+      const progress = Math.min(elapsed / SPIN_DURATION, 1);
+      const eased = easeOutQuintic(progress);
+      angleRef.current = currentAngle + totalDelta * eased;
+      draw(angleRef.current);
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        angleRef.current = currentAngle + totalDelta;
+        draw(angleRef.current);
+        onSpinComplete();
+      }
     };
-  }, [spinning, winnerIndex, names, drawWheel, spinDuration]);
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [spinning, targetIndex, draw, onSpinComplete, SEG]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={420}
-      height={420}
-      className="rounded-full"
-      style={{ maxWidth: "100%", height: "auto" }}
-    />
-  );
-}
-
-// ─── Knife ticker SVG ─────────────────────────────────────────
-function KnifeTicker() {
-  return (
-    <div
-      className="absolute"
-      style={{
-        right: "-22px",
-        top: "50%",
-        transform: "translateY(-50%) rotate(180deg)",
-        zIndex: 10,
-        filter: "drop-shadow(0 0 4px rgba(209,0,0,0.8))",
-      }}
-    >
-      <svg width="48" height="28" viewBox="0 0 48 28" fill="none">
-        <path d="M48 14 L8 4 L2 14 L8 24 Z" fill="#C0C0C0" />
-        <path d="M48 14 L8 4 L6 14" fill="#E8E8E8" />
-        <rect x="0" y="10" width="10" height="8" rx="2" fill="#1a1a1a" />
-        <rect x="1" y="11" width="8" height="6" rx="1" fill="#333" />
-        <circle cx="3" cy="14" r="1" fill="#888" />
-        <circle cx="7" cy="14" r="1" fill="#888" />
-        <circle cx="44" cy="14" r="2" fill="#D10000" />
-      </svg>
-    </div>
-  );
-}
-
-// ─── Confetti burst ───────────────────────────────────────────
-function ConfettiBurst({ active }: { active: boolean }) {
-  if (!active) return null;
-  const pieces = Array.from({ length: 30 }, (_, i) => ({
-    id: i,
-    x: 30 + Math.random() * 40,
-    delay: Math.random() * 0.4,
-    color: ["#D10000", "#ffffff", "#FFD700", "#FF6B6B", "#FFF"][Math.floor(Math.random() * 5)],
-    size: 6 + Math.random() * 8,
-  }));
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 20 }}>
-      {pieces.map(p => (
+    <div className="relative flex items-center justify-center">
+      {/* Pointer arrow at top */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-10"
+        style={{ marginTop: "-2px" }}
+      >
         <div
-          key={p.id}
-          className="absolute rounded-sm"
           style={{
-            left: `${p.x}%`,
-            top: "30%",
-            width: p.size,
-            height: p.size * 0.6,
-            backgroundColor: p.color,
-            animation: `confettiFall 1.8s ease-out ${p.delay}s forwards`,
+            width: 0,
+            height: 0,
+            borderLeft: "12px solid transparent",
+            borderRight: "12px solid transparent",
+            borderTop: "24px solid #D10000",
+            filter: "drop-shadow(0 2px 4px rgba(209,0,0,0.6))",
           }}
         />
-      ))}
-      <style>{`
-        @keyframes confettiFall {
-          0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
-          100% { transform: translateY(200px) rotate(720deg) scale(0.3); opacity: 0; }
-        }
-      `}</style>
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={360}
+        height={360}
+        className="rounded-full"
+        style={{ display: "block" }}
+      />
     </div>
   );
 }
 
-// ─── Socket hook for promo wheel room ────────────────────────
-function usePromoWheelSocket() {
-  const socketRef = useRef<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
-
-  useEffect(() => {
-    const socket = socketIO(window.location.origin, {
-      path: "/api/socket.io",
-      query: { room: "promo_wheel" },
-      transports: ["websocket", "polling"],
-    });
-    socketRef.current = socket;
-    socket.on("connect", () => setConnected(true));
-    socket.on("disconnect", () => setConnected(false));
-    return () => { socket.disconnect(); };
-  }, []);
-
-  return { socketRef, connected };
+// ─── Prize badge ──────────────────────────────────────────────
+function PrizeBadge({ prizeKey }: { prizeKey: string }) {
+  const prize = PRIZES.find(p => p.key === prizeKey);
+  if (!prize) return null;
+  const isGold = prizeKey === "unlimited_promo";
+  const isTryAgain = prizeKey === "try_again";
+  return (
+    <div
+      className={`border-2 rounded-lg px-6 py-4 text-center ${
+        isGold
+          ? "border-yellow-400 bg-yellow-900/30"
+          : isTryAgain
+          ? "border-white/20 bg-white/5"
+          : "border-red-600 bg-red-900/20"
+      }`}
+    >
+      <div className={`text-2xl font-['Anton'] uppercase mb-1 ${isGold ? "text-yellow-400" : isTryAgain ? "text-white/50" : "text-red-400"}`}>
+        {isGold && "🏆 "}
+        {prize.label}
+        {isGold && " 🏆"}
+      </div>
+      <p className="text-white/60 text-sm">{PRIZE_DESCRIPTIONS[prizeKey]}</p>
+    </div>
+  );
 }
 
 // ─── Main page ────────────────────────────────────────────────
-const SPIN_DURATION = 9000; // 9 seconds — slow & dramatic
-
 export default function WheelOfNames() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
-  const countdown = useCountdown7pm();
+  const { user, loading: authLoading } = useAuth();
+  const countdown = useMidnightCountdown();
 
-  const { data: entries = [], refetch: refetchEntries } = trpc.promoWheel.getEntries.useQuery();
-  const { data: lastWinner, refetch: refetchWinner } = trpc.promoWheel.getLastWinner.useQuery();
-
-  const hasEnteredToday = !!entries.find(e => user && e.userId === user.id && !e.isPaid);
-
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [spinWinnerIndex, setSpinWinnerIndex] = useState<number | null>(null);
-  const [spinResult, setSpinResult] = useState<{ name: string } | null>(null);
+  const [spinning, setSpinning] = useState(false);
+  const [targetIndex, setTargetIndex] = useState<number | null>(null);
+  const [wonPrize, setWonPrize] = useState<{ key: string; label: string } | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
 
-  // The names snapshot used during the current spin (so animation stays stable)
-  const [spinNames, setSpinNames] = useState<string[]>([]);
+  const { data: status, isLoading: statusLoading, refetch: refetchStatus } = trpc.dailyWheel.getMyStatus.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
 
-  const [submitHandle, setSubmitHandle] = useState("");
-  const [adminName, setAdminName] = useState("");
-  const [showPaidModal, setShowPaidModal] = useState(false);
-
-  // ── Socket.io ─────────────────────────────────────────────
-  const { socketRef } = usePromoWheelSocket();
-
-  // Listen for live spin events from server (broadcast to all viewers)
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    function onSpinStart(data: { winnerIndex: number; names: string[]; duration: number }) {
-      setShowResult(false);
-      setShowConfetti(false);
-      setSpinNames(data.names);
-      setSpinWinnerIndex(data.winnerIndex);
-      setIsSpinning(true);
-    }
-
-    function onSpinResult(data: { winnerName: string }) {
-      setSpinResult({ name: data.winnerName });
-    }
-
-    socket.on("wof:spin_start", onSpinStart);
-    socket.on("wof:spin_result", onSpinResult);
-
-    return () => {
-      socket.off("wof:spin_start", onSpinStart);
-      socket.off("wof:spin_result", onSpinResult);
-    };
-  }, [socketRef]);
-
-  // ── Mutations ─────────────────────────────────────────────
-  const submitMutation = trpc.promoWheel.submitName.useMutation({
-    onSuccess: () => { setSubmitHandle(""); refetchEntries(); },
-  });
-
-  const adminSpinMutation = trpc.promoWheel.adminSpin.useMutation({
+  const spinMutation = trpc.dailyWheel.spin.useMutation({
     onSuccess: (data) => {
-      // Server will broadcast wof:spin_start via Socket.io — admin also receives it
-      // But we also trigger locally as fallback (in case socket hasn't fired yet)
-      const currentNames = entries.map(e => e.name);
-      const idx = currentNames.findIndex(n => n === data.winner.name);
-      setShowResult(false);
-      setShowConfetti(false);
-      setSpinNames(currentNames);
-      setSpinWinnerIndex(idx >= 0 ? idx : 0);
-      setSpinResult({ name: data.winner.name });
-      setIsSpinning(true);
+      setTargetIndex(data.prizeIndex);
+      setWonPrize(data.prize);
+      setSpinning(true);
     },
-    onError: (err) => alert(err.message),
-  });
-
-  const adminResetMutation = trpc.promoWheel.adminReset.useMutation({
-    onSuccess: () => { refetchEntries(); refetchWinner(); setSpinResult(null); setShowResult(false); setShowConfetti(false); },
-  });
-
-  const adminAddMutation = trpc.promoWheel.adminAddName.useMutation({
-    onSuccess: () => { setAdminName(""); refetchEntries(); },
-  });
-
-  const adminRemoveMutation = trpc.promoWheel.adminRemoveName.useMutation({
-    onSuccess: () => refetchEntries(),
-  });
-
-  const buyEntriesMutation = trpc.promoWheel.buyEntries.useMutation({
-    onSuccess: () => {
-      setShowPaidModal(false);
-      alert("Request sent! Admin will confirm your paid entries after payment verification.");
+    onError: (err) => {
+      setSpinning(false);
+      toast.error(err.message);
     },
   });
 
-  // ── Handlers ──────────────────────────────────────────────
-  function handleSpinComplete() {
-    setIsSpinning(false);
+  const handleSpin = () => {
+    if (spinning || spinMutation.isPending) return;
+    setShowResult(false);
+    spinMutation.mutate();
+  };
+
+  const handleSpinComplete = useCallback(() => {
+    setSpinning(false);
     setShowResult(true);
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 2500);
-    refetchEntries();
-    refetchWinner();
-  }
+    refetchStatus();
+    if (wonPrize && wonPrize.key !== "try_again") {
+      toast.success(`You won: ${wonPrize.label}! DM us on Instagram to redeem.`, { duration: 8000 });
+    } else if (wonPrize?.key === "try_again") {
+      toast("Better luck tomorrow!", { duration: 5000 });
+    }
+  }, [wonPrize, refetchStatus]);
 
-  function handleAdminSpin() {
-    if (entries.length === 0) { alert("No entries on the wheel!"); return; }
-    adminSpinMutation.mutate();
-  }
+  const hasSpunToday = status?.hasSpunToday ?? false;
+  const todayPrize = status?.prize ?? null;
 
-  function handleAdminReset() {
-    if (!confirm("Reset the wheel? This will clear all entries without picking a winner.")) return;
-    adminResetMutation.mutate();
-  }
-
-  // Use spinNames snapshot during spin, fall back to live entries when idle
-  const displayNames = isSpinning ? spinNames : entries.map(e => e.name);
+  // If already spun today, show the result directly (no re-spin)
+  useEffect(() => {
+    if (hasSpunToday && todayPrize && !spinning) {
+      setWonPrize(todayPrize);
+      setShowResult(true);
+    }
+  }, [hasSpunToday, todayPrize, spinning]);
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Header */}
-      <div className="border-b border-white/10 bg-[#0d0d0d]">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/">
-            <button className="flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm font-medium">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M3.828 7H14v2H3.828l4.243 4.243-1.414 1.414L0 8l6.657-6.657 1.414 1.414L3.828 7z"/>
-              </svg>
-              Home
-            </button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-            <span className="font-['Anton'] text-lg tracking-wider">
-              DAILY FREE <span className="text-red-600">PROMO WHEEL</span>
-            </span>
-          </div>
-          <div className="text-xs text-white/40 uppercase tracking-widest hidden sm:block">
-            Free Daily Entry
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#080808] text-white">
+      <SiteNav />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Countdown + last winner row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="border border-white/10 bg-white/[0.03] p-5 flex flex-col items-center justify-center">
-            <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-2 font-semibold">Next Spin In</div>
-            <div className="font-['Anton'] text-5xl text-white tracking-wider" style={{ fontVariantNumeric: "tabular-nums" }}>
-              {countdown}
-            </div>
-            <div className="text-white/40 text-xs mt-1 uppercase tracking-widest">Daily spin at 7:00 PM</div>
+      <div className="container pt-24 pb-16 max-w-2xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">Daily Prize</span>
           </div>
-
-          <div className="border border-white/10 bg-white/[0.03] p-5 flex flex-col items-center justify-center">
-            <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-2 font-semibold">Last Winner</div>
-            {lastWinner ? (
-              <>
-                <div className="font-['Anton'] text-3xl text-white mb-1">{lastWinner.winnerName}</div>
-                <div className="text-white/40 text-xs uppercase tracking-widest">{lastWinner.spinDate}</div>
-              </>
-            ) : (
-              <div className="text-white/30 text-sm">No spins yet</div>
-            )}
-          </div>
+          <h1 className="font-['Anton'] text-5xl md:text-6xl uppercase mb-2">
+            DAILY <span className="text-red-600">WHEEL</span>
+          </h1>
+          <p className="text-white/50 text-sm">
+            One free spin per day. Resets at midnight EST.
+          </p>
         </div>
 
-        {/* Main content: wheel + sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Wheel */}
-          <div className="lg:col-span-2 flex flex-col items-center">
-            {/* Winner reveal banner */}
-            {showResult && spinResult && (
-              <div className="w-full mb-6 border border-red-600 bg-red-600/10 p-5 text-center animate-pulse-once">
-                <div className="text-xs text-red-400 uppercase tracking-[0.3em] mb-1">🎉 Today's Winner</div>
-                <div className="font-['Anton'] text-5xl text-white mb-1">{spinResult.name}</div>
-                <div className="text-white/50 text-sm">Congratulations! You won a free promo post.</div>
-              </div>
-            )}
-
-            {/* Wheel canvas + ticker */}
-            <div className="relative inline-flex items-center justify-center">
-              <WheelCanvas
-                names={displayNames}
-                spinning={isSpinning}
-                winnerIndex={spinWinnerIndex}
-                spinDuration={SPIN_DURATION}
-                onSpinComplete={handleSpinComplete}
-              />
-              <KnifeTicker />
-              <ConfettiBurst active={showConfetti} />
-            </div>
-
-            <div className="mt-4 text-white/40 text-sm">
-              {entries.length} {entries.length === 1 ? "name" : "names"} on the wheel
-              {isSpinning && <span className="ml-3 text-red-400 animate-pulse font-semibold">● SPINNING LIVE</span>}
-            </div>
-
-            {isAdmin && (
-              <div className="mt-6 w-full max-w-md border border-red-600/30 bg-red-600/5 p-5">
-                <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-4 font-semibold">Admin Controls</div>
-                <div className="flex gap-3 mb-4">
-                  <button
-                    onClick={handleAdminSpin}
-                    disabled={isSpinning || adminSpinMutation.isPending || entries.length === 0}
-                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
-                  >
-                    {isSpinning || adminSpinMutation.isPending ? "Spinning..." : "Spin Wheel"}
-                  </button>
-                  <button
-                    onClick={handleAdminReset}
-                    disabled={adminResetMutation.isPending}
-                    className="flex-1 border border-white/20 hover:border-white/50 text-white/60 hover:text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
-                  >
-                    Reset
-                  </button>
-                </div>
-                <form
-                  onSubmit={e => { e.preventDefault(); if (adminName.trim()) adminAddMutation.mutate({ name: adminName.trim() }); }}
-                  className="flex gap-2"
-                >
-                  <input
-                    value={adminName}
-                    onChange={e => setAdminName(e.target.value)}
-                    placeholder="@instagram_handle"
-                    maxLength={128}
-                    className="flex-1 bg-white/5 border border-white/10 text-white placeholder-white/30 px-3 py-2 text-sm focus:outline-none focus:border-red-600/50"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!adminName.trim() || adminAddMutation.isPending}
-                    className="bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white px-4 py-2 text-sm font-semibold transition-all"
-                    onClick={() => {
-                      const raw = adminName.trim().replace(/^@/, "");
-                      if (raw) setAdminName(`@${raw}`);
-                    }}
-                  >
-                    Add
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="flex flex-col gap-6">
-            {/* Submit name */}
-            <div className="border border-white/10 bg-white/[0.03] p-5">
-              <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">Enter Today's Wheel</div>
-              {!user ? (
-                <div className="text-white/50 text-sm">
-                  <a href={getLoginUrl()} className="text-red-500 hover:text-red-400 underline">Sign in</a> to submit your Instagram @ for free.
-                </div>
-              ) : hasEnteredToday ? (
-                <div className="text-center py-4">
-                  <div className="text-green-400 text-sm font-semibold mb-1">You're in!</div>
-                  <div className="text-white/40 text-xs">Already entered today. Come back tomorrow!</div>
-                  <button
-                    onClick={() => setShowPaidModal(true)}
-                    className="mt-3 w-full border border-red-600/40 text-red-400 hover:border-red-600 hover:text-red-300 py-2 text-xs font-semibold uppercase tracking-widest transition-all"
-                  >
-                    + Buy Extra Entries ($5 each)
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={e => {
-                  e.preventDefault();
-                  const raw = submitHandle.trim().replace(/^@/, "");
-                  if (!raw) return;
-                  if (!/^[a-zA-Z0-9._]{1,30}$/.test(raw)) {
-                    alert("Please enter a valid Instagram handle (letters, numbers, underscores, dots — max 30 characters).");
-                    return;
-                  }
-                  submitMutation.mutate({ name: `@${raw}` });
-                }}>
-                  <label className="block text-white/40 text-xs mb-1 uppercase tracking-widest">Instagram Handle</label>
-                  <div className="flex items-center border border-white/10 bg-white/5 mb-3">
-                    <span className="text-white/40 pl-3 text-sm">@</span>
-                    <input
-                      value={submitHandle.replace(/^@/, "")}
-                      onChange={e => setSubmitHandle(e.target.value.replace(/^@/, ""))}
-                      placeholder="yourusername"
-                      maxLength={30}
-                      className="flex-1 bg-transparent text-white placeholder-white/30 px-2 py-2 text-sm focus:outline-none"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={!submitHandle.trim() || submitMutation.isPending}
-                    className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-2 text-sm font-bold uppercase tracking-widest transition-all"
-                  >
-                    {submitMutation.isPending ? "Submitting..." : "Submit Free Entry"}
-                  </button>
-                  {submitMutation.isError && (
-                    <div className="text-red-400 text-xs mt-2">{submitMutation.error.message}</div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowPaidModal(true)}
-                    className="mt-2 w-full border border-white/10 text-white/40 hover:text-white/60 py-2 text-xs font-semibold uppercase tracking-widest transition-all"
-                  >
-                    + Buy Extra Entries ($5 each)
-                  </button>
-                </form>
-              )}
-            </div>
-
-            {/* Entries list */}
-            <div className="border border-white/10 bg-white/[0.03] p-5 flex-1">
-              <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">
-                On the Wheel ({entries.length})
-              </div>
-              {entries.length === 0 ? (
-                <div className="text-white/30 text-sm text-center py-6">No entries yet. Be the first!</div>
-              ) : (
-                <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
-                  {entries.map((entry, i) => (
-                    <div key={entry.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className="w-3 h-3 rounded-sm flex-shrink-0"
-                          style={{ backgroundColor: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }}
-                        />
-                        <span className="text-sm text-white/80 truncate">{entry.name}</span>
-                        {entry.isPaid && (
-                          <span className="text-xs text-yellow-500 border border-yellow-500/30 px-1 flex-shrink-0">PAID</span>
-                        )}
-                      </div>
-                      {isAdmin && (
-                        <button
-                          onClick={() => adminRemoveMutation.mutate({ entryId: entry.id })}
-                          className="text-white/20 hover:text-red-500 transition-colors ml-2 flex-shrink-0 text-xs"
-                          title="Remove"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* How it works */}
-            <div className="border border-white/10 bg-white/[0.03] p-5">
-              <div className="text-xs text-red-500 uppercase tracking-[0.3em] mb-3 font-semibold">How It Works</div>
-              <ul className="space-y-2 text-white/50 text-xs leading-relaxed list-none">
-                <li>Submit your name once per day for free</li>
-                <li>Wheel spins live daily at 7 PM — watch it happen!</li>
-                <li>Winner gets free promo on our platform</li>
-                <li>Buy extra entries for more chances ($5 each)</li>
-                <li>Wheel resets after each spin</li>
-              </ul>
-            </div>
-          </div>
+        {/* Wheel */}
+        <div className="flex justify-center mb-6">
+          <WheelCanvas
+            targetIndex={hasSpunToday && todayPrize ? PRIZES.findIndex(p => p.key === todayPrize.key) : targetIndex}
+            spinning={spinning}
+            onSpinComplete={handleSpinComplete}
+          />
         </div>
-      </div>
 
-      {/* Paid entries modal */}
-      {showPaidModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111] border border-white/10 p-6 max-w-sm w-full">
-            <div className="font-['Anton'] text-2xl mb-1">BUY EXTRA ENTRIES</div>
-            <div className="text-white/50 text-sm mb-6">$5 per additional spin on the wheel.</div>
-
-            <div className="border border-red-600/30 bg-red-600/5 p-4 mb-6">
-              <div className="text-xs text-red-500 uppercase tracking-[0.25em] font-semibold mb-2">How to Purchase</div>
-              <p className="text-white/70 text-sm leading-relaxed mb-4">
-                DM us on Instagram to purchase extra entries. Let us know your wheel Instagram handle and how many entries you want.
-              </p>
+        {/* CTA / Status */}
+        <div className="text-center mb-6">
+          {authLoading || statusLoading ? (
+            <div className="text-white/40 text-sm">Loading…</div>
+          ) : !user ? (
+            <div className="space-y-3">
+              <p className="text-white/50 text-sm">Login to spin the wheel</p>
               <a
-                href="https://www.instagram.com/murdermittenmedia/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white py-3 text-sm font-bold uppercase tracking-widest hover:opacity-90 transition-opacity"
+                href={getLoginUrl()}
+                className="inline-block bg-red-600 hover:bg-red-700 text-white font-semibold uppercase tracking-widest text-sm px-8 py-3 transition-all duration-200 hover:shadow-[0_0_20px_rgba(209,0,0,0.4)]"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                </svg>
-                DM @murdermittenmedia
+                Login to Spin
               </a>
             </div>
-
-            <div className="text-white/30 text-xs leading-relaxed mb-5">
-              Pricing: $5 per extra entry &middot; Payment via CashApp, PayPal, or Zelle &middot; Entries added after payment confirmed
+          ) : hasSpunToday ? (
+            <div className="space-y-2">
+              <p className="text-white/50 text-sm">You already spun today. Next spin in:</p>
+              <div className="font-['Anton'] text-3xl text-red-500 tabular-nums">{countdown}</div>
             </div>
-
+          ) : (
             <button
-              onClick={() => setShowPaidModal(false)}
-              className="w-full border border-white/20 text-white/60 hover:text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
+              onClick={handleSpin}
+              disabled={spinning || spinMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold uppercase tracking-widest text-sm px-12 py-4 transition-all duration-200 hover:shadow-[0_0_24px_rgba(209,0,0,0.5)] text-lg"
             >
-              Close
+              {spinning ? "Spinning…" : "SPIN NOW"}
             </button>
+          )}
+        </div>
+
+        {/* Prize result */}
+        {showResult && wonPrize && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <PrizeBadge prizeKey={wonPrize.key} />
+            {wonPrize.key !== "try_again" && (
+              <p className="text-center text-white/40 text-xs mt-3">
+                DM{" "}
+                <a
+                  href="https://www.instagram.com/murdermittenmedia/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-red-400 hover:text-red-300"
+                >
+                  @murdermittenmedia
+                </a>{" "}
+                on Instagram to redeem your prize.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Prize odds table */}
+        <div className="mt-10 border border-white/10 bg-white/[0.02] p-5">
+          <h2 className="font-['Anton'] text-lg uppercase text-white/60 mb-4 tracking-wider">Prize Odds</h2>
+          <div className="space-y-2">
+            {[
+              { label: "10% Off Promo",           pct: "25%", rare: false },
+              { label: "Try Again Tomorrow",       pct: "20%", rare: false },
+              { label: "Free Story Post",          pct: "20%", rare: false },
+              { label: "BOGO Permanent Post",      pct: "15%", rare: false },
+              { label: "Music Review Line Skip",   pct: "10%", rare: false },
+              { label: "20% Off Promo",            pct: "4%",  rare: false },
+              { label: "Free Page Post",           pct: "4%",  rare: false },
+              { label: "1-Month Unlimited Promo",  pct: "<1%", rare: true  },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between text-sm">
+                <span className={row.rare ? "text-yellow-400 font-semibold" : "text-white/60"}>{row.label}</span>
+                <span className={row.rare ? "text-yellow-400 font-bold" : "text-white/30"}>{row.pct}</span>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
