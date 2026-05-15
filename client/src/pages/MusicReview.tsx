@@ -23,6 +23,7 @@ import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import LabelBadge from "@/components/LabelBadge";
 import { UserBadges } from "@/components/UserBadges";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
+import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 
 // Types inferred from tRPC query
@@ -107,6 +108,9 @@ function AdminPanel({
   // Drag-to-reorder state
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [localQueue, setLocalQueue] = useState<ReviewSubmission[]>([]);
+  // Keep a stable ref to localQueue so onEnded callback always sees latest without re-subscribing
+  const localQueueRef = useRef<ReviewSubmission[]>([]);
+  localQueueRef.current = localQueue;
   useEffect(() => {
     if (draggedId === null) setLocalQueue(queue);
   }, [queue, draggedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -221,26 +225,37 @@ function AdminPanel({
     toast.success("Removed from queue");
   };
 
-  // Auto-advance: when an audio track finishes, mark it reviewed and load the next one in localQueue order
+  // Stable refs so the onEnded callback never has a stale closure
+  const updateStatusRef = useRef(updateStatus);
+  updateStatusRef.current = updateStatus;
+  const advanceToNextRef = useRef(advanceToNext);
+  advanceToNextRef.current = advanceToNext;
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+
+  // Auto-advance: when an audio track finishes, mark it reviewed and load the next one in localQueue order.
+  // Uses refs so this effect only subscribes ONCE and never fires with stale data.
   useEffect(() => {
     const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
-      // Match against localQueue (drag-reordered) first, then full queue
-      const allPending = [...localQueue, ...queue];
-      const match = allPending.find(
+      // Only handle tracks that are live Music Review streams (not regular audio)
+      if (!finishedTrack.isStream || finishedTrack.sourcePage !== "Music Review") return;
+      // Match against localQueueRef (always latest drag-reordered state)
+      const currentQueue = localQueueRef.current;
+      const match = currentQueue.find(
         s => (s.status === "pending" || s.status === "playing") &&
           s.songTitle === finishedTrack.title &&
           s.artistName === finishedTrack.artist
       );
       if (!match) return;
-      updateStatus.mutate({ id: match.id, status: "reviewed" }, {
+      updateStatusRef.current.mutate({ id: match.id, status: "reviewed" }, {
         onSuccess: () => {
-          refetch();
-          advanceToNext(match.id);
+          refetchRef.current();
+          advanceToNextRef.current(match.id);
         }
       });
     });
     return unsubscribe;
-  }, [audioPlayer, localQueue, queue, updateStatus, advanceToNext, refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [audioPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="border border-red-600/40 bg-[#0d0000] rounded-sm mb-8">
@@ -404,20 +419,17 @@ function AdminPanel({
               <div className="space-y-2">
                 <div className="border border-orange-500/30 bg-orange-500/5 p-2 text-[10px] text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
                   <ExternalLink className="w-3 h-3" />
-                  YouTube track — viewers watch on their own. Hit Done when finished.
+                  YouTube track — your position is synced to viewers in real-time.
                 </div>
                 {currentPlaying.youtubeUrl && (() => {
                   const ytId = extractYouTubeId(currentPlaying.youtubeUrl!);
                   return ytId ? (
-                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                      <iframe
-                        src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
-                        className="absolute inset-0 w-full h-full border border-white/10"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={currentPlaying.songTitle}
-                      />
-                    </div>
+                    <SyncedYouTubePlayer
+                      videoId={ytId}
+                      submissionId={currentPlaying.id}
+                      isAdmin={true}
+                      className="border border-white/10"
+                    />
                   ) : null;
                 })()}
                 <button
@@ -786,6 +798,8 @@ export default function MusicReview() {
 
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
   const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
+  // YouTube timestamp sync state for late-joiner seek
+  const [ytSyncState, setYtSyncState] = useState<{ currentTime: number; updatedAt: number } | null>(null);
   const currentPlayingId = activeSubmissionId ?? data?.currentPlaying?.id ?? null;
 
   const { data: myReaction, refetch: refetchMyReaction } = trpc.queue.getMyReaction.useQuery(
@@ -1184,19 +1198,22 @@ export default function MusicReview() {
                     )}
                   </div>
                 )}
-                {liveReviewActive.youtubeUrl && (() => {
+                {liveReviewActive.youtubeUrl && !isAdmin && (() => {
                   const ytId = extractYouTubeId(liveReviewActive.youtubeUrl!);
                   return ytId ? (
                     <div className="mt-3">
-                      <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                        <iframe
-                          src={`https://www.youtube.com/embed/${ytId}?autoplay=0&rel=0`}
-                          className="absolute inset-0 w-full h-full border border-white/10"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          title={liveReviewActive.songTitle ?? 'YouTube'}
-                        />
+                      <div className="flex items-center gap-2 mb-2 text-orange-400 text-xs font-semibold uppercase tracking-wider">
+                        <Radio className="w-3.5 h-3.5 animate-pulse" />
+                        Watch synced to admin’s position
                       </div>
+                      <SyncedYouTubePlayer
+                        videoId={ytId}
+                        submissionId={liveReviewActive.submissionId!}
+                        isAdmin={false}
+                        initialCurrentTime={ytSyncState?.currentTime ?? null}
+                        initialUpdatedAt={ytSyncState?.updatedAt ?? null}
+                        className="border border-white/10"
+                      />
                       <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-red-400 transition-colors mt-2">
                         <ExternalLink className="w-3 h-3" /> Open on YouTube

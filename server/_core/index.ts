@@ -53,6 +53,10 @@ type RadioState = {
   startedAt: number | null;      // Date.now() when track started
   pausedAt: number | null;       // seconds into track when paused (null = playing)
   fileKey: string | null;        // original S3 key for re-signing
+  // YouTube timestamp sync: admin broadcasts currentTime every ~2s
+  ytCurrentTime: number | null;  // admin's YouTube player currentTime in seconds
+  ytState: number | null;        // YouTube player state: -1=unstarted, 1=playing, 2=paused, 3=buffering
+  ytUpdatedAt: number | null;    // Date.now() when ytCurrentTime was last updated
 };
 
 let radioState: RadioState = {
@@ -65,6 +69,9 @@ let radioState: RadioState = {
   startedAt: null,
   pausedAt: null,
   fileKey: null,
+  ytCurrentTime: null,
+  ytState: null,
+  ytUpdatedAt: null,
 };
 
 // Track the last played song so admin can put it back on the deck
@@ -405,7 +412,7 @@ async function startServer() {
     }) => {
       if (data.submissionId === null) {
         // Admin cleared the deck — also reset any playing songs in DB
-        radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null };
+        radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null, ytCurrentTime: null, ytState: null, ytUpdatedAt: null };
         try { await setCurrentPlaying(null); } catch (e) { /* non-fatal */ }
         io.emit("radio:stopped");
         io.emit("live:now_playing", null);
@@ -451,6 +458,9 @@ async function startServer() {
         startedAt: Date.now(),
         pausedAt: null,
         fileKey: key,
+        ytCurrentTime: null,
+        ytState: null,
+        ytUpdatedAt: null,
       };
 
       const broadcast = { ...radioState };
@@ -523,6 +533,9 @@ async function startServer() {
             startedAt: Date.now(),
             pausedAt: null,
             fileKey: key,
+            ytCurrentTime: null,
+            ytState: null,
+            ytUpdatedAt: null,
           };
           io.to("music_review").emit("radio:playing", { ...radioState });
           io.emit("live:now_playing", {
@@ -539,7 +552,7 @@ async function startServer() {
           console.log("[radio:track_ended] Auto-advanced to:", next.songTitle);
         } else {
           // No more tracks — stop radio
-          radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null };
+          radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null, ytCurrentTime: null, ytState: null, ytUpdatedAt: null };
           io.emit("radio:stopped");
           io.emit("live:now_playing", null);
           io.to("music_review").emit("review:queue_updated");
@@ -548,6 +561,22 @@ async function startServer() {
       } catch (err) {
         console.error("[radio:track_ended] Error:", err);
       }
+    });
+
+    // Admin broadcasts YouTube player currentTime every ~2s for viewer sync
+    socket.on("youtube:tick", (data: { submissionId: number; currentTime: number; state: number }) => {
+      // Only accept ticks for the currently playing submission
+      if (data.submissionId !== radioState.submissionId) return;
+      radioState.ytCurrentTime = data.currentTime;
+      radioState.ytState = data.state;
+      radioState.ytUpdatedAt = Date.now();
+      // Broadcast to all viewers (excluding the admin sender)
+      socket.broadcast.emit("youtube:tick", {
+        submissionId: data.submissionId,
+        currentTime: data.currentTime,
+        state: data.state,
+        updatedAt: radioState.ytUpdatedAt,
+      });
     });
 
     // Late-joining viewer requests current radio state
@@ -563,7 +592,14 @@ async function startServer() {
       } else if (radioState.startedAt) {
         currentTime = (Date.now() - radioState.startedAt) / 1000;
       }
-      socket.emit("radio:state", { ...radioState, currentTime });
+      // Include YouTube timestamp for late joiners
+      socket.emit("radio:state", {
+        ...radioState,
+        currentTime,
+        ytCurrentTime: radioState.ytCurrentTime,
+        ytState: radioState.ytState,
+        ytUpdatedAt: radioState.ytUpdatedAt,
+      });
     });
 
     // Admin: put last played song back on the deck

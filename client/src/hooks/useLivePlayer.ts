@@ -71,15 +71,10 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   seekRef.current = seek;
   trackRef.current = track;
 
-  // When a live track ends, tell the server to auto-advance
-  useEffect(() => {
-    const unsub = onEnded((finishedTrack) => {
-      if (finishedTrack.isStream && finishedTrack.sourcePage === "Music Review" && socketRef.current?.connected) {
-        socketRef.current.emit("radio:track_ended");
-      }
-    });
-    return unsub;
-  }, [onEnded]);
+  // NOTE: We intentionally do NOT emit radio:track_ended here.
+  // Auto-advance is handled exclusively by AdminPanel's onEnded callback via tRPC mutations.
+  // The server-side radio:track_ended handler is kept for emergency fallback only,
+  // but emitting it from the global hook caused double-advance (random skip) bugs.
 
   useEffect(() => {
     // Connect without joining a room — we only need the global events

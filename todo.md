@@ -992,3 +992,8 @@
 - [ ] Home page: move LiveRadioBanner out of fixed-top position (hidden behind browser chrome on mobile), add big centered "Tune In" button in the hero section when live
 - [ ] Music Review page: add prominent "Tune In" button in the viewer section so viewers can start audio with one tap (user gesture satisfies browser autoplay policy)
 - [ ] Tune In button must call audioPlayer.play() with the current live track directly
+
+## CRITICAL: Live Radio Bugs (May 2026)
+- [ ] Fix: live radio randomly skips to next song or pauses during sessions — likely stale socket event, onEnded firing incorrectly, or multiple AdminPanel instances
+- [ ] Fix: YouTube audio does not play through live radio — viewers must go back to site to watch independently
+- [ ] Implement: YouTube timestamp sync — admin's current playback position broadcast to viewers so video is synced when they open the site
