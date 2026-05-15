@@ -390,27 +390,6 @@ export default function WheelOfNames() {
           </div>
         )}
 
-        {/* Prize odds table */}
-        <div className="mt-10 border border-white/10 bg-white/[0.02] p-5">
-          <h2 className="font-['Anton'] text-lg uppercase text-white/60 mb-4 tracking-wider">Prize Odds</h2>
-          <div className="space-y-2">
-            {[
-              { label: "10% Off Promo",           pct: "25%", rare: false },
-              { label: "Try Again Tomorrow",       pct: "20%", rare: false },
-              { label: "Free Story Post",          pct: "20%", rare: false },
-              { label: "BOGO Permanent Post",      pct: "15%", rare: false },
-              { label: "Music Review Line Skip",   pct: "10%", rare: false },
-              { label: "20% Off Promo",            pct: "4%",  rare: false },
-              { label: "Free Page Post",           pct: "4%",  rare: false },
-              { label: "1-Month Unlimited Promo",  pct: "<1%", rare: true  },
-            ].map(row => (
-              <div key={row.label} className="flex items-center justify-between text-sm">
-                <span className={row.rare ? "text-yellow-400 font-semibold" : "text-white/60"}>{row.label}</span>
-                <span className={row.rare ? "text-yellow-400 font-bold" : "text-white/30"}>{row.pct}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
