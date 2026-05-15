@@ -987,3 +987,8 @@
 ## Music Review — YouTube Audio Issues (May 2026)
 - [ ] Fix: admin hears double audio when YouTube track plays (FloatingPlayer + Now Playing card embed both play simultaneously)
 - [ ] Fix: viewers cannot hear YouTube audio live like MP3 submissions — need server-side audio capture/relay or alternative sync approach
+
+## Tune In Button UX (May 2026)
+- [ ] Home page: move LiveRadioBanner out of fixed-top position (hidden behind browser chrome on mobile), add big centered "Tune In" button in the hero section when live
+- [ ] Music Review page: add prominent "Tune In" button in the viewer section so viewers can start audio with one tap (user gesture satisfies browser autoplay policy)
+- [ ] Tune In button must call audioPlayer.play() with the current live track directly

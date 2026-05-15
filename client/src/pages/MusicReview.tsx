@@ -1151,9 +1151,37 @@ export default function MusicReview() {
                   by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={null} />
                 </div>
                 {liveReviewActive.audioUrl && !isAdmin && (
-                  <div className="flex items-center gap-2 text-red-400 text-sm">
-                    <Radio className="w-4 h-4 animate-pulse" />
-                    <span className="font-semibold text-xs uppercase tracking-wider">Playing Live — synced to admin</span>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-red-400 text-sm">
+                      <Radio className="w-4 h-4 animate-pulse" />
+                      <span className="font-semibold text-xs uppercase tracking-wider">Playing Live — synced to admin</span>
+                    </div>
+                    {/* Big Tune In CTA — user gesture required for browser autoplay */}
+                    {!audioPlayer.isPlaying ? (
+                      <button
+                        onClick={() => {
+                          audioPlayer.unlockAndPlay({
+                            url: liveReviewActive.audioUrl!,
+                            title: liveReviewActive.songTitle ?? 'Live Track',
+                            artist: liveReviewActive.artistName ?? 'Murder Mitten Media',
+                            artworkUrl: LOGO,
+                            isStream: false,
+                            submissionId: liveReviewActive.submissionId ?? undefined,
+                            sourcePage: 'Music Review',
+                            sourceUrl: '/review',
+                          });
+                        }}
+                        className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-500 active:scale-95 text-white py-4 text-base font-bold uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(209,0,0,0.5)]"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                        🎙 Tap to Listen Live
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 text-green-400 text-xs font-semibold uppercase tracking-wider">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        You're tuned in
+                      </div>
+                    )}
                   </div>
                 )}
                 {liveReviewActive.youtubeUrl && (() => {

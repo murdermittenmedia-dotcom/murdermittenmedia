@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { SiteNav } from "@/components/SiteNav";
 import { LiveRadioBanner } from "@/components/LiveRadioBanner";
+import { useLiveStatus } from "@/hooks/useLiveStatus";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -66,12 +68,31 @@ function Stat({ value, label, delay, started }: { value: number; label: string; 
 export default function Home() {
   const { ref: statsRef, inView: statsInView } = useInView(0.2);
   const { ref: sectionsRef, inView: sectionsInView } = useInView(0.1);
+  const { reviewIsLive, reviewStreamUrl, warsIsLive, warsStreamUrl, anyLive } = useLiveStatus();
+  const { play: playAudio } = useAudioPlayer();
+
+  const handleTuneIn = () => {
+    const isReview = reviewIsLive;
+    const streamUrl = isReview ? reviewStreamUrl : warsStreamUrl;
+    const label = isReview ? "Music Reviews" : "Music Wars";
+    const href = isReview ? "/review" : "/music-wars";
+    if (streamUrl) {
+      playAudio({
+        url: streamUrl,
+        title: `${label} — Live Radio`,
+        artist: "Murder Mitten Media",
+        artworkUrl: LOGO,
+        isStream: true,
+        sourcePage: label,
+        sourceUrl: href,
+      });
+    }
+    window.location.href = href;
+  };
 
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
       <SiteNav />
-      {/* Show live banner across the top of the home page when any stream is live */}
-      <LiveRadioBanner />
 
       {/* ══════════════════════════════════════════════════════
           HERO -- Clean, focused, breathing room
@@ -120,6 +141,16 @@ export default function Home() {
 
             {/* CTA buttons */}
             <div className="flex flex-wrap gap-3">
+              {anyLive && (
+                <button
+                  onClick={handleTuneIn}
+                  className="flex items-center gap-2.5 bg-red-600 hover:bg-red-500 text-white px-7 py-3 text-sm font-bold uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(209,0,0,0.5)] active:scale-95 animate-pulse"
+                  style={{ animationDuration: '2s' }}
+                >
+                  <span className="w-2 h-2 rounded-full bg-white" />
+                  🎙 Tune In — Live Now
+                </button>
+              )}
               <a
                 href="https://www.instagram.com/murdermittenmedia/"
                 target="_blank"
