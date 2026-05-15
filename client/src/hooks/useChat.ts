@@ -20,6 +20,7 @@ export interface WheelSpinState {
 
 export interface LiveReviewActiveItem {
   submissionId: number | null;
+  userId?: number | null;
   artistName?: string;
   songTitle?: string;
   audioUrl?: string | null;

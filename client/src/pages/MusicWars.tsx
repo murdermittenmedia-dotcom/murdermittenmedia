@@ -6,6 +6,7 @@
    ============================================================ */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
@@ -415,7 +416,7 @@ function SpinWheel({
 function ChatPanel({
   messages, isConnected, onSend, username,
 }: {
-  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; accountLabels?: string[] | null; createdAt: Date }>;
+  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; accountLabels?: string[] | null; userId?: number | null; createdAt: Date }>;
   isConnected: boolean;
   onSend: (msg: string) => void;
   username: string;
@@ -448,9 +449,13 @@ function ChatPanel({
           <div key={msg.id} className="flex gap-2 text-sm flex-wrap">
             <span className={`font-semibold flex-shrink-0 ${msg.isAdmin ? "text-red-400" : "text-white/70"}`}>
               {msg.isAdmin && "[ADMIN] "}
-              <ArtistStatModal artistName={msg.username}>
-                <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
-              </ArtistStatModal>
+              {msg.userId ? (
+                <Link href={`/profile/${msg.userId}`} className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</Link>
+              ) : (
+                <ArtistStatModal artistName={msg.username}>
+                  <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
+                </ArtistStatModal>
+              )}
               {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}:
             </span>
             <span className="text-white/80 break-words min-w-0">{msg.message}</span>

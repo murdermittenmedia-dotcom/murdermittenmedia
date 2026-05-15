@@ -6,6 +6,7 @@
            queue list, submit form, chat sidebar
    ============================================================ */
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Link } from "wouter";
 import { io } from "socket.io-client";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -75,7 +76,7 @@ function AdminPanel({
   refetch: () => void;
   audioRoom: ReturnType<typeof useAudioRoom>;
   videoRoom: ReturnType<typeof useVideoRoom>;
-  broadcastReviewActive: (item: { submissionId: number | null; artistName?: string; songTitle?: string; audioUrl?: string | null; youtubeUrl?: string | null; submissionType?: string; fileKey?: string | null; fileUrl?: string | null }) => void;
+  broadcastReviewActive: (item: { submissionId: number | null; userId?: number | null; artistName?: string; songTitle?: string; audioUrl?: string | null; youtubeUrl?: string | null; submissionType?: string; fileKey?: string | null; fileUrl?: string | null }) => void;
   broadcastRadioPause: (currentTime: number) => void;
   broadcastRadioResume: (currentTime: number) => void;
   broadcastRadioSeek: (currentTime: number) => void;
@@ -160,6 +161,7 @@ function AdminPanel({
         playTrack(sub);
         broadcastReviewActive({
           submissionId: sub.id,
+          userId: sub.userId ?? null,
           artistName: sub.artistName,
           songTitle: sub.songTitle,
           audioUrl: null,
@@ -189,6 +191,7 @@ function AdminPanel({
             playTrack(next);
             broadcastReviewActive({
               submissionId: next.id,
+              userId: next.userId ?? null,
               artistName: next.artistName,
               songTitle: next.songTitle,
               audioUrl: null,
@@ -578,6 +581,7 @@ function AdminPanel({
                         playTrack(sub);
                         broadcastReviewActive({
                           submissionId: sub.id,
+                          userId: sub.userId ?? null,
                           artistName: sub.artistName,
                           songTitle: sub.songTitle,
                           audioUrl: null,
@@ -1163,7 +1167,7 @@ export default function MusicReview() {
                 </div>
                 <div className="font-['Anton'] text-2xl md:text-3xl uppercase mb-0.5">{liveReviewActive.songTitle}</div>
                 <div className="text-white/60 text-sm mb-3">
-                  by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={null} />
+                  by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={liveReviewActive.userId ?? null} />
                 </div>
                 {liveReviewActive.audioUrl && !isAdmin && (
                   <div className="flex flex-col gap-3">
@@ -1580,9 +1584,13 @@ export default function MusicReview() {
                   <div key={msg.id} className="text-xs leading-relaxed">
                     <span className={`font-semibold ${msg.isAdmin ? "text-red-400" : "text-white/70"}`}>
                       {msg.isAdmin && <span className="text-red-500 text-[10px] font-bold uppercase mr-1">[HOST]</span>}
-                      <ArtistStatModal artistName={msg.username}>
-                        <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
-                      </ArtistStatModal>
+                      {msg.userId ? (
+                        <Link href={`/profile/${msg.userId}`} className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</Link>
+                      ) : (
+                        <ArtistStatModal artistName={msg.username}>
+                          <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
+                        </ArtistStatModal>
+                      )}
                       {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}
                       {msg.userId && <span className="ml-1"><UserBadges userId={msg.userId} size="xs" maxVisible={2} /></span>}
                       <span className="text-white/30">:</span>

@@ -144,6 +144,15 @@ function UsersTab() {
                   </div>
                 </div>
 
+                {/* View Profile link */}
+                <Link
+                  href={`/profile/${user.id}`}
+                  onClick={e => e.stopPropagation()}
+                  className="flex-shrink-0 text-xs text-red-400 hover:text-red-300 border border-red-600/30 hover:border-red-500/60 px-2.5 py-1 rounded transition-colors font-semibold uppercase tracking-wider"
+                >
+                  Profile
+                </Link>
+
                 {/* Expand */}
                 <div className="text-white/30">
                   {expandedUser === user.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
