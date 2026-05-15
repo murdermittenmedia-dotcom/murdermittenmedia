@@ -52,8 +52,10 @@ function isOurStream(track: { isStream?: boolean; sourcePage?: string } | null):
   return !!track?.isStream && track?.sourcePage === "Music Review";
 }
 
-export function useLivePlayer() {
+export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   const { play, pause, resume, stop, seek, track, onEnded } = useAudioPlayer();
+  const isAdminRef = useRef(isAdmin);
+  isAdminRef.current = isAdmin;
   // Keep refs so socket callbacks always see latest values without re-subscribing
   const playRef = useRef(play);
   const pauseRef = useRef(pause);
@@ -96,6 +98,8 @@ export function useLivePlayer() {
     socket.on("radio:state", (data: (LiveNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
       // Support both file and YouTube submissions
       if (!data || (!data.audioUrl && !data.youtubeUrl)) return;
+      // Admin already has the YouTube embed in the Now Playing card — skip FloatingPlayer for YT
+      if (isAdminRef.current && data.submissionType === "youtube") return;
       const t = buildTrack(data);
       playRef.current(t);
       // For file tracks, sync to current position after a short delay
@@ -119,6 +123,8 @@ export function useLivePlayer() {
         }
         return;
       }
+      // Admin already has the YouTube embed in the Now Playing card — skip FloatingPlayer for YT
+      if (isAdminRef.current && data.submissionType === "youtube") return;
       // Support both file and YouTube submissions
       if (data.audioUrl || data.youtubeUrl) {
         const t = buildTrack(data);

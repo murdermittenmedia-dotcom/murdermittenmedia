@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import FloatingPlayer from "./components/FloatingPlayer";
 import { useLivePlayer } from "./hooks/useLivePlayer";
+import { useAuth } from "./_core/hooks/useAuth";
 import { useWarsLivePlayer } from "./hooks/useWarsLivePlayer";
 import { usePageTracker } from "./hooks/usePageTracker";
 import Home from "./pages/Home";
@@ -79,7 +80,9 @@ function Router() {
 
 /** Mounts the live-player listeners inside AudioPlayerProvider context */
 function LivePlayerMount() {
-  useLivePlayer();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  useLivePlayer({ isAdmin });
   useWarsLivePlayer();
   return null;
 }

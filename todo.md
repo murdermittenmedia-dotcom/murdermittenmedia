@@ -983,3 +983,7 @@
 - [ ] Fix: YouTube video submissions break auto-advance (no onEnded fires for YouTube iframes)
 - [ ] Fix: YouTube video embed not auto-cleared/dismissed after track is marked reviewed
 - [ ] Fix: YouTube video not synced for viewers — each viewer plays independently out of sync
+
+## Music Review — YouTube Audio Issues (May 2026)
+- [ ] Fix: admin hears double audio when YouTube track plays (FloatingPlayer + Now Playing card embed both play simultaneously)
+- [ ] Fix: viewers cannot hear YouTube audio live like MP3 submissions — need server-side audio capture/relay or alternative sync approach

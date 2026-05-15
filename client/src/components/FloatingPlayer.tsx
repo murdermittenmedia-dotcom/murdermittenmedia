@@ -67,12 +67,16 @@ export default function FloatingPlayer() {
   // Whether the current live track is a YouTube submission
   const isYouTubeTrack = isLiveStream && !!track?.youtubeUrl;
   const [showYouTubeEmbed, setShowYouTubeEmbed] = useState(false);
+  // Whether the viewer has tapped to unlock YouTube audio (bypasses browser autoplay block)
+  const [ytUnlocked, setYtUnlocked] = useState(false);
   // Auto-show YouTube embed when a YouTube live track is loaded
   useEffect(() => {
     if (isYouTubeTrack) {
       setShowYouTubeEmbed(true);
+      setYtUnlocked(false); // reset unlock state for each new track
     } else {
       setShowYouTubeEmbed(false);
+      setYtUnlocked(false);
     }
   }, [isYouTubeTrack, track?.youtubeUrl]);
 
@@ -180,13 +184,30 @@ export default function FloatingPlayer() {
               </button>
             </div>
             <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-              <iframe
-                className="absolute inset-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={track.title}
-              />
+              {ytUnlocked ? (
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={track.title}
+                />
+              ) : (
+                /* Tap-to-watch overlay — required for browser autoplay with audio */
+                <button
+                  className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-black/90 hover:bg-black/70 transition-colors group cursor-pointer"
+                  onClick={() => setYtUnlocked(true)}
+                  aria-label="Tap to watch and listen"
+                >
+                  <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg">
+                    <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                  <span className="text-white text-xs font-bold uppercase tracking-widest">Tap to Watch &amp; Listen</span>
+                  <span className="text-white/40 text-[10px] mt-1">YouTube · Live Review</span>
+                </button>
+              )}
             </div>
           </div>
         );
