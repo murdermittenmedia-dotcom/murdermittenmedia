@@ -977,3 +977,9 @@
 
 ## Music Review — Auto-Advance Bug (May 2026)
 - [x] Fix: queue does not auto-play next song after current song finishes — moved onEnded handler into AdminPanel with proper tRPC mutations and auto-advance logic
+
+## Music Review — Auto-Advance Issues (May 2026 v2)
+- [ ] Fix: auto-advance uses original load order, not current drag-reordered queue position order
+- [ ] Fix: YouTube video submissions break auto-advance (no onEnded fires for YouTube iframes)
+- [ ] Fix: YouTube video embed not auto-cleared/dismissed after track is marked reviewed
+- [ ] Fix: YouTube video not synced for viewers — each viewer plays independently out of sync

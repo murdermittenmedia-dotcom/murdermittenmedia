@@ -140,9 +140,16 @@ function AdminPanel({
     toast.success(isLive ? "Stream ended" : "You're now live!");
   };
 
+  // YouTube timer: when a YouTube track is loaded, admin can manually skip or it stays until skipped
+  // We track whether the current playing track is a YouTube submission
+  const currentIsYouTube = currentPlaying?.submissionType === "youtube";
+
   const handleSetPlaying = async (id: number) => {
-    const sub = queue.find(s => s.id === id);
+    // Search localQueue first (respects drag order), fall back to full queue
+    const sub = localQueue.find(s => s.id === id) ?? queue.find(s => s.id === id);
     if (!sub) return;
+    // Clear any existing YouTube embed before loading new track
+    setSelectedYouTube(null);
     setPlaying.mutate({ submissionId: id }, {
       onSuccess: () => {
         playTrack(sub);
@@ -163,10 +170,13 @@ function AdminPanel({
     });
   };
 
-  const handleSkip = async () => {
-    if (!currentPlaying) return;
-    updateStatus.mutate({ id: currentPlaying.id, status: "reviewed" });
-    const next = queue.find(s => s.status === "pending" && s.id !== currentPlaying.id);
+  // Helper: advance to next track in localQueue order (respects drag reorder)
+  const advanceToNext = (skipId: number) => {
+    // Use localQueue order — this is the drag-reordered order
+    const pendingInOrder = localQueue.filter(s => s.status === "pending" && s.id !== skipId);
+    const next = pendingInOrder[0] ?? null;
+    // Clear YouTube embed
+    setSelectedYouTube(null);
     if (next) {
       setTimeout(() => {
         setPlaying.mutate({ submissionId: next.id }, {
@@ -183,14 +193,25 @@ function AdminPanel({
               fileUrl: next.fileUrl ?? null,
             });
             broadcastReviewQueueUpdated();
+            toast.success(`\u25b6 Auto-advancing to: ${next.songTitle}`);
           }
         });
-      }, 300);
+      }, 400);
     } else {
       setPlaying.mutate({ submissionId: null }, {
-        onSuccess: () => { broadcastReviewActive({ submissionId: null }); broadcastReviewQueueUpdated(); }
+        onSuccess: () => {
+          broadcastReviewActive({ submissionId: null });
+          broadcastReviewQueueUpdated();
+          toast("Queue finished \u2014 all tracks reviewed!");
+        }
       });
     }
+  };
+
+  const handleSkip = async () => {
+    if (!currentPlaying) return;
+    updateStatus.mutate({ id: currentPlaying.id, status: "reviewed" });
+    advanceToNext(currentPlaying.id);
     broadcastReviewPlayback({ action: "skip" });
     toast.success("Skipped to next track");
   };
@@ -200,54 +221,26 @@ function AdminPanel({
     toast.success("Removed from queue");
   };
 
-  // Auto-advance: when a track finishes, mark it reviewed and load the next one
+  // Auto-advance: when an audio track finishes, mark it reviewed and load the next one in localQueue order
   useEffect(() => {
     const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
-      const match = queue.find(
+      // Match against localQueue (drag-reordered) first, then full queue
+      const allPending = [...localQueue, ...queue];
+      const match = allPending.find(
         s => (s.status === "pending" || s.status === "playing") &&
           s.songTitle === finishedTrack.title &&
           s.artistName === finishedTrack.artist
       );
       if (!match) return;
-      // Mark finished song as reviewed, then load next
       updateStatus.mutate({ id: match.id, status: "reviewed" }, {
         onSuccess: () => {
           refetch();
-          const next = queue.find(s => s.status === "pending" && s.id !== match.id);
-          if (next) {
-            setTimeout(() => {
-              setPlaying.mutate({ submissionId: next.id }, {
-                onSuccess: () => {
-                  playTrack(next);
-                  broadcastReviewActive({
-                    submissionId: next.id,
-                    artistName: next.artistName,
-                    songTitle: next.songTitle,
-                    audioUrl: null,
-                    youtubeUrl: next.youtubeUrl ?? null,
-                    submissionType: next.submissionType,
-                    fileKey: next.fileKey ?? null,
-                    fileUrl: next.fileUrl ?? null,
-                  });
-                  broadcastReviewQueueUpdated();
-                  toast.success(`\u25b6 Auto-advancing to: ${next.songTitle}`);
-                }
-              });
-            }, 600);
-          } else {
-            setPlaying.mutate({ submissionId: null }, {
-              onSuccess: () => {
-                broadcastReviewActive({ submissionId: null });
-                broadcastReviewQueueUpdated();
-                toast("Queue finished \u2014 all tracks reviewed!");
-              }
-            });
-          }
+          advanceToNext(match.id);
         }
       });
     });
     return unsubscribe;
-  }, [audioPlayer, queue, updateStatus, setPlaying, playTrack, broadcastReviewActive, broadcastReviewQueueUpdated, refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [audioPlayer, localQueue, queue, updateStatus, advanceToNext, refetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="border border-red-600/40 bg-[#0d0000] rounded-sm mb-8">
@@ -406,41 +399,71 @@ function AdminPanel({
             </div>
             <div className="text-white font-semibold text-sm truncate mb-0.5">{currentPlaying.songTitle}</div>
             <div className="text-white/50 text-xs mb-3">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
-            {/* Transport controls */}
-            <div className="grid grid-cols-4 gap-1.5">
-              <button
-                onClick={() => { audioPlayer.pause(); broadcastRadioPause(audioPlayer.currentTime); }}
-                className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
-                title="Pause for all listeners"
-              >
-                <Pause className="w-3 h-3" />
-                Pause
-              </button>
-              <button
-                onClick={() => { audioPlayer.resume(); broadcastRadioResume(audioPlayer.currentTime); }}
-                className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
-                title="Resume for all listeners"
-              >
-                <Play className="w-3 h-3" />
-                Play
-              </button>
-              <button
-                onClick={() => { audioPlayer.seek(0); broadcastRadioSeek(0); }}
-                className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
-                title="Rewind to start"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Rewind
-              </button>
-              <button
-                onClick={handleSkip}
-                className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-[10px] uppercase tracking-wider transition-colors"
-                title="Skip to next track"
-              >
-                <SkipForward className="w-3 h-3" />
-                Skip
-              </button>
-            </div>
+            {/* Transport controls — YouTube vs audio */}
+            {currentIsYouTube ? (
+              <div className="space-y-2">
+                <div className="border border-orange-500/30 bg-orange-500/5 p-2 text-[10px] text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ExternalLink className="w-3 h-3" />
+                  YouTube track — viewers watch on their own. Hit Done when finished.
+                </div>
+                {currentPlaying.youtubeUrl && (() => {
+                  const ytId = extractYouTubeId(currentPlaying.youtubeUrl!);
+                  return ytId ? (
+                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
+                        className="absolute inset-0 w-full h-full border border-white/10"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={currentPlaying.songTitle}
+                      />
+                    </div>
+                  ) : null;
+                })()}
+                <button
+                  onClick={handleSkip}
+                  className="w-full flex items-center justify-center gap-1.5 border border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Done — Skip to Next Track
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-1.5">
+                <button
+                  onClick={() => { audioPlayer.pause(); broadcastRadioPause(audioPlayer.currentTime); }}
+                  className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
+                  title="Pause for all listeners"
+                >
+                  <Pause className="w-3 h-3" />
+                  Pause
+                </button>
+                <button
+                  onClick={() => { audioPlayer.resume(); broadcastRadioResume(audioPlayer.currentTime); }}
+                  className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
+                  title="Resume for all listeners"
+                >
+                  <Play className="w-3 h-3" />
+                  Play
+                </button>
+                <button
+                  onClick={() => { audioPlayer.seek(0); broadcastRadioSeek(0); }}
+                  className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
+                  title="Rewind to start"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Rewind
+                </button>
+                <button
+                  onClick={handleSkip}
+                  className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-[10px] uppercase tracking-wider transition-colors"
+                  title="Skip to next track"
+                >
+                  <SkipForward className="w-3 h-3" />
+                  Skip
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="border border-white/10 bg-white/[0.02] p-3 text-center">
