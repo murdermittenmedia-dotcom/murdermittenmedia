@@ -1849,10 +1849,10 @@ export const appRouter = router({
   // -- Daily Prize Wheel ------------------------------------------
   dailyWheel: router({
     // Prize definitions with weighted odds
-    // Weights sum to 100 for easy percentage reading
-    // Prizes: free_story_post(20), bogo_permanent(15), free_page_post(4),
-    //         line_skip(10), promo_20off(20), promo_10off(25), unlimited_promo(1), try_again(5)
-    // Note: try_again weight is 5 but displayed as 25% — the extra weight is split from promo_10off
+    // Weights (out of 1000 for fine-grained control)
+    // Coupons dominate: promo_10off(450) + promo_20off(350) = 80%
+    // try_again: 130 (13%), line_skip: 30 (3%), free_story_post: 20 (2%),
+    // free_page_post: 10 (1%), bogo_permanent: 9 (0.9%), unlimited_promo: 1 (0.1%)
 
     // Get today's spin status for the logged-in user
     getMyStatus: protectedProcedure.query(async ({ ctx }) => {
@@ -1872,16 +1872,16 @@ export const appRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "You already spun today! Come back tomorrow." });
       }
 
-      // Prize table — key, label, weight (out of 100)
+      // Prize table — key, label, weight (out of 1000)
       const PRIZES = [
-        { key: "free_story_post",   label: "Free Story Post",              weight: 20 },
-        { key: "bogo_permanent",    label: "BOGO Permanent Post",          weight: 15 },
-        { key: "free_page_post",    label: "Free Page Post",               weight: 4  },
-        { key: "line_skip",         label: "Music Review Line Skip",       weight: 10 },
-        { key: "promo_20off",       label: "20% Off Promo",                weight: 20 },
-        { key: "promo_10off",       label: "10% Off Promo",                weight: 25 },
-        { key: "unlimited_promo",   label: "1-Month Unlimited Promo",      weight: 1  },
-        { key: "try_again",         label: "Try Again Tomorrow",           weight: 5  },
+        { key: "promo_10off",       label: "10% Off Promo",                weight: 450 },
+        { key: "promo_20off",       label: "20% Off Promo",                weight: 350 },
+        { key: "try_again",         label: "Try Again Tomorrow",           weight: 130 },
+        { key: "line_skip",         label: "Music Review Line Skip",       weight: 30  },
+        { key: "free_story_post",   label: "Free Story Post",              weight: 20  },
+        { key: "free_page_post",    label: "Free Page Post",               weight: 10  },
+        { key: "bogo_permanent",    label: "BOGO Permanent Post",          weight: 9   },
+        { key: "unlimited_promo",   label: "1-Month Unlimited Promo",      weight: 1   },
       ];
 
       // Weighted random selection
