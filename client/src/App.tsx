@@ -28,6 +28,7 @@ import AdminPanel from "./pages/AdminPanel";
 import AdminSiteStats from "./pages/AdminSiteStats";
 import Banned from "./pages/Banned";
 import WheelOfNames from "./pages/WheelOfNames";
+import HowItWorks from "./pages/HowItWorks";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 function Router() {
@@ -45,6 +46,10 @@ function Router() {
 
       {/* Daily Free Promo Wheel */}
       <Route path={"/daily-wheel"} component={WheelOfNames} />
+      <Route path={"/wheel"} component={WheelOfNames} />
+
+      {/* XP & Tiers explainer */}
+      <Route path={"/how-it-works"} component={HowItWorks} />
 
       {/* User profile */}
       <Route path={"/profile"} component={UserProfile} />

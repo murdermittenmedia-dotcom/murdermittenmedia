@@ -32,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/forum",             label: "Forum",                                icon: MessageSquare                 },
   { href: "/explore",           label: "Explore",                              icon: Search                        },
   { href: "/leaderboard",       label: "Leaderboards",                         icon: Trophy                        },
+  { href: "/how-it-works",      label: "XP & Tiers",                           icon: Zap                           },
 ];
 
 // Desktop primary (visible without More dropdown)
