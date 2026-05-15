@@ -1175,41 +1175,46 @@ export default function MusicReview() {
                     {!audioPlayer.isPlaying ? (
                       <button
                         onClick={() => {
-                          // Start playback immediately (required by browser autoplay policy)
-                          audioPlayer.unlockAndPlay({
+                          const track = {
                             url: liveReviewActive.audioUrl!,
                             title: liveReviewActive.songTitle ?? 'Live Track',
                             artist: liveReviewActive.artistName ?? 'Murder Mitten Media',
                             artworkUrl: LOGO,
-                            isStream: true, // mark as live stream so viewer controls are hidden
+                            isStream: true,
                             submissionId: liveReviewActive.submissionId ?? undefined,
                             sourcePage: 'Music Review',
                             sourceUrl: '/review',
-                          });
-                          // Request current radio state and sync to admin's position
+                          };
+                          // Request current radio state to sync to admin's exact position
                           const socket = io(window.location.origin, {
                             path: "/api/socket.io",
                             query: { room: "global" },
                           });
-                          socket.on("connect", () => {
-                            socket.emit("radio:get_state");
-                          });
+                          let responded = false;
+                          socket.on("connect", () => socket.emit("radio:get_state"));
                           socket.on("radio:state", (data: any) => {
-                            if (!data || data.submissionId !== liveReviewActive.submissionId) {
-                              socket.disconnect();
-                              return;
-                            }
-                            // Sync to admin's current position after a short delay
-                            if (data.currentTime > 1) {
-                              setTimeout(() => {
-                                audioPlayer.seek(data.currentTime);
-                                if (data.pausedAt !== null) {
-                                  audioPlayer.pause();
-                                }
-                              }, 300);
-                            }
+                            if (responded) return;
+                            responded = true;
                             socket.disconnect();
+                            const seekTo = data?.currentTime ?? 0;
+                            if (seekTo > 1) {
+                              // playWithSeek: starts audio and seeks to admin's position on canplay
+                              audioPlayer.playWithSeek(track, seekTo);
+                              if (data?.pausedAt !== null && data?.pausedAt !== undefined) {
+                                setTimeout(() => audioPlayer.pause(), 500);
+                              }
+                            } else {
+                              audioPlayer.play(track);
+                            }
                           });
+                          // Fallback: if no response in 1.5s, play from start
+                          setTimeout(() => {
+                            if (!responded) {
+                              responded = true;
+                              socket.disconnect();
+                              audioPlayer.play(track);
+                            }
+                          }, 1500);
                         }}
                         className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-500 active:scale-95 text-white py-4 text-base font-bold uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(209,0,0,0.5)]"
                       >

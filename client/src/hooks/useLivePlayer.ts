@@ -53,11 +53,12 @@ function isOurStream(track: { isStream?: boolean; sourcePage?: string } | null):
 }
 
 export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
-  const { play, pause, resume, stop, seek, track, onEnded } = useAudioPlayer();
+  const { play, playWithSeek, pause, resume, stop, seek, track, onEnded } = useAudioPlayer();
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
   // Keep refs so socket callbacks always see latest values without re-subscribing
   const playRef = useRef(play);
+  const playWithSeekRef = useRef(playWithSeek);
   const pauseRef = useRef(pause);
   const resumeRef = useRef(resume);
   const stopRef = useRef(stop);
@@ -65,6 +66,7 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   const trackRef = useRef(track);
   const socketRef = useRef<Socket | null>(null);
   playRef.current = play;
+  playWithSeekRef.current = playWithSeek;
   pauseRef.current = pause;
   resumeRef.current = resume;
   stopRef.current = stop;
@@ -96,15 +98,15 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
       // Admin already has the YouTube embed in the Now Playing card — skip FloatingPlayer for YT
       if (isAdminRef.current && data.submissionType === "youtube") return;
       const t = buildTrack(data);
-      playRef.current(t);
-      // For file tracks, sync to current position after a short delay
+      // Use playWithSeek for file tracks — seeks to admin's position on canplay (reliable)
       if (data.submissionType !== "youtube" && data.currentTime > 1) {
-        setTimeout(() => {
-          seekRef.current(data.currentTime);
-          if (data.pausedAt !== null) {
-            pauseRef.current();
-          }
-        }, 800);
+        playWithSeekRef.current(t, data.currentTime);
+        // If admin was paused, pause after a short delay to let the seek settle
+        if (data.pausedAt !== null) {
+          setTimeout(() => pauseRef.current(), 500);
+        }
+      } else {
+        playRef.current(t);
       }
     });
 
@@ -123,13 +125,16 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
       // Support both file and YouTube submissions
       if (data.audioUrl || data.youtubeUrl) {
         const t = buildTrack(data);
-        playRef.current(t);
-        // For file tracks, sync to current position if track already started
+        // For file tracks, sync to current position reliably via playWithSeek
         if (data.submissionType !== "youtube" && data.startedAt) {
           const elapsed = (Date.now() - data.startedAt) / 1000;
           if (elapsed > 1) {
-            setTimeout(() => seekRef.current(elapsed), 800);
+            playWithSeekRef.current(t, elapsed);
+          } else {
+            playRef.current(t);
           }
+        } else {
+          playRef.current(t);
         }
       }
     });

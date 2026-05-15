@@ -5,6 +5,7 @@
  */
 import { useLiveStatus } from "@/hooks/useLiveStatus";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { io } from "socket.io-client";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -17,7 +18,7 @@ interface LiveRadioBannerProps {
 
 export function LiveRadioBanner({ filter, className = "" }: LiveRadioBannerProps) {
   const { reviewIsLive, reviewStreamUrl, warsIsLive, warsStreamUrl } = useLiveStatus();
-  const { play } = useAudioPlayer();
+  const { play, playWithSeek } = useAudioPlayer();
 
   // Determine which stream to show
   const showReview = !filter || filter === "review";
@@ -35,16 +36,40 @@ export function LiveRadioBanner({ filter, className = "" }: LiveRadioBannerProps
   const streamUrl = isReview ? reviewStreamUrl : warsStreamUrl;
 
   const handleTuneIn = () => {
-    if (streamUrl) {
-      play({
-        url: streamUrl,
-        title: `${label} — Live Radio`,
-        artist: "Murder Mitten Media",
-        artworkUrl: LOGO,
-        isStream: true,
-        sourcePage: isReview ? "Music Review" : "Music Wars",
-        sourceUrl: href,
+    const track = {
+      url: streamUrl ?? "",
+      title: `${label} — Live Radio`,
+      artist: "Murder Mitten Media",
+      artworkUrl: LOGO,
+      isStream: true,
+      sourcePage: isReview ? "Music Review" : "Music Wars",
+      sourceUrl: href,
+    };
+    if (isReview && streamUrl) {
+      // Request current radio state to sync to admin's position
+      const socket = io(window.location.origin, {
+        path: "/api/socket.io",
+        query: { room: "global" },
       });
+      socket.on("connect", () => socket.emit("radio:get_state"));
+      socket.on("radio:state", (data: { currentTime?: number; pausedAt?: number | null } | null) => {
+        socket.disconnect();
+        const seekTo = data?.currentTime ?? 0;
+        if (seekTo > 1) {
+          playWithSeek(track, seekTo);
+        } else {
+          play(track);
+        }
+      });
+      // Fallback: if socket doesn't respond in 1.5s, play from current position
+      setTimeout(() => {
+        if (socket.connected) {
+          socket.disconnect();
+          play(track);
+        }
+      }, 1500);
+    } else if (streamUrl) {
+      play(track);
     }
     window.location.href = href;
   };

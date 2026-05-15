@@ -65,6 +65,11 @@ type AudioPlayerContextType = AudioPlayerState & {
   /** iOS-safe play: call synchronously in a user gesture. Sets src and plays immediately. */
   unlockAndPlay: (track: AudioTrack) => void;
   /**
+   * Play a track and seek to a specific position once the audio is ready.
+   * Use this for live radio tune-in so the viewer joins at the admin's current position.
+   */
+  playWithSeek: (track: AudioTrack, seekTo: number) => void;
+  /**
    * iOS-safe deferred play: call synchronously in a user gesture.
    * Immediately unlocks audio with a silent data URI, then swaps to the real URL
    * once it's resolved. Use this when you need to await URL resolution.
@@ -468,9 +473,68 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const seek = useCallback((time: number) => {
-    if (audioRef.current && isFinite(audioRef.current.duration)) {
-      audioRef.current.currentTime = time;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isFinite(audio.duration) && audio.duration > 0) {
+      // Audio metadata already loaded — seek immediately
+      audio.currentTime = Math.min(time, audio.duration - 0.5);
+    } else {
+      // Audio not ready yet — seek once metadata is available
+      const onSeeked = () => {
+        audio.removeEventListener('loadedmetadata', onSeeked);
+        audio.removeEventListener('canplay', onSeeked);
+        if (isFinite(audio.duration) && audio.duration > 0) {
+          audio.currentTime = Math.min(time, audio.duration - 0.5);
+        }
+      };
+      audio.addEventListener('loadedmetadata', onSeeked, { once: true });
+      audio.addEventListener('canplay', onSeeked, { once: true });
     }
+  }, []);
+
+  /**
+   * Play a track and seek to a specific position once the audio is ready.
+   * More reliable than calling play() then seek() with a timeout,
+   * because it waits for the canplay event before seeking.
+   */
+  const playWithSeek = useCallback((track: AudioTrack, seekTo: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    // For YouTube tracks — just play, no seek needed (handled by SyncedYouTubePlayer)
+    if (track.submissionType === 'youtube' || (!track.url && track.youtubeUrl)) {
+      setState(s => ({ ...s, track, playlist: [track], playlistIndex: 0, isLoading: false, isPlaying: true, error: null, currentTime: 0, duration: 0 }));
+      audio.pause();
+      return;
+    }
+    setState(s => ({ ...s, track, playlist: [track], playlistIndex: 0, isLoading: true, error: null, currentTime: 0, duration: 0 }));
+    audio.pause();
+    audio.src = track.url;
+    audio.load();
+    // Seek to the target position once the audio is ready
+    const doSeek = () => {
+      if (isFinite(audio.duration) && audio.duration > 0 && seekTo > 0) {
+        audio.currentTime = Math.min(seekTo, audio.duration - 0.5);
+      }
+    };
+    const onReady = () => {
+      audio.removeEventListener('canplay', onReady);
+      doSeek();
+      audio.play().catch(err => {
+        if (err?.name !== 'AbortError') {
+          console.error('[AudioPlayer] playWithSeek play error:', err);
+          setState(s => ({ ...s, isLoading: false, error: 'Playback failed' }));
+        }
+      });
+    };
+    audio.addEventListener('canplay', onReady, { once: true });
+    // Fallback: if canplay doesn't fire within 3s, play anyway
+    const fallback = setTimeout(() => {
+      audio.removeEventListener('canplay', onReady);
+      doSeek();
+      audio.play().catch(console.error);
+    }, 3000);
+    // Clean up fallback if canplay fires first
+    audio.addEventListener('canplay', () => clearTimeout(fallback), { once: true });
   }, []);
 
   // Register a callback to fire when any track ends
@@ -480,7 +544,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, onEnded, unlockAndPlay, unlockThenSwap, localMuteStream, localUnmuteStream, getAudioElement: () => audioRef.current }}>
+    <AudioPlayerContext.Provider value={{ ...state, play, playPlaylist, pause, resume, stop, next, prev, setVolume, seek, playWithSeek, onEnded, unlockAndPlay, unlockThenSwap, localMuteStream, localUnmuteStream, getAudioElement: () => audioRef.current }}>
       {children}
     </AudioPlayerContext.Provider>
   );
