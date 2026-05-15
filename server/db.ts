@@ -156,6 +156,13 @@ export async function addSubmission(data: InsertReviewSubmission) {
 export async function updateSubmissionStatus(id: number, status: "pending" | "playing" | "reviewed" | "removed") {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  // When marking a song as playing, first reset any other songs currently marked as playing back to pending.
+  // This prevents multiple songs from showing a LIVE badge simultaneously.
+  if (status === "playing") {
+    await db.update(reviewSubmissions)
+      .set({ status: "pending" })
+      .where(and(eq(reviewSubmissions.status, "playing"), ne(reviewSubmissions.id, id)));
+  }
   return db.update(reviewSubmissions).set({ status }).where(eq(reviewSubmissions.id, id));
 }
 

@@ -970,3 +970,7 @@
 - [x] Admin panel: "Reward Logs" tab — audit trail of all unlock/grant/revoke events
 - [x] Admin panel: XP override form — set user XP directly with reason note
 - [x] Admin panel: badge assign form — pick badge type + rarity, assign to user
+
+## Music Review — Multiple LIVE Badge Bug (May 2026)
+- [x] Fix: multiple queue items show LIVE badge simultaneously — only the currently playing submission should show LIVE
+- [x] Root cause: updateSubmissionStatus never reset previous 'playing' rows — fixed by resetting all other 'playing' rows to 'pending' before setting new one; also ran DB cleanup to fix existing stuck rows
