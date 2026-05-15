@@ -6,6 +6,7 @@
            queue list, submit form, chat sidebar
    ============================================================ */
 import { useState, useRef, useEffect, useCallback } from "react";
+import { io } from "socket.io-client";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
@@ -1174,15 +1175,40 @@ export default function MusicReview() {
                     {!audioPlayer.isPlaying ? (
                       <button
                         onClick={() => {
+                          // Start playback immediately (required by browser autoplay policy)
                           audioPlayer.unlockAndPlay({
                             url: liveReviewActive.audioUrl!,
                             title: liveReviewActive.songTitle ?? 'Live Track',
                             artist: liveReviewActive.artistName ?? 'Murder Mitten Media',
                             artworkUrl: LOGO,
-                            isStream: false,
+                            isStream: true, // mark as live stream so viewer controls are hidden
                             submissionId: liveReviewActive.submissionId ?? undefined,
                             sourcePage: 'Music Review',
                             sourceUrl: '/review',
+                          });
+                          // Request current radio state and sync to admin's position
+                          const socket = io(window.location.origin, {
+                            path: "/api/socket.io",
+                            query: { room: "global" },
+                          });
+                          socket.on("connect", () => {
+                            socket.emit("radio:get_state");
+                          });
+                          socket.on("radio:state", (data: any) => {
+                            if (!data || data.submissionId !== liveReviewActive.submissionId) {
+                              socket.disconnect();
+                              return;
+                            }
+                            // Sync to admin's current position after a short delay
+                            if (data.currentTime > 1) {
+                              setTimeout(() => {
+                                audioPlayer.seek(data.currentTime);
+                                if (data.pausedAt !== null) {
+                                  audioPlayer.pause();
+                                }
+                              }, 300);
+                            }
+                            socket.disconnect();
                           });
                         }}
                         className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-500 active:scale-95 text-white py-4 text-base font-bold uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(209,0,0,0.5)]"
