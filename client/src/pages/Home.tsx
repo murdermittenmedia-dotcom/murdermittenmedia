@@ -71,6 +71,27 @@ export default function Home() {
   const { reviewIsLive, reviewStreamUrl, warsIsLive, warsStreamUrl, anyLive } = useLiveStatus();
   const { play: playAudio } = useAudioPlayer();
 
+  // Set page title and meta tags for SEO
+  useEffect(() => {
+    document.title = "Murder Mitten Media - Detroit Rap, Culture & Viral Content";
+    // Set keywords meta tag
+    let keywordsMeta = document.querySelector('meta[name="keywords"]');
+    if (!keywordsMeta) {
+      keywordsMeta = document.createElement('meta');
+      keywordsMeta.setAttribute('name', 'keywords');
+      document.head.appendChild(keywordsMeta);
+    }
+    keywordsMeta.setAttribute('content', 'Detroit rap, hip-hop, music reviews, viral content, Michigan artists, music wars, live radio, hip hop culture');
+    // Set description meta tag
+    let descriptionMeta = document.querySelector('meta[name="description"]');
+    if (!descriptionMeta) {
+      descriptionMeta = document.createElement('meta');
+      descriptionMeta.setAttribute('name', 'description');
+      document.head.appendChild(descriptionMeta);
+    }
+    descriptionMeta.setAttribute('content', 'Murder Mitten Media covers Detroit rap, hip-hop culture, viral content, and emerging artists. Live music reviews, battles, and exclusive interviews.');
+  }, []);
+
   const handleTuneIn = () => {
     const isReview = reviewIsLive;
     const streamUrl = isReview ? reviewStreamUrl : warsStreamUrl;
@@ -308,7 +329,7 @@ export default function Home() {
                   >
                     <img
                       src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`}
-                      alt={`CEO Stew video ${i + 1}`}
+                      alt={`CEO Stew - Artist of the Week video ${i + 1}`}
                       className="w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                     />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
