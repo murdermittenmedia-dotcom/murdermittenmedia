@@ -1873,15 +1873,16 @@ export const appRouter = router({
       }
 
       // Prize table — key, label, weight (out of 1000)
+      // MUST match client PRIZES array order in WheelOfNames.tsx
       const PRIZES = [
-        { key: "promo_10off",       label: "10% Off Promo",                weight: 450 },
-        { key: "promo_20off",       label: "20% Off Promo",                weight: 350 },
-        { key: "try_again",         label: "Try Again Tomorrow",           weight: 130 },
-        { key: "line_skip",         label: "Music Review Line Skip",       weight: 30  },
         { key: "free_story_post",   label: "Free Story Post",              weight: 20  },
-        { key: "free_page_post",    label: "Free Page Post",               weight: 10  },
         { key: "bogo_permanent",    label: "BOGO Permanent Post",          weight: 9   },
+        { key: "free_page_post",    label: "Free Page Post",               weight: 10  },
+        { key: "line_skip",         label: "Music Review Line Skip",       weight: 30  },
+        { key: "promo_20off",       label: "20% Off Promo",                weight: 350 },
+        { key: "promo_10off",       label: "10% Off Promo",                weight: 450 },
         { key: "unlimited_promo",   label: "1-Month Unlimited Promo",      weight: 1   },
+        { key: "try_again",         label: "Try Again Tomorrow",           weight: 130 },
       ];
 
       // Weighted random selection
