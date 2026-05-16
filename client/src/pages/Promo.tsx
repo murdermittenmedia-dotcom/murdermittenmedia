@@ -116,7 +116,7 @@ export default function Promo() {
             <img src="/manus-storage/mmm_logo_8689da6b.png" alt="Murder Mitten Media Logo" className="w-24 h-24 rounded-full object-cover border-2 border-red-600/50 shadow-[0_0_30px_rgba(209,0,0,0.3)]" />
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-              <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">Detroit, MI · Est. 2022</span>
+              <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">The Mitten · Est. 2022</span>
             </div>
           </div>
           <h1 className="font-['Anton'] text-6xl md:text-8xl uppercase mb-4">
@@ -126,7 +126,7 @@ export default function Promo() {
             Reach <span className="text-white font-semibold">45,000+ followers</span> and <span className="text-white font-semibold">4.5M+ monthly views</span> on Murder Mitten Media -- Michigan's #1 rap & culture platform.
           </p>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-white/40">
-            <span>📍 Detroit, MI</span>
+            <span>📍 The Mitten</span>
             <span>🎤 Michigan Rap & Culture</span>
             <span>📈 4.5M Monthly Views</span>
             <span>👥 45.8K Followers</span>
@@ -310,7 +310,7 @@ export default function Promo() {
             </span>
           </a>
           <div className="text-white/30 text-xs text-center">
-            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
+            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · The Mitten
           </div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>

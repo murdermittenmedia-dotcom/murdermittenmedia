@@ -121,7 +121,7 @@ export default function Home() {
       <section
         className="relative min-h-screen flex items-center"
         style={{
-          backgroundImage: `url(https://d2xsxph8kpxj0f.cloudfront.net/310519663536856749/C3bFVoBEaMVXmYZLRysziz/mmm_hero_bg-66MWLcQYqB72u822gRXedg.webp)`,
+          backgroundImage: `url(https://d2xsxph8kpxj0f.cloudfront.net/310519663536856749/C3bFVoBEaMVXmYZLRysziz/michigan_map_bg-krHiyyxiYSMDWbGnE9vT6Z.webp)`,
           backgroundSize: "cover",
           backgroundPosition: "center top",
         }}
@@ -136,7 +136,7 @@ export default function Home() {
             {/* Origin tag */}
             <div className="flex items-center gap-2 mb-8">
               <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-              <span className="text-white/40 text-xs uppercase tracking-[0.25em]">Detroit, MI · Est. 2022</span>
+              <span className="text-white/40 text-xs uppercase tracking-[0.25em]">The Mitten · Est. 2022</span>
             </div>
 
             {/* Logo + Name */}
@@ -356,7 +356,7 @@ export default function Home() {
                 This week we put the spotlight on him.
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
-                {["Detroit", "Money Bag Boys", "Eastside", "Michigan Rap"].map(tag => (
+                {["The Mitten", "Money Bag Boys", "Eastside", "Michigan Rap"].map(tag => (
                   <span key={tag} className="text-xs border border-white/10 text-white/30 px-3 py-1 uppercase tracking-wider">
                     {tag}
                   </span>
@@ -563,7 +563,7 @@ export default function Home() {
             </span>
           </div>
           <div className="text-white/20 text-xs text-center">
-            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI · All Rights Reserved
+            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · The Mitten · All Rights Reserved
           </div>
           <div className="flex items-center gap-5 text-xs text-white/25 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">IG</a>

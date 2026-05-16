@@ -14,7 +14,7 @@ const ARTIST = {
   name: "CEO Stew",
   aka: "Stewop",
   group: "Money Bag Boys (MBB)",
-  location: "Eastside Detroit, MI",
+  location: "Eastside The Mitten",
   instagram: "https://www.instagram.com/ceo.stew/",
   tiktok: "https://www.tiktok.com/@stewopmbb",
   youtube: "https://www.youtube.com/@moneybagboys_co",
@@ -441,7 +441,7 @@ export default function ArtistOfWeek() {
             </span>
           </a>
           <div className="text-white/30 text-xs text-center">
-            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI
+            © 2022-{new Date().getFullYear()} Murder Mitten Media ™ · The Mitten
           </div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">IG</a>

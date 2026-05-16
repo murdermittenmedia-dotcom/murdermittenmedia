@@ -82,7 +82,7 @@ export default function MurderMittenMic() {
         <div className="container relative z-10">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-            <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">Live Performances · Detroit, MI</span>
+            <span className="text-xs text-red-500 uppercase tracking-[0.3em] font-semibold">Live Performances · The Mitten</span>
           </div>
           <h1 className="font-['Anton'] text-6xl md:text-8xl uppercase mb-4">
             MURDER MITTEN <span className="text-red-600">MIC</span>
@@ -155,7 +155,7 @@ export default function MurderMittenMic() {
               MURDER MITTEN <span className="text-red-600">MEDIA</span>
             </span>
           </a>
-          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Detroit, MI</div>
+          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · The Mitten</div>
           <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YouTube</a>
