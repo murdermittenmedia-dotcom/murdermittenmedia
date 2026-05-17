@@ -4,6 +4,8 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
+import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
@@ -1002,6 +1004,38 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await setAccountLabelsAdmin(input.userId, input.labels);
         return { success: true };
+      }),
+
+    // Admin: modify any user's stats (full control)
+    modifyStats: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        artistXP: z.number().optional(),
+        fanXP: z.number().optional(),
+        battleWins: z.number().optional(),
+        battleLosses: z.number().optional(),
+        fireVotes: z.number().optional(),
+        trashVotes: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        
+        const updates = {};
+        if (input.artistXP !== undefined) updates.artistXP = input.artistXP;
+        if (input.fanXP !== undefined) updates.fanXP = input.fanXP;
+        if (input.battleWins !== undefined) updates.battleWins = input.battleWins;
+        if (input.battleLosses !== undefined) updates.battleLosses = input.battleLosses;
+        if (input.fireVotes !== undefined) updates.fireVotes = input.fireVotes;
+        if (input.trashVotes !== undefined) updates.trashVotes = input.trashVotes;
+        
+        if (Object.keys(updates).length === 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'No stats to modify' });
+        }
+        
+        await db.update(users).set(updates).where(eq(users.id, input.userId));
+        
+        return { success: true, modified: Object.keys(updates) };
       }),
   }),
 
