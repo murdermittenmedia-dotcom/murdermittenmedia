@@ -778,12 +778,30 @@ export default function MusicReview() {
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 5000 });
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
 
+  const [limitReachedData, setLimitReachedData] = useState<{ upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
+  
   const submitMutation = trpc.queue.submit.useMutation({
-    onSuccess: () => { setSubmitted(true); setSubmitting(false); refetch(); },
+    onSuccess: (data) => {
+      if (!data.success && data.limitReached) {
+        setLimitReachedData(data as any);
+        setSubmitting(false);
+        toast.error(data.message);
+      } else {
+        setSubmitted(true); setSubmitting(false); refetch();
+      }
+    },
     onError: (err) => { toast.error("Submission failed: " + err.message); setSubmitting(false); },
   });
   const uploadAudioMutation = trpc.queue.uploadAudio.useMutation({
-    onSuccess: () => { setSubmitted(true); setSubmitting(false); refetch(); },
+    onSuccess: (data) => {
+      if (!data.success && data.limitReached) {
+        setLimitReachedData(data as any);
+        setSubmitting(false);
+        toast.error(data.message);
+      } else {
+        setSubmitted(true); setSubmitting(false); refetch();
+      }
+    },
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
   });
   const reactMutation = trpc.queue.react.useMutation({
@@ -1531,6 +1549,35 @@ export default function MusicReview() {
                     )}
                   </form>
                 )}
+              </div>
+            )}
+
+            {/* ── LIMIT REACHED MODAL ── */}
+            {limitReachedData && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <div className="bg-[#1a1a1a] border border-red-600/50 rounded-lg p-8 max-w-md w-full">
+                  <h2 className="font-['Anton'] text-3xl text-red-600 mb-4 uppercase">Max Submissions Reached</h2>
+                  <p className="text-white/70 mb-6">You've reached your limit of 2 active submissions. Upgrade to submit more songs.</p>
+                  
+                  <div className="space-y-3 mb-6">
+                    {limitReachedData.upgradeOptions.map((opt) => (
+                      <button
+                        key={opt.type}
+                        onClick={() => { window.location.href = `/promo?upgrade=${opt.type}`; }}
+                        className="w-full border border-red-600 hover:bg-red-600/20 text-white py-3 px-4 rounded transition-all text-sm font-semibold uppercase tracking-widest"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => setLimitReachedData(null)}
+                    className="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded transition-all text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             )}
 
