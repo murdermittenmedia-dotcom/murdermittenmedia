@@ -29,6 +29,7 @@ import {
   userBadges,
   xpEvents,
   rewardLogs,
+  lineSkipCredits,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1708,4 +1709,48 @@ export async function getUserSpinHistory(userId: number): Promise<DailySpin[]> {
     .where(eq(dailySpins.userId, userId))
     .orderBy(desc(dailySpins.createdAt))
     .limit(100);
+}
+
+
+/** Get user's current line skip credits. */
+export async function getUserLineSkipCredits(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const [row] = await db.select({ credits: lineSkipCredits.credits })
+    .from(lineSkipCredits)
+    .where(eq(lineSkipCredits.userId, userId));
+  return row?.credits ?? 0;
+}
+
+/** Grant line skip credits to a user (from Daily Wheel prize). */
+export async function grantLineSkipCredits(userId: number, amount: number = 1): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Upsert: if user exists, increment; if not, create with amount
+  const existing = await db.select().from(lineSkipCredits)
+    .where(eq(lineSkipCredits.userId, userId));
+  
+  if (existing.length > 0) {
+    await db.update(lineSkipCredits)
+      .set({ credits: sql`credits + ${amount}` })
+      .where(eq(lineSkipCredits.userId, userId));
+  } else {
+    await db.insert(lineSkipCredits).values({ userId, credits: amount });
+  }
+}
+
+/** Use one line skip credit (apply to submission). */
+export async function useLineSkipCredit(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const current = await getUserLineSkipCredits(userId);
+  if (current <= 0) return false;
+  
+  await db.update(lineSkipCredits)
+    .set({ credits: sql`credits - 1` })
+    .where(eq(lineSkipCredits.userId, userId));
+  
+  return true;
 }

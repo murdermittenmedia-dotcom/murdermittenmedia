@@ -46,6 +46,7 @@ import {
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
   getDb,
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
+  getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
 } from "./db";
 import { users } from "../drizzle/schema";
 import { desc as drizzleDesc, sql } from "drizzle-orm";
@@ -1896,7 +1897,13 @@ export const appRouter = router({
       const prize = PRIZES[prizeIndex];
 
       // Record the spin
+      // Record the spin
       await recordDailySpin(ctx.user.id, prize.key, prize.label);
+
+      // Grant line skip credit if prize is line_skip
+      if (prize.key === 'line_skip') {
+        await grantLineSkipCredits(ctx.user.id, 1);
+      }
 
       // Notify owner
       try {
@@ -1923,6 +1930,30 @@ export const appRouter = router({
       .input(z.object({ userId: z.number() }))
       .query(async ({ input }) => {
         return getUserSpinHistory(input.userId);
+      }),
+
+    // Get user's current line skip credits
+    getMyLineSkipCredits: protectedProcedure.query(async ({ ctx }) => {
+      return getUserLineSkipCredits(ctx.user.id);
+    }),
+
+    // Use one line skip credit on a submission
+    useLineSkip: protectedProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const credits = await getUserLineSkipCredits(ctx.user.id);
+        if (credits <= 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'No line skip credits available' });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [sub] = await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, input.submissionId));
+        if (!sub) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (sub.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN' });
+        if (sub.skippedLine) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Already skipped' });
+        await db.update(reviewSubmissions).set({ skippedLine: true, skipPaymentConfirmed: true }).where(eq(reviewSubmissions.id, input.submissionId));
+        await useLineSkipCredit(ctx.user.id);
+        return { success: true, creditsRemaining: credits - 1 };
       }),
   }),
 

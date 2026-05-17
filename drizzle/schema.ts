@@ -485,3 +485,14 @@ export const rewardLogs = mysqlTable("reward_logs", {
 });
 export type RewardLog = typeof rewardLogs.$inferSelect;
 export type InsertRewardLog = typeof rewardLogs.$inferInsert;
+
+// Line Skip Credits — free line skips earned from Daily Wheel prizes
+export const lineSkipCredits = mysqlTable("line_skip_credits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  credits: int("credits").default(0).notNull(),  // number of free line skips available
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LineSkipCredit = typeof lineSkipCredits.$inferSelect;
+export type InsertLineSkipCredit = typeof lineSkipCredits.$inferInsert;

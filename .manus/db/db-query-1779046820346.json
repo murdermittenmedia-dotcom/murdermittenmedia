@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS line_skip_credits (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  userId INT NOT NULL,\n  credits INT NOT NULL DEFAULT 0,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  UNIQUE KEY unique_user (userId)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute CREATE TABLE IF NOT EXISTS line_skip_credits (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  userId INT NOT NULL,\n  credits INT NOT NULL DEFAULT 0,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  UNIQUE KEY unique_user (userId)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1432
+}
