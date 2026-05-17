@@ -1021,7 +1021,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
         
-        const updates = {};
+        const updates: Record<string, number> = {};
         if (input.artistXP !== undefined) updates.artistXP = input.artistXP;
         if (input.fanXP !== undefined) updates.fanXP = input.fanXP;
         if (input.battleWins !== undefined) updates.battleWins = input.battleWins;
