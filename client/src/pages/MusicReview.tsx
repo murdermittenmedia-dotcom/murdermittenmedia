@@ -778,6 +778,13 @@ export default function MusicReview() {
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 5000 });
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
 
+  // Line skip credits from Daily Wheel prize
+  const { data: lineSkipCreditsData, refetch: refetchLineSkipCredits } = trpc.dailyWheel.getMyLineSkipCredits.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
+  const lineSkipCredits = lineSkipCreditsData ?? 0;
+
   const [limitReachedData, setLimitReachedData] = useState<{ success: false; limitReached: true; message: string; upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
   
   const submitMutation = trpc.queue.submit.useMutation({
@@ -803,6 +810,14 @@ export default function MusicReview() {
       }
     },
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
+  });
+  const useLineSkipMutation = trpc.dailyWheel.useLineSkip.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Line skip applied! Credits remaining: ${result.creditsRemaining}`);
+      refetchLineSkipCredits();
+      refetch();
+    },
+    onError: (err) => toast.error("Failed to apply line skip: " + err.message),
   });
   const reactMutation = trpc.queue.react.useMutation({
     onSuccess: () => {
@@ -1405,6 +1420,21 @@ export default function MusicReview() {
                               <Play className="w-3.5 h-3.5" />
                             </button>
                           )}
+                          {/* Free line skip button — only for user's own pending submissions */}
+                          {user && sub.userId === user.id && !sub.skippedLine && lineSkipCredits > 0 && sub.status === "pending" && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Apply your free line skip to "${sub.songTitle}"? This will use 1 credit.`)) {
+                                  useLineSkipMutation.mutate({ submissionId: sub.id });
+                                }
+                              }}
+                              disabled={useLineSkipMutation.isPending}
+                              className="text-xs bg-green-600/20 border border-green-500/40 text-green-400 hover:bg-green-600/30 px-2 py-0.5 rounded transition-all disabled:opacity-50"
+                              title="Apply free line skip"
+                            >
+                              🎡 Skip
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1572,7 +1602,24 @@ export default function MusicReview() {
                         className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
                     </div>
 
-                    {/* Skip the line */}
+                    {/* Skip the line — Free credit from Daily Wheel */}
+                    {user && lineSkipCredits > 0 && (
+                      <div className="border border-green-500/40 bg-green-500/5 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-sm text-green-400">🎡 Free Line Skip Available!</div>
+                            <div className="text-white/40 text-xs mt-0.5">
+                              You have {lineSkipCredits} free line skip credit{lineSkipCredits !== 1 ? 's' : ''} from the Daily Wheel. Submit your track first, then apply your skip from the queue.
+                            </div>
+                          </div>
+                          <span className="flex-shrink-0 bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-bold px-2 py-1 rounded">
+                            {lineSkipCredits}x
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Skip the line — Paid */}
                     <div
                       className={`border p-4 cursor-pointer transition-all ${form.wantsSkip ? "border-yellow-500/50 bg-yellow-500/5" : "border-white/10 hover:border-yellow-500/30"}`}
                       onClick={() => setForm(f => ({ ...f, wantsSkip: !f.wantsSkip }))}

@@ -565,7 +565,46 @@ export const appRouter = router({
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
       }))
+      .output(z.union([
+        z.object({ success: z.literal(true) }),
+        z.object({
+          success: z.literal(false),
+          limitReached: z.literal(true),
+          message: z.string(),
+          upgradeOptions: z.array(z.object({
+            type: z.string(),
+            price: z.number(),
+            label: z.string(),
+          })),
+        }),
+      ]))
       .mutation(async ({ ctx, input }) => {
+        // Check submission limit (max 2 pending/playing submissions per user)
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+        const existingSubmissions = await db
+          .select()
+          .from(reviewSubmissions)
+          .where(
+            and(
+              eq(reviewSubmissions.userId, ctx.user.id),
+              inArray(reviewSubmissions.status, ["pending", "playing"])
+            )
+          );
+
+        if (existingSubmissions.length >= 2) {
+          return {
+            success: false,
+            limitReached: true,
+            message: "You have reached your max song submissions (2)",
+            upgradeOptions: [
+              { type: "re_enter", price: 5, label: "Re-enter ($5)" },
+              { type: "play_next", price: 15, label: "Get Played Next ($15)" },
+            ],
+          };
+        }
+
         // Auto-resolve artist name from the user's registered profile
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
