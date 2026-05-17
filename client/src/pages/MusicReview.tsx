@@ -45,7 +45,7 @@ const CASHAPP = "$joyfuljules";
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
 
-type SubmitTab = "queue" | "submit" | "skip-info";
+type SubmitTab = "queue" | "history" | "submit" | "skip-info";
 
 // ── Helpers ───────────────────────────────────────────────────
 function extractYouTubeId(url: string): string | null {
@@ -778,15 +778,15 @@ export default function MusicReview() {
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 5000 });
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
 
-  const [limitReachedData, setLimitReachedData] = useState<{ upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
+  const [limitReachedData, setLimitReachedData] = useState<{ success: false; limitReached: true; message: string; upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
   
   const submitMutation = trpc.queue.submit.useMutation({
     onSuccess: (data) => {
-      if (!data.success && data.limitReached) {
+      if (!data.success && 'limitReached' in data && data.limitReached && 'message' in data && 'upgradeOptions' in data) {
         setLimitReachedData(data as any);
         setSubmitting(false);
-        toast.error(data.message);
-      } else {
+        toast.error(data.message as string);
+      } else if (data.success) {
         setSubmitted(true); setSubmitting(false); refetch();
       }
     },
@@ -794,11 +794,11 @@ export default function MusicReview() {
   });
   const uploadAudioMutation = trpc.queue.uploadAudio.useMutation({
     onSuccess: (data) => {
-      if (!data.success && data.limitReached) {
+      if (!data.success && 'limitReached' in data && data.limitReached && 'message' in data && 'upgradeOptions' in data) {
         setLimitReachedData(data as any);
         setSubmitting(false);
-        toast.error(data.message);
-      } else {
+        toast.error(data.message as string);
+      } else if (data.success) {
         setSubmitted(true); setSubmitting(false); refetch();
       }
     },
@@ -1324,7 +1324,7 @@ export default function MusicReview() {
 
             {/* ── TABS: Queue / Submit / Skip Line ── */}
             <div className="flex gap-0 mb-4 border border-white/10">
-              {(["queue", "submit", "skip-info"] as SubmitTab[]).map(t => (
+             {(["queue", "history", "submit", "skip-info"] as SubmitTab[]).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -1336,7 +1336,7 @@ export default function MusicReview() {
                       : "text-white/40 hover:text-white"
                   }`}
                 >
-                  {t === "queue" ? `Queue (${pendingQueue.length})` : t === "submit" ? "Submit Track" : "⚡ Skip Line ($10)"}
+                  {t === "queue" ? `Queue (${pendingQueue.length})` : t === "history" ? "History" : t === "submit" ? "Submit Track" : "⚡ Skip Line ($10)"}
                 </button>
               ))}
             </div>
@@ -1408,6 +1408,61 @@ export default function MusicReview() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── HISTORY TAB ── */}
+            {tab === "history" && (
+              <div>
+                {!reviewedTracks || reviewedTracks.length === 0 ? (
+                  <div className="text-center py-12 border border-white/10 bg-white/[0.02]">
+                    <div className="font-['Anton'] text-2xl uppercase mb-2">No History Yet</div>
+                    <p className="text-white/40 text-sm">Previously played songs will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {reviewedTracks.map((sub) => {
+                      return (
+                        <div key={sub.id} className="flex items-center gap-3 p-3 border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all">
+                          {/* Song info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
+                            <div className="text-white/50 text-xs truncate">
+                              <ArtistLink artistName={sub.artistName} userId={sub.userId} />
+                            </div>
+                          </div>
+                          {/* Reactions */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => reactMutation.mutate({ submissionId: sub.id, reaction: "fire" })}
+                              className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-all text-white/30 hover:text-orange-400"
+                            >
+                              <Flame className="w-3 h-3" />
+                              {sub.fireCount}
+                            </button>
+                            <button
+                              onClick={() => reactMutation.mutate({ submissionId: sub.id, reaction: "trash" })}
+                              className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-all text-white/30 hover:text-blue-400"
+                            >
+                              <ThumbsDown className="w-3 h-3" />
+                              {sub.trashCount}
+                            </button>
+                          </div>
+                          {/* Watch button */}
+                          {sub.submissionType === "youtube" && sub.youtubeUrl && (
+                            <button
+                              onClick={() => setSelectedYouTube({ url: sub.youtubeUrl!, title: sub.songTitle, artist: sub.artistName })}
+                              className="text-white/30 hover:text-red-400 transition-colors"
+                              title="Watch on page"
+                            >
+                              <Play className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
