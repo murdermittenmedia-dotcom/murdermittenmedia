@@ -66,98 +66,155 @@ function StatCard({ icon: Icon, label, value, sub, color = "red" }: {
 }
 
 // ─── User Stats Editor Component ─────────────────────────────
-function UserStatsEditor({ userId, utils }: { userId: number; utils: any }) {
+function UserStatsEditor({ userId, user, utils }: { userId: number; user: any; utils: any }) {
   const [editMode, setEditMode] = useState(false);
-  const [stats, setStats] = useState({ fireCount: 0, trashCount: 0, xp: 0, level: "", streak: 0 });
-  const [loadedStats, setLoadedStats] = useState<any>(null);
+  // Pre-populated from the user object (fields that live on the users table)
+  const [userStats, setUserStats] = useState({ xp: 0, level: "", streak: 0 });
+  // Per-submission fire/trash edits: { [submissionId]: { fireCount, trashCount } }
+  const [subEdits, setSubEdits] = useState<Record<number, { fireCount: number; trashCount: number }>>({});
 
-  const { data: userData } = trpc.admin.adminGetUserData.useQuery({ userId }, { enabled: editMode });
+  const { data: userData, refetch: refetchUserData } = trpc.admin.adminGetUserData.useQuery(
+    { userId },
+    { enabled: editMode }
+  );
+
+  // Seed subEdits when userData loads
+  const prevUserDataRef = useState<any>(null);
+  if (userData && userData !== prevUserDataRef[0]) {
+    prevUserDataRef[1](userData);
+    const initial: Record<number, { fireCount: number; trashCount: number }> = {};
+    userData.submissions.forEach((s: any) => {
+      initial[s.id] = { fireCount: s.fireCount ?? 0, trashCount: s.trashCount ?? 0 };
+    });
+    setSubEdits(initial);
+  }
+
+  // When edit mode opens, seed userStats from the user prop
+  const openEditor = () => {
+    setUserStats({ xp: user.xp ?? 0, level: user.level ?? "bronze", streak: user.streak ?? 0 });
+    setEditMode(true);
+  };
+
   const editStatsMutation = trpc.admin.adminEditUserStats.useMutation({
     onSuccess: () => {
-      toast.success("Stats updated");
-      setEditMode(false);
+      toast.success("User stats saved");
       utils.admin.listUsers.invalidate();
+      utils.user.getStats.invalidate();
+      utils.user.getStatsByUserId.invalidate();
     },
     onError: (e: any) => toast.error(e.message),
   });
-  const removeSongMutation = trpc.admin.adminRemoveSong.useMutation({
+
+  const editSubStatsMutation = trpc.admin.adminEditSubmissionStats.useMutation({
     onSuccess: () => {
-      toast.success("Song removed");
-      utils.admin.adminGetUserData.invalidate();
+      toast.success("Submission votes updated");
+      refetchUserData();
+      utils.user.getStats.invalidate();
+      utils.user.getStatsByUserId.invalidate();
     },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removeSongMutation = trpc.admin.adminRemoveSong.useMutation({
+    onSuccess: () => { toast.success("Song removed"); refetchUserData(); },
     onError: (e: any) => toast.error(e.message),
   });
   const removeSubmissionMutation = trpc.admin.adminRemoveReviewSubmission.useMutation({
-    onSuccess: () => {
-      toast.success("Submission removed");
-      utils.admin.adminGetUserData.invalidate();
-    },
+    onSuccess: () => { toast.success("Submission removed"); refetchUserData(); utils.user.getStats.invalidate(); utils.user.getStatsByUserId.invalidate(); },
     onError: (e: any) => toast.error(e.message),
   });
-  // Removed - adminClearUserVotes not yet in router
+
+  const saveAll = async () => {
+    // Save user-level stats
+    await editStatsMutation.mutateAsync({ userId, ...userStats });
+    // Save any modified submission vote counts
+    const promises = Object.entries(subEdits).map(([idStr, vals]) =>
+      editSubStatsMutation.mutateAsync({ submissionId: Number(idStr), ...vals })
+    );
+    await Promise.all(promises);
+    setEditMode(false);
+  };
 
   return (
     <div>
       <p className="text-white/50 text-xs uppercase tracking-widest mb-3">Edit User Stats</p>
       {!editMode ? (
-        <Button size="sm" variant="outline" className="border-white/20 text-white/60 hover:text-white" onClick={() => setEditMode(true)}>
-          Edit Stats & Data
-        </Button>
+        <div className="space-y-1">
+          <div className="flex gap-4 text-xs text-white/40 mb-2">
+            <span>XP: <span className="text-white/70">{user.xp ?? 0}</span></span>
+            <span>Level: <span className="text-white/70">{user.level ?? "bronze"}</span></span>
+            <span>Streak: <span className="text-white/70">{user.streak ?? 0}</span></span>
+          </div>
+          <Button size="sm" variant="outline" className="border-white/20 text-white/60 hover:text-white" onClick={openEditor}>
+            Edit Stats & Data
+          </Button>
+        </div>
       ) : (
         <div className="space-y-4 bg-white/[0.02] border border-white/10 p-4 rounded-lg">
-          {/* Stats fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Fire Votes</label>
-              <Input
-                type="number"
-                min="0"
-                value={stats.fireCount}
-                onChange={(e) => setStats({ ...stats, fireCount: parseInt(e.target.value) || 0 })}
-                className="bg-white/5 border-white/10 text-white text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Trash Votes</label>
-              <Input
-                type="number"
-                min="0"
-                value={stats.trashCount}
-                onChange={(e) => setStats({ ...stats, trashCount: parseInt(e.target.value) || 0 })}
-                className="bg-white/5 border-white/10 text-white text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">XP</label>
-              <Input
-                type="number"
-                min="0"
-                value={stats.xp}
-                onChange={(e) => setStats({ ...stats, xp: parseInt(e.target.value) || 0 })}
-                className="bg-white/5 border-white/10 text-white text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Level</label>
-              <Input
-                type="text"
-                value={stats.level}
-                onChange={(e) => setStats({ ...stats, level: e.target.value })}
-                className="bg-white/5 border-white/10 text-white text-sm"
-                placeholder="e.g. bronze"
-              />
-            </div>
-            <div>
-              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Streak</label>
-              <Input
-                type="number"
-                min="0"
-                value={stats.streak}
-                onChange={(e) => setStats({ ...stats, streak: parseInt(e.target.value) || 0 })}
-                className="bg-white/5 border-white/10 text-white text-sm"
-              />
+          {/* User-level stats (XP, level, streak) */}
+          <div>
+            <p className="text-white/50 text-xs uppercase tracking-widest mb-2">User Stats</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">XP</label>
+                <Input type="number" min="0" value={userStats.xp}
+                  onChange={(e) => setUserStats({ ...userStats, xp: parseInt(e.target.value) || 0 })}
+                  className="bg-white/5 border-white/10 text-white text-sm" />
+              </div>
+              <div>
+                <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Level</label>
+                <Input type="text" value={userStats.level}
+                  onChange={(e) => setUserStats({ ...userStats, level: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white text-sm"
+                  placeholder="bronze" />
+              </div>
+              <div>
+                <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Streak</label>
+                <Input type="number" min="0" value={userStats.streak}
+                  onChange={(e) => setUserStats({ ...userStats, streak: parseInt(e.target.value) || 0 })}
+                  className="bg-white/5 border-white/10 text-white text-sm" />
+              </div>
             </div>
           </div>
+
+          {/* Submissions — editable fire/trash per song */}
+          {userData?.submissions && userData.submissions.length > 0 && (
+            <div>
+              <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Submissions — Edit 🔥 / 🗑️ Votes</p>
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {userData.submissions.map((sub: any) => {
+                  const vals = subEdits[sub.id] ?? { fireCount: sub.fireCount ?? 0, trashCount: sub.trashCount ?? 0 };
+                  return (
+                    <div key={sub.id} className="p-2 bg-white/5 border border-white/10 rounded text-xs space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-white/70 truncate flex-1 font-medium">{sub.songTitle}</span>
+                        <span className="text-white/30 shrink-0">{sub.status}</span>
+                        <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20 h-6 px-2 shrink-0"
+                          onClick={() => removeSubmissionMutation.mutate({ submissionId: sub.id })}
+                          disabled={removeSubmissionMutation.isPending}>
+                          Delete
+                        </Button>
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="flex items-center gap-1">
+                          <span className="text-orange-400">🔥</span>
+                          <Input type="number" min="0" value={vals.fireCount}
+                            onChange={(e) => setSubEdits(prev => ({ ...prev, [sub.id]: { ...vals, fireCount: parseInt(e.target.value) || 0 } }))}
+                            className="bg-white/5 border-white/10 text-white text-xs h-6 w-16 px-1" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>🗑️</span>
+                          <Input type="number" min="0" value={vals.trashCount}
+                            onChange={(e) => setSubEdits(prev => ({ ...prev, [sub.id]: { ...vals, trashCount: parseInt(e.target.value) || 0 } }))}
+                            className="bg-white/5 border-white/10 text-white text-xs h-6 w-16 px-1" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Songs list */}
           {userData?.songs && userData.songs.length > 0 && (
@@ -166,25 +223,10 @@ function UserStatsEditor({ userId, utils }: { userId: number; utils: any }) {
               <div className="space-y-1 max-h-32 overflow-y-auto">
                 {userData.songs.map((song: any) => (
                   <div key={song.id} className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded text-xs">
-                    <span className="text-white/70 truncate flex-1">{song.title}</span>
-                    <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20 h-6 px-2" onClick={() => removeSongMutation.mutate({ songId: song.id })} disabled={removeSongMutation.isPending}>
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Submissions list */}
-          {userData?.submissions && userData.submissions.length > 0 && (
-            <div>
-              <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Submissions ({userData.submissions.length})</p>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {userData.submissions.map((sub: any) => (
-                  <div key={sub.id} className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded text-xs">
-                    <span className="text-white/70 truncate flex-1">{sub.songTitle}</span>
-                    <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20 h-6 px-2" onClick={() => removeSubmissionMutation.mutate({ submissionId: sub.id })} disabled={removeSubmissionMutation.isPending}>
+                    <span className="text-white/70 truncate flex-1">{song.title ?? song.songTitle ?? "Untitled"}</span>
+                    <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20 h-6 px-2"
+                      onClick={() => removeSongMutation.mutate({ songId: song.id })}
+                      disabled={removeSongMutation.isPending}>
                       Remove
                     </Button>
                   </div>
@@ -195,10 +237,11 @@ function UserStatsEditor({ userId, utils }: { userId: number; utils: any }) {
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
-            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => editStatsMutation.mutate({ userId, ...stats })} disabled={editStatsMutation.isPending}>
-              {editStatsMutation.isPending ? "Saving..." : "Save Stats"}
+            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={saveAll}
+              disabled={editStatsMutation.isPending || editSubStatsMutation.isPending}>
+              {(editStatsMutation.isPending || editSubStatsMutation.isPending) ? "Saving..." : "Save All Changes"}
             </Button>
-
             <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={() => setEditMode(false)}>
               Cancel
             </Button>
@@ -398,7 +441,7 @@ function UsersTab() {
 
                   {/* Edit Stats */}
                   <div className="pt-2 border-t border-white/10">
-                    <UserStatsEditor userId={user.id} utils={utils} />
+                    <UserStatsEditor userId={user.id} user={user} utils={utils} />
                   </div>
 
                   {/* Delete user */}

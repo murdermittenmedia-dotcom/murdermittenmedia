@@ -1807,12 +1807,10 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Admin: edit user stats (fire, trash, xp, level, streak)
+    // Admin: edit user stats (xp, level, streak — stored on users table)
     adminEditUserStats: adminProcedure
       .input(z.object({
         userId: z.number(),
-        fireCount: z.number().min(0).optional(),
-        trashCount: z.number().min(0).optional(),
         xp: z.number().min(0).optional(),
         level: z.string().max(64).optional(),
         streak: z.number().min(0).optional(),
@@ -1825,8 +1823,6 @@ export const appRouter = router({
         if (!db) throw new Error("Database not available");
 
         const updates: Record<string, any> = {};
-        if (input.fireCount !== undefined) updates.fireCount = input.fireCount;
-        if (input.trashCount !== undefined) updates.trashCount = input.trashCount;
         if (input.xp !== undefined) updates.xp = input.xp;
         if (input.level !== undefined) updates.level = input.level;
         if (input.streak !== undefined) updates.streak = input.streak;
@@ -1873,6 +1869,25 @@ export const appRouter = router({
         const songs = await db.select().from(userSongs).where(eq(userSongs.userId, input.userId));
         const submissions = await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.userId, input.userId));
         return { songs, submissions };
+      }),
+
+    // Admin: edit fire/trash counts on a specific submission
+    adminEditSubmissionStats: adminProcedure
+      .input(z.object({
+        submissionId: z.number(),
+        fireCount: z.number().min(0),
+        trashCount: z.number().min(0),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { reviewSubmissions } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.update(reviewSubmissions)
+          .set({ fireCount: input.fireCount, trashCount: input.trashCount })
+          .where(eq(reviewSubmissions.id, input.submissionId));
+        return { success: true };
       }),
   }),
 
