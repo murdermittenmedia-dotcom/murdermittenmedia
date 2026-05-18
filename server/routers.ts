@@ -565,46 +565,7 @@ export const appRouter = router({
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
       }))
-      .output(z.union([
-        z.object({ success: z.literal(true) }),
-        z.object({
-          success: z.literal(false),
-          limitReached: z.literal(true),
-          message: z.string(),
-          upgradeOptions: z.array(z.object({
-            type: z.string(),
-            price: z.number(),
-            label: z.string(),
-          })),
-        }),
-      ]))
       .mutation(async ({ ctx, input }) => {
-        // Check submission limit (max 2 pending/playing submissions per user)
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-
-        const existingSubmissions = await db
-          .select()
-          .from(reviewSubmissions)
-          .where(
-            and(
-              eq(reviewSubmissions.userId, ctx.user.id),
-              inArray(reviewSubmissions.status, ["pending", "playing"])
-            )
-          );
-
-        if (existingSubmissions.length >= 2) {
-          return {
-            success: false,
-            limitReached: true,
-            message: "You have reached your max song submissions (2)",
-            upgradeOptions: [
-              { type: "re_enter", price: 5, label: "Re-enter ($5)" },
-              { type: "play_next", price: 15, label: "Get Played Next ($15)" },
-            ],
-          };
-        }
-
         // Auto-resolve artist name from the user's registered profile
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
@@ -1845,6 +1806,74 @@ export const appRouter = router({
         await setAccountLabelsAdmin(input.userId, input.labels);
         return { success: true };
       }),
+
+    // Admin: edit user stats (fire, trash, xp, level, streak)
+    adminEditUserStats: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        fireCount: z.number().min(0).optional(),
+        trashCount: z.number().min(0).optional(),
+        xp: z.number().min(0).optional(),
+        level: z.string().max(64).optional(),
+        streak: z.number().min(0).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { users } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const updates: Record<string, any> = {};
+        if (input.fireCount !== undefined) updates.fireCount = input.fireCount;
+        if (input.trashCount !== undefined) updates.trashCount = input.trashCount;
+        if (input.xp !== undefined) updates.xp = input.xp;
+        if (input.level !== undefined) updates.level = input.level;
+        if (input.streak !== undefined) updates.streak = input.streak;
+
+        await db.update(users).set(updates).where(eq(users.id, input.userId));
+        return { success: true };
+      }),
+
+    // Admin: remove a specific song from user catalogue
+    adminRemoveSong: adminProcedure
+      .input(z.object({ songId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { userSongs } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(userSongs).where(eq(userSongs.id, input.songId));
+        return { success: true };
+      }),
+
+    // Admin: remove a specific Music Review submission
+    adminRemoveReviewSubmission: adminProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { reviewSubmissions } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(reviewSubmissions).where(eq(reviewSubmissions.id, input.submissionId));
+        return { success: true };
+      }),
+
+    // Admin: get user's songs and submissions for editing
+    adminGetUserData: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { userSongs, reviewSubmissions } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return { songs: [], submissions: [] };
+        const songs = await db.select().from(userSongs).where(eq(userSongs.userId, input.userId));
+        const submissions = await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.userId, input.userId));
+        return { songs, submissions };
+      }),
   }),
 
   // -- Daily Free Promo Wheel -----
@@ -2284,24 +2313,7 @@ export const appRouter = router({
         return getRewardLogs(input.limit);
       }),
 
-    // Admin: get all users with their reward stats
-    adminGetAllUserStats: adminProcedure.query(async () => {
-      const { getDb } = await import("./db");
-      const { users } = await import("../drizzle/schema");
-      const { asc } = await import("drizzle-orm");
-      const db = await getDb();
-      if (!db) return [];
-      return db.select({
-        id: users.id,
-        name: users.name,
-        artistName: users.artistName,
-        xp: users.xp,
-        fanXP: users.fanXP,
-        level: users.level,
-        fanLevel: users.fanLevel,
-        streak: users.streak,
-      }).from(users).orderBy(asc(users.id));
-    }),
+
   }),
 });
 export type AppRouter = typeof appRouter;

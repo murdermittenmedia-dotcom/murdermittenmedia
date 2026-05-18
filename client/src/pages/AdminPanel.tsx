@@ -65,6 +65,150 @@ function StatCard({ icon: Icon, label, value, sub, color = "red" }: {
   );
 }
 
+// ─── User Stats Editor Component ─────────────────────────────
+function UserStatsEditor({ userId, utils }: { userId: number; utils: any }) {
+  const [editMode, setEditMode] = useState(false);
+  const [stats, setStats] = useState({ fireCount: 0, trashCount: 0, xp: 0, level: "", streak: 0 });
+  const [loadedStats, setLoadedStats] = useState<any>(null);
+
+  const { data: userData } = trpc.admin.adminGetUserData.useQuery({ userId }, { enabled: editMode });
+  const editStatsMutation = trpc.admin.adminEditUserStats.useMutation({
+    onSuccess: () => {
+      toast.success("Stats updated");
+      setEditMode(false);
+      utils.admin.listUsers.invalidate();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const removeSongMutation = trpc.admin.adminRemoveSong.useMutation({
+    onSuccess: () => {
+      toast.success("Song removed");
+      utils.admin.adminGetUserData.invalidate();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const removeSubmissionMutation = trpc.admin.adminRemoveReviewSubmission.useMutation({
+    onSuccess: () => {
+      toast.success("Submission removed");
+      utils.admin.adminGetUserData.invalidate();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  // Removed - adminClearUserVotes not yet in router
+
+  return (
+    <div>
+      <p className="text-white/50 text-xs uppercase tracking-widest mb-3">Edit User Stats</p>
+      {!editMode ? (
+        <Button size="sm" variant="outline" className="border-white/20 text-white/60 hover:text-white" onClick={() => setEditMode(true)}>
+          Edit Stats & Data
+        </Button>
+      ) : (
+        <div className="space-y-4 bg-white/[0.02] border border-white/10 p-4 rounded-lg">
+          {/* Stats fields */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Fire Votes</label>
+              <Input
+                type="number"
+                min="0"
+                value={stats.fireCount}
+                onChange={(e) => setStats({ ...stats, fireCount: parseInt(e.target.value) || 0 })}
+                className="bg-white/5 border-white/10 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Trash Votes</label>
+              <Input
+                type="number"
+                min="0"
+                value={stats.trashCount}
+                onChange={(e) => setStats({ ...stats, trashCount: parseInt(e.target.value) || 0 })}
+                className="bg-white/5 border-white/10 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">XP</label>
+              <Input
+                type="number"
+                min="0"
+                value={stats.xp}
+                onChange={(e) => setStats({ ...stats, xp: parseInt(e.target.value) || 0 })}
+                className="bg-white/5 border-white/10 text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Level</label>
+              <Input
+                type="text"
+                value={stats.level}
+                onChange={(e) => setStats({ ...stats, level: e.target.value })}
+                className="bg-white/5 border-white/10 text-white text-sm"
+                placeholder="e.g. bronze"
+              />
+            </div>
+            <div>
+              <label className="text-white/40 text-xs uppercase tracking-widest block mb-1">Streak</label>
+              <Input
+                type="number"
+                min="0"
+                value={stats.streak}
+                onChange={(e) => setStats({ ...stats, streak: parseInt(e.target.value) || 0 })}
+                className="bg-white/5 border-white/10 text-white text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Songs list */}
+          {userData?.songs && userData.songs.length > 0 && (
+            <div>
+              <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Songs ({userData.songs.length})</p>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {userData.songs.map((song: any) => (
+                  <div key={song.id} className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded text-xs">
+                    <span className="text-white/70 truncate flex-1">{song.title}</span>
+                    <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20 h-6 px-2" onClick={() => removeSongMutation.mutate({ songId: song.id })} disabled={removeSongMutation.isPending}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Submissions list */}
+          {userData?.submissions && userData.submissions.length > 0 && (
+            <div>
+              <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Submissions ({userData.submissions.length})</p>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {userData.submissions.map((sub: any) => (
+                  <div key={sub.id} className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded text-xs">
+                    <span className="text-white/70 truncate flex-1">{sub.songTitle}</span>
+                    <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20 h-6 px-2" onClick={() => removeSubmissionMutation.mutate({ submissionId: sub.id })} disabled={removeSubmissionMutation.isPending}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
+            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => editStatsMutation.mutate({ userId, ...stats })} disabled={editStatsMutation.isPending}>
+              {editStatsMutation.isPending ? "Saving..." : "Save Stats"}
+            </Button>
+
+            <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={() => setEditMode(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Users Tab ────────────────────────────────────────────────
 function UsersTab() {
   const [search, setSearch] = useState("");
@@ -251,6 +395,12 @@ function UsersTab() {
                       Instagram: <a href={`https://instagram.com/${user.instagramHandle}`} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">@{user.instagramHandle}</a>
                     </div>
                   )}
+
+                  {/* Edit Stats */}
+                  <div className="pt-2 border-t border-white/10">
+                    <UserStatsEditor userId={user.id} utils={utils} />
+                  </div>
+
                   {/* Delete user */}
                   <div className="pt-2 border-t border-red-900/30">
                     <p className="text-red-400/60 text-xs uppercase tracking-widest mb-2">Danger Zone</p>

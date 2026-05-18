@@ -998,12 +998,15 @@
 - [ ] Fix: YouTube audio does not play through live radio — viewers must go back to site to watch independently
 - [ ] Implement: YouTube timestamp sync — admin's current playback position broadcast to viewers so video is synced when they open the site
 
-## Session — 2-Song Limit Fix & Line Skip UI (May 2026)
 
-- [x] Fix: 2-song submission limit was only enforced on `queue.submit` (YouTube path) but NOT on `queue.uploadAudio` (file upload path) — users could bypass the limit by uploading audio files
-- [x] Added same limit check to `queue.uploadAudio`: counts pending+playing submissions, returns limitReached response with upgradeOptions if >= 2 active submissions
-- [x] Added `.output()` union type to `queue.uploadAudio` to match `queue.submit` shape (success:true | limitReached:true with upgradeOptions)
-- [x] Added line skip credits query (`trpc.dailyWheel.getMyLineSkipCredits`) to MusicReview.tsx
-- [x] Added `useLineSkipMutation` to MusicReview.tsx for applying free line skip credits
-- [x] Added "Free Line Skip Available!" banner in submission form when user has credits from Daily Wheel
-- [x] Added "🎡 Skip" button on user's own pending submissions in the queue tab — applies free line skip credit with confirmation dialog
+## Admin User Stats Editor (May 2026)
+
+- [x] tRPC: admin.editUserStats — update fireCount, trashCount, xp, level, streak for a user
+- [x] tRPC: admin.removeSong — delete a specific song from user_songs by songId
+- [x] tRPC: admin.removeSubmission — delete a specific Music Review submission by submissionId
+- [ ] tRPC: admin.clearUserVotes — delete all song_reactions (fire/trash votes) cast by a user (not yet wired to UI)
+- [ ] tRPC: admin.removeBattleRecord — delete a specific battle record by battleId
+- [x] Admin UI: expand User card to show stats section with editable fields (fire, trash, xp, level, streak)
+- [x] Admin UI: show user's songs list with delete button per song
+- [x] Admin UI: show user's submissions list with delete button per submission
+- [ ] Admin UI: show user's vote history with clear all votes button (not yet wired)
