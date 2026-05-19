@@ -50,7 +50,12 @@ import {
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
 } from "./db";
-import { users } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances } from "../drizzle/schema";
+import {
+  generateRoomName, generateStreamerToken, generateViewerToken,
+  deleteRoom, getRoomParticipantCount
+} from "./livekit";
+import { ENV } from "./_core/env";
 import { desc as drizzleDesc, sql } from "drizzle-orm";
 import {
   awardXP, getAllRewards, getRewardById, createReward, updateReward,
@@ -627,6 +632,7 @@ export const appRouter = router({
           const { reviewSubmissions: rs } = await import("../drizzle/schema");
           const { eq } = await import("drizzle-orm");
           const db = await getDb();
+          if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
           if (db) {
             const [sub] = await db.select({ userId: rs.userId }).from(rs).where(eq(rs.id, input.submissionId)).limit(1);
             if (sub?.userId && sub.userId !== ctx.user.id) {
@@ -1889,6 +1895,92 @@ export const appRouter = router({
           .where(eq(reviewSubmissions.id, input.submissionId));
         return { success: true };
       }),
+    // Admin: list all live streams with gift totals
+    adminGetLiveStreams: adminProcedure
+      .query(async () => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const streams = await db.select().from(liveStreams).orderBy(drizzleDesc(liveStreams.createdAt)).limit(200);
+        const userIds = Array.from(new Set(streams.map(s => s.userId)));
+        const streamUsers = userIds.length > 0
+          ? await db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, userIds))
+          : [];
+        const userMap = Object.fromEntries(streamUsers.map(u => [u.id, u]));
+        return streams.map(s => ({ ...s, streamer: userMap[s.userId] ?? null }));
+      }),
+
+    // Admin: get full gift ledger
+    adminGetGiftLedger: adminProcedure
+      .input(z.object({ limit: z.number().min(1).max(500).default(200) }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const rows = await db.select().from(gifts).orderBy(drizzleDesc(gifts.createdAt)).limit(input.limit);
+        const allUserIds = Array.from(new Set([...rows.map(g => g.fromUserId), ...rows.map(g => g.toUserId)]));
+        const giftTypeIds = Array.from(new Set(rows.map(g => g.giftTypeId)));
+        const [giftUsers, types] = await Promise.all([
+          allUserIds.length > 0
+            ? db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, allUserIds))
+            : Promise.resolve([]),
+          giftTypeIds.length > 0
+            ? db.select().from(giftTypes).where(inArray(giftTypes.id, giftTypeIds))
+            : Promise.resolve([]),
+        ]);
+        const userMap = Object.fromEntries(giftUsers.map(u => [u.id, u]));
+        const typeMap = Object.fromEntries(types.map(t => [t.id, t]));
+        return rows.map(g => ({
+          ...g,
+          from: userMap[g.fromUserId] ?? null,
+          to: userMap[g.toUserId] ?? null,
+          giftType: typeMap[g.giftTypeId] ?? null,
+        }));
+      }),
+
+    // Admin: get pending coin purchase requests
+    adminGetCoinRequests: adminProcedure
+      .query(async () => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const requests = await db.select().from(coinPurchases).orderBy(drizzleDesc(coinPurchases.createdAt)).limit(200);
+        const userIds = Array.from(new Set(requests.map(r => r.userId)));
+        const reqUsers = userIds.length > 0
+          ? await db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, userIds))
+          : [];
+        const userMap = Object.fromEntries(reqUsers.map(u => [u.id, u]));
+        return requests.map(r => ({ ...r, user: userMap[r.userId] ?? null }));
+      }),
+    adminApproveCoinPurchase: adminProcedure
+      .input(z.object({ purchaseId: z.number(), approve: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [purchase] = await db.select().from(coinPurchases).where(eq(coinPurchases.id, input.purchaseId)).limit(1);
+        if (!purchase) throw new TRPCError({ code: "NOT_FOUND" });
+        if (purchase.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Already processed" });
+        const newStatus = input.approve ? "approved" : "rejected";
+        await db.update(coinPurchases).set({ status: newStatus, approvedByAdminId: ctx.user.id, approvedAt: new Date() }).where(eq(coinPurchases.id, input.purchaseId));
+        if (input.approve) {
+          // Add coins to user balance
+          const [existing] = await db.select().from(coinBalances).where(eq(coinBalances.userId, purchase.userId)).limit(1);
+          if (existing) {
+            await db.update(coinBalances).set({ balance: existing.balance + purchase.coins }).where(eq(coinBalances.userId, purchase.userId));
+          } else {
+            await db.insert(coinBalances).values({ userId: purchase.userId, balance: purchase.coins });
+          }
+        }
+        return { success: true };
+      }),
+
+    // Admin: mark payout as sent for a stream
+    adminMarkPayoutSent: adminProcedure
+      .input(z.object({ streamId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        await db.update(liveStreams).set({ payoutStatus: "paid" }).where(eq(liveStreams.id, input.streamId));
+        return { success: true };
+      }),
+
   }),
 
   // -- Daily Free Promo Wheel -----
@@ -2164,6 +2256,25 @@ export const appRouter = router({
       return getAllRewards();
     }),
 
+    // Admin: get all users with their reward stats
+    adminGetAllUserStats: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const allUsers = await db.select({
+        id: users.id,
+        name: users.name,
+        artistName: users.artistName,
+        role: users.role,
+        xp: users.xp,
+        level: users.level,
+        fanXP: users.fanXP,
+        fanLevel: users.fanLevel,
+        streak: users.streak,
+        createdAt: users.createdAt,
+      }).from(users).orderBy(drizzleDesc(users.xp)).limit(500);
+      return allUsers;
+    }),
+
     // Public: get level config
     getLevels: publicProcedure.query(async () => {
       return { artistLevels: ARTIST_LEVELS, fanLevels: FAN_LEVELS };
@@ -2328,7 +2439,248 @@ export const appRouter = router({
         return getRewardLogs(input.limit);
       }),
 
+    // Admin: approve a coin purchase
+  }),
+
+  // ─── Live Cook Up ─────────────────────────────────────────────
+  live: router({
+
+    // List all active live streams
+    list: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const streams = await db.select().from(liveStreams)
+        .where(eq(liveStreams.status, "live"))
+        .orderBy(drizzleDesc(liveStreams.createdAt))
+        .limit(50);
+      const userIds = Array.from(new Set(streams.map(s => s.userId)));
+      const streamUsers = userIds.length > 0
+        ? await db.select({ id: users.id, name: users.name, artistName: users.artistName, avatarUrl: users.avatarUrl }).from(users).where(inArray(users.id, userIds))
+        : [];
+      const userMap = Object.fromEntries(streamUsers.map(u => [u.id, u]));
+      return streams.map(s => ({ ...s, streamer: userMap[s.userId] ?? null }));
+    }),
+
+    // Get a single stream by id
+    get: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.id)).limit(1);
+        if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
+        const [streamer] = await db.select({ id: users.id, name: users.name, artistName: users.artistName, avatarUrl: users.avatarUrl }).from(users).where(eq(users.id, stream.userId)).limit(1);
+        return { ...stream, streamer: streamer ?? null };
+      }),
+
+    // Create a new live stream session
+    create: protectedProcedure
+      .input(z.object({ title: z.string().min(1).max(256) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        // End any existing live streams for this user
+        await db.update(liveStreams).set({ status: "ended", endedAt: new Date() })
+          .where(and(eq(liveStreams.userId, ctx.user.id), eq(liveStreams.status, "live")));
+        const roomName = generateRoomName(ctx.user.id);
+        const displayName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
+        const [result] = await db.insert(liveStreams).values({
+          userId: ctx.user.id,
+          title: input.title,
+          livekitRoomName: roomName,
+          rtmpUrl: `rtmps://${ENV.livekitUrl.replace("wss://", "")}/publish`,
+          rtmpKey: roomName,
+        });
+        const streamId = (result as any).insertId as number;
+        const streamerToken = await generateStreamerToken(roomName, `user-${ctx.user.id}`, displayName);
+        return {
+          streamId,
+          roomName,
+          streamerToken,
+          livekitUrl: ENV.livekitUrl,
+          rtmpUrl: `rtmps://${ENV.livekitUrl.replace("wss://", "")}/publish`,
+          rtmpKey: roomName,
+        };
+      }),
+
+    // Get a viewer token for a stream
+    getViewerToken: publicProcedure
+      .input(z.object({ streamId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
+        if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
+        if (stream.status === "ended") throw new TRPCError({ code: "BAD_REQUEST", message: "Stream has ended" });
+        const identity = ctx.user ? `user-${ctx.user.id}` : `anon-${Date.now()}`;
+        const displayName = ctx.user ? (ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`) : "Viewer";
+        const viewerToken = await generateViewerToken(stream.livekitRoomName, identity, displayName);
+        return { viewerToken, livekitUrl: ENV.livekitUrl, roomName: stream.livekitRoomName };
+      }),
+
+    // End a live stream
+    end: protectedProcedure
+      .input(z.object({ streamId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
+        if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
+        if (stream.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await db.update(liveStreams).set({ status: "ended", endedAt: new Date() }).where(eq(liveStreams.id, input.streamId));
+        await deleteRoom(stream.livekitRoomName);
+        return { success: true };
+      }),
+
+    // Update stream title
+    updateTitle: protectedProcedure
+      .input(z.object({ streamId: z.number(), title: z.string().min(1).max(256) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
+        if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
+        if (stream.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await db.update(liveStreams).set({ title: input.title }).where(eq(liveStreams.id, input.streamId));
+        return { success: true };
+      }),
+
+    // Get user's own active stream (if any)
+    getMyStream: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const [stream] = await db.select().from(liveStreams)
+        .where(and(eq(liveStreams.userId, ctx.user.id), eq(liveStreams.status, "live")))
+        .limit(1);
+      return stream ?? null;
+    }),
 
   }),
+
+  // ─── Coins ────────────────────────────────────────────────────
+  coins: router({
+
+    // Get current user's coin balance
+    getBalance: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const [balance] = await db.select().from(coinBalances).where(eq(coinBalances.userId, ctx.user.id)).limit(1);
+      return balance ?? { userId: ctx.user.id, balance: 0, totalEarned: 0, totalSpent: 0 };
+    }),
+
+    // Request a coin purchase (admin approves manually)
+    requestPurchase: protectedProcedure
+      .input(z.object({
+        coins: z.number().min(1),
+        amountCents: z.number().min(1),
+        paymentMethod: z.string().optional(),
+        paymentNote: z.string().max(256).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        await db.insert(coinPurchases).values({
+          userId: ctx.user.id,
+          coins: input.coins,
+          amountCents: input.amountCents,
+          paymentMethod: input.paymentMethod,
+          paymentNote: input.paymentNote,
+          status: "pending",
+        });
+        return { success: true };
+      }),
+
+    // Get gift types
+    getGiftTypes: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      return db.select().from(giftTypes).where(eq(giftTypes.isActive, true)).orderBy(giftTypes.sortOrder);
+    }),
+
+  }),
+
+  // ─── Gifts ────────────────────────────────────────────────────
+  gifts: router({
+
+    // Send a gift to a streamer
+    send: protectedProcedure
+      .input(z.object({
+        streamId: z.number(),
+        giftTypeId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
+        if (!stream || stream.status === "ended") throw new TRPCError({ code: "BAD_REQUEST", message: "Stream not active" });
+        const [giftType] = await db.select().from(giftTypes).where(eq(giftTypes.id, input.giftTypeId)).limit(1);
+        if (!giftType || !giftType.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "Gift type not found" });
+        // Check and deduct coins
+        const [balance] = await db.select().from(coinBalances).where(eq(coinBalances.userId, ctx.user.id)).limit(1);
+        const currentBalance = balance?.balance ?? 0;
+        if (currentBalance < giftType.coinCost) throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient coins" });
+        // Deduct from sender
+        if (balance) {
+          await db.update(coinBalances).set({
+            balance: currentBalance - giftType.coinCost,
+            totalSpent: (balance.totalSpent ?? 0) + giftType.coinCost,
+          }).where(eq(coinBalances.userId, ctx.user.id));
+        }
+        // Credit to streamer
+        const [streamerBalance] = await db.select().from(coinBalances).where(eq(coinBalances.userId, stream.userId)).limit(1);
+        if (streamerBalance) {
+          await db.update(coinBalances).set({
+            totalEarned: (streamerBalance.totalEarned ?? 0) + giftType.coinCost,
+          }).where(eq(coinBalances.userId, stream.userId));
+        } else {
+          await db.insert(coinBalances).values({ userId: stream.userId, balance: 0, totalEarned: giftType.coinCost });
+        }
+        // Record the gift
+        await db.insert(gifts).values({
+          liveStreamId: input.streamId,
+          fromUserId: ctx.user.id,
+          toUserId: stream.userId,
+          giftTypeId: input.giftTypeId,
+          coinCost: giftType.coinCost,
+          usdValueCents: giftType.usdValueCents,
+        });
+        // Update stream totals
+        await db.update(liveStreams).set({
+          totalGiftCoins: (stream.totalGiftCoins ?? 0) + giftType.coinCost,
+          totalGiftUsd: (stream.totalGiftUsd ?? 0) + giftType.usdValueCents,
+        }).where(eq(liveStreams.id, input.streamId));
+        // Emit gift event via socket
+        const senderName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
+        ctx.io?.to(`live:${input.streamId}`).emit("live:gift", {
+          giftType: { name: giftType.name, emoji: giftType.emoji, coinCost: giftType.coinCost },
+          from: senderName,
+          streamId: input.streamId,
+        });
+        return { success: true, newBalance: currentBalance - giftType.coinCost };
+      }),
+
+    // Get gifts for a stream
+    getForStream: publicProcedure
+      .input(z.object({ streamId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const rows = await db.select().from(gifts)
+          .where(eq(gifts.liveStreamId, input.streamId))
+          .orderBy(drizzleDesc(gifts.createdAt))
+          .limit(100);
+        const userIds = Array.from(new Set(rows.map(g => g.fromUserId)));
+        const giftTypeIds = Array.from(new Set(rows.map(g => g.giftTypeId)));
+        const [giftUsers, types] = await Promise.all([
+          userIds.length > 0 ? db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, userIds)) : Promise.resolve([]),
+          giftTypeIds.length > 0 ? db.select().from(giftTypes).where(inArray(giftTypes.id, giftTypeIds)) : Promise.resolve([]),
+        ]);
+        const userMap = Object.fromEntries(giftUsers.map(u => [u.id, u]));
+        const typeMap = Object.fromEntries(types.map(t => [t.id, t]));
+        return rows.map(g => ({ ...g, from: userMap[g.fromUserId] ?? null, giftType: typeMap[g.giftTypeId] ?? null }));
+      }),
+
+  }),
+
 });
 export type AppRouter = typeof appRouter;

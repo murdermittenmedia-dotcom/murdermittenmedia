@@ -1010,3 +1010,57 @@
 - [x] Admin UI: show user's songs list with delete button per song
 - [x] Admin UI: show user's submissions list with delete button per submission
 - [ ] Admin UI: show user's vote history with clear all votes button (not yet wired)
+
+## Live Cook Up — TikTok-Style Live Streaming (May 2026)
+
+### Database / Backend
+- [ ] DB: liveStreams table (id, userId, title, status, cfLiveInputId, cfStreamKey, cfRtmpUrl, cfWebRtcPublishUrl, cfWebRtcPlaybackUrl, thumbnailUrl, viewerCount, totalGiftsValue, createdAt, endedAt)
+- [ ] DB: coinPurchases table (id, userId, coins, amountUsd, status, createdAt)
+- [ ] DB: giftTypes table (id, name, emoji, coinCost, usdValue, animationClass)
+- [ ] DB: gifts table (id, fromUserId, toUserId, liveStreamId, giftTypeId, coinCost, usdValue, createdAt)
+- [ ] DB: add coinBalance column to users table
+- [ ] tRPC: live.create — create Cloudflare live input via API, store stream key + URLs, return to streamer
+- [ ] tRPC: live.list — list all active live streams for browse page
+- [ ] tRPC: live.get — get single live stream details by id
+- [ ] tRPC: live.end — mark stream as ended
+- [ ] tRPC: live.updateTitle — update stream title
+- [ ] tRPC: coins.getBalance — get current user's coin balance
+- [ ] tRPC: coins.requestPurchase — create a pending coin purchase record (admin approves manually)
+- [ ] tRPC: gifts.send — deduct coins from sender, record gift, notify streamer via socket
+- [ ] tRPC: gifts.getForStream — get all gifts for a stream
+- [ ] tRPC: admin.getLiveStreams — list all streams with gift totals
+- [ ] tRPC: admin.getGiftLedger — full gift history with USD values
+- [ ] tRPC: admin.approveCoinPurchase — mark purchase approved, add coins to user balance
+- [ ] tRPC: admin.markPayoutSent — mark a streamer's gift earnings as paid out
+
+### Frontend
+- [ ] Page: /live — browse page with thumbnail grid of active streams
+- [ ] Page: /live/go — "Go Live" setup page (set title, choose broadcast method: browser cam or RTMP key)
+- [ ] Page: /live/:id — individual stream page with video player, live chat, gift panel
+- [ ] Component: LiveThumbnailCard — stream card with thumbnail, title, streamer name, viewer count
+- [ ] Component: BroadcastPanel — WebRTC camera/mic broadcast using Cloudflare WHIP
+- [ ] Component: StreamPlayer — WebRTC viewer using Cloudflare WHEP (sub-1s latency)
+- [ ] Component: GiftPanel — scrollable gift buttons with coin cost, send animation
+- [ ] Component: GiftAnimation — floating gift emoji animation when gift is sent
+- [ ] Component: CoinBalance — header coin balance display with "Buy Coins" button
+- [ ] Component: BuyCoinsModal — coin package selector, submits request to admin
+- [ ] Nav: Add "Live" link to SiteNav
+- [ ] Admin: LiveStreamsTab — table of all streams, gift totals, payout status
+- [ ] Admin: GiftLedgerTab — full gift history, USD values, approve/mark paid
+- [ ] Admin: CoinRequestsTab — pending coin purchase requests, approve button
+
+## Live Cook Up — Completed (May 2026)
+
+- [x] Database: liveStreams, giftTypes, gifts, coinPurchases, coinBalances tables created
+- [x] Default gift types seeded (Mic Drop 50c, Fire 100c, Diamond 500c, Crown 1000c, Bag 5000c)
+- [x] LiveKit credentials stored (LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+- [x] server/livekit.ts helper (generateStreamerToken, generateViewerToken, deleteRoom, getRoomParticipantCount)
+- [x] tRPC live router: list, getById, create, end, getToken, getGiftTypes, sendGift, getForStream, getMyBalance
+- [x] tRPC coins router: getBalance, requestPurchase, getHistory
+- [x] tRPC admin procedures: adminGetLiveStreams, adminGetCoinRequests, adminGetGiftLedger, adminApproveCoinPurchase, adminMarkPayoutSent
+- [x] /cookup page: thumbnail grid of active/recent streams
+- [x] /cookup/:id page: broadcaster mode (camera/mic via LiveKit WebRTC) + viewer mode + gift panel
+- [x] /coins page: coin packages, purchase request form, balance display
+- [x] Admin panel: Live Streams tab with gift ledger, coin requests, payout tracking
+- [x] SiteNav: Live Cook Up and Buy Coins links added
+- [x] App.tsx: /cookup, /cookup/:id, /coins routes registered

@@ -20,7 +20,7 @@ import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
-  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -1060,8 +1060,189 @@ function DailyWheelTab() {
   );
 }
 
+// ─── Live Cook Up Admin Tab ─────────────────────────────────
+function LiveCookUpAdminTab() {
+  const [activeSubTab, setActiveSubTab] = useState<"streams" | "coins" | "gifts">("streams");
+
+  const { data: allStreams, refetch: refetchStreams } = trpc.admin.adminGetLiveStreams.useQuery();
+  const { data: coinRequests, refetch: refetchCoins } = trpc.admin.adminGetCoinRequests.useQuery();
+  const { data: allGifts } = trpc.admin.adminGetGiftLedger.useQuery({ limit: 200 });
+
+  const approveCoinMutation = trpc.admin.adminApproveCoinPurchase.useMutation({
+    onSuccess: () => { toast.success("Coins approved and added!"); refetchCoins(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const endStreamMutation = trpc.admin.adminMarkPayoutSent.useMutation({
+    onSuccess: () => { toast.success("Stream marked as paid out"); refetchStreams(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const totalGiftUsd = allGifts?.reduce((sum: number, g: any) => sum + (g.usdValueCents ?? 0), 0) ?? 0;
+  const pendingCoins = coinRequests?.filter((r: any) => r.status === "pending").length ?? 0;
+  const activeStreams = allStreams?.filter((s: any) => s.status === "live").length ?? 0;
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="border border-red-600/20 bg-red-600/5 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Radio className="w-4 h-4 text-red-400" />
+            <span className="text-xs text-white/40 uppercase tracking-widest">Active Streams</span>
+          </div>
+          <div className="text-2xl font-bold text-red-400">{activeStreams}</div>
+        </div>
+        <div className="border border-yellow-600/20 bg-yellow-600/5 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Coins className="w-4 h-4 text-yellow-400" />
+            <span className="text-xs text-white/40 uppercase tracking-widest">Pending Coin Requests</span>
+          </div>
+          <div className="text-2xl font-bold text-yellow-400">{pendingCoins}</div>
+        </div>
+        <div className="border border-green-600/20 bg-green-600/5 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Gift className="w-4 h-4 text-green-400" />
+            <span className="text-xs text-white/40 uppercase tracking-widest">Total Gift Value</span>
+          </div>
+          <div className="text-2xl font-bold text-green-400">${(totalGiftUsd / 100).toFixed(2)}</div>
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2 mb-6">
+        {(["streams", "coins", "gifts"] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setActiveSubTab(t)}
+            className={`px-4 py-2 text-sm font-semibold uppercase tracking-widest transition-colors ${
+              activeSubTab === t ? "bg-red-600 text-white" : "border border-white/20 text-white/50 hover:text-white"
+            }`}
+          >
+            {t === "streams" ? "Live Streams" : t === "coins" ? "Coin Requests" : "Gift Ledger"}
+          </button>
+        ))}
+      </div>
+
+      {/* Streams */}
+      {activeSubTab === "streams" && (
+        <div className="space-y-3">
+          {!allStreams || allStreams.length === 0 ? (
+            <p className="text-white/30 text-sm">No streams yet.</p>
+          ) : allStreams.map((s: any) => (
+            <div key={s.id} className="border border-white/10 bg-white/[0.03] rounded-lg p-4 flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  {s.status === "live" && (
+                    <span className="flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE
+                    </span>
+                  )}
+                  <span className="text-white font-semibold text-sm truncate">{s.title}</span>
+                </div>
+                <p className="text-white/40 text-xs">
+                  {s.streamer?.artistName || s.streamer?.name || "Unknown"} · {s.viewerCount ?? 0} viewers · 🎁 {s.totalGiftCoins ?? 0} coins gifted (${((s.totalGiftUsd ?? 0) / 100).toFixed(2)})
+                </p>
+                <p className="text-white/20 text-xs mt-0.5">{new Date(s.createdAt).toLocaleString()}</p>
+              </div>
+              {s.status === "live" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => endStreamMutation.mutate({ streamId: s.id })}
+
+                  className="border-red-600/40 text-red-400 hover:bg-red-600/10 shrink-0"
+                >
+                  Force End
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Coin Requests */}
+      {activeSubTab === "coins" && (
+        <div className="space-y-3">
+          {!coinRequests || coinRequests.length === 0 ? (
+            <p className="text-white/30 text-sm">No coin purchase requests yet.</p>
+          ) : coinRequests.map((req: any) => (
+            <div key={req.id} className="border border-white/10 bg-white/[0.03] rounded-lg p-4 flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-sm uppercase ${
+                    req.status === "pending" ? "bg-yellow-600/20 text-yellow-400" :
+                    req.status === "approved" ? "bg-green-600/20 text-green-400" :
+                    "bg-red-600/20 text-red-400"
+                  }`}>{req.status}</span>
+                  <span className="text-white font-semibold text-sm">{req.user?.artistName || req.user?.name || "Unknown"}</span>
+                </div>
+                <p className="text-white/60 text-sm">
+                  <span className="text-yellow-400 font-bold">{req.coins.toLocaleString()} coins</span>
+                  {" · "}
+                  <span className="text-white">${(req.usdCents / 100).toFixed(2)}</span>
+                </p>
+                {req.paymentNote && (
+                  <p className="text-white/30 text-xs mt-0.5">Note: {req.paymentNote}</p>
+                )}
+                <p className="text-white/20 text-xs mt-0.5">{new Date(req.createdAt).toLocaleString()}</p>
+              </div>
+              {req.status === "pending" && (
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                  onClick={() => approveCoinMutation.mutate({ purchaseId: req.id, approve: true })}
+                  disabled={approveCoinMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => approveCoinMutation.mutate({ purchaseId: req.id, approve: false })}
+                    disabled={approveCoinMutation.isPending}
+                    className="border-red-600/40 text-red-400 hover:bg-red-600/10"
+                  >
+                    Reject
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Gift Ledger */}
+      {activeSubTab === "gifts" && (
+        <div className="space-y-3">
+          {!allGifts || allGifts.length === 0 ? (
+            <p className="text-white/30 text-sm">No gifts sent yet.</p>
+          ) : allGifts.map((g: any) => (
+            <div key={g.id} className="border border-white/10 bg-white/[0.03] rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-white/70 text-sm">
+                  <span className="text-red-400 font-semibold">{g.from?.artistName || g.from?.name || "?"}</span>
+                  {" → "}
+                  <span className="text-white font-semibold">{g.to?.artistName || g.to?.name || "?"}</span>
+                  {" · "}
+                  <span className="text-yellow-400">{g.giftType?.name || "Gift"}</span>
+                </p>
+                <p className="text-white/30 text-xs mt-0.5">
+                  {g.coinCost} coins · ${((g.usdValueCents ?? 0) / 100).toFixed(2)} · {new Date(g.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <span className="text-white/40 text-lg shrink-0">{g.giftType?.emoji || "🎁"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel";
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
@@ -1070,6 +1251,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "danger", label: "Danger Zone", icon: AlertTriangle },
   { id: "rewards", label: "Rewards", icon: Trophy },
   { id: "dailywheel", label: "Daily Wheel", icon: Disc },
+  { id: "live", label: "Live Cook Up", icon: Radio },
 ];
 
 export default function AdminPanel() {
@@ -1152,6 +1334,7 @@ export default function AdminPanel() {
         {activeTab === "danger" && <DangerZoneTab />}
         {activeTab === "rewards" && <AdminRewardsTab />}
         {activeTab === "dailywheel" && <DailyWheelTab />}
+        {activeTab === "live" && <LiveCookUpAdminTab />}
       </div>
     </div>
   );

@@ -29,6 +29,9 @@ import AdminSiteStats from "./pages/AdminSiteStats";
 import Banned from "./pages/Banned";
 import WheelOfNames from "./pages/WheelOfNames";
 import HowItWorks from "./pages/HowItWorks";
+import LiveCookUp from "./pages/CookUp";
+import CookUpStream from "./pages/CookUpStream";
+import Coins from "./pages/Coins";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 function Router() {
@@ -47,6 +50,11 @@ function Router() {
       {/* Daily Free Promo Wheel */}
       <Route path={"/daily-wheel"} component={WheelOfNames} />
       <Route path={"/wheel"} component={WheelOfNames} />
+
+      {/* Live Cook Up */}
+      <Route path={"/cookup"} component={LiveCookUp} />
+      <Route path={"/cookup/:id"} component={CookUpStream} />
+      <Route path={"/coins"} component={Coins} />
 
       {/* XP & Tiers explainer */}
       <Route path={"/how-it-works"} component={HowItWorks} />

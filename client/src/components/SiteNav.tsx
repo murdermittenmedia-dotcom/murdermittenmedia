@@ -14,7 +14,7 @@ import LabelBadge from "@/components/LabelBadge";
 import {
   User, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
-  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap,
+  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap, Radio, Coins,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -29,6 +29,8 @@ const NAV_ITEMS = [
   { href: "/podcast",           label: "Meeting with the Mitten",              icon: Podcast                       },
   { href: "/promo",             label: "Get Promoted",                         icon: Tag                           },
   { href: "/daily-wheel",       label: "Daily Wheel",                          icon: Zap                           },
+  { href: "/cookup",            label: "Live Cook Up",                         icon: Radio                         },
+  { href: "/coins",             label: "Buy Coins",                            icon: Coins                         },
   { href: "/forum",             label: "Forum",                                icon: MessageSquare                 },
   { href: "/explore",           label: "Explore",                              icon: Search                        },
   { href: "/leaderboard",       label: "Leaderboards",                         icon: Trophy                        },

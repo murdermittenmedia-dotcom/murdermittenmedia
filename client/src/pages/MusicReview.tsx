@@ -804,6 +804,7 @@ export default function MusicReview() {
     },
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
   });
+  const { data: lineSkipCreditsData, refetch: refetchLineSkipCredits } = trpc.dailyWheel.getMyLineSkipCredits.useQuery();
   const useLineSkipMutation = trpc.dailyWheel.useLineSkip.useMutation({
     onSuccess: (data) => {
       toast.success(`Line skip applied! Credits remaining: ${data.creditsRemaining}`);

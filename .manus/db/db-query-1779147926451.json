@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO `gift_types` (`name`, `emoji`, `coinCost`, `usdValueCents`, `isActive`, `sortOrder`) VALUES\n('Mic Drop', '🎤', 50, 50, true, 1),\n('Fire', '🔥', 100, 100, true, 2),\n('Beat', '🥁', 250, 250, true, 3),\n('Diamond', '💎', 500, 500, true, 4),\n('Crown', '👑', 1000, 1000, true, 5),\n('Detroit', '🏙️', 2000, 2000, true, 6);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute \nINSERT INTO `gift_types` (`name`, `emoji`, `coinCost`, `usdValueCents`, `isActive`, `sortOrder`) VALUES\n('Mic Drop', '🎤', 50, 50, true, 1),\n('Fire', '🔥', 100, 100, true, 2),\n('Beat', '🥁', 250, 250, true, 3),\n('Diamond', '💎', 500, 500, true, 4),\n('Crown', '👑', 1000, 1000, true, 5),\n('Detroit', '🏙️', 2000, 2000, true, 6);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 283
+}

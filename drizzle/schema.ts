@@ -496,3 +496,84 @@ export const lineSkipCredits = mysqlTable("line_skip_credits", {
 });
 export type LineSkipCredit = typeof lineSkipCredits.$inferSelect;
 export type InsertLineSkipCredit = typeof lineSkipCredits.$inferInsert;
+
+// ─── Live Cook Up ─────────────────────────────────────────────
+
+// Live streams — one row per active/ended stream session
+export const liveStreams = mysqlTable("live_streams", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  status: mysqlEnum("status", ["live", "ended"]).default("live").notNull(),
+  // LiveKit room info
+  livekitRoomName: varchar("livekitRoomName", { length: 128 }).notNull(),
+  // RTMP ingest details (for OBS/Streamlabs users)
+  rtmpUrl: varchar("rtmpUrl", { length: 512 }),
+  rtmpKey: varchar("rtmpKey", { length: 256 }),
+  // Stats
+  viewerCount: int("viewerCount").default(0).notNull(),
+  peakViewerCount: int("peakViewerCount").default(0).notNull(),
+  totalGiftCoins: int("totalGiftCoins").default(0).notNull(),   // total coins received
+  totalGiftUsd: int("totalGiftUsd").default(0).notNull(),       // total USD value in cents
+  payoutStatus: mysqlEnum("payoutStatus", ["pending", "paid"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  endedAt: timestamp("endedAt"),
+});
+export type LiveStream = typeof liveStreams.$inferSelect;
+export type InsertLiveStream = typeof liveStreams.$inferInsert;
+
+// Gift types — configurable gift catalog
+export const giftTypes = mysqlTable("gift_types", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 64 }).notNull(),
+  emoji: varchar("emoji", { length: 8 }).notNull(),
+  coinCost: int("coinCost").notNull(),
+  usdValueCents: int("usdValueCents").notNull(),  // USD value in cents (e.g. 100 = $1.00)
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GiftType = typeof giftTypes.$inferSelect;
+export type InsertGiftType = typeof giftTypes.$inferInsert;
+
+// Gifts — sent during live streams
+export const gifts = mysqlTable("gifts", {
+  id: int("id").autoincrement().primaryKey(),
+  liveStreamId: int("liveStreamId").notNull(),
+  fromUserId: int("fromUserId").notNull(),
+  toUserId: int("toUserId").notNull(),   // the streamer
+  giftTypeId: int("giftTypeId").notNull(),
+  coinCost: int("coinCost").notNull(),
+  usdValueCents: int("usdValueCents").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Gift = typeof gifts.$inferSelect;
+export type InsertGift = typeof gifts.$inferInsert;
+
+// Coin purchases — manual approval flow
+export const coinPurchases = mysqlTable("coin_purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  coins: int("coins").notNull(),
+  amountCents: int("amountCents").notNull(),  // USD in cents
+  paymentMethod: varchar("paymentMethod", { length: 64 }),  // e.g. "cashapp", "paypal"
+  paymentNote: varchar("paymentNote", { length: 256 }),  // e.g. CashApp username or note
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  approvedByAdminId: int("approvedByAdminId"),
+  approvedAt: timestamp("approvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CoinPurchase = typeof coinPurchases.$inferSelect;
+export type InsertCoinPurchase = typeof coinPurchases.$inferInsert;
+
+// Coin balances — one row per user
+export const coinBalances = mysqlTable("coin_balances", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  balance: int("balance").default(0).notNull(),
+  totalEarned: int("totalEarned").default(0).notNull(),   // streamer: total coins received as gifts
+  totalSpent: int("totalSpent").default(0).notNull(),     // viewer: total coins spent on gifts
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CoinBalance = typeof coinBalances.$inferSelect;
+export type InsertCoinBalance = typeof coinBalances.$inferInsert;
