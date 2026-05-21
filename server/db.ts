@@ -173,6 +173,12 @@ export async function confirmSkipPayment(id: number) {
   if (!db) throw new Error("DB not available");
   return db.update(reviewSubmissions).set({ skipPaymentConfirmed: true }).where(eq(reviewSubmissions.id, id));
 }
+/** Confirm a paid submission (3rd+ song) — marks it as confirmed so it enters the active queue */
+export async function confirmPaidSubmission(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(reviewSubmissions).set({ paidSubmissionConfirmed: true }).where(eq(reviewSubmissions.id, id));
+}
 
 /** Re-queue a previously reviewed submission: reset to pending and move to end of queue */
 export async function requeueSubmission(id: number) {

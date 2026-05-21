@@ -49,6 +49,7 @@ import {
   getDb,
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
+  confirmPaidSubmission,
 } from "./db";
 import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances } from "../drizzle/schema";
 import {
@@ -411,9 +412,11 @@ export const appRouter = router({
         youtubeUrl: z.string().optional(),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
+        // Paid submission type — if provided, this is a 3rd+ paid submission
+        paidSubmissionType: z.enum(["basic", "skip"]).optional(),
       }))
       .output(z.union([
-        z.object({ success: z.literal(true) }),
+        z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
         z.object({
           success: z.literal(false),
           limitReached: z.literal(true),
@@ -426,9 +429,12 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
-        // Check submission limit (max 2 pending/playing submissions per user)
+        // Check submission limit (max 2 free pending/playing submissions per user per day)
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        
+        const today = getTodayEST();
+        const todayStart = new Date(today + 'T00:00:00');
         
         const existingSubmissions = await db
           .select()
@@ -436,18 +442,20 @@ export const appRouter = router({
           .where(
             and(
               eq(reviewSubmissions.userId, ctx.user.id),
-              inArray(reviewSubmissions.status, ["pending", "playing"])
+              inArray(reviewSubmissions.status, ["pending", "playing"]),
+              eq(reviewSubmissions.isPaidSubmission, false)
             )
           );
         
-        if (existingSubmissions.length >= 2) {
+        // If at limit and no paid type provided, return paywall options
+        if (existingSubmissions.length >= 2 && !input.paidSubmissionType) {
           return {
             success: false,
             limitReached: true,
-            message: "You have reached your max song submissions (2)",
+            message: "You've used your 2 free daily submissions. Submit more for a fee:",
             upgradeOptions: [
-              { type: "re_enter", price: 5, label: "Re-enter ($5)" },
-              { type: "play_next", price: 15, label: "Get Played Next ($15)" },
+              { type: "basic", price: 5, label: "Basic Submission ($5)" },
+              { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
             ],
           };
         }
@@ -455,6 +463,7 @@ export const appRouter = router({
         // Auto-resolve artist name from the user's registered profile
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
+        const isPaid = existingSubmissions.length >= 2 && !!input.paidSubmissionType;
         await addSubmission({
           userId: ctx.user.id,
           artistName,
@@ -462,8 +471,12 @@ export const appRouter = router({
           submissionType: input.submissionType,
           youtubeUrl: input.youtubeUrl ?? null,
           contactInfo: input.contactInfo ?? null,
-          skippedLine: input.wantsSkip,
+          skippedLine: input.wantsSkip || input.paidSubmissionType === "skip",
           skipPaymentConfirmed: false,
+          isPaidSubmission: isPaid,
+          paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
+          paidSubmissionConfirmed: false,
+          // Paid submissions are held as 'pending' until admin confirms payment
           status: "pending",
           position: 0,
         });
@@ -480,8 +493,8 @@ export const appRouter = router({
           console.warn("[queue.submit] Failed to auto-save to catalogue:", e);
         }
         // Award XP for submitting a song to the review queue
-        awardXP(ctx.user.id, "review_submission").catch(() => {});
-        return { success: true };
+        if (!isPaid) awardXP(ctx.user.id, "review_submission").catch(() => {});
+        return { success: true, isPaid };
       }),
     setPlaying: adminProcedure
       .input(z.object({ submissionId: z.number().nullable() }))
@@ -507,6 +520,14 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await confirmSkipPayment(input.id);
+        return { success: true };
+      }),
+
+    // Confirm a paid submission (3rd+ song) — admin verifies payment received
+    confirmPaidSub: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await confirmPaidSubmission(input.id);
         return { success: true };
       }),
 
@@ -542,8 +563,39 @@ export const appRouter = router({
         fileUrl: z.string(),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
+        paidSubmissionType: z.enum(["basic", "skip"]).optional(),
       }))
+      .output(z.union([
+        z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
+        z.object({
+          success: z.literal(false),
+          limitReached: z.literal(true),
+          message: z.string(),
+          upgradeOptions: z.array(z.object({ type: z.string(), price: z.number(), label: z.string() })),
+        }),
+      ]))
       .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const existingFree = await db.select().from(reviewSubmissions).where(
+          and(
+            eq(reviewSubmissions.userId, ctx.user.id),
+            inArray(reviewSubmissions.status, ["pending", "playing"]),
+            eq(reviewSubmissions.isPaidSubmission, false)
+          )
+        );
+        if (existingFree.length >= 2 && !input.paidSubmissionType) {
+          return {
+            success: false,
+            limitReached: true,
+            message: "You've used your 2 free daily submissions. Submit more for a fee:",
+            upgradeOptions: [
+              { type: "basic", price: 5, label: "Basic Submission ($5)" },
+              { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
+            ],
+          };
+        }
+        const isPaid = existingFree.length >= 2 && !!input.paidSubmissionType;
         await addSubmission({
           userId: ctx.user.id,
           artistName: input.artistName,
@@ -552,12 +604,16 @@ export const appRouter = router({
           fileKey: input.fileKey,
           fileUrl: input.fileUrl,
           contactInfo: input.contactInfo ?? null,
-          skippedLine: input.wantsSkip,
+          skippedLine: input.wantsSkip || input.paidSubmissionType === "skip",
           skipPaymentConfirmed: false,
+          isPaidSubmission: isPaid,
+          paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
+          paidSubmissionConfirmed: false,
           status: "pending",
           position: 0,
         });
-        return { success: true };
+        if (!isPaid) awardXP(ctx.user.id, "review_submission").catch(() => {});
+        return { success: true, isPaid };
       }),
 
     // Upload audio file bytes (base64) for a queue submission
@@ -569,8 +625,40 @@ export const appRouter = router({
         mimeType: z.string().default("audio/mpeg"),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
+        paidSubmissionType: z.enum(["basic", "skip"]).optional(),
       }))
+      .output(z.union([
+        z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
+        z.object({
+          success: z.literal(false),
+          limitReached: z.literal(true),
+          message: z.string(),
+          upgradeOptions: z.array(z.object({ type: z.string(), price: z.number(), label: z.string() })),
+        }),
+      ]))
       .mutation(async ({ ctx, input }) => {
+        // Enforce 2-song daily limit
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const existingFree = await db.select().from(reviewSubmissions).where(
+          and(
+            eq(reviewSubmissions.userId, ctx.user.id),
+            inArray(reviewSubmissions.status, ["pending", "playing"]),
+            eq(reviewSubmissions.isPaidSubmission, false)
+          )
+        );
+        if (existingFree.length >= 2 && !input.paidSubmissionType) {
+          return {
+            success: false,
+            limitReached: true,
+            message: "You've used your 2 free daily submissions. Submit more for a fee:",
+            upgradeOptions: [
+              { type: "basic", price: 5, label: "Basic Submission ($5)" },
+              { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
+            ],
+          };
+        }
+        const isPaid = existingFree.length >= 2 && !!input.paidSubmissionType;
         // Auto-resolve artist name from the user's registered profile
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
@@ -589,8 +677,11 @@ export const appRouter = router({
           fileKey: key,
           fileUrl: url,
           contactInfo: input.contactInfo ?? null,
-          skippedLine: input.wantsSkip,
+          skippedLine: input.wantsSkip || input.paidSubmissionType === "skip",
           skipPaymentConfirmed: false,
+          isPaidSubmission: isPaid,
+          paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
+          paidSubmissionConfirmed: false,
           status: "pending",
           position: 0,
         });
@@ -608,7 +699,8 @@ export const appRouter = router({
           // Non-fatal — submission still goes through even if catalogue insert fails
           console.warn("[queue.uploadAudio] Failed to auto-save to catalogue:", e);
         }
-        return { success: true };
+        if (!isPaid) awardXP(ctx.user.id, "review_submission").catch(() => {});
+        return { success: true, isPaid };
       }),
 
     // Get past reviewed submissions (history)
@@ -1702,6 +1794,44 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Get pending paid submissions
+    getPendingPaidSubmissions: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const rows = await db.select().from(reviewSubmissions).where(
+        and(
+          eq(reviewSubmissions.isPaidSubmission, true),
+          eq(reviewSubmissions.paidSubmissionConfirmed, false)
+        )
+      ).orderBy(desc(reviewSubmissions.createdAt));
+      return rows.map(r => ({
+        id: r.id,
+        songTitle: r.songTitle,
+        artistName: r.artistName,
+        paidSubmissionType: r.paidSubmissionType,
+        createdAt: r.createdAt,
+        contactInfo: r.contactInfo,
+      }));
+    }),
+
+    // Confirm paid submission
+    confirmPaidSubmission: adminProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .mutation(async ({ input }) => {
+        await confirmPaidSubmission(input.submissionId);
+        return { success: true };
+      }),
+
+    // Reject paid submission
+    rejectPaidSubmission: adminProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        await db.delete(reviewSubmissions).where(eq(reviewSubmissions.id, input.submissionId));
+        return { success: true };
+      }),
+
     // Site settings — get all
     getSettings: adminProcedure.query(async () => {
       return getAllSettings();
@@ -2669,8 +2799,13 @@ export const appRouter = router({
           .where(eq(gifts.liveStreamId, input.streamId))
           .orderBy(drizzleDesc(gifts.createdAt))
           .limit(100);
-        const userIds = Array.from(new Set(rows.map(g => g.fromUserId)));
-        const giftTypeIds = Array.from(new Set(rows.map(g => g.giftTypeId)));
+        const userIdSet = new Set<number>();
+        const giftTypeIdSet = new Set<number>();
+        rows.forEach(g => { userIdSet.add(g.fromUserId); giftTypeIdSet.add(g.giftTypeId); });
+        const userIds: number[] = [];
+        userIdSet.forEach(id => userIds.push(id));
+        const giftTypeIds: number[] = [];
+        giftTypeIdSet.forEach(id => giftTypeIds.push(id));
         const [giftUsers, types] = await Promise.all([
           userIds.length > 0 ? db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, userIds)) : Promise.resolve([]),
           giftTypeIds.length > 0 ? db.select().from(giftTypes).where(inArray(giftTypes.id, giftTypeIds)) : Promise.resolve([]),

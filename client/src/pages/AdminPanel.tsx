@@ -20,7 +20,7 @@ import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
-  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift, CreditCard
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -1241,11 +1241,81 @@ function LiveCookUpAdminTab() {
   );
 }
 
+// ─── Paid Submissions Tab ────────────────────────────────────
+function PaidSubmissionsTab() {
+  const { data: pendingSubmissions, isLoading, refetch } = trpc.admin.getPendingPaidSubmissions.useQuery();
+  const confirmMutation = trpc.admin.confirmPaidSubmission.useMutation({
+    onSuccess: () => {
+      toast.success("Submission approved!");
+      refetch();
+    },
+    onError: (err) => toast.error("Failed to approve: " + err.message),
+  });
+  const rejectMutation = trpc.admin.rejectPaidSubmission.useMutation({
+    onSuccess: () => {
+      toast.success("Submission rejected.");
+      refetch();
+    },
+    onError: (err) => toast.error("Failed to reject: " + err.message),
+  });
+
+  if (isLoading) return <div className="text-white/30">Loading...</div>;
+  if (!pendingSubmissions || pendingSubmissions.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+        <p className="text-white/50">No pending paid submissions</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-['Anton'] text-2xl uppercase mb-6">Pending Paid Submissions</h2>
+      {pendingSubmissions.map((sub) => (
+        <div key={sub.id} className="border border-white/10 bg-white/5 rounded-lg p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-white font-semibold text-lg mb-1">{sub.songTitle}</h3>
+              <p className="text-white/60 text-sm">by {sub.artistName}</p>
+              <p className="text-yellow-400 text-xs mt-2 uppercase tracking-widest font-semibold">
+                {sub.paidSubmissionType === 'skip' ? '⭐ SKIP THE LINE' : '💳 BASIC'} • ${sub.paidSubmissionType === 'skip' ? '15' : '5'}
+              </p>
+            </div>
+            <Badge className="bg-yellow-600 text-white">Pending Payment</Badge>
+          </div>
+          <div className="text-white/40 text-xs mb-4 space-y-1">
+            <p>Submitted: {new Date(sub.createdAt).toLocaleString()}</p>
+            {sub.contactInfo && <p>Contact: {sub.contactInfo}</p>}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => confirmMutation.mutate({ submissionId: sub.id })}
+              disabled={confirmMutation.isPending}
+              className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded text-sm font-semibold transition-all disabled:opacity-50"
+            >
+              ✓ Approve & Activate
+            </button>
+            <button
+              onClick={() => rejectMutation.mutate({ submissionId: sub.id })}
+              disabled={rejectMutation.isPending}
+              className="flex-1 bg-red-600/20 border border-red-600 hover:bg-red-600/40 text-white py-2 px-4 rounded text-sm font-semibold transition-all disabled:opacity-50"
+            >
+              ✕ Reject
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live";
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
+  { id: "paidsubmissions", label: "Paid Submissions", icon: CreditCard },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "settings", label: "Site Settings", icon: Settings },
   { id: "danger", label: "Danger Zone", icon: AlertTriangle },
@@ -1329,6 +1399,7 @@ export default function AdminPanel() {
       <div className="container py-8">
         {activeTab === "users" && <UsersTab />}
         {activeTab === "orders" && <PromoOrdersTab />}
+        {activeTab === "paidsubmissions" && <PaidSubmissionsTab />}
         {activeTab === "analytics" && <AnalyticsTab />}
         {activeTab === "settings" && <SiteSettingsTab />}
         {activeTab === "danger" && <DangerZoneTab />}

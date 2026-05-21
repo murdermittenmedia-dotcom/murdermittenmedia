@@ -46,6 +46,10 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   status: mysqlEnum("status", ["pending", "playing", "reviewed", "removed"]).default("pending").notNull(),
   skippedLine: boolean("skippedLine").default(false).notNull(),
   skipPaymentConfirmed: boolean("skipPaymentConfirmed").default(false).notNull(),
+  // Paid submission fields (for 3rd+ submissions beyond the 2 free per day)
+  isPaidSubmission: boolean("isPaidSubmission").default(false).notNull(),
+  paidSubmissionType: mysqlEnum("paidSubmissionType", ["basic", "skip"]),  // basic=$5, skip=$15
+  paidSubmissionConfirmed: boolean("paidSubmissionConfirmed").default(false).notNull(),
   position: int("position").default(0).notNull(),
   notes: text("notes"),
   // Career reaction totals (incremented on each vote)

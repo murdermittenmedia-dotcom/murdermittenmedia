@@ -779,15 +779,33 @@ export default function MusicReview() {
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
 
   const [limitReachedData, setLimitReachedData] = useState<{ success: false; limitReached: true; message: string; upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
-  
+  // Stores the pending form data so we can re-submit with paidSubmissionType when user picks an upgrade
+  const [pendingFormData, setPendingFormData] = useState<{
+    type: 'youtube' | 'file';
+    songTitle: string;
+    youtubeUrl?: string;
+    contactInfo?: string;
+    wantsSkip: boolean;
+    fileBase64?: string;
+    fileName?: string;
+    mimeType?: string;
+  } | null>(null);
+  const [paidSubmitSuccess, setPaidSubmitSuccess] = useState<string | null>(null);
+
   const submitMutation = trpc.queue.submit.useMutation({
     onSuccess: (data) => {
       if (!data.success && 'limitReached' in data && data.limitReached && 'message' in data && 'upgradeOptions' in data) {
         setLimitReachedData(data as any);
         setSubmitting(false);
-        toast.error(data.message as string);
       } else if (data.success) {
-        setSubmitted(true); setSubmitting(false); refetch();
+        if ((data as any).isPaid) {
+          setPaidSubmitSuccess('basic');
+          setLimitReachedData(null);
+          setPendingFormData(null);
+        } else {
+          setSubmitted(true);
+        }
+        setSubmitting(false); refetch();
       }
     },
     onError: (err) => { toast.error("Submission failed: " + err.message); setSubmitting(false); },
@@ -797,9 +815,15 @@ export default function MusicReview() {
       if (!data.success && 'limitReached' in data && data.limitReached && 'message' in data && 'upgradeOptions' in data) {
         setLimitReachedData(data as any);
         setSubmitting(false);
-        toast.error(data.message as string);
       } else if (data.success) {
-        setSubmitted(true); setSubmitting(false); refetch();
+        if ((data as any).isPaid) {
+          setPaidSubmitSuccess('basic');
+          setLimitReachedData(null);
+          setPendingFormData(null);
+        } else {
+          setSubmitted(true);
+        }
+        setSubmitting(false); refetch();
       }
     },
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
@@ -982,6 +1006,16 @@ export default function MusicReview() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const base64 = (ev.target?.result as string).split(",")[1];
+        // Save pending data in case limit is hit
+        setPendingFormData({
+          type: 'file',
+          songTitle: form.songTitle,
+          contactInfo: form.contactInfo || undefined,
+          wantsSkip: form.wantsSkip,
+          fileBase64: base64,
+          fileName: audioFile.name,
+          mimeType: audioFile.type || "audio/mpeg",
+        });
         uploadAudioMutation.mutate({
           songTitle: form.songTitle,
           fileName: audioFile.name,
@@ -993,12 +1027,46 @@ export default function MusicReview() {
       };
       reader.readAsDataURL(audioFile);
     } else {
+      // Save pending data in case limit is hit
+      setPendingFormData({
+        type: 'youtube',
+        songTitle: form.songTitle,
+        youtubeUrl: form.youtubeUrl,
+        contactInfo: form.contactInfo || undefined,
+        wantsSkip: form.wantsSkip,
+      });
       submitMutation.mutate({
         songTitle: form.songTitle,
         submissionType: "youtube",
         youtubeUrl: form.youtubeUrl,
         contactInfo: form.contactInfo || undefined,
         wantsSkip: form.wantsSkip,
+      });
+    }
+  };
+
+  // Re-submit with paid flag after user chooses an upgrade option
+  const handlePaidSubmit = (paidType: 'basic' | 'skip') => {
+    if (!pendingFormData) return;
+    setSubmitting(true);
+    if (pendingFormData.type === 'file' && pendingFormData.fileBase64) {
+      uploadAudioMutation.mutate({
+        songTitle: pendingFormData.songTitle,
+        fileName: pendingFormData.fileName!,
+        fileBase64: pendingFormData.fileBase64,
+        mimeType: pendingFormData.mimeType || "audio/mpeg",
+        contactInfo: pendingFormData.contactInfo,
+        wantsSkip: paidType === 'skip',
+        paidSubmissionType: paidType,
+      });
+    } else {
+      submitMutation.mutate({
+        songTitle: pendingFormData.songTitle,
+        submissionType: "youtube",
+        youtubeUrl: pendingFormData.youtubeUrl,
+        contactInfo: pendingFormData.contactInfo,
+        wantsSkip: paidType === 'skip',
+        paidSubmissionType: paidType,
       });
     }
   };
@@ -1562,30 +1630,91 @@ export default function MusicReview() {
               </div>
             )}
 
-            {/* ── LIMIT REACHED MODAL ── */}
-            {limitReachedData && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                <div className="bg-[#1a1a1a] border border-red-600/50 rounded-lg p-8 max-w-md w-full">
-                  <h2 className="font-['Anton'] text-3xl text-red-600 mb-4 uppercase">Max Submissions Reached</h2>
-                  <p className="text-white/70 mb-6">You've reached your limit of 2 active submissions. Upgrade to submit more songs.</p>
-                  
-                  <div className="space-y-3 mb-6">
-                    {limitReachedData.upgradeOptions.map((opt) => (
-                      <button
-                        key={opt.type}
-                        onClick={() => { window.location.href = `/promo?upgrade=${opt.type}`; }}
-                        className="w-full border border-red-600 hover:bg-red-600/20 text-white py-3 px-4 rounded transition-all text-sm font-semibold uppercase tracking-widest"
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+            {/* ── LIMIT REACHED / PAYWALL MODAL ── */}
+            {limitReachedData && !paidSubmitSuccess && (
+              <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                <div className="bg-[#111] border border-red-600/60 rounded-lg p-8 max-w-lg w-full my-4">
+                  <div className="text-center mb-6">
+                    <div className="text-5xl mb-3">🔒</div>
+                    <h2 className="font-['Anton'] text-3xl text-red-600 mb-2 uppercase">2 Free Submissions Used</h2>
+                    <p className="text-white/60 text-sm">You've hit your daily limit of 2 free submissions. Submit additional songs for a fee — your song enters the queue once payment is confirmed.</p>
                   </div>
-                  
+
+                  {/* Payment options */}
+                  <div className="space-y-3 mb-6">
+                    <button
+                      onClick={() => handlePaidSubmit('basic')}
+                      disabled={submitting}
+                      className="w-full bg-red-600/20 border border-red-600 hover:bg-red-600/40 text-white py-4 px-4 rounded transition-all"
+                    >
+                      <div className="font-['Anton'] text-xl text-red-400 mb-1">BASIC SUBMISSION — $5</div>
+                      <div className="text-white/60 text-xs">Song enters the queue in normal position</div>
+                    </button>
+                    <button
+                      onClick={() => handlePaidSubmit('skip')}
+                      disabled={submitting}
+                      className="w-full bg-yellow-600/20 border border-yellow-500 hover:bg-yellow-600/40 text-white py-4 px-4 rounded transition-all"
+                    >
+                      <div className="font-['Anton'] text-xl text-yellow-400 mb-1">SUBMIT + SKIP THE LINE — $15</div>
+                      <div className="text-white/60 text-xs">Song jumps to the front of the queue</div>
+                    </button>
+                  </div>
+
+                  {/* Payment instructions */}
+                  <div className="border border-white/10 bg-white/5 rounded p-4 mb-6">
+                    <p className="text-white/50 text-xs uppercase tracking-widest mb-3">Send payment to any of the following:</p>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-black/30 rounded p-3">
+                        <div className="text-lg mb-1">💸</div>
+                        <div className="text-green-400 text-xs font-bold">CashApp</div>
+                        <div className="text-white text-xs mt-1 font-mono">{CASHAPP}</div>
+                      </div>
+                      <div className="bg-black/30 rounded p-3">
+                        <div className="text-lg mb-1">🅿</div>
+                        <div className="text-blue-400 text-xs font-bold">PayPal</div>
+                        <div className="text-white text-xs mt-1 font-mono">{PAYPAL}</div>
+                      </div>
+                      <div className="bg-black/30 rounded p-3">
+                        <div className="text-lg mb-1">🍎</div>
+                        <div className="text-white/80 text-xs font-bold">Apple Pay</div>
+                        <div className="text-white text-xs mt-1 font-mono">{APPLEPAY}</div>
+                      </div>
+                    </div>
+                    <p className="text-white/40 text-xs mt-3 text-center">Include your artist name in the payment note. Your submission will be activated once payment is verified.</p>
+                  </div>
+
                   <button
-                    onClick={() => setLimitReachedData(null)}
+                    onClick={() => { setLimitReachedData(null); setPendingFormData(null); }}
                     className="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded transition-all text-sm"
                   >
-                    Close
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── PAID SUBMISSION SUCCESS ── */}
+            {paidSubmitSuccess && (
+              <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+                <div className="bg-[#111] border border-green-600/60 rounded-lg p-8 max-w-md w-full text-center">
+                  <div className="text-5xl mb-4">✅</div>
+                  <h2 className="font-['Anton'] text-3xl text-green-400 mb-3 uppercase">Submission Received!</h2>
+                  <p className="text-white/70 mb-2">Your song has been submitted and is <span className="text-yellow-400 font-semibold">pending payment confirmation</span>.</p>
+                  <p className="text-white/50 text-sm mb-6">Once we verify your payment, your track will be activated in the queue. This usually takes a few minutes to a few hours.</p>
+                  <div className="bg-white/5 border border-white/10 rounded p-4 mb-6 text-left">
+                    <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Payment details:</p>
+                    <div className="text-white text-sm space-y-1">
+                      <div>💸 CashApp: <span className="font-mono text-green-400">{CASHAPP}</span></div>
+                      <div>🅿 PayPal: <span className="font-mono text-blue-400">{PAYPAL}</span></div>
+                      <div>🍎 Apple Pay: <span className="font-mono text-white/80">{APPLEPAY}</span></div>
+                    </div>
+                    <p className="text-white/30 text-xs mt-3">Include your artist name in the note.</p>
+                  </div>
+                  <button
+                    onClick={() => { setPaidSubmitSuccess(null); setLimitReachedData(null); refetch(); }}
+                    className="w-full bg-green-600 hover:bg-green-500 text-white py-3 px-4 rounded transition-all font-semibold"
+                  >
+                    Got it!
                   </button>
                 </div>
               </div>
