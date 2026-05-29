@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import {
@@ -50,8 +50,9 @@ import {
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
   confirmPaidSubmission,
+  getOrCreateActiveMusicReviewSession, endActiveMusicReviewSession, countUserSubmissionsInActiveSession,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount
@@ -429,30 +430,15 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
-        // Check submission limit (max 2 free pending/playing submissions per user per day)
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-        
-        const today = getTodayEST();
-        const todayStart = new Date(today + 'T00:00:00');
-        
-        const existingSubmissions = await db
-          .select()
-          .from(reviewSubmissions)
-          .where(
-            and(
-              eq(reviewSubmissions.userId, ctx.user.id),
-              inArray(reviewSubmissions.status, ["pending", "playing"]),
-              eq(reviewSubmissions.isPaidSubmission, false)
-            )
-          );
+        // Check submission limit (max 2 free submissions per user per live session)
+        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
         
         // If at limit and no paid type provided, return paywall options
-        if (existingSubmissions.length >= 2 && !input.paidSubmissionType) {
+        if (submissionCount >= 2 && !input.paidSubmissionType) {
           return {
             success: false,
             limitReached: true,
-            message: "You've used your 2 free daily submissions. Submit more for a fee:",
+            message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
             upgradeOptions: [
               { type: "basic", price: 5, label: "Basic Submission ($5)" },
               { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
@@ -463,7 +449,7 @@ export const appRouter = router({
         // Auto-resolve artist name from the user's registered profile
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
-        const isPaid = existingSubmissions.length >= 2 && !!input.paidSubmissionType;
+        const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
         await addSubmission({
           userId: ctx.user.id,
           artistName,
@@ -550,6 +536,13 @@ export const appRouter = router({
     setLive: adminProcedure
       .input(z.object({ isLive: z.boolean(), message: z.string().optional(), streamUrl: z.string().max(512).optional() }))
       .mutation(async ({ input }) => {
+        if (input.isLive) {
+          // Starting a live session — create a new active session
+          await getOrCreateActiveMusicReviewSession();
+        } else {
+          // Ending a live session
+          await endActiveMusicReviewSession();
+        }
         await setLiveStatus(input.isLive, input.message, input.streamUrl);
         return { success: true };
       }),
@@ -575,27 +568,19 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-        const existingFree = await db.select().from(reviewSubmissions).where(
-          and(
-            eq(reviewSubmissions.userId, ctx.user.id),
-            inArray(reviewSubmissions.status, ["pending", "playing"]),
-            eq(reviewSubmissions.isPaidSubmission, false)
-          )
-        );
-        if (existingFree.length >= 2 && !input.paidSubmissionType) {
+        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
+        if (submissionCount >= 2 && !input.paidSubmissionType) {
           return {
             success: false,
             limitReached: true,
-            message: "You've used your 2 free daily submissions. Submit more for a fee:",
+            message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
             upgradeOptions: [
               { type: "basic", price: 5, label: "Basic Submission ($5)" },
               { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
             ],
           };
         }
-        const isPaid = existingFree.length >= 2 && !!input.paidSubmissionType;
+        const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
         await addSubmission({
           userId: ctx.user.id,
           artistName: input.artistName,
@@ -637,28 +622,20 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
-        // Enforce 2-song daily limit
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
-        const existingFree = await db.select().from(reviewSubmissions).where(
-          and(
-            eq(reviewSubmissions.userId, ctx.user.id),
-            inArray(reviewSubmissions.status, ["pending", "playing"]),
-            eq(reviewSubmissions.isPaidSubmission, false)
-          )
-        );
-        if (existingFree.length >= 2 && !input.paidSubmissionType) {
+        // Enforce 2-song per-session limit
+        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
+        if (submissionCount >= 2 && !input.paidSubmissionType) {
           return {
             success: false,
             limitReached: true,
-            message: "You've used your 2 free daily submissions. Submit more for a fee:",
+            message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
             upgradeOptions: [
               { type: "basic", price: 5, label: "Basic Submission ($5)" },
               { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
             ],
           };
         }
-        const isPaid = existingFree.length >= 2 && !!input.paidSubmissionType;
+        const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
         // Auto-resolve artist name from the user's registered profile
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";

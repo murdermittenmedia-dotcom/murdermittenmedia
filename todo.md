@@ -1064,3 +1064,17 @@
 - [x] Admin panel: Live Streams tab with gift ledger, coin requests, payout tracking
 - [x] SiteNav: Live Cook Up and Buy Coins links added
 - [x] App.tsx: /cookup, /cookup/:id, /coins routes registered
+
+
+## Music Review — Session-Based Submission Limit (May 2026)
+- [x] DB schema: add `musicReviewSessions` table (id, startedAt, endedAt, isActive)
+- [x] DB helpers: `getOrCreateActiveMusicReviewSession()` — creates or returns active session
+- [x] DB helpers: `endActiveMusicReviewSession()` — marks current active session as ended
+- [x] DB helpers: `countUserSubmissionsInActiveSession(userId)` — counts free submissions per user per active session
+- [x] tRPC: queue.setLive now manages session lifecycle (creates on go-live, ends on stop)
+- [x] tRPC: queue.submit uses session-based limit instead of daily limit
+- [x] tRPC: queue.uploadTrack uses session-based limit instead of daily limit
+- [x] tRPC: queue.uploadAudio uses session-based limit instead of daily limit
+- [x] Tests: sessionLimit.test.ts covers all session helpers and limit enforcement
+- [ ] Frontend: Update MusicReview.tsx paywall message from "daily limit" to "session limit"
+- [ ] Frontend: Update submission error messages to reflect per-session limit

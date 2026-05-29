@@ -581,3 +581,14 @@ export const coinBalances = mysqlTable("coin_balances", {
 });
 export type CoinBalance = typeof coinBalances.$inferSelect;
 export type InsertCoinBalance = typeof coinBalances.$inferInsert;
+
+// Music Review Sessions — track each live session for per-session submission limits
+export const musicReviewSessions = mysqlTable("music_review_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  endedAt: timestamp("endedAt"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type MusicReviewSession = typeof musicReviewSessions.$inferSelect;
+export type InsertMusicReviewSession = typeof musicReviewSessions.$inferInsert;

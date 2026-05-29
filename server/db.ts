@@ -30,8 +30,12 @@ import {
   xpEvents,
   rewardLogs,
   lineSkipCredits,
+  musicReviewSessions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { eq, desc, and, inArray, gte, lte } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+import { count } from 'drizzle-orm';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -1759,4 +1763,77 @@ export async function useLineSkipCredit(userId: number): Promise<boolean> {
     .where(eq(lineSkipCredits.userId, userId));
   
   return true;
+}
+
+
+// ─── Music Review Sessions ────────────────────────────────────────────────────
+/** Get the currently active Music Review session, or create one if none exists */
+export async function getOrCreateActiveMusicReviewSession() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  
+  // Check if there's an active session
+  const existing = await db.select().from(musicReviewSessions)
+    .where(eq(musicReviewSessions.isActive, true))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    return existing[0];
+  }
+  
+  // Create a new active session
+  const result = await db.insert(musicReviewSessions).values({
+    startedAt: new Date(),
+    isActive: true,
+  });
+  
+  // Fetch and return the newly created session
+  const newSession = await db.select().from(musicReviewSessions)
+    .where(eq(musicReviewSessions.isActive, true))
+    .limit(1);
+  
+  return newSession[0];
+}
+
+/** End the current active Music Review session */
+export async function endActiveMusicReviewSession() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  
+  await db.update(musicReviewSessions)
+    .set({ isActive: false, endedAt: new Date() })
+    .where(eq(musicReviewSessions.isActive, true));
+}
+
+/** Count free submissions by a user in the current active session */
+export async function countUserSubmissionsInActiveSession(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  // Get the active session
+  const session = await db.select().from(musicReviewSessions)
+    .where(eq(musicReviewSessions.isActive, true))
+    .limit(1);
+  
+  if (!session.length) return 0;
+  
+  const activeSession = session[0];
+  
+  // Count free (non-paid) submissions by this user in the active session
+  const conditions: any[] = [
+    eq(reviewSubmissions.userId, userId),
+    inArray(reviewSubmissions.status, ["pending", "playing"]),
+    eq(reviewSubmissions.isPaidSubmission, false),
+    gte(reviewSubmissions.createdAt, activeSession.startedAt),
+  ];
+  
+  if (activeSession.endedAt) {
+    conditions.push(lte(reviewSubmissions.createdAt, activeSession.endedAt));
+  }
+  
+  const result = await db.select({ count: sql<number>`COUNT(*)` })
+    .from(reviewSubmissions)
+    .where(and(...conditions));
+  
+  return result[0]?.count ?? 0;
 }
