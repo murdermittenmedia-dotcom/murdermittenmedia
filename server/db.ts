@@ -1816,10 +1816,10 @@ export async function countUserSubmissionsInActiveSession(userId: number): Promi
   
   const activeSession = session[0];
   
-  // Count free (non-paid) submissions by this user in the active session
+  // Count ALL free (non-paid) submissions by this user in the active session
+  // regardless of status (pending, playing, reviewed, etc.) - once submitted, it counts toward the limit
   const conditions: any[] = [
     eq(reviewSubmissions.userId, userId),
-    inArray(reviewSubmissions.status, ["pending", "playing"]),
     eq(reviewSubmissions.isPaidSubmission, false),
     gte(reviewSubmissions.createdAt, activeSession.startedAt),
   ];

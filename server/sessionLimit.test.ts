@@ -165,9 +165,9 @@ describe("Music Review Session Limit", () => {
         .where(eq(reviewSubmissions.id, submissions[0].id));
     }
 
-    // Count should now be 1 (one reviewed, one still pending)
+    // Count should still be 2 (reviewed submissions count toward the limit)
     const count = await countUserSubmissionsInActiveSession(testUserId);
-    expect(count).toBe(1);
+    expect(count).toBe(2);
   });
 
   it("should end an active session", async () => {
