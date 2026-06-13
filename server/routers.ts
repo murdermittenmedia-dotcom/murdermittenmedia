@@ -536,15 +536,25 @@ export const appRouter = router({
     setLive: adminProcedure
       .input(z.object({ isLive: z.boolean(), message: z.string().optional(), streamUrl: z.string().max(512).optional() }))
       .mutation(async ({ input }) => {
-        if (input.isLive) {
-          // Starting a live session — create a new active session
-          await getOrCreateActiveMusicReviewSession();
-        } else {
-          // Ending a live session
-          await endActiveMusicReviewSession();
+        try {
+          if (input.isLive) {
+            // Starting a live session — create a new active session
+            await getOrCreateActiveMusicReviewSession();
+          } else {
+            // Ending a live session
+            try {
+              await endActiveMusicReviewSession();
+            } catch (err) {
+              console.error("[queue.setLive] Error ending session:", err);
+              // Don't fail the entire mutation if session end fails
+            }
+          }
+          await setLiveStatus(input.isLive, input.message, input.streamUrl);
+          return { success: true };
+        } catch (err) {
+          console.error("[queue.setLive] Error:", err);
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to update live status" });
         }
-        await setLiveStatus(input.isLive, input.message, input.streamUrl);
-        return { success: true };
       }),
 
     // Upload audio file directly for a queue submission
