@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS music_review_sessions (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  startedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  endedAt TIMESTAMP NULL,\n  isActive BOOLEAN DEFAULT true NOT NULL,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute CREATE TABLE IF NOT EXISTS music_review_sessions (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  startedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  endedAt TIMESTAMP NULL,\n  isActive BOOLEAN DEFAULT true NOT NULL,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 351
+}
