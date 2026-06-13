@@ -36,6 +36,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const reviewSubmissions = mysqlTable("review_submissions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId"),
+  musicReviewSessionId: int("musicReviewSessionId").notNull(),  // Track which session this submission belongs to
   artistName: varchar("artistName", { length: 128 }).notNull(),
   songTitle: varchar("songTitle", { length: 128 }).notNull(),
   submissionType: mysqlEnum("submissionType", ["youtube", "file"]).notNull(),

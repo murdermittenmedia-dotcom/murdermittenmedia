@@ -1,0 +1,50 @@
+{
+  "query": "SELECT \n  u.id, u.name,\n  COUNT(*) as total_free_submissions,\n  SUM(CASE WHEN rs.status = 'pending' THEN 1 ELSE 0 END) as pending,\n  SUM(CASE WHEN rs.status = 'playing' THEN 1 ELSE 0 END) as playing,\n  SUM(CASE WHEN rs.status = 'reviewed' THEN 1 ELSE 0 END) as reviewed\nFROM users u\nJOIN review_submissions rs ON u.id = rs.userId\nWHERE rs.isPaidSubmission = false\nGROUP BY u.id, u.name\nHAVING COUNT(*) > 2\nORDER BY total_free_submissions DESC\nLIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT \n  u.id, u.name,\n  COUNT(*) as total_free_submissions,\n  SUM(CASE WHEN rs.status = 'pending' THEN 1 ELSE 0 END) as pending,\n  SUM(CASE WHEN rs.status = 'playing' THEN 1 ELSE 0 END) as playing,\n  SUM(CASE WHEN rs.status = 'reviewed' THEN 1 ELSE 0 END) as reviewed\nFROM users u\nJOIN review_submissions rs ON u.id = rs.userId\nWHERE rs.isPaidSubmission = false\nGROUP BY u.id, u.name\nHAVING COUNT(*) > 2\nORDER BY total_free_submissions DESC\nLIMIT 5;",
+  "rows": [
+    {
+      "id": "6480018",
+      "name": "Tariq",
+      "total_free_submissions": "9",
+      "pending": "0",
+      "playing": "0",
+      "reviewed": "3"
+    },
+    {
+      "id": "4410643",
+      "name": "Ridge Powers",
+      "total_free_submissions": "8",
+      "pending": "0",
+      "playing": "0",
+      "reviewed": "5"
+    },
+    {
+      "id": "270227",
+      "name": "Murder Mitten",
+      "total_free_submissions": "7",
+      "pending": "0",
+      "playing": "0",
+      "reviewed": "1"
+    },
+    {
+      "id": "5700028",
+      "name": "C4riek",
+      "total_free_submissions": "7",
+      "pending": "0",
+      "playing": "0",
+      "reviewed": "5"
+    },
+    {
+      "id": "6480054",
+      "name": "biggzoliver40",
+      "total_free_submissions": "6",
+      "pending": "0",
+      "playing": "0",
+      "reviewed": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\ttotal_free_submissions\tpending\tplaying\treviewed\n6480018\tTariq\t9\t0\t0\t3\n4410643\tRidge Powers\t8\t0\t0\t5\n270227\tMurder Mitten\t7\t0\t0\t1\n5700028\tC4riek\t7\t0\t0\t5\n6480054\tbiggzoliver40\t6\t0\t0\t3\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

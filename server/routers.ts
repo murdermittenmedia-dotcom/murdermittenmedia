@@ -450,8 +450,11 @@ export const appRouter = router({
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
         const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
+        // Get the active session to link this submission to it
+        const session = await getOrCreateActiveMusicReviewSession();
         await addSubmission({
           userId: ctx.user.id,
+          musicReviewSessionId: session.id,
           artistName,
           songTitle: input.songTitle,
           submissionType: input.submissionType,
@@ -591,8 +594,10 @@ export const appRouter = router({
           };
         }
         const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
+        const session = await getOrCreateActiveMusicReviewSession();
         await addSubmission({
           userId: ctx.user.id,
+          musicReviewSessionId: session.id,
           artistName: input.artistName,
           songTitle: input.songTitle,
           submissionType: "file",
@@ -646,6 +651,8 @@ export const appRouter = router({
           };
         }
         const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
+        // Get the active session to link this submission to it
+        const session = await getOrCreateActiveMusicReviewSession();
         // Auto-resolve artist name from the user's registered profile
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
@@ -658,6 +665,7 @@ export const appRouter = router({
         const { url } = await storagePut(key, buffer, input.mimeType);
         await addSubmission({
           userId: ctx.user.id,
+          musicReviewSessionId: session.id,
           artistName,
           songTitle: input.songTitle,
           submissionType: "file",

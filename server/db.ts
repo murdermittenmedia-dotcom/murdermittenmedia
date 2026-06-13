@@ -1816,17 +1816,13 @@ export async function countUserSubmissionsInActiveSession(userId: number): Promi
   
   const activeSession = session[0];
   
-  // Count ALL free (non-paid) submissions by this user in the active session
+  // Count ALL free (non-paid) submissions by this user linked to this session
   // regardless of status (pending, playing, reviewed, etc.) - once submitted, it counts toward the limit
   const conditions: any[] = [
     eq(reviewSubmissions.userId, userId),
+    eq(reviewSubmissions.musicReviewSessionId, activeSession.id),
     eq(reviewSubmissions.isPaidSubmission, false),
-    gte(reviewSubmissions.createdAt, activeSession.startedAt),
   ];
-  
-  if (activeSession.endedAt) {
-    conditions.push(lte(reviewSubmissions.createdAt, activeSession.endedAt));
-  }
   
   const result = await db.select({ count: sql<number>`COUNT(*)` })
     .from(reviewSubmissions)
