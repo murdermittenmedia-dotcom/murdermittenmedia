@@ -29,7 +29,7 @@ export default function LiveCookUp() {
   const createMutation = trpc.live.create.useMutation({
     onSuccess: (data) => {
       toast.success("You're live! Setting up your stream...");
-      navigate(`/live/${data.streamId}`);
+      navigate(`/cookup/${data.streamId}`);
     },
     onError: (err) => {
       toast.error("Failed to start stream: " + err.message);
@@ -71,7 +71,7 @@ export default function LiveCookUp() {
             {isAuthenticated ? (
               myStream ? (
                 <Button
-                  onClick={() => navigate(`/live/${myStream.id}`)}
+                  onClick={() => navigate(`/cookup/${myStream.id}`)}
                   className="bg-red-600 hover:bg-red-700 text-white font-semibold"
                 >
                   <Radio className="w-4 h-4 mr-2 animate-pulse" />
@@ -174,7 +174,7 @@ function StreamCard({ stream }: { stream: any }) {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <Link href={`/live/${stream.id}`}>
+    <Link href={`/cookup/${stream.id}`}>
       <div className="group cursor-pointer border border-white/10 bg-white/[0.03] hover:border-red-600/50 hover:bg-white/[0.06] transition-all duration-200 rounded-lg overflow-hidden">
         {/* Thumbnail area */}
         <div className="relative aspect-video bg-[#111] flex items-center justify-center">

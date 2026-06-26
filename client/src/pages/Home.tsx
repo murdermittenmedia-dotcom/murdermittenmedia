@@ -207,7 +207,7 @@ export default function Home() {
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-0 md:divide-x md:divide-white/10">
             {[
-              { value: 4500000, label: "Monthly Views", delay: 0 },
+              { value: 100000000, label: "Total Views", delay: 0 },
               { value: 45800, label: "Followers", delay: 120 },
               { value: 228600, label: "Interactions / Mo", delay: 240 },
               { value: 2680, label: "Posts Published", delay: 360 },

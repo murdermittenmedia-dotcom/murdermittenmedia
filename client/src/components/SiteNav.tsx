@@ -220,6 +220,9 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
         </div>
       </nav>
 
+      {/* Spacer so page content is not hidden under the fixed 64px nav */}
+      <div className="h-16" />
+
       {/* ── Mobile menu overlay ── */}
       {menuOpen && (
         <div
