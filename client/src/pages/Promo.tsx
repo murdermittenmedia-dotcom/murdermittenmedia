@@ -62,8 +62,8 @@ const BUNDLES = [
 const PAYMENTS = [
   {
     name: "CashApp",
-    handle: "$joyfuljules",
-    link: "https://cash.app/$joyfuljules",
+    handle: "$MittenMedia",
+    link: "https://cash.app/$MittenMedia",
     qr: "/manus-storage/qr_cashapp_4c95b595.png",
     color: "bg-[#00D632]/10 border-[#00D632]/30",
     textColor: "text-[#00D632]",

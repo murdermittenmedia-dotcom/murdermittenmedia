@@ -654,7 +654,7 @@ function SubmissionForm({
             <p>Your entry is pending payment confirmation.</p>
             <p className="text-red-400 font-semibold">Send ${entryFee} to get on the wheel:</p>
             <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
-              <div className="border border-white/10 p-2"><div className="text-white/40 mb-0.5">CashApp</div><div className="text-white font-semibold">$joyfuljules</div></div>
+              <div className="border border-white/10 p-2"><div className="text-white/40 mb-0.5">CashApp</div><div className="text-white font-semibold">$MittenMedia</div></div>
               <div className="border border-white/10 p-2"><div className="text-white/40 mb-0.5">PayPal</div><div className="text-white font-semibold">MurderMittenPromo</div></div>
             </div>
             <p className="text-white/30 text-xs mt-1">Include your artist name in the note.</p>
@@ -703,7 +703,7 @@ function SubmissionForm({
         {isPaid && (
           <div className="bg-red-900/20 border border-red-600/20 p-3 text-xs text-white/60">
             <span className="text-red-400 font-semibold">Paid entry: </span>
-            After submitting, send ${entryFee} to CashApp <span className="text-white">$joyfuljules</span> or PayPal <span className="text-white">MurderMittenPromo</span> with your artist name.
+            After submitting, send ${entryFee} to CashApp <span className="text-white">$MittenMedia</span> or PayPal <span className="text-white">MurderMittenPromo</span> with your artist name.
           </div>
         )}
         <button type="submit" disabled={isLoading || mp3Uploading || !songTitle.trim()}

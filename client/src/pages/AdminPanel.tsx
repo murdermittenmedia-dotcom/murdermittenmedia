@@ -20,7 +20,7 @@ import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
-  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift, CreditCard
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift, CreditCard, DollarSign
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -1239,7 +1239,7 @@ function LiveCookUpAdminTab() {
                 <p className="text-white/60 text-sm">
                   <span className="text-yellow-400 font-bold">{req.coins.toLocaleString()} coins</span>
                   {" · "}
-                  <span className="text-white">${(req.usdCents / 100).toFixed(2)}</span>
+                  <span className="text-white">${(req.amountCents / 100).toFixed(2)}</span>
                 </p>
                 {req.paymentNote && (
                   <p className="text-white/30 text-xs mt-0.5">Note: {req.paymentNote}</p>
@@ -1422,7 +1422,7 @@ function PaidSubmissionsTab() {
 }
 
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions";
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions" | "cashouts";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
@@ -1433,6 +1433,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "rewards", label: "Rewards", icon: Trophy },
   { id: "dailywheel", label: "Daily Wheel", icon: Disc },
   { id: "live", label: "Live Cook Up", icon: Radio },
+  { id: "cashouts", label: "Cashouts", icon: DollarSign },
 ];
 
 export default function AdminPanel() {
@@ -1517,7 +1518,145 @@ export default function AdminPanel() {
         {activeTab === "rewards" && <AdminRewardsTab />}
         {activeTab === "dailywheel" && <DailyWheelTab />}
         {activeTab === "live" && <LiveCookUpAdminTab />}
+        {activeTab === "cashouts" && <CashoutsAdminTab />}
       </div>
+    </div>
+  );
+}
+
+// ─── Cashouts Admin Tab ────────────────────────────────────────
+function CashoutsAdminTab() {
+  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const { data: cashoutRequests, refetch: refetchCashouts, isLoading } = trpc.cashout.adminGetAll.useQuery({ status: statusFilter });
+  const resolveCashoutMutation = trpc.cashout.adminResolve.useMutation({
+    onSuccess: () => { toast.success("Cashout request updated!"); refetchCashouts(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const [cashoutNote, setCashoutNote] = useState<Record<number, string>>({});
+
+  const pendingCount = cashoutRequests?.filter((r: any) => r.status === "pending").length ?? 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-['Anton'] text-2xl uppercase">Cashout Requests</h2>
+          <p className="text-white/40 text-sm mt-1">Review and approve user coin cashout requests</p>
+        </div>
+        {pendingCount > 0 && (
+          <span className="bg-yellow-600 text-white text-sm font-bold px-3 py-1 rounded-full">
+            {pendingCount} Pending
+          </span>
+        )}
+      </div>
+
+      {/* Rate reminder */}
+      <div className="border border-white/10 bg-white/[0.02] rounded-lg px-4 py-3 text-sm text-white/50">
+        <span className="text-yellow-400 font-semibold">Rate:</span> 100 coins = $0.70 USD &nbsp;·&nbsp;
+        <span className="text-white/30">Send payment via CashApp, Venmo, or Zelle to the handle shown on each request</span>
+      </div>
+
+      {/* Status filter */}
+      <div className="flex gap-2">
+        {(["pending", "approved", "rejected", "all"] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`px-4 py-2 text-sm font-semibold uppercase tracking-widest transition-colors ${
+              statusFilter === s ? "bg-red-600 text-white" : "border border-white/20 text-white/50 hover:text-white"
+            }`}
+          >
+            {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Requests list */}
+      {isLoading ? (
+        <div className="text-white/30 text-sm py-8 text-center">Loading…</div>
+      ) : !cashoutRequests || cashoutRequests.length === 0 ? (
+        <div className="text-center py-12">
+          <DollarSign className="w-12 h-12 text-white/20 mx-auto mb-4" />
+          <p className="text-white/30 text-sm">No {statusFilter === "all" ? "" : statusFilter} cashout requests.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {cashoutRequests.map((req: any) => {
+            const usdValue = ((req.coins / 100) * 0.70).toFixed(2);
+            return (
+              <div key={req.id} className="border border-white/10 bg-white/[0.03] rounded-lg p-5 space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-sm uppercase ${
+                        req.status === "pending" ? "bg-yellow-600/20 text-yellow-400" :
+                        req.status === "approved" ? "bg-green-600/20 text-green-400" :
+                        "bg-red-600/20 text-red-400"
+                      }`}>{req.status}</span>
+                      <span className="text-white font-semibold">{req.artistName || req.userName || `User #${req.userId}`}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm mt-2">
+                      <div>
+                        <span className="text-white/40 text-xs uppercase tracking-widest block">Coins</span>
+                        <span className="text-yellow-400 font-bold">{req.coins.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 text-xs uppercase tracking-widest block">USD Value</span>
+                        <span className="text-green-400 font-bold">${usdValue}</span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 text-xs uppercase tracking-widest block">Payment Method</span>
+                        <span className="text-white font-semibold capitalize">{req.paymentMethod}</span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 text-xs uppercase tracking-widest block">Send To</span>
+                        <span className="text-white font-mono font-semibold">{req.paymentHandle}</span>
+                      </div>
+                    </div>
+                    <p className="text-white/20 text-xs mt-2">{new Date(req.createdAt).toLocaleString()}</p>
+                    {req.adminNote && (
+                      <p className="text-white/50 text-xs mt-1 italic">Admin note: {req.adminNote}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Approve/Reject (only for pending) */}
+                {req.status === "pending" && (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Admin note (optional)"
+                      value={cashoutNote[req.id] ?? ''}
+                      onChange={e => setCashoutNote(prev => ({ ...prev, [req.id]: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-red-600/50"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => resolveCashoutMutation.mutate({ id: req.id, action: 'approved', adminNote: cashoutNote[req.id] })}
+                        disabled={resolveCashoutMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                      >
+                        ✓ Mark as Sent (Approve)
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => resolveCashoutMutation.mutate({ id: req.id, action: 'denied', adminNote: cashoutNote[req.id] })}
+                        disabled={resolveCashoutMutation.isPending}
+                        className="border-red-600/40 text-red-400 hover:bg-red-600/10"
+                      >
+                        ✕ Deny
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -86,7 +86,7 @@ export default function CoinsPage() {
               Your coin purchase request for <strong className="text-white">{selected?.coins.toLocaleString()} coins (${((selected?.usdCents ?? 0) / 100).toFixed(2)})</strong> has been submitted.
             </p>
             <p className="text-white/30 text-xs mb-6">
-              Send your payment via CashApp or PayPal to <strong className="text-white">@MurderMittenMedia</strong> with the note: <strong className="text-yellow-400">{paymentNote || `Coins - ${user?.name}`}</strong>
+              Send your payment via CashApp (<strong className="text-white">$MittenMedia</strong>) or PayPal (<strong className="text-white">@MurderMittenPromo</strong>) with the note: <strong className="text-yellow-400">{paymentNote || `Coins - ${user?.name}`}</strong>
             </p>
             <p className="text-white/30 text-xs">Coins will be added to your account within 24 hours after payment is confirmed.</p>
             <Button
@@ -112,7 +112,7 @@ export default function CoinsPage() {
               <p className="text-white/60 text-sm font-semibold mb-2">How to pay:</p>
               <ol className="text-white/40 text-sm space-y-1.5 list-decimal list-inside">
                 <li>Send <strong className="text-white">${(selected.usdCents / 100).toFixed(2)}</strong> via CashApp or PayPal</li>
-                <li>Use the tag <strong className="text-yellow-400">@MurderMittenMedia</strong></li>
+                <li>CashApp: <strong className="text-yellow-400">$MittenMedia</strong> · PayPal: <strong className="text-yellow-400">@MurderMittenPromo</strong></li>
                 <li>Include your username in the payment note</li>
                 <li>Click "Submit Request" below</li>
               </ol>
@@ -167,7 +167,7 @@ export default function CoinsPage() {
 
             <div className="border border-white/10 bg-white/[0.02] rounded-lg p-4 text-center mb-8">
               <p className="text-white/30 text-xs">
-                Payments are handled manually via CashApp / PayPal to <strong className="text-white">@MurderMittenMedia</strong>.
+                Payments are handled manually via CashApp <strong className="text-white">$MittenMedia</strong> or PayPal <strong className="text-white">@MurderMittenPromo</strong>.
                 Coins are added within 24 hours of payment confirmation.
               </p>
             </div>

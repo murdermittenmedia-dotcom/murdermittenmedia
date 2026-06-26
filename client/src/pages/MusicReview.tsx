@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
-const CASHAPP = "$joyfuljules";
+const CASHAPP = "$MittenMedia";
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
 
