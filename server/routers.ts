@@ -2670,6 +2670,26 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Get a fresh streamer token for an existing stream (for reconnect)
+    getStreamerToken: protectedProcedure
+      .input(z.object({ streamId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
+        if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
+        if (stream.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const displayName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
+        const streamerToken = await generateStreamerToken(stream.livekitRoomName, `user-${ctx.user.id}`, displayName);
+        return {
+          streamerToken,
+          livekitUrl: ENV.livekitUrl,
+          roomName: stream.livekitRoomName,
+          rtmpUrl: stream.rtmpUrl || `rtmps://${ENV.livekitUrl.replace("wss://", "")}/publish`,
+          rtmpKey: stream.rtmpKey || stream.livekitRoomName,
+        };
+      }),
+
     // Get user's own active stream (if any)
     getMyStream: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();

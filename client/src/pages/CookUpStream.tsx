@@ -1,6 +1,6 @@
 /* ============================================================
    MURDER MITTEN MEDIA — Live Cook Up Stream Page
-   Broadcaster: camera/mic via WebRTC (LiveKit) + RTMP key display
+   Broadcaster: camera/mic/screenshare via WebRTC (LiveKit) + RTMP key for OBS/Streamlabs
    Viewer: watch stream + send gifts + live chat
    ============================================================ */
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Radio, Mic, MicOff, Video, VideoOff, Copy, ExternalLink,
-  Coins, Gift, Send, Users, ChevronLeft, Settings,
+  Coins, Gift, Send, Users, ChevronLeft, Settings, Monitor,
+  MonitorOff, Volume2, VolumeX, Info, CheckCircle2, AlertCircle,
+  Maximize2, Minimize2,
 } from "lucide-react";
 import {
   LiveKitRoom,
@@ -26,7 +28,7 @@ import {
   type TrackReference,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { Track } from "livekit-client";
+import { Track, LocalTrack, LocalVideoTrack, LocalAudioTrack, createLocalTracks, VideoPresets } from "livekit-client";
 
 // ── Gift emoji map ────────────────────────────────────────────
 const GIFT_EMOJIS: Record<string, string> = {
@@ -37,6 +39,13 @@ const GIFT_EMOJIS: Record<string, string> = {
   "Rocket": "🚀",
   "100": "💯",
 };
+
+// ── Audio quality presets ─────────────────────────────────────
+const AUDIO_PRESETS = [
+  { label: "High (Studio)", sampleRate: 48000, bitrate: 256000, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  { label: "Medium (Balanced)", sampleRate: 44100, bitrate: 128000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  { label: "Low (Save Data)", sampleRate: 22050, bitrate: 64000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+];
 
 // ── Floating gift animation ───────────────────────────────────
 type FloatingGift = { id: number; emoji: string; name: string; from: string };
@@ -70,10 +79,16 @@ function ViewerVideo() {
     { source: Track.Source.Camera, withPlaceholder: false },
     { source: Track.Source.ScreenShare, withPlaceholder: false },
   ]);
-  const audioTracks = useTracks([{ source: Track.Source.Microphone, withPlaceholder: false }]);
+  const audioTracks = useTracks([
+    { source: Track.Source.Microphone, withPlaceholder: false },
+    { source: Track.Source.ScreenShareAudio, withPlaceholder: false },
+  ]);
   const participants = useParticipants();
 
-  const remoteVideo = tracks.find(t => !t.participant.isLocal && t.publication) as TrackReference | undefined;
+  // Prefer screenshare over camera
+  const remoteScreenShare = tracks.find(t => !t.participant.isLocal && t.publication && t.source === Track.Source.ScreenShare) as TrackReference | undefined;
+  const remoteCamera = tracks.find(t => !t.participant.isLocal && t.publication && t.source === Track.Source.Camera) as TrackReference | undefined;
+  const remoteVideo = remoteScreenShare || remoteCamera;
   const remoteAudio = audioTracks.filter(t => !t.participant.isLocal && t.publication) as TrackReference[];
 
   if (!remoteVideo) {
@@ -88,48 +103,357 @@ function ViewerVideo() {
 
   return (
     <>
-      <VideoTrack trackRef={remoteVideo} className="w-full h-full object-cover" />
-      {remoteAudio.map(t => <AudioTrack key={t.participant.identity} trackRef={t} />)}
+      <VideoTrack trackRef={remoteVideo} className="w-full h-full object-contain" />
+      {remoteAudio.map(t => <AudioTrack key={`${t.participant.identity}-${t.source}`} trackRef={t} />)}
     </>
   );
 }
 
-// ── Broadcaster video ─────────────────────────────────────────
-function BroadcasterVideo({ onEnd }: { onEnd: () => void }) {
+// ── Broadcaster controls ──────────────────────────────────────
+function BroadcasterVideo({ onEnd, audioPresetIdx }: { onEnd: () => void; audioPresetIdx: number }) {
   const room = useRoomContext();
-  const [camOn, setCamOn] = useState(true);
-  const [micOn, setMicOn] = useState(true);
-  const localTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: false }]).filter(t => t.participant.isLocal && t.publication);
-  const localVideo = localTracks[0] as TrackReference | undefined;
+  const [camOn, setCamOn] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [screenOn, setScreenOn] = useState(false);
+  const [screenAudioOn, setScreenAudioOn] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
 
-  const toggleCam = async () => { await room.localParticipant.setCameraEnabled(!camOn); setCamOn(v => !v); };
-  const toggleMic = async () => { await room.localParticipant.setMicrophoneEnabled(!micOn); setMicOn(v => !v); };
+  const localCamTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: false }]).filter(t => t.participant.isLocal && t.publication) as TrackReference[];
+  const localScreenTracks = useTracks([{ source: Track.Source.ScreenShare, withPlaceholder: false }]).filter(t => t.participant.isLocal && t.publication) as TrackReference[];
+  const localVideo = localScreenTracks[0] || localCamTracks[0];
+
+  const preset = AUDIO_PRESETS[audioPresetIdx] ?? AUDIO_PRESETS[0];
+
+  const startCamera = async () => {
+    try {
+      await room.localParticipant.setCameraEnabled(true, {
+        resolution: VideoPresets.h720.resolution,
+      });
+      setCamOn(true);
+    } catch (e) {
+      toast.error("Could not access camera. Check browser permissions.");
+    }
+  };
+
+  const stopCamera = async () => {
+    await room.localParticipant.setCameraEnabled(false);
+    setCamOn(false);
+  };
+
+  const startMic = async () => {
+    try {
+      await room.localParticipant.setMicrophoneEnabled(true, {
+        echoCancellation: preset.echoCancellation,
+        noiseSuppression: preset.noiseSuppression,
+        autoGainControl: preset.autoGainControl,
+        sampleRate: preset.sampleRate,
+      });
+      setMicOn(true);
+    } catch (e) {
+      toast.error("Could not access microphone. Check browser permissions.");
+    }
+  };
+
+  const stopMic = async () => {
+    await room.localParticipant.setMicrophoneEnabled(false);
+    setMicOn(false);
+  };
+
+  const startScreenShare = async () => {
+    try {
+      // Request screenshare with audio (desktop audio capture)
+      const stream = await (navigator.mediaDevices as any).getDisplayMedia({
+        video: { frameRate: 30, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          sampleRate: preset.sampleRate,
+        },
+      });
+
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+
+      if (videoTrack) {
+        const lkVideoTrack = new LocalVideoTrack(videoTrack, undefined, false);
+        await room.localParticipant.publishTrack(lkVideoTrack, {
+          source: Track.Source.ScreenShare,
+          videoEncoding: { maxBitrate: 3_000_000, maxFramerate: 30 },
+        });
+        setScreenOn(true);
+
+        // Auto-stop when user clicks "Stop sharing" in browser
+        videoTrack.addEventListener("ended", () => {
+          stopScreenShare();
+        });
+      }
+
+      if (audioTrack) {
+        const lkAudioTrack = new LocalAudioTrack(audioTrack, undefined, false);
+        await room.localParticipant.publishTrack(lkAudioTrack, {
+          source: Track.Source.ScreenShareAudio,
+        });
+        setScreenAudioOn(true);
+        toast.success("Screen + desktop audio captured!");
+      } else {
+        toast.success("Screen captured! (No desktop audio — check 'Share audio' in the browser dialog)");
+      }
+    } catch (e: any) {
+      if (e.name !== "NotAllowedError") {
+        toast.error("Could not start screenshare: " + e.message);
+      }
+    }
+  };
+
+  const stopScreenShare = async () => {
+    const screenTracks = Array.from(room.localParticipant.getTrackPublications().values());
+    for (const pub of screenTracks) {
+      if (pub.source === Track.Source.ScreenShare || pub.source === Track.Source.ScreenShareAudio) {
+        await room.localParticipant.unpublishTrack(pub.track as LocalTrack);
+      }
+    }
+    setScreenOn(false);
+    setScreenAudioOn(false);
+  };
+
+  const toggleMute = () => {
+    const micPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+    if (micPub?.track) {
+      if (muted) {
+        (micPub.track as LocalAudioTrack).unmute();
+      } else {
+        (micPub.track as LocalAudioTrack).mute();
+      }
+      setMuted(v => !v);
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!fullscreen && videoContainerRef.current) {
+      videoContainerRef.current.requestFullscreen?.();
+      setFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setFullscreen(false);
+    }
+  };
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="relative flex-1 bg-[#0a0a0a] overflow-hidden">
+    <div className="w-full h-full flex flex-col" ref={videoContainerRef}>
+      {/* Video preview */}
+      <div className="relative flex-1 bg-[#0a0a0a] overflow-hidden min-h-[200px]">
         {localVideo ? (
-          <VideoTrack trackRef={localVideo} className="w-full h-full object-cover" />
+          <VideoTrack trackRef={localVideo} className="w-full h-full object-contain" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <VideoOff className="w-12 h-12 text-white/10" />
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+            <VideoOff className="w-10 h-10 text-white/10" />
+            <p className="text-white/20 text-xs">No video source active</p>
           </div>
         )}
+
+        {/* LIVE badge */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-sm">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           LIVE
         </div>
+
+        {/* Screenshare + audio badges */}
+        {screenOn && (
+          <div className="absolute top-3 left-20 flex items-center gap-1 bg-blue-600/80 text-white text-xs px-2 py-0.5 rounded-sm">
+            <Monitor className="w-3 h-3" />
+            Screen
+            {screenAudioOn && <span className="ml-1 text-green-300">+ Audio</span>}
+          </div>
+        )}
+
+        {/* Fullscreen toggle */}
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-3 right-3 text-white/40 hover:text-white bg-black/40 p-1.5 rounded"
+        >
+          {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </button>
       </div>
-      <div className="flex items-center justify-center gap-3 p-3 bg-[#0f0f0f]">
-        <Button onClick={toggleCam} variant="outline" size="sm" className={`border-white/20 ${!camOn ? "text-red-400 border-red-600/40" : "text-white"}`}>
+
+      {/* Controls bar */}
+      <div className="flex flex-wrap items-center justify-center gap-2 p-3 bg-[#0f0f0f] border-t border-white/10">
+        {/* Camera */}
+        <Button
+          onClick={camOn ? stopCamera : startCamera}
+          variant="outline"
+          size="sm"
+          className={`border-white/20 ${camOn ? "text-white" : "text-red-400 border-red-600/40"}`}
+          title={camOn ? "Turn off camera" : "Turn on camera"}
+        >
           {camOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+          <span className="ml-1.5 text-xs hidden sm:inline">{camOn ? "Cam On" : "Cam Off"}</span>
         </Button>
-        <Button onClick={toggleMic} variant="outline" size="sm" className={`border-white/20 ${!micOn ? "text-red-400 border-red-600/40" : "text-white"}`}>
+
+        {/* Mic */}
+        <Button
+          onClick={micOn ? stopMic : startMic}
+          variant="outline"
+          size="sm"
+          className={`border-white/20 ${micOn ? "text-white" : "text-red-400 border-red-600/40"}`}
+          title={micOn ? "Turn off mic" : "Turn on mic"}
+        >
           {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+          <span className="ml-1.5 text-xs hidden sm:inline">{micOn ? "Mic On" : "Mic Off"}</span>
         </Button>
-        <Button onClick={onEnd} variant="outline" size="sm" className="border-red-600/40 text-red-400 hover:bg-red-600/10">
+
+        {/* Mute toggle (when mic is on) */}
+        {micOn && (
+          <Button
+            onClick={toggleMute}
+            variant="outline"
+            size="sm"
+            className={`border-white/20 ${muted ? "text-yellow-400 border-yellow-600/40" : "text-white"}`}
+            title={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            <span className="ml-1.5 text-xs hidden sm:inline">{muted ? "Muted" : "Live"}</span>
+          </Button>
+        )}
+
+        {/* Screenshare */}
+        <Button
+          onClick={screenOn ? stopScreenShare : startScreenShare}
+          variant="outline"
+          size="sm"
+          className={`border-white/20 ${screenOn ? "text-blue-400 border-blue-600/40" : "text-white/60"}`}
+          title={screenOn ? "Stop screenshare" : "Share screen (includes desktop audio)"}
+        >
+          {screenOn ? <MonitorOff className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+          <span className="ml-1.5 text-xs hidden sm:inline">{screenOn ? "Stop Share" : "Share Screen"}</span>
+        </Button>
+
+        {/* End stream */}
+        <Button
+          onClick={onEnd}
+          variant="outline"
+          size="sm"
+          className="border-red-600/60 text-red-400 hover:bg-red-600/10 ml-auto"
+        >
           End Stream
         </Button>
+      </div>
+
+      {/* Audio quality indicator */}
+      <div className="px-3 py-1.5 bg-[#0a0a0a] border-t border-white/5 flex items-center gap-2">
+        <Volume2 className="w-3 h-3 text-white/20" />
+        <span className="text-white/30 text-xs">Audio: {preset.label}</span>
+        {!preset.echoCancellation && (
+          <span className="text-green-500/60 text-xs ml-1">· Studio mode (no processing)</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── OBS / Streamlabs Setup Guide ──────────────────────────────
+function OBSGuide({ rtmpUrl, rtmpKey }: { rtmpUrl: string; rtmpKey: string }) {
+  const [tab, setTab] = useState<"obs" | "streamlabs">("obs");
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`);
+  };
+
+  return (
+    <div className="bg-[#111] border border-white/10 rounded-lg p-4 space-y-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Info className="w-4 h-4 text-blue-400" />
+        <span className="text-white/80 text-sm font-semibold">Stream with OBS or Streamlabs</span>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-white/5 rounded-md p-0.5">
+        {(["obs", "streamlabs"] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded transition-all ${tab === t ? "bg-red-600 text-white" : "text-white/40 hover:text-white"}`}
+          >
+            {t === "obs" ? "OBS Studio" : "Streamlabs"}
+          </button>
+        ))}
+      </div>
+
+      {/* Credentials */}
+      <div className="space-y-2">
+        <div>
+          <label className="text-white/30 text-xs block mb-1 uppercase tracking-widest">RTMP Server URL</label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-2 text-xs text-green-400 truncate font-mono">{rtmpUrl}</code>
+            <Button size="sm" variant="outline" className="h-8 border-white/20 shrink-0" onClick={() => copyText(rtmpUrl, "RTMP URL")}>
+              <Copy className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+        <div>
+          <label className="text-white/30 text-xs block mb-1 uppercase tracking-widest">Stream Key</label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-2 text-xs text-yellow-400 truncate font-mono">{rtmpKey}</code>
+            <Button size="sm" variant="outline" className="h-8 border-white/20 shrink-0" onClick={() => copyText(rtmpKey, "Stream Key")}>
+              <Copy className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Step-by-step instructions */}
+      {tab === "obs" ? (
+        <div className="space-y-2">
+          <p className="text-white/50 text-xs uppercase tracking-widest font-semibold">OBS Studio Setup</p>
+          {[
+            "Open OBS Studio → click Settings (bottom right)",
+            "Go to Stream tab",
+            'Set Service to "Custom..."',
+            "Paste the RTMP Server URL into the Server field",
+            "Paste the Stream Key into the Stream Key field",
+            "Click Apply → OK",
+            "Add your audio sources: Desktop Audio + Mic/Aux",
+            'Click Start Streaming — you\'re live!',
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="w-5 h-5 rounded-full bg-red-600/20 text-red-400 text-xs flex items-center justify-center shrink-0 mt-0.5 font-bold">{i + 1}</span>
+              <span className="text-white/60 text-xs leading-relaxed">{step}</span>
+            </div>
+          ))}
+          <div className="mt-3 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
+            <strong>Pro tip:</strong> In OBS Audio Settings, set Sample Rate to 48 kHz and use "High Quality Resampling" for studio-quality audio.
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-white/50 text-xs uppercase tracking-widest font-semibold">Streamlabs Setup</p>
+          {[
+            "Open Streamlabs Desktop",
+            "Click the Settings gear icon (bottom left)",
+            "Go to Stream tab",
+            'Set Stream Type to "Custom Streaming Server"',
+            "Paste the RTMP Server URL into the URL field",
+            "Paste the Stream Key into the Stream Key field",
+            "Click Done",
+            "Add Desktop Audio + Mic sources in your scene",
+            "Click Go Live — you're live!",
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="w-5 h-5 rounded-full bg-red-600/20 text-red-400 text-xs flex items-center justify-center shrink-0 mt-0.5 font-bold">{i + 1}</span>
+              <span className="text-white/60 text-xs leading-relaxed">{step}</span>
+            </div>
+          ))}
+          <div className="mt-3 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
+            <strong>Pro tip:</strong> In Streamlabs Audio Settings, enable "High-quality audio" and set bitrate to 320 kbps for the best sound.
+          </div>
+        </div>
+      )}
+
+      <div className="pt-2 border-t border-white/10 flex items-start gap-2">
+        <AlertCircle className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
+        <p className="text-white/30 text-xs">Keep this stream key private. Anyone with it can broadcast to your stream.</p>
       </div>
     </div>
   );
@@ -147,25 +471,22 @@ export default function CookUpStream() {
     { streamId },
     { enabled: !!stream && stream.status !== "ended" }
   );
+  const { data: streamerTokenData } = trpc.live.getStreamerToken.useQuery(
+    { streamId },
+    { enabled: !!stream && isAuthenticated && stream.status !== "ended" && !!user && stream.userId === user.id }
+  );
   const { data: coinBalance, refetch: refetchBalance } = trpc.coins.getBalance.useQuery(undefined, { enabled: isAuthenticated });
   const { data: giftTypes } = trpc.coins.getGiftTypes.useQuery();
   const { data: streamGifts } = trpc.gifts.getForStream.useQuery({ streamId }, { refetchInterval: 8000 });
 
-  const isStreamer = isAuthenticated && user?.id === stream?.userId;
+  const isStreamer = isAuthenticated && !!user && !!stream && user.id === stream.userId;
 
-  const [broadcasterToken, setBroadcasterToken] = useState<string | null>(null);
-  const [rtmpInfo, setRtmpInfo] = useState<{ rtmpUrl: string; rtmpKey: string } | null>(null);
   const [showRtmp, setShowRtmp] = useState(false);
   const [titleEdit, setTitleEdit] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
-
-  const createMutation = trpc.live.create.useMutation({
-    onSuccess: (data) => {
-      setBroadcasterToken(data.streamerToken);
-      setRtmpInfo({ rtmpUrl: data.rtmpUrl, rtmpKey: data.rtmpKey });
-    },
-    onError: (err) => toast.error("Failed to start: " + err.message),
-  });
+  const [audioPresetIdx, setAudioPresetIdx] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [broadcastMode, setBroadcastMode] = useState<"browser" | "obs" | null>(null);
 
   const endMutation = trpc.live.end.useMutation({
     onSuccess: () => { toast.success("Stream ended"); navigate("/cookup"); },
@@ -191,10 +512,20 @@ export default function CookUpStream() {
   }, []);
 
   // Chat
-  const [chatMessages, setChatMessages] = useState<{ id: number; user: string; text: string; isGift?: boolean }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ id: number; user: string; userId?: number; text: string; isGift?: boolean }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  // Show gifts in chat
+  useEffect(() => {
+    if (!streamGifts) return;
+    streamGifts.forEach(g => {
+      const emoji = GIFT_EMOJIS[g.giftType?.name ?? ""] || g.giftType?.emoji || "🎁";
+      const from = g.from?.artistName || g.from?.name || "Someone";
+      addFloatingGift(emoji, g.giftType?.name ?? "Gift", from);
+    });
+  }, [streamGifts?.length]);
 
   const handleSendGift = (giftTypeId: number) => {
     if (!isAuthenticated) { toast.error("Sign in to send gifts"); return; }
@@ -209,11 +540,13 @@ export default function CookUpStream() {
 
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
-    setChatMessages(prev => [...prev, { id: Date.now(), user: user?.artistName || user?.name || "Viewer", text: chatInput.trim() }]);
+    setChatMessages(prev => [...prev, { id: Date.now(), user: user?.artistName || user?.name || "Viewer", userId: user?.id, text: chatInput.trim() }]);
     setChatInput("");
   };
 
   const livekitUrl = import.meta.env.VITE_LIVEKIT_URL || "wss://mmm-wk6ms581.livekit.cloud";
+  const currentRtmpUrl = stream?.rtmpUrl || `rtmps://${livekitUrl.replace("wss://", "")}/publish`;
+  const currentRtmpKey = stream?.rtmpKey || stream?.livekitRoomName || "";
 
   if (!stream) {
     return (
@@ -231,15 +564,17 @@ export default function CookUpStream() {
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Radio className="w-12 h-12 text-white/10 mb-4" />
           <h2 className="text-white/50 text-xl font-semibold mb-2">Stream Ended</h2>
-          <Link href="/cookup"><Button className="mt-4 bg-red-600 hover:bg-red-700 text-white"><ChevronLeft className="w-4 h-4 mr-2" />Back to Cook Up</Button></Link>
+          <Link href="/cookup">
+            <Button className="mt-4 bg-red-600 hover:bg-red-700 text-white">
+              <ChevronLeft className="w-4 h-4 mr-2" />Back to Cook Up
+            </Button>
+          </Link>
         </div>
       </div>
     );
   }
 
   const displayName = stream.streamer?.artistName || stream.streamer?.name || "Unknown";
-  const currentRtmpUrl = rtmpInfo?.rtmpUrl || stream.rtmpUrl || "";
-  const currentRtmpKey = rtmpInfo?.rtmpKey || stream.rtmpKey || stream.livekitRoomName;
 
   return (
     <div className="min-h-screen bg-[#080808] text-white flex flex-col">
@@ -266,7 +601,10 @@ export default function CookUpStream() {
                     value={titleEdit}
                     onChange={e => setTitleEdit(e.target.value)}
                     className="bg-white/5 border-white/20 text-white h-7 text-sm"
-                    onKeyDown={e => { if (e.key === "Enter") updateTitleMutation.mutate({ streamId, title: titleEdit }); if (e.key === "Escape") setEditingTitle(false); }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") updateTitleMutation.mutate({ streamId, title: titleEdit });
+                      if (e.key === "Escape") setEditingTitle(false);
+                    }}
                     autoFocus
                   />
                   <Button size="sm" onClick={() => updateTitleMutation.mutate({ streamId, title: titleEdit })} className="h-7 bg-red-600 hover:bg-red-700 text-white text-xs">Save</Button>
@@ -275,6 +613,7 @@ export default function CookUpStream() {
                 <span
                   className={`font-semibold text-sm truncate ${isStreamer ? "cursor-pointer hover:text-red-400" : ""}`}
                   onClick={() => { if (isStreamer) { setTitleEdit(stream.title); setEditingTitle(true); } }}
+                  title={isStreamer ? "Click to edit title" : undefined}
                 >
                   {stream.title}
                 </span>
@@ -282,43 +621,56 @@ export default function CookUpStream() {
             </div>
             <span className="text-white/30 text-xs shrink-0">{displayName}</span>
             {isStreamer && (
-              <Button variant="outline" size="sm" onClick={() => setShowRtmp(!showRtmp)} className="border-white/20 text-white/60 hover:text-white h-7 text-xs shrink-0">
-                <Settings className="w-3 h-3 mr-1" />
-                OBS Key
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)} className="border-white/20 text-white/60 hover:text-white h-7 text-xs">
+                  <Settings className="w-3 h-3 mr-1" />
+                  Settings
+                </Button>
+              </div>
             )}
           </div>
 
-          {/* RTMP panel */}
-          {showRtmp && isStreamer && (
-            <div className="bg-[#111] border-b border-white/10 px-4 py-3">
-              <p className="text-white/40 text-xs mb-2 uppercase tracking-widest">OBS / Streamlabs Setup</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                <div>
-                  <label className="text-white/30 text-xs block mb-1">RTMP URL</label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-green-400 truncate">{currentRtmpUrl}</code>
-                    <Button size="sm" variant="outline" className="h-6 w-6 p-0 border-white/20" onClick={() => { navigator.clipboard.writeText(currentRtmpUrl); toast.success("Copied!"); }}>
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
+          {/* Streamer settings panel */}
+          {showSettings && isStreamer && (
+            <div className="bg-[#111] border-b border-white/10 px-4 py-4 space-y-4">
+              {/* Audio quality */}
+              <div>
+                <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Audio Quality</p>
+                <div className="flex flex-wrap gap-2">
+                  {AUDIO_PRESETS.map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setAudioPresetIdx(i)}
+                      className={`px-3 py-1.5 rounded text-xs font-semibold border transition-all ${audioPresetIdx === i ? "bg-red-600 border-red-600 text-white" : "border-white/20 text-white/50 hover:text-white hover:border-white/40"}`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="text-white/30 text-xs block mb-1">Stream Key</label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-yellow-400 truncate">{currentRtmpKey}</code>
-                    <Button size="sm" variant="outline" className="h-6 w-6 p-0 border-white/20" onClick={() => { navigator.clipboard.writeText(currentRtmpKey); toast.success("Copied!"); }}>
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
+                <p className="text-white/20 text-xs mt-1">
+                  {AUDIO_PRESETS[audioPresetIdx].echoCancellation
+                    ? "Echo cancellation + noise suppression enabled"
+                    : "Raw audio — best for music production (no processing)"}
+                </p>
               </div>
-              <p className="text-white/20 text-xs">OBS: Settings → Stream → Service: Custom → paste URL and Key above</p>
+
+              {/* OBS/Streamlabs guide */}
+              <div>
+                <button
+                  onClick={() => setShowRtmp(!showRtmp)}
+                  className="flex items-center gap-2 text-white/60 hover:text-white text-xs font-semibold uppercase tracking-widest mb-2"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  {showRtmp ? "Hide" : "Show"} OBS / Streamlabs Setup
+                </button>
+                {showRtmp && <OBSGuide rtmpUrl={currentRtmpUrl} rtmpKey={currentRtmpKey} />}
+              </div>
             </div>
           )}
 
           {/* Video area */}
           <div className="relative bg-[#0a0a0a] min-h-[280px] lg:min-h-[480px] flex-1">
+
             {/* Viewer mode */}
             {!isStreamer && viewerTokenData && (
               <LiveKitRoom
@@ -333,45 +685,80 @@ export default function CookUpStream() {
               </LiveKitRoom>
             )}
 
-            {/* Broadcaster mode — browser cam */}
-            {isStreamer && broadcasterToken && (
+            {/* Broadcaster mode — browser */}
+            {isStreamer && broadcastMode === "browser" && streamerTokenData && (
               <LiveKitRoom
                 serverUrl={livekitUrl}
-                token={broadcasterToken}
+                token={streamerTokenData.streamerToken}
                 connect={true}
-                audio={true}
-                video={true}
+                audio={false}
+                video={false}
                 className="w-full h-full absolute inset-0"
               >
-                <BroadcasterVideo onEnd={() => endMutation.mutate({ streamId })} />
+                <BroadcasterVideo
+                  onEnd={() => endMutation.mutate({ streamId })}
+                  audioPresetIdx={audioPresetIdx}
+                />
               </LiveKitRoom>
             )}
 
-            {/* Broadcaster mode — choose method */}
-            {isStreamer && !broadcasterToken && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6">
-                <Radio className="w-12 h-12 text-red-500/40 animate-pulse" />
-                <p className="text-white/40 text-sm text-center">Choose how you want to broadcast</p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    onClick={() => createMutation.mutate({ title: stream.title })}
-                    disabled={createMutation.isPending}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold"
-                  >
-                    <Video className="w-4 h-4 mr-2" />
-                    {createMutation.isPending ? "Starting..." : "Use Browser Camera"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => { setShowRtmp(true); createMutation.mutate({ title: stream.title }); }}
-                    className="border-white/20 text-white/60 hover:text-white"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Use OBS / Streamlabs
-                  </Button>
+            {/* Broadcaster mode — OBS/Streamlabs (just show the viewer feed) */}
+            {isStreamer && broadcastMode === "obs" && viewerTokenData && (
+              <LiveKitRoom
+                serverUrl={livekitUrl}
+                token={viewerTokenData.viewerToken}
+                connect={true}
+                audio={false}
+                video={false}
+                className="w-full h-full absolute inset-0"
+              >
+                <ViewerVideo />
+              </LiveKitRoom>
+            )}
+            {isStreamer && broadcastMode === "obs" && (
+              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                <div className="flex items-center gap-2 bg-black/60 backdrop-blur px-3 py-2 rounded-lg text-xs text-white/60">
+                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  OBS/Streamlabs mode — stream from your software
                 </div>
-                <p className="text-white/20 text-xs text-center max-w-sm">
-                  OBS/Streamlabs: click the button above to get your RTMP URL and stream key, then paste them into OBS
+                <Button
+                  onClick={() => endMutation.mutate({ streamId })}
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs"
+                >
+                  End Stream
+                </Button>
+              </div>
+            )}
+
+            {/* Broadcaster mode — choose method */}
+            {isStreamer && !broadcastMode && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 p-6">
+                <Radio className="w-12 h-12 text-red-500/40 animate-pulse" />
+                <div className="text-center">
+                  <p className="text-white/60 text-sm font-semibold mb-1">Choose how to broadcast</p>
+                  <p className="text-white/30 text-xs">You're live — pick your source</p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+                  <button
+                    onClick={() => setBroadcastMode("browser")}
+                    className="flex-1 flex flex-col items-center gap-2 p-4 border border-white/10 bg-white/[0.03] hover:border-red-600/50 hover:bg-red-600/5 rounded-lg transition-all group"
+                  >
+                    <Video className="w-6 h-6 text-white/40 group-hover:text-red-400" />
+                    <span className="text-white/70 text-sm font-semibold">Browser Camera</span>
+                    <span className="text-white/30 text-xs text-center">Use your webcam, mic, and screen share directly in the browser</span>
+                  </button>
+                  <button
+                    onClick={() => { setBroadcastMode("obs"); setShowSettings(true); setShowRtmp(true); }}
+                    className="flex-1 flex flex-col items-center gap-2 p-4 border border-white/10 bg-white/[0.03] hover:border-blue-600/50 hover:bg-blue-600/5 rounded-lg transition-all group"
+                  >
+                    <Monitor className="w-6 h-6 text-white/40 group-hover:text-blue-400" />
+                    <span className="text-white/70 text-sm font-semibold">OBS / Streamlabs</span>
+                    <span className="text-white/30 text-xs text-center">Stream from OBS or Streamlabs for maximum quality and control</span>
+                  </button>
+                </div>
+                <p className="text-white/20 text-xs text-center max-w-xs">
+                  OBS/Streamlabs gives you the best audio quality for music production sessions
                 </p>
               </div>
             )}
@@ -440,7 +827,13 @@ export default function CookUpStream() {
             )}
             {chatMessages.map((msg) => (
               <div key={msg.id} className={`text-sm ${msg.isGift ? "text-yellow-400" : "text-white/80"}`}>
-                <span className="font-semibold text-red-400 mr-1">{msg.user}</span>
+                {msg.userId ? (
+                  <Link href={`/profile/${msg.userId}`} className="font-semibold text-red-400 mr-1 hover:text-red-300 cursor-pointer">
+                    {msg.user}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-red-400 mr-1">{msg.user}</span>
+                )}
                 <span>{msg.text}</span>
               </div>
             ))}

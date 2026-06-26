@@ -1078,3 +1078,17 @@
 - [x] Tests: sessionLimit.test.ts covers all session helpers and limit enforcement
 - [ ] Frontend: Update MusicReview.tsx paywall message from "daily limit" to "session limit"
 - [ ] Frontend: Update submission error messages to reflect per-session limit
+
+## Live Cook Up — Full Streaming Overhaul
+- [x] Browser camera + microphone WebRTC streaming via LiveKit
+- [x] Screenshare with desktop audio capture (getDisplayMedia with audio)
+- [x] Audio quality presets: Studio (48kHz, no processing), Balanced, Low
+- [x] OBS/Streamlabs step-by-step setup guide (tabbed: OBS vs Streamlabs)
+- [x] RTMP URL + Stream Key display with copy buttons
+- [x] Broadcast mode selector (Browser Camera vs OBS/Streamlabs)
+- [x] getStreamerToken procedure for reconnecting to existing streams
+- [x] Mute/unmute toggle while live
+- [x] Fullscreen toggle
+- [x] End stream button fixed
+- [x] Viewer auto-switches to screenshare when active (prefers screen over camera)
+- [x] Desktop audio captured and published to viewers
