@@ -1060,7 +1060,7 @@ export default function MusicReview() {
   };
 
   // Re-submit with paid flag after user chooses an upgrade option
-  const handlePaidSubmit = (paidType: 'basic' | 'skip') => {
+  const handlePaidSubmit = (paidType: 'reentry5' | 'reentry10' | 'skip') => {
     if (!pendingFormData) return;
     setSubmitting(true);
     if (pendingFormData.type === 'file' && pendingFormData.fileBase64) {
@@ -1657,20 +1657,28 @@ export default function MusicReview() {
                   {/* Payment options */}
                   <div className="space-y-3 mb-6">
                     <button
-                      onClick={() => handlePaidSubmit('basic')}
+                      onClick={() => handlePaidSubmit('reentry5')}
                       disabled={submitting}
                       className="w-full bg-red-600/20 border border-red-600 hover:bg-red-600/40 text-white py-4 px-4 rounded transition-all"
                     >
-                      <div className="font-['Anton'] text-xl text-red-400 mb-1">BASIC SUBMISSION — $5</div>
-                      <div className="text-white/60 text-xs">Song enters the queue in normal position</div>
+                      <div className="font-['Anton'] text-xl text-red-400 mb-1">$5 REENTRY</div>
+                      <div className="text-white/60 text-xs">Submit 1 more song — enters queue in normal position</div>
+                    </button>
+                    <button
+                      onClick={() => handlePaidSubmit('reentry10')}
+                      disabled={submitting}
+                      className="w-full bg-orange-600/20 border border-orange-500 hover:bg-orange-600/40 text-white py-4 px-4 rounded transition-all"
+                    >
+                      <div className="font-['Anton'] text-xl text-orange-400 mb-1">$10 REENTRY</div>
+                      <div className="text-white/60 text-xs">Submit 1 more song — enters queue in normal position</div>
                     </button>
                     <button
                       onClick={() => handlePaidSubmit('skip')}
                       disabled={submitting}
                       className="w-full bg-yellow-600/20 border border-yellow-500 hover:bg-yellow-600/40 text-white py-4 px-4 rounded transition-all"
                     >
-                      <div className="font-['Anton'] text-xl text-yellow-400 mb-1">SUBMIT + SKIP THE LINE — $15</div>
-                      <div className="text-white/60 text-xs">Song jumps to the front of the queue</div>
+                      <div className="font-['Anton'] text-xl text-yellow-400 mb-1">$15 REENTRY + SKIP THE LINE</div>
+                      <div className="text-white/60 text-xs">Submit 1 more song — jumps to front of queue after admin approves skip</div>
                     </button>
                   </div>
 

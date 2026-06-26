@@ -49,7 +49,7 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   skipPaymentConfirmed: boolean("skipPaymentConfirmed").default(false).notNull(),
   // Paid submission fields (for 3rd+ submissions beyond the 2 free per day)
   isPaidSubmission: boolean("isPaidSubmission").default(false).notNull(),
-  paidSubmissionType: mysqlEnum("paidSubmissionType", ["basic", "skip"]),  // basic=$5, skip=$15
+  paidSubmissionType: mysqlEnum("paidSubmissionType", ["reentry5", "reentry10", "skip"]),  // reentry5=$5, reentry10=$10, skip=$15+skip
   paidSubmissionConfirmed: boolean("paidSubmissionConfirmed").default(false).notNull(),
   position: int("position").default(0).notNull(),
   notes: text("notes"),

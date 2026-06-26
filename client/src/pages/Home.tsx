@@ -310,8 +310,7 @@ export default function Home() {
                 WIN FREE<br /><span className="text-red-600">PROMO</span><br />TODAY
               </h2>
               <p className="text-white/50 text-sm leading-relaxed mb-6">
-                Enter your name once a day — admin spins the wheel every night at 7 PM.
-                Winner gets a free promo post in front of 45K+ followers. No catch.
+                Spin the wheel for a chance at free promo and more. New prizes every spin — enter daily for your shot.
               </p>
               <div className="flex flex-wrap gap-3 mb-6">
                 {["Free Entry", "Daily Reset", "45K+ Reach"].map(tag => (
@@ -356,7 +355,7 @@ export default function Home() {
             {/* Video thumbnails side */}
             <div className="relative bg-black">
               <div className="grid grid-cols-2 gap-0.5">
-                {["jBj8Wr8JQHY", "5bJS_HG1XyI", "3E8WSjpXXRo", "Ot_QoWLhBdI"].map((id, i) => (
+                {["7HLFhigwfgM", "sz-P_jopTz0", "_5dZbJHlEh0", "OqZ10eNat7U"].map((id, i) => (
                   <a
                     key={id}
                     href={`https://www.youtube.com/watch?v=${id}`}

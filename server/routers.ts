@@ -414,7 +414,7 @@ export const appRouter = router({
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
         // Paid submission type — if provided, this is a 3rd+ paid submission
-        paidSubmissionType: z.enum(["basic", "skip"]).optional(),
+        paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
       }))
       .output(z.union([
         z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
@@ -440,8 +440,9 @@ export const appRouter = router({
             limitReached: true,
             message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
             upgradeOptions: [
-              { type: "basic", price: 5, label: "Basic Submission ($5)" },
-              { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
+              { type: "reentry5", price: 5, label: "$5 Reentry — 1 more song, normal queue" },
+              { type: "reentry10", price: 10, label: "$10 Reentry — 1 more song, normal queue" },
+              { type: "skip", price: 15, label: "$15 Reentry + Skip the Line — pending admin approval" },
             ],
           };
         }
@@ -591,7 +592,7 @@ export const appRouter = router({
         fileUrl: z.string(),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
-        paidSubmissionType: z.enum(["basic", "skip"]).optional(),
+        paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
       }))
       .output(z.union([
         z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
@@ -610,8 +611,9 @@ export const appRouter = router({
             limitReached: true,
             message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
             upgradeOptions: [
-              { type: "basic", price: 5, label: "Basic Submission ($5)" },
-              { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
+              { type: "reentry5", price: 5, label: "$5 Reentry — 1 more song, normal queue" },
+              { type: "reentry10", price: 10, label: "$10 Reentry — 1 more song, normal queue" },
+              { type: "skip", price: 15, label: "$15 Reentry + Skip the Line — pending admin approval" },
             ],
           };
         }
@@ -647,7 +649,7 @@ export const appRouter = router({
         mimeType: z.string().default("audio/mpeg"),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
-        paidSubmissionType: z.enum(["basic", "skip"]).optional(),
+        paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
       }))
       .output(z.union([
         z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
@@ -667,8 +669,9 @@ export const appRouter = router({
             limitReached: true,
             message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
             upgradeOptions: [
-              { type: "basic", price: 5, label: "Basic Submission ($5)" },
-              { type: "skip", price: 15, label: "Submit + Skip the Line ($15)" },
+              { type: "reentry5", price: 5, label: "$5 Reentry — 1 more song, normal queue" },
+              { type: "reentry10", price: 10, label: "$10 Reentry — 1 more song, normal queue" },
+              { type: "skip", price: 15, label: "$15 Reentry + Skip the Line — pending admin approval" },
             ],
           };
         }

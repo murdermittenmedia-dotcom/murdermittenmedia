@@ -1802,31 +1802,22 @@ export async function endActiveMusicReviewSession() {
     .where(eq(musicReviewSessions.isActive, true));
 }
 
-/** Count free submissions by a user in the current active session */
+/** Count free submissions by a user in the last 6 hours (rolling window, session-independent) */
 export async function countUserSubmissionsInActiveSession(userId: number): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   
-  // Get the active session
-  const session = await db.select().from(musicReviewSessions)
-    .where(eq(musicReviewSessions.isActive, true))
-    .limit(1);
-  
-  if (!session.length) return 0;
-  
-  const activeSession = session[0];
-  
-  // Count ALL free (non-paid) submissions by this user linked to this session
-  // regardless of status (pending, playing, reviewed, etc.) - once submitted, it counts toward the limit
-  const conditions: any[] = [
-    eq(reviewSubmissions.userId, userId),
-    eq(reviewSubmissions.musicReviewSessionId, activeSession.id),
-    eq(reviewSubmissions.isPaidSubmission, false),
-  ];
+  // Use a 6-hour rolling window — completely independent of whether a session is active.
+  // This prevents the bypass where users could submit unlimited songs when no session was active.
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
   
   const result = await db.select({ count: sql<number>`COUNT(*)` })
     .from(reviewSubmissions)
-    .where(and(...conditions));
+    .where(and(
+      eq(reviewSubmissions.userId, userId),
+      eq(reviewSubmissions.isPaidSubmission, false),
+      gte(reviewSubmissions.createdAt, sixHoursAgo),
+    ));
   
   return result[0]?.count ?? 0;
 }
