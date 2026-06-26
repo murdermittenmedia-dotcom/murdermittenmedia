@@ -1,0 +1,90 @@
+{
+  "query": "SELECT id, name, email, loginMethod, lastSignedIn, createdAt FROM users ORDER BY lastSignedIn DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, name, email, loginMethod, lastSignedIn, createdAt FROM users ORDER BY lastSignedIn DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Murder Mitten",
+      "email": "murdermittenmedia@gmail.com",
+      "loginMethod": "google",
+      "lastSignedIn": "2026-06-26 21:40:35",
+      "createdAt": "2026-05-07 02:56:54"
+    },
+    {
+      "id": "11010001",
+      "name": "Phil Collins",
+      "email": "8879smith@gmail.com",
+      "loginMethod": "NULL",
+      "lastSignedIn": "2026-06-26 21:36:24",
+      "createdAt": "2026-06-20 17:42:58"
+    },
+    {
+      "id": "2370046",
+      "name": "YOUNG LIVINGGOATS",
+      "email": "younglivinggoats@gmail.com",
+      "loginMethod": "google",
+      "lastSignedIn": "2026-06-26 21:15:57",
+      "createdAt": "2026-05-09 05:20:04"
+    },
+    {
+      "id": "11130060",
+      "name": "Bailz Official",
+      "email": "bailz.official@icloud.com",
+      "loginMethod": "apple",
+      "lastSignedIn": "2026-06-26 19:55:20",
+      "createdAt": "2026-06-26 19:55:19"
+    },
+    {
+      "id": "3240001",
+      "name": "J Hardaway",
+      "email": "jhardaway202@gmail.com",
+      "loginMethod": "google",
+      "lastSignedIn": "2026-06-26 19:48:19",
+      "createdAt": "2026-05-10 14:22:14"
+    },
+    {
+      "id": "11130014",
+      "name": "Murder Mitten",
+      "email": "murdermittenstudio1@gmail.com",
+      "loginMethod": "google",
+      "lastSignedIn": "2026-06-26 18:54:46",
+      "createdAt": "2026-06-26 18:54:45"
+    },
+    {
+      "id": "2700001",
+      "name": "Cold Marino",
+      "email": "coldmarino47@gmail.com",
+      "loginMethod": "google",
+      "lastSignedIn": "2026-06-25 13:59:50",
+      "createdAt": "2026-05-09 23:12:29"
+    },
+    {
+      "id": "10680034",
+      "name": "ea! 110",
+      "email": "eababy110@gmail.com",
+      "loginMethod": "google",
+      "lastSignedIn": "2026-06-15 06:59:17",
+      "createdAt": "2026-06-13 14:11:03"
+    },
+    {
+      "id": "10950001",
+      "name": "Kesh Kam Tv",
+      "email": "keshkamtv@gmail.com",
+      "loginMethod": "google",
+      "lastSignedIn": "2026-06-15 02:01:18",
+      "createdAt": "2026-06-15 01:56:13"
+    },
+    {
+      "id": "10680051",
+      "name": "SMO Tweak",
+      "email": "smotweak762@icloud.com",
+      "loginMethod": "apple",
+      "lastSignedIn": "2026-06-14 00:32:03",
+      "createdAt": "2026-06-13 14:21:02"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tloginMethod\tlastSignedIn\tcreatedAt\n1\tMurder Mitten\tmurdermittenmedia@gmail.com\tgoogle\t2026-06-26 21:40:35\t2026-05-07 02:56:54\n11010001\tPhil Collins\t8879smith@gmail.com\tNULL\t2026-06-26 21:36:24\t2026-06-20 17:42:58\n2370046\tYOUNG LIVINGGOATS\tyounglivinggoats@gmail.com\tgoogle\t2026-06-26 21:15:57\t2026-05-09 05:20:04\n11130060\tBailz Official\tbailz.official@icloud.com\tapple\t2026-06-26 19:55:20\t2026-06-26 19:55:19\n3240001\tJ Hardaway\tjhardaway202@gmail.com\tgoogle\t2026-06-26 19:48:19\t2026-05-10 14:22:14\n11130014\tMurder Mitten\tmurdermittenstudio1@gmail.com\tgoogle\t2026-06-26 18:54:46\t2026-06-26 18:54:45\n2700001\tCold Marino\tcoldmarino47@gmail.com\tgoogle\t2026-06-25 13:59:50\t2026-05-09 23:12:29\n10680034\tea! 110\teababy110@gmail.com\tgoogle\t2026-06-15 06:59:17\t2026-06-13 14:11:03\n10950001\tKesh Kam Tv\tkeshkamtv@gmail.com\tgoogle\t2026-06-15 02:01:18\t2026-06-15 01:56:13\n10680051\tSMO Tweak\tsmotweak762@icloud.com\tapple\t2026-06-14 00:32:03\t2026-06-13 14:21:02\n",
+  "stderr": "",
+  "execution_time_ms": 264
+}

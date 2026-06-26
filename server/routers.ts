@@ -5,7 +5,6 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { eq, and, inArray, desc } from "drizzle-orm";
-import { users } from "../drizzle/schema";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import {
@@ -790,16 +789,11 @@ export const appRouter = router({
         
         // Create LiveKit ingress for this judge
         const roomName = `review-judge-${ctx.user.id}-${Date.now()}`;
-        const ingressId = await createRtmpIngress(roomName);
+        const judgeIdentity = `judge-${ctx.user.id}`;
+        const ingressDetails = await createRtmpIngress(roomName, judgeIdentity, ctx.user.name || judgeIdentity);
         
-        if (!ingressId) {
+        if (!ingressDetails || !ingressDetails.ingressId) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create ingress" });
-        }
-        
-        // Get the RTMP URL and key from LiveKit
-        const ingressStatus = await getIngressStatus(ingressId);
-        if (!ingressStatus || !ingressStatus.url || !ingressStatus.streamKey) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to get ingress credentials" });
         }
         
         // Create judge_streams record
@@ -807,9 +801,9 @@ export const appRouter = router({
           userId: ctx.user.id,
           musicReviewSessionId: null,
           roomName,
-          ingressId,
-          rtmpUrl: ingressStatus.url,
-          rtmpKey: ingressStatus.streamKey,
+          ingressId: ingressDetails.ingressId,
+          rtmpUrl: ingressDetails.url,
+          rtmpKey: ingressDetails.streamKey,
           status: "active",
         });
         

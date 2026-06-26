@@ -1,0 +1,14 @@
+{
+  "query": "SELECT COUNT(*) as total_users, MAX(lastSignedIn) as latest_login FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT COUNT(*) as total_users, MAX(lastSignedIn) as latest_login FROM users;",
+  "rows": [
+    {
+      "total_users": "138",
+      "latest_login": "2026-06-26 21:40:35"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_users\tlatest_login\n138\t2026-06-26 21:40:35\n",
+  "stderr": "",
+  "execution_time_ms": 275
+}

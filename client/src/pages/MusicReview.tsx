@@ -120,6 +120,7 @@ function AdminPanel({
   const [showReviewed, setShowReviewed] = useState(false);
   const audioPlayer = useAudioPlayer();
   const { user: currentUser } = useAuth();
+  const isJudge = currentUser?.role === "judge" || currentUser?.role === "admin";
 
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });

@@ -96,11 +96,22 @@ export function registerOAuthRoutes(app: Express) {
     } catch (error: any) {
       console.error("[OAuth] Callback failed", error);
       const status = error?.response?.status ?? error?.status;
+      const errMsg = error?.response?.data?.message ?? error?.message ?? "Unknown error";
+      console.error("[OAuth] Error details:", { status, message: errMsg });
       if (status === 429) {
         sendErrorPage(
           res,
           "Too Many Requests",
           "The login service is temporarily rate-limited. Please wait a moment and try again.",
+          `/?retry=1`
+        );
+      } else if (status === 401 && errMsg.includes("invalid or expired")) {
+        // Authorization code expired (codes are single-use and expire in ~60 seconds)
+        // This can happen if the user took too long on the login page
+        sendErrorPage(
+          res,
+          "Login Timed Out",
+          "Your login session expired. This happens if the login page was open too long. Please try signing in again.",
           `/?retry=1`
         );
       } else {
