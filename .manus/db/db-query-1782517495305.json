@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, userId, title, status, createdAt, endedAt FROM live_streams WHERE status = 'live' ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, userId, title, status, createdAt, endedAt FROM live_streams WHERE status = 'live' ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "60009",
+      "userId": "11010001",
+      "title": "UNK Phillie DJ set",
+      "status": "live",
+      "createdAt": "2026-06-26 21:25:57",
+      "endedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\ttitle\tstatus\tcreatedAt\tendedAt\n60009\t11010001\tUNK Phillie DJ set\tlive\t2026-06-26 21:25:57\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 276
+}

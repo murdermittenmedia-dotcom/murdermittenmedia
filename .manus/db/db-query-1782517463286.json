@@ -1,0 +1,16 @@
+{
+  "query": "SELECT * FROM site_settings WHERE `key` IN ('music_wars_live', 'music_wars_stream_url', 'review_is_live', 'review_stream_url');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT * FROM site_settings WHERE `key` IN ('music_wars_live', 'music_wars_stream_url', 'review_is_live', 'review_stream_url');",
+  "rows": [
+    {
+      "id": "7",
+      "key": "music_wars_live",
+      "value": "false",
+      "updatedAt": "2026-06-26 21:22:18"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tkey\tvalue\tupdatedAt\n7\tmusic_wars_live\tfalse\t2026-06-26 21:22:18\n",
+  "stderr": "",
+  "execution_time_ms": 262
+}

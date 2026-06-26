@@ -94,22 +94,37 @@ export default function Home() {
   }, []);
 
   const handleTuneIn = () => {
-    const isReview = reviewIsLive;
-    const streamUrl = isReview ? reviewStreamUrl : warsStreamUrl;
-    const label = isReview ? "Music Reviews" : "Music Wars";
-    const href = isReview ? "/review" : "/music-wars";
-    if (streamUrl) {
-      playAudio({
-        url: streamUrl,
-        title: `${label} — Live Radio`,
-        artist: "Murder Mitten Media",
-        artworkUrl: LOGO,
-        isStream: true,
-        sourcePage: label,
-        sourceUrl: href,
-      });
+    // Priority: Music Review > Music Wars > first active Cook Up stream
+    if (reviewIsLive) {
+      if (reviewStreamUrl) {
+        playAudio({
+          url: reviewStreamUrl,
+          title: "Music Reviews — Live Radio",
+          artist: "Murder Mitten Media",
+          artworkUrl: LOGO,
+          isStream: true,
+          sourcePage: "Music Reviews",
+          sourceUrl: "/review",
+        });
+      }
+      window.location.href = "/review";
+    } else if (warsIsLive) {
+      if (warsStreamUrl) {
+        playAudio({
+          url: warsStreamUrl,
+          title: "Music Wars — Live Radio",
+          artist: "Murder Mitten Media",
+          artworkUrl: LOGO,
+          isStream: true,
+          sourcePage: "Music Wars",
+          sourceUrl: "/music-wars",
+        });
+      }
+      window.location.href = "/music-wars";
+    } else if (activeCookUpStreams.length > 0) {
+      const first = activeCookUpStreams[0] as any;
+      window.location.href = `/cookup/${first.id}`;
     }
-    window.location.href = href;
   };
 
   return (
