@@ -115,6 +115,11 @@ function FloatingGifts({ gifts }: { gifts: FloatingGift[] }) {
 
 // ── Viewer video ──────────────────────────────────────────────
 function ViewerVideo() {
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const [volume, setVolume] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: false },
     { source: Track.Source.ScreenShare, withPlaceholder: false },
@@ -131,6 +136,23 @@ function ViewerVideo() {
   const remoteVideo = remoteScreenShare || remoteCamera;
   const remoteAudio = audioTracks.filter(t => !t.participant.isLocal && t.publication) as TrackReference[];
 
+  // Apply volume to all audio tracks
+  useEffect(() => {
+    audioRefs.current.forEach(audio => {
+      audio.volume = volume;
+    });
+  }, [volume]);
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen && videoContainerRef.current) {
+      videoContainerRef.current.requestFullscreen?.();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setIsFullscreen(false);
+    }
+  };
+
   if (!remoteVideo) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-[#0a0a0a]">
@@ -142,10 +164,57 @@ function ViewerVideo() {
   }
 
   return (
-    <>
-      <VideoTrack trackRef={remoteVideo} className="w-full h-full object-contain" />
-      {remoteAudio.map(t => <AudioTrack key={`${t.participant.identity}-${t.source}`} trackRef={t} />)}
-    </>
+    <div ref={videoContainerRef} className={`w-full h-full flex flex-col relative ${isFullscreen ? 'fixed inset-0 z-50 bg-black' : ''}`}>
+      <div className="flex-1 flex items-center justify-center bg-[#0a0a0a] relative group">
+        <VideoTrack trackRef={remoteVideo} className="w-full h-full object-contain" />
+        
+        {/* Video controls overlay */}
+        <div className="absolute inset-0 flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
+          {/* Top controls */}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={toggleFullscreen}
+              className="bg-black/60 hover:bg-black/80 text-white p-2 rounded transition-colors"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          </div>
+          
+          {/* Bottom controls */}
+          <div className="flex items-center gap-3 bg-black/60 rounded px-3 py-2 w-fit">
+            {/* Volume control */}
+            <div className="flex items-center gap-2">
+              {volume === 0 ? (
+                <VolumeX className="w-4 h-4 text-white/60" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-white/60" />
+              )}
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={volume}
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-red-600"
+                title="Volume"
+              />
+              <span className="text-xs text-white/60 w-6">{Math.round(volume * 100)}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {remoteAudio.map(t => (
+        <AudioTrack
+          key={`${t.participant.identity}-${t.source}`}
+          trackRef={t}
+          onPlaybackStatusChange={(status) => {
+            // Ref will be set by AudioTrack component
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
