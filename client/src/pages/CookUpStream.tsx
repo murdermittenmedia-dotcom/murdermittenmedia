@@ -110,7 +110,7 @@ function ViewerVideo() {
 }
 
 // ── Broadcaster controls ──────────────────────────────────────
-function BroadcasterVideo({ onEnd, audioPresetIdx }: { onEnd: () => void; audioPresetIdx: number }) {
+function BroadcasterVideo({ onEnd, audioPresetIdx, isAdmin }: { onEnd: () => void; audioPresetIdx: number; isAdmin?: boolean }) {
   const room = useRoomContext();
   const [camOn, setCamOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
@@ -338,6 +338,16 @@ function BroadcasterVideo({ onEnd, audioPresetIdx }: { onEnd: () => void; audioP
         >
           End Stream
         </Button>
+        {isAdmin && (
+          <Button
+            onClick={onEnd}
+            size="sm"
+            className="bg-red-900/40 border border-red-600/60 text-red-300 hover:bg-red-900/60"
+            title="Admin: Force end this stream"
+          >
+            ⏹ Admin End
+          </Button>
+        )}
       </div>
 
       {/* Audio quality indicator */}
@@ -698,6 +708,7 @@ export default function CookUpStream() {
                 <BroadcasterVideo
                   onEnd={() => endMutation.mutate({ streamId })}
                   audioPresetIdx={audioPresetIdx}
+                  isAdmin={user?.role === "admin"}
                 />
               </LiveKitRoom>
             )}
