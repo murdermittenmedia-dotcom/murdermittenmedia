@@ -14,7 +14,7 @@ import LabelBadge from "@/components/LabelBadge";
 import {
   User, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
-  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap, Radio, Coins, Bell, Newspaper,
+  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap, Radio, Coins, Bell, Newspaper, Wallet,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -183,6 +183,15 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                   {(() => { const raw = (user as { accountLabels?: string | null } | null)?.accountLabels; const lbls = raw ? (() => { try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })() : []; return lbls.length > 0 ? <LabelBadge labels={lbls} size="xs" /> : null; })()}
                 </a>
 
+                <a
+                  href="/cashout"
+                  className="hidden sm:flex items-center gap-1.5 text-xs border border-white/15 text-white/40 px-3 py-2 hover:border-yellow-500/60 hover:text-yellow-400 transition-all duration-200 rounded-sm"
+                  title="Cashout Coins"
+                >
+                  <Wallet className="w-3.5 h-3.5" />
+                  Cashout
+                </a>
+
                 {user?.role === "admin" && (
                   <a
                     href="/admin"
@@ -343,6 +352,14 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 
         {/* Drawer footer */}
         <div className="border-t border-white/10 px-5 py-4 flex flex-col gap-2">
+          <a
+            href="/cashout"
+            onClick={() => setMenuOpen(false)}
+            className="flex items-center gap-2 text-xs text-white/40 hover:text-yellow-400 transition-colors py-1"
+          >
+            <Wallet className="w-3.5 h-3.5" />
+            Cashout Coins
+          </a>
           {user?.role === "admin" && (
             <a
               href="/admin"
