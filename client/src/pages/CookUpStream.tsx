@@ -32,12 +32,52 @@ import { Track, LocalTrack, LocalVideoTrack, LocalAudioTrack, createLocalTracks,
 
 // ── Gift emoji map ────────────────────────────────────────────
 const GIFT_EMOJIS: Record<string, string> = {
+  // Original gifts
   "Mic Drop": "🎤",
   "Fire": "🔥",
   "Diamond": "💎",
   "Crown": "👑",
   "Rocket": "🚀",
   "100": "💯",
+  // New custom gifts
+  "Detroit Fist": "✊",
+  "Murder Mitten": "🧤",
+  "Trap Star": "⭐",
+  "Grillz": "😁",
+  "Gold Chain": "📿",
+  "Bando": "🏚️",
+  "Dope Bag": "💊",
+  "Drip": "💧",
+  "Guap": "💰",
+  "Shooter": "🔫",
+  "Mitten King": "🏆",
+  "Plug": "🔌",
+  "Whip": "🚗",
+  "Ice": "🧊",
+  "Flame Verse": "🎵",
+  "Crimson Wave": "🌊",
+  "MMM Logo": "🎙️",
+  "Street Cred": "📜",
+  "Legendary Drop": "💫",
+  "God Tier": "🌟",
+};
+
+const RARITY_BORDER: Record<string, string> = {
+  common: "border-white/10 hover:border-white/30",
+  uncommon: "border-green-500/30 hover:border-green-400/60",
+  rare: "border-blue-500/30 hover:border-blue-400/60",
+  epic: "border-purple-500/30 hover:border-purple-400/60",
+  legendary: "border-orange-500/40 hover:border-orange-400/70",
+  mythic: "border-red-500/50 hover:border-red-400/80",
+};
+
+const RARITY_LABEL: Record<string, string> = {
+  common: "",
+  uncommon: "text-green-400",
+  rare: "text-blue-400",
+  epic: "text-purple-400",
+  legendary: "text-orange-400",
+  mythic: "text-red-400",
 };
 
 // ── Audio quality presets ─────────────────────────────────────
@@ -816,17 +856,20 @@ export default function CookUpStream() {
               <div className="flex flex-wrap gap-2">
                 {giftTypes?.map((gt) => {
                   const emoji = GIFT_EMOJIS[gt.name] || gt.emoji || "🎁";
+                  const rarity = (gt as any).rarity || "common";
                   const canAfford = isAuthenticated && (coinBalance?.balance ?? 0) >= gt.coinCost;
+                  const borderClass = canAfford ? RARITY_BORDER[rarity] || RARITY_BORDER.common : "border-white/5 opacity-40";
                   return (
                     <button
                       key={gt.id}
                       onClick={() => handleSendGift(gt.id)}
                       disabled={!canAfford || sendGiftMutation.isPending}
-                      className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg border transition-all
-                        ${canAfford ? "border-white/10 bg-white/5 hover:border-red-600/50 hover:bg-red-600/10 cursor-pointer" : "border-white/5 bg-white/[0.02] opacity-40 cursor-not-allowed"}`}
+                      title={(gt as any).description || gt.name}
+                      className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg border transition-all bg-white/5
+                        ${canAfford ? `${borderClass} hover:bg-white/10 cursor-pointer` : "border-white/5 bg-white/[0.02] cursor-not-allowed"}`}
                     >
                       <span className="text-xl">{emoji}</span>
-                      <span className="text-white/70 text-xs font-semibold">{gt.name}</span>
+                      <span className={`text-xs font-semibold ${RARITY_LABEL[rarity] || "text-white/70"}`}>{gt.name}</span>
                       <span className="text-yellow-400/70 text-xs">{gt.coinCost} 🪙</span>
                     </button>
                   );

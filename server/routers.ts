@@ -52,7 +52,7 @@ import {
   confirmPaidSubmission,
   getOrCreateActiveMusicReviewSession, endActiveMusicReviewSession, countUserSubmissionsInActiveSession,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount
@@ -2814,6 +2814,7 @@ export const appRouter = router({
       .input(z.object({
         streamId: z.number(),
         giftTypeId: z.number(),
+        quantity: z.number().int().min(1).max(100).default(1),
       }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
@@ -2822,50 +2823,100 @@ export const appRouter = router({
         if (!stream || stream.status === "ended") throw new TRPCError({ code: "BAD_REQUEST", message: "Stream not active" });
         const [giftType] = await db.select().from(giftTypes).where(eq(giftTypes.id, input.giftTypeId)).limit(1);
         if (!giftType || !giftType.isActive) throw new TRPCError({ code: "NOT_FOUND", message: "Gift type not found" });
+        // Prevent self-gifting
+        if (stream.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot gift yourself" });
+        const totalCost = giftType.coinCost * input.quantity;
         // Check and deduct coins
         const [balance] = await db.select().from(coinBalances).where(eq(coinBalances.userId, ctx.user.id)).limit(1);
         const currentBalance = balance?.balance ?? 0;
-        if (currentBalance < giftType.coinCost) throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient coins" });
+        if (currentBalance < totalCost) throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient coins" });
+        // Get economy config for split
+        const [cfg] = await db.select().from(economyConfig).limit(1);
+        const creatorPct = cfg?.creatorSplitPct ?? 70;
         // Deduct from sender
+        const newSenderBalance = currentBalance - totalCost;
         if (balance) {
           await db.update(coinBalances).set({
-            balance: currentBalance - giftType.coinCost,
-            totalSpent: (balance.totalSpent ?? 0) + giftType.coinCost,
+            balance: newSenderBalance,
+            totalSpent: (balance.totalSpent ?? 0) + totalCost,
           }).where(eq(coinBalances.userId, ctx.user.id));
         }
-        // Credit to streamer — apply 70% payout (platform retains 30%)
-        const streamerCredit = Math.floor(giftType.coinCost * 0.7);
-        const [streamerBalance] = await db.select().from(coinBalances).where(eq(coinBalances.userId, stream.userId)).limit(1);
-        if (streamerBalance) {
-          await db.update(coinBalances).set({
-            balance: (streamerBalance.balance ?? 0) + streamerCredit,
-            totalEarned: (streamerBalance.totalEarned ?? 0) + streamerCredit,
-          }).where(eq(coinBalances.userId, stream.userId));
+        // Log sender wallet transaction
+        await db.insert(walletTransactions).values({
+          userId: ctx.user.id,
+          currency: "coins",
+          type: "gift_sent",
+          amount: -totalCost,
+          balanceAfter: newSenderBalance,
+          note: `Sent ${input.quantity}x ${giftType.name} to stream ${input.streamId}`,
+        });
+        // Credit Live Rewards to creator (NOT coinBalances)
+        const creatorRewardCents = Math.floor(giftType.usdValueCents * input.quantity * creatorPct / 100);
+        const [creatorReward] = await db.select().from(liveRewards).where(eq(liveRewards.userId, stream.userId)).limit(1);
+        if (creatorReward) {
+          const newAvailable = (creatorReward.available ?? 0) + creatorRewardCents;
+          await db.update(liveRewards).set({
+            available: newAvailable,
+            lifetimeEarned: (creatorReward.lifetimeEarned ?? 0) + creatorRewardCents,
+          }).where(eq(liveRewards.userId, stream.userId));
+          await db.insert(walletTransactions).values({
+            userId: stream.userId,
+            currency: "live_rewards",
+            type: "gift_received",
+            amount: creatorRewardCents,
+            balanceAfter: newAvailable,
+            note: `${input.quantity}x ${giftType.name} from viewer`,
+          });
         } else {
-          await db.insert(coinBalances).values({ userId: stream.userId, balance: streamerCredit, totalEarned: streamerCredit });
+          await db.insert(liveRewards).values({ userId: stream.userId, available: creatorRewardCents, lifetimeEarned: creatorRewardCents });
+          await db.insert(walletTransactions).values({
+            userId: stream.userId,
+            currency: "live_rewards",
+            type: "gift_received",
+            amount: creatorRewardCents,
+            balanceAfter: creatorRewardCents,
+            note: `${input.quantity}x ${giftType.name} from viewer`,
+          });
         }
         // Record the gift
-        await db.insert(gifts).values({
+        const [insertedGift] = await db.insert(gifts).values({
           liveStreamId: input.streamId,
           fromUserId: ctx.user.id,
           toUserId: stream.userId,
           giftTypeId: input.giftTypeId,
-          coinCost: giftType.coinCost,
-          usdValueCents: giftType.usdValueCents,
+          coinCost: totalCost,
+          usdValueCents: giftType.usdValueCents * input.quantity,
         });
         // Update stream totals
         await db.update(liveStreams).set({
-          totalGiftCoins: (stream.totalGiftCoins ?? 0) + giftType.coinCost,
-          totalGiftUsd: (stream.totalGiftUsd ?? 0) + giftType.usdValueCents,
+          totalGiftCoins: (stream.totalGiftCoins ?? 0) + totalCost,
+          totalGiftUsd: (stream.totalGiftUsd ?? 0) + (giftType.usdValueCents * input.quantity),
         }).where(eq(liveStreams.id, input.streamId));
+        // Fraud check: rapid gifting detection
+        const oneMinuteAgo = new Date(Date.now() - 60_000);
+        const recentGifts = await db.select().from(gifts)
+          .where(and(eq(gifts.fromUserId, ctx.user.id), eq(gifts.liveStreamId, input.streamId)))
+          .orderBy(drizzleDesc(gifts.createdAt)).limit(20);
+        const rapidCount = recentGifts.filter(g => new Date(g.createdAt) > oneMinuteAgo).length;
+        if (rapidCount >= (cfg?.fraudRapidGiftThreshold ?? 10)) {
+          await db.insert(fraudLogs).values({
+            userId: ctx.user.id,
+            type: "rapid_gifting",
+            riskScore: "high",
+            details: JSON.stringify({ streamId: input.streamId, giftsInLastMinute: rapidCount }),
+          });
+        }
         // Emit gift event via socket
         const senderName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
         ctx.io?.to(`live:${input.streamId}`).emit("live:gift", {
-          giftType: { name: giftType.name, emoji: giftType.emoji, coinCost: giftType.coinCost },
+          giftType: { name: giftType.name, emoji: giftType.emoji, coinCost: giftType.coinCost, rarity: giftType.rarity, animationType: giftType.animationType },
           from: senderName,
+          fromUserId: ctx.user.id,
+          quantity: input.quantity,
+          creatorRewardCents,
           streamId: input.streamId,
         });
-        return { success: true, newBalance: currentBalance - giftType.coinCost };
+        return { success: true, newBalance: newSenderBalance, creatorRewardCents };
       }),
 
     // Get gifts for a stream
@@ -3138,6 +3189,300 @@ export const appRouter = router({
       const trashVotes = votes.filter(v => v.vote === "trash").length;
       return { totalVotes: votes.length, fireVotes, trashVotes, votes };
     }),
+  }),
+
+  // ─── Economy ────────────────────────────────────────────────
+  economy: router({
+
+    // Get current user's Fire Vote balance
+    getFireVoteBalance: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const [fv] = await db.select().from(fireVoteBalances).where(eq(fireVoteBalances.userId, ctx.user.id)).limit(1);
+      return fv ?? { userId: ctx.user.id, balance: 0, lifetimeEarned: 0, lifetimeConverted: 0 };
+    }),
+
+    // Convert Fire Votes to Coins
+    convertFireVotes: protectedProcedure
+      .input(z.object({ batches: z.number().int().min(1).max(50) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [cfg] = await db.select().from(economyConfig).limit(1);
+        if (!cfg?.fireVoteConversionEnabled) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Fire Vote conversion is currently disabled' });
+        const fvNeeded = (cfg.fireVotesPerConversion ?? 50) * input.batches;
+        const coinsToAward = (cfg.coinsPerConversion ?? 10) * input.batches;
+        // Check daily cap
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayConversions = await db.select().from(fireVoteConversions)
+          .where(and(eq(fireVoteConversions.userId, ctx.user.id)));
+        const todayCoins = todayConversions
+          .filter(c => new Date(c.createdAt) >= todayStart)
+          .reduce((s, c) => s + c.coinsAwarded, 0);
+        if (todayCoins + coinsToAward > (cfg.fvDailyCoinCap ?? 100))
+          throw new TRPCError({ code: 'BAD_REQUEST', message: `Daily conversion cap is ${cfg.fvDailyCoinCap} coins` });
+        // Check FV balance
+        const [fvBal] = await db.select().from(fireVoteBalances).where(eq(fireVoteBalances.userId, ctx.user.id)).limit(1);
+        const currentFV = fvBal?.balance ?? 0;
+        if (currentFV < fvNeeded) throw new TRPCError({ code: 'BAD_REQUEST', message: `Need ${fvNeeded} Fire Votes, you have ${currentFV}` });
+        // Deduct FV
+        const newFV = currentFV - fvNeeded;
+        if (fvBal) {
+          await db.update(fireVoteBalances).set({ balance: newFV, lifetimeConverted: (fvBal.lifetimeConverted ?? 0) + fvNeeded }).where(eq(fireVoteBalances.userId, ctx.user.id));
+        }
+        // Credit coins
+        const [coinBal] = await db.select().from(coinBalances).where(eq(coinBalances.userId, ctx.user.id)).limit(1);
+        const currentCoins = coinBal?.balance ?? 0;
+        const newCoins = currentCoins + coinsToAward;
+        if (coinBal) {
+          await db.update(coinBalances).set({ balance: newCoins }).where(eq(coinBalances.userId, ctx.user.id));
+        } else {
+          await db.insert(coinBalances).values({ userId: ctx.user.id, balance: newCoins });
+        }
+        // Log conversion
+        await db.insert(fireVoteConversions).values({ userId: ctx.user.id, fireVotesBurned: fvNeeded, coinsAwarded: coinsToAward });
+        await db.insert(walletTransactions).values([
+          { userId: ctx.user.id, currency: 'fire_votes', type: 'conversion', amount: -fvNeeded, balanceAfter: newFV, note: `Converted to ${coinsToAward} coins` },
+          { userId: ctx.user.id, currency: 'coins', type: 'conversion', amount: coinsToAward, balanceAfter: newCoins, note: `From ${fvNeeded} Fire Votes` },
+        ]);
+        return { success: true, coinsAwarded: coinsToAward, newFVBalance: newFV, newCoinBalance: newCoins };
+      }),
+
+    // Get creator's Live Rewards wallet
+    getCreatorWallet: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const [wallet] = await db.select().from(liveRewards).where(eq(liveRewards.userId, ctx.user.id)).limit(1);
+      return wallet ?? { userId: ctx.user.id, available: 0, pending: 0, lifetimeEarned: 0, lifetimeWithdrawn: 0, isFrozen: false };
+    }),
+
+    // Get wallet transaction history
+    getWalletHistory: protectedProcedure
+      .input(z.object({ currency: z.enum(['coins', 'fire_votes', 'live_rewards']).optional(), limit: z.number().int().min(1).max(100).default(50) }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const conditions = [eq(walletTransactions.userId, ctx.user.id)];
+        if (input.currency) conditions.push(eq(walletTransactions.currency, input.currency));
+        return db.select().from(walletTransactions).where(and(...conditions)).orderBy(drizzleDesc(walletTransactions.createdAt)).limit(input.limit);
+      }),
+
+    // Request a creator cashout (Live Rewards)
+    requestCreatorCashout: protectedProcedure
+      .input(z.object({
+        amountCents: z.number().int().min(500),
+        paymentMethod: z.enum(['cashapp', 'paypal', 'applepay']),
+        paymentHandle: z.string().min(1).max(128),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [wallet] = await db.select().from(liveRewards).where(eq(liveRewards.userId, ctx.user.id)).limit(1);
+        if (!wallet || wallet.available < input.amountCents)
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Insufficient Live Rewards balance' });
+        if (wallet.isFrozen)
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Your wallet is frozen — contact support' });
+        // Hold the amount as pending
+        await db.update(liveRewards).set({
+          available: wallet.available - input.amountCents,
+          pending: (wallet.pending ?? 0) + input.amountCents,
+        }).where(eq(liveRewards.userId, ctx.user.id));
+        await db.insert(creatorCashouts).values({
+          userId: ctx.user.id,
+          amountCents: input.amountCents,
+          paymentMethod: input.paymentMethod,
+          paymentHandle: input.paymentHandle,
+          status: 'pending',
+        });
+        return { success: true };
+      }),
+
+    // Get creator cashout history
+    getCreatorCashoutHistory: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      return db.select().from(creatorCashouts).where(eq(creatorCashouts.userId, ctx.user.id)).orderBy(drizzleDesc(creatorCashouts.createdAt)).limit(50);
+    }),
+
+    // Get coin packages
+    getCoinPackages: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      return db.select().from(coinPackages).where(eq(coinPackages.isActive, true)).orderBy(coinPackages.sortOrder);
+    }),
+
+    // Get economy config (public rates)
+    getConfig: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const [cfg] = await db.select().from(economyConfig).limit(1);
+      return cfg ?? { creatorSplitPct: 70, platformSplitPct: 30, fireVoteConversionEnabled: true, fireVotesPerConversion: 50, coinsPerConversion: 10, fvDailyCoinCap: 100, minCashoutCents: 500 };
+    }),
+
+    // Admin: get all creator cashout requests
+    adminGetCreatorCashouts: adminProcedure
+      .input(z.object({ status: z.enum(['pending', 'approved', 'paid', 'on_hold', 'rejected', 'cancelled', 'all']).default('pending') }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const rows = await db.select().from(creatorCashouts)
+          .where(input.status === 'all' ? undefined : eq(creatorCashouts.status, input.status))
+          .orderBy(drizzleDesc(creatorCashouts.createdAt)).limit(100);
+        const userIds = Array.from(new Set(rows.map(r => r.userId)));
+        const userList = userIds.length > 0 ? await db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, userIds)) : [];
+        const userMap = Object.fromEntries(userList.map(u => [u.id, u]));
+        return rows.map(r => ({ ...r, user: userMap[r.userId] ?? null }));
+      }),
+
+    // Admin: approve/pay/reject creator cashout
+    adminResolveCreatorCashout: adminProcedure
+      .input(z.object({ id: z.number(), action: z.enum(['approve', 'pay', 'on_hold', 'reject']), note: z.string().max(512).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [cashout] = await db.select().from(creatorCashouts).where(eq(creatorCashouts.id, input.id)).limit(1);
+        if (!cashout) throw new TRPCError({ code: 'NOT_FOUND' });
+        const statusMap: Record<string, 'approved' | 'paid' | 'on_hold' | 'rejected'> = { approve: 'approved', pay: 'paid', on_hold: 'on_hold', reject: 'rejected' };
+        const newStatus = statusMap[input.action];
+        await db.update(creatorCashouts).set({ status: newStatus, adminNote: input.note, processedAt: new Date(), processedBy: ctx.user.id }).where(eq(creatorCashouts.id, input.id));
+        // If rejected, release the held funds back to available
+        if (newStatus === 'rejected') {
+          const [wallet] = await db.select().from(liveRewards).where(eq(liveRewards.userId, cashout.userId)).limit(1);
+          if (wallet) {
+            await db.update(liveRewards).set({
+              available: (wallet.available ?? 0) + cashout.amountCents,
+              pending: Math.max(0, (wallet.pending ?? 0) - cashout.amountCents),
+            }).where(eq(liveRewards.userId, cashout.userId));
+          }
+        }
+        // If paid, finalize withdrawal
+        if (newStatus === 'paid') {
+          const [wallet] = await db.select().from(liveRewards).where(eq(liveRewards.userId, cashout.userId)).limit(1);
+          if (wallet) {
+            await db.update(liveRewards).set({
+              pending: Math.max(0, (wallet.pending ?? 0) - cashout.amountCents),
+              lifetimeWithdrawn: (wallet.lifetimeWithdrawn ?? 0) + cashout.amountCents,
+            }).where(eq(liveRewards.userId, cashout.userId));
+          }
+        }
+        return { success: true };
+      }),
+
+    // Admin: update economy config
+    adminUpdateConfig: adminProcedure
+      .input(z.object({
+        creatorSplitPct: z.number().int().min(0).max(100).optional(),
+        fireVoteConversionEnabled: z.boolean().optional(),
+        fireVotesPerConversion: z.number().int().min(1).optional(),
+        coinsPerConversion: z.number().int().min(1).optional(),
+        fvDailyCoinCap: z.number().int().min(0).optional(),
+        fvWeeklyCoinCap: z.number().int().min(0).optional(),
+        fvMonthlyCoinCap: z.number().int().min(0).optional(),
+        minCashoutCents: z.number().int().min(0).optional(),
+        cashAppEnabled: z.boolean().optional(),
+        paypalEnabled: z.boolean().optional(),
+        applePayEnabled: z.boolean().optional(),
+        fraudAutoFreezeEnabled: z.boolean().optional(),
+        fraudRapidGiftThreshold: z.number().int().min(1).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const updates: Record<string, any> = { updatedBy: ctx.user.id };
+        if (input.creatorSplitPct !== undefined) { updates.creatorSplitPct = input.creatorSplitPct; updates.platformSplitPct = 100 - input.creatorSplitPct; }
+        if (input.fireVoteConversionEnabled !== undefined) updates.fireVoteConversionEnabled = input.fireVoteConversionEnabled;
+        if (input.fireVotesPerConversion !== undefined) updates.fireVotesPerConversion = input.fireVotesPerConversion;
+        if (input.coinsPerConversion !== undefined) updates.coinsPerConversion = input.coinsPerConversion;
+        if (input.fvDailyCoinCap !== undefined) updates.fvDailyCoinCap = input.fvDailyCoinCap;
+        if (input.fvWeeklyCoinCap !== undefined) updates.fvWeeklyCoinCap = input.fvWeeklyCoinCap;
+        if (input.fvMonthlyCoinCap !== undefined) updates.fvMonthlyCoinCap = input.fvMonthlyCoinCap;
+        if (input.minCashoutCents !== undefined) updates.minCashoutCents = input.minCashoutCents;
+        if (input.cashAppEnabled !== undefined) updates.cashAppEnabled = input.cashAppEnabled;
+        if (input.paypalEnabled !== undefined) updates.paypalEnabled = input.paypalEnabled;
+        if (input.applePayEnabled !== undefined) updates.applePayEnabled = input.applePayEnabled;
+        if (input.fraudAutoFreezeEnabled !== undefined) updates.fraudAutoFreezeEnabled = input.fraudAutoFreezeEnabled;
+        if (input.fraudRapidGiftThreshold !== undefined) updates.fraudRapidGiftThreshold = input.fraudRapidGiftThreshold;
+        await db.update(economyConfig).set(updates);
+        return { success: true };
+      }),
+
+    // Admin: get fraud logs
+    adminGetFraudLogs: adminProcedure
+      .input(z.object({ resolved: z.boolean().optional(), limit: z.number().int().default(50) }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const conditions = [];
+        if (input.resolved !== undefined) conditions.push(eq(fraudLogs.resolved, input.resolved));
+        const rows = await db.select().from(fraudLogs)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .orderBy(drizzleDesc(fraudLogs.createdAt)).limit(input.limit);
+        const userIds = Array.from(new Set(rows.map(r => r.userId)));
+        const userList = userIds.length > 0 ? await db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, userIds)) : [];
+        const userMap = Object.fromEntries(userList.map(u => [u.id, u]));
+        return rows.map(r => ({ ...r, user: userMap[r.userId] ?? null }));
+      }),
+
+    // Admin: resolve fraud log
+    adminResolveFraudLog: adminProcedure
+      .input(z.object({ id: z.number(), note: z.string().max(512).optional(), freezeUser: z.boolean().default(false) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [log] = await db.select().from(fraudLogs).where(eq(fraudLogs.id, input.id)).limit(1);
+        if (!log) throw new TRPCError({ code: 'NOT_FOUND' });
+        await db.update(fraudLogs).set({ resolved: true, resolvedBy: ctx.user.id, resolvedAt: new Date(), resolvedNote: input.note }).where(eq(fraudLogs.id, input.id));
+        if (input.freezeUser) {
+          const [wallet] = await db.select().from(liveRewards).where(eq(liveRewards.userId, log.userId)).limit(1);
+          if (wallet) await db.update(liveRewards).set({ isFrozen: true, frozenReason: `Fraud: ${log.type}` }).where(eq(liveRewards.userId, log.userId));
+        }
+        return { success: true };
+      }),
+
+    // Admin: manage gift catalog
+    adminGetGifts: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      return db.select().from(giftTypes).orderBy(giftTypes.sortOrder);
+    }),
+
+    adminUpdateGift: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().max(64).optional(),
+        emoji: z.string().max(8).optional(),
+        description: z.string().max(256).optional(),
+        coinCost: z.number().int().min(1).optional(),
+        rarity: z.enum(['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic']).optional(),
+        isActive: z.boolean().optional(),
+        sortOrder: z.number().int().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { id, ...updates } = input;
+        const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+        if (Object.keys(filtered).length > 0) await db.update(giftTypes).set(filtered).where(eq(giftTypes.id, id));
+        return { success: true };
+      }),
+
+    // Admin: grant Fire Votes to a user
+    adminGrantFireVotes: adminProcedure
+      .input(z.object({ userId: z.number(), amount: z.number().int().min(1), reason: z.string().max(256).optional() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [fvBal] = await db.select().from(fireVoteBalances).where(eq(fireVoteBalances.userId, input.userId)).limit(1);
+        if (fvBal) {
+          const newBal = (fvBal.balance ?? 0) + input.amount;
+          await db.update(fireVoteBalances).set({ balance: newBal, lifetimeEarned: (fvBal.lifetimeEarned ?? 0) + input.amount }).where(eq(fireVoteBalances.userId, input.userId));
+          await db.insert(walletTransactions).values({ userId: input.userId, currency: 'fire_votes', type: 'admin_grant', amount: input.amount, balanceAfter: newBal, note: input.reason });
+        } else {
+          await db.insert(fireVoteBalances).values({ userId: input.userId, balance: input.amount, lifetimeEarned: input.amount });
+          await db.insert(walletTransactions).values({ userId: input.userId, currency: 'fire_votes', type: 'admin_grant', amount: input.amount, balanceAfter: input.amount, note: input.reason });
+        }
+        return { success: true };
+      }),
   }),
 
   // -- News / Instagram Feed ------------------------------------

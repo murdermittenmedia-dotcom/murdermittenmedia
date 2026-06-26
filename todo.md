@@ -1129,3 +1129,33 @@
 - [ ] Fire/Trash stats shown on submission cards
 - [ ] Fire/Trash leaderboard page
 - [ ] Nav link added for Fire or Trash game
+
+## Virtual Economy & Livestream Gift System
+- [x] DB schema: liveRewards table (creator earnings wallet — separate from coinBalances)
+- [x] DB schema: fireVoteBalances table (Fire Vote balance per user)
+- [x] DB schema: fireVoteConversions table (audit log of FV → Coin conversions)
+- [x] DB schema: economyConfig table (admin-configurable rates, splits, limits)
+- [x] DB schema: update giftTypes with rarity, animation, soundEffect, description fields
+- [x] DB schema: fraudLogs table (suspicious activity log with risk score)
+- [x] DB schema: walletTransactions table (unified transaction ledger for all currencies)
+- [x] DB schema: creatorCashouts table (separate from coin cashouts — Live Rewards only)
+- [x] Run pnpm db:push to apply schema changes
+- [x] Server: update gifts.send to credit Live Rewards (not coinBalances) to creator
+- [x] Server: configurable revenue split from economyConfig (default 70/30)
+- [x] Server: Fire Vote conversion procedure (50 FV = 10 Coins, daily/weekly/monthly caps)
+- [x] Server: creator wallet procedures (getCreatorWallet, getCreatorCashoutHistory)
+- [x] Server: creator cashout request procedure (Live Rewards only)
+- [x] Server: admin cashout approval for creator payouts
+- [x] Server: admin economyConfig CRUD procedures
+- [x] Server: admin gift catalog management (add/edit/delete/toggle)
+- [x] Server: fraud detection logic (IP/device tracking, rapid farming detection, self-gifting)
+- [x] Server: seed 20 custom Murder Mitten gifts into giftTypes
+- [x] Frontend: updated Coins page with 6 launch bundles (bonus coins, badges)
+- [x] Frontend: Fire Vote wallet page (balance, earned history, conversion UI)
+- [x] Frontend: Creator wallet page (/creator-wallet — Live Rewards, cashout)
+- [x] Frontend: updated gift picker in CookUpStream with 20 custom gifts + combos
+- [ ] Frontend: live stream engagement stats overlay (gift count, top sender, etc.)
+- [x] Admin: economy config panel (bundles, FV rates, revenue split, payout methods)
+- [x] Admin: gift catalog management panel
+- [x] Admin: fraud review queue panel
+- [x] Admin: creator cashout approval panel

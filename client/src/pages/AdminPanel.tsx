@@ -1422,7 +1422,7 @@ function PaidSubmissionsTab() {
 }
 
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions" | "cashouts";
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions" | "cashouts" | "economy";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
@@ -1434,6 +1434,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "dailywheel", label: "Daily Wheel", icon: Disc },
   { id: "live", label: "Live Cook Up", icon: Radio },
   { id: "cashouts", label: "Cashouts", icon: DollarSign },
+  { id: "economy", label: "Economy", icon: Coins },
 ];
 
 export default function AdminPanel() {
@@ -1519,6 +1520,7 @@ export default function AdminPanel() {
         {activeTab === "dailywheel" && <DailyWheelTab />}
         {activeTab === "live" && <LiveCookUpAdminTab />}
         {activeTab === "cashouts" && <CashoutsAdminTab />}
+        {activeTab === "economy" && <EconomyAdminTab />}
       </div>
     </div>
   );
@@ -1655,6 +1657,291 @@ function CashoutsAdminTab() {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Economy Admin Tab ─────────────────────────────────────────
+function EconomyAdminTab() {
+  const [subTab, setSubTab] = useState<"config" | "creator_cashouts" | "gifts" | "fraud">("config");
+  const { data: config, refetch: refetchConfig } = trpc.economy.getConfig.useQuery();
+  const [cfgForm, setCfgForm] = useState<Record<string, any>>({});
+  const updateConfigMutation = trpc.economy.adminUpdateConfig.useMutation({
+    onSuccess: () => { toast.success("Economy config updated"); refetchConfig(); setCfgForm({}); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Creator cashouts
+  const [cashoutStatus, setCashoutStatus] = useState<"pending" | "approved" | "paid" | "on_hold" | "rejected" | "cancelled" | "all">("pending");
+  const { data: creatorCashouts, refetch: refetchCreatorCashouts } = trpc.economy.adminGetCreatorCashouts.useQuery({ status: cashoutStatus });
+  const resolveCreatorCashout = trpc.economy.adminResolveCreatorCashout.useMutation({
+    onSuccess: () => { toast.success("Cashout updated"); refetchCreatorCashouts(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Gifts
+  const { data: allGifts, refetch: refetchGifts } = trpc.economy.adminGetGifts.useQuery();
+  const updateGift = trpc.economy.adminUpdateGift.useMutation({
+    onSuccess: () => { toast.success("Gift updated"); refetchGifts(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Fraud
+  const { data: fraudLogs, refetch: refetchFraud } = trpc.economy.adminGetFraudLogs.useQuery({ resolved: false });
+  const resolveFraud = trpc.economy.adminResolveFraudLog.useMutation({
+    onSuccess: () => { toast.success("Fraud log resolved"); refetchFraud(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const subTabs = [
+    { id: "config" as const, label: "Economy Config" },
+    { id: "creator_cashouts" as const, label: "Creator Cashouts" },
+    { id: "gifts" as const, label: "Gift Catalog" },
+    { id: "fraud" as const, label: "Fraud Logs" },
+  ];
+
+  return (
+    <div>
+      {/* Sub-tab bar */}
+      <div className="flex gap-2 mb-6 border-b border-white/10 pb-4 overflow-x-auto">
+        {subTabs.map(t => (
+          <button key={t.id} onClick={() => setSubTab(t.id)}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg whitespace-nowrap transition-colors ${subTab === t.id ? "bg-red-600 text-white" : "bg-white/5 text-white/50 hover:text-white"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Economy Config ── */}
+      {subTab === "config" && config && (
+        <div className="max-w-2xl space-y-6">
+          <div className="bg-[#111] border border-white/10 rounded-lg p-6">
+            <h3 className="font-semibold text-lg mb-4">Revenue Split</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="text-white/60 text-sm block mb-1">Creator Split %</label>
+                <input type="number" min={0} max={100}
+                  defaultValue={config.creatorSplitPct}
+                  onChange={e => setCfgForm(f => ({ ...f, creatorSplitPct: parseInt(e.target.value) }))}
+                  className="w-full bg-[#1a1a1a] border border-white/20 text-white rounded px-3 py-2 text-sm" />
+                <p className="text-white/30 text-xs mt-1">Platform gets {100 - (cfgForm.creatorSplitPct ?? config.creatorSplitPct)}%</p>
+              </div>
+              <div>
+                <label className="text-white/60 text-sm block mb-1">Min Cashout (cents)</label>
+                <input type="number" min={0}
+                  defaultValue={config.minCashoutCents}
+                  onChange={e => setCfgForm(f => ({ ...f, minCashoutCents: parseInt(e.target.value) }))}
+                  className="w-full bg-[#1a1a1a] border border-white/20 text-white rounded px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#111] border border-white/10 rounded-lg p-6">
+            <h3 className="font-semibold text-lg mb-4">Fire Vote Conversion</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <label className="text-white/60 text-sm">Conversion Enabled</label>
+              <button onClick={() => setCfgForm(f => ({ ...f, fireVoteConversionEnabled: !(cfgForm.fireVoteConversionEnabled ?? config.fireVoteConversionEnabled) }))}
+                className={`w-12 h-6 rounded-full transition-colors ${(cfgForm.fireVoteConversionEnabled ?? config.fireVoteConversionEnabled) ? "bg-green-600" : "bg-white/20"}`}>
+                <div className={`w-5 h-5 bg-white rounded-full mx-0.5 transition-transform ${(cfgForm.fireVoteConversionEnabled ?? config.fireVoteConversionEnabled) ? "translate-x-6" : "translate-x-0"}`} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-white/60 text-sm block mb-1">FV per conversion</label>
+                <input type="number" min={1}
+                  defaultValue={config.fireVotesPerConversion}
+                  onChange={e => setCfgForm(f => ({ ...f, fireVotesPerConversion: parseInt(e.target.value) }))}
+                  className="w-full bg-[#1a1a1a] border border-white/20 text-white rounded px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-white/60 text-sm block mb-1">Coins per conversion</label>
+                <input type="number" min={1}
+                  defaultValue={config.coinsPerConversion}
+                  onChange={e => setCfgForm(f => ({ ...f, coinsPerConversion: parseInt(e.target.value) }))}
+                  className="w-full bg-[#1a1a1a] border border-white/20 text-white rounded px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-white/60 text-sm block mb-1">Daily coin cap</label>
+                <input type="number" min={0}
+                  defaultValue={config.fvDailyCoinCap}
+                  onChange={e => setCfgForm(f => ({ ...f, fvDailyCoinCap: parseInt(e.target.value) }))}
+                  className="w-full bg-[#1a1a1a] border border-white/20 text-white rounded px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#111] border border-white/10 rounded-lg p-6">
+            <h3 className="font-semibold text-lg mb-4">Payment Methods</h3>
+            <div className="space-y-3">
+              {[
+                { key: "cashAppEnabled", label: "CashApp" },
+                { key: "paypalEnabled", label: "PayPal" },
+                { key: "applePayEnabled", label: "Apple Pay" },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-white/70">{label}</span>
+                  <button onClick={() => setCfgForm(f => ({ ...f, [key]: !(cfgForm[key] ?? (config as any)[key] ?? true) }))}
+                    className={`w-12 h-6 rounded-full transition-colors ${(cfgForm[key] ?? (config as any)[key] ?? true) ? "bg-green-600" : "bg-white/20"}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full mx-0.5 transition-transform ${(cfgForm[key] ?? (config as any)[key] ?? true) ? "translate-x-6" : "translate-x-0"}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Button
+            onClick={() => updateConfigMutation.mutate(cfgForm)}
+            disabled={Object.keys(cfgForm).length === 0 || updateConfigMutation.isPending}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            {updateConfigMutation.isPending ? "Saving..." : "Save Config"}
+          </Button>
+        </div>
+      )}
+
+      {/* ── Creator Cashouts ── */}
+      {subTab === "creator_cashouts" && (
+        <div>
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {(["pending", "approved", "paid", "on_hold", "rejected", "all"] as const).map(s => (
+              <button key={s} onClick={() => setCashoutStatus(s)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded uppercase tracking-widest transition-colors ${cashoutStatus === s ? "bg-red-600 text-white" : "bg-white/5 text-white/50 hover:text-white"}`}>
+                {s.replace("_", " ")}
+              </button>
+            ))}
+          </div>
+          {!creatorCashouts?.length ? (
+            <p className="text-white/30 text-sm py-8 text-center">No cashout requests found.</p>
+          ) : (
+            <div className="space-y-3">
+              {creatorCashouts.map((c: any) => (
+                <div key={c.id} className="bg-[#111] border border-white/10 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-semibold">{c.user?.artistName || c.user?.name || `User #${c.userId}`}</div>
+                      <div className="text-green-400 text-lg font-bold">${(c.amountCents / 100).toFixed(2)}</div>
+                      <div className="text-white/50 text-sm">{c.paymentMethod.toUpperCase()} → {c.paymentHandle}</div>
+                      <div className="text-white/30 text-xs">{new Date(c.createdAt).toLocaleString()}</div>
+                      {c.adminNote && <div className="text-white/50 text-xs italic mt-1">"{c.adminNote}"</div>}
+                    </div>
+                    {c.status === "pending" && (
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                          onClick={() => resolveCreatorCashout.mutate({ id: c.id, action: "approve" })}>
+                          Approve
+                        </Button>
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                          onClick={() => resolveCreatorCashout.mutate({ id: c.id, action: "pay" })}>
+                          Mark Paid
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-orange-500/40 text-orange-400 text-xs"
+                          onClick={() => resolveCreatorCashout.mutate({ id: c.id, action: "on_hold" })}>
+                          On Hold
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-red-500/40 text-red-400 text-xs"
+                          onClick={() => resolveCreatorCashout.mutate({ id: c.id, action: "reject" })}>
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+                    {c.status !== "pending" && (
+                      <span className={`text-xs font-semibold uppercase px-2 py-1 rounded ${
+                        c.status === "paid" ? "bg-green-500/20 text-green-400" :
+                        c.status === "approved" ? "bg-blue-500/20 text-blue-400" :
+                        c.status === "on_hold" ? "bg-orange-500/20 text-orange-400" :
+                        "bg-red-500/20 text-red-400"
+                      }`}>{c.status.replace("_", " ")}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Gift Catalog ── */}
+      {subTab === "gifts" && (
+        <div>
+          <p className="text-white/50 text-sm mb-4">Edit gift names, costs, rarity, and toggle active status.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {allGifts?.map((g: any) => (
+              <div key={g.id} className="bg-[#111] border border-white/10 rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-2xl">{g.emoji}</span>
+                  <div>
+                    <div className="font-semibold">{g.name}</div>
+                    <div className={`text-xs capitalize ${
+                      g.rarity === "legendary" ? "text-orange-400" :
+                      g.rarity === "mythic" ? "text-red-400" :
+                      g.rarity === "epic" ? "text-purple-400" :
+                      g.rarity === "rare" ? "text-blue-400" :
+                      g.rarity === "uncommon" ? "text-green-400" : "text-white/40"
+                    }`}>{g.rarity}</div>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-yellow-400 text-sm font-semibold">{g.coinCost} 🪙</span>
+                    <button onClick={() => updateGift.mutate({ id: g.id, isActive: !g.isActive })}
+                      className={`w-10 h-5 rounded-full transition-colors ${g.isActive ? "bg-green-600" : "bg-white/20"}`}>
+                      <div className={`w-4 h-4 bg-white rounded-full mx-0.5 transition-transform ${g.isActive ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <input type="number" defaultValue={g.coinCost} min={1}
+                    className="w-24 bg-[#1a1a1a] border border-white/20 text-white rounded px-2 py-1 text-xs"
+                    onBlur={e => {
+                      const val = parseInt(e.target.value);
+                      if (val !== g.coinCost && val > 0) updateGift.mutate({ id: g.id, coinCost: val });
+                    }} />
+                  <select defaultValue={g.rarity}
+                    className="bg-[#1a1a1a] border border-white/20 text-white rounded px-2 py-1 text-xs"
+                    onChange={e => updateGift.mutate({ id: g.id, rarity: e.target.value as any })}>
+                    {["common", "uncommon", "rare", "epic", "legendary", "mythic"].map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Fraud Logs ── */}
+      {subTab === "fraud" && (
+        <div>
+          <p className="text-white/50 text-sm mb-4">Unresolved fraud flags from automated detection.</p>
+          {!fraudLogs?.length ? (
+            <p className="text-white/30 text-sm py-8 text-center">No unresolved fraud flags. 🎉</p>
+          ) : (
+            <div className="space-y-3">
+              {fraudLogs.map((f: any) => (
+                <div key={f.id} className="bg-[#111] border border-red-500/20 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-red-400">{f.type.replace(/_/g, " ").toUpperCase()}</div>
+                      <div className="text-white/70 text-sm">{f.user?.artistName || f.user?.name || `User #${f.userId}`}</div>
+                      {f.details && <div className="text-white/40 text-xs mt-1">{f.details}</div>}
+                      <div className="text-white/30 text-xs">{new Date(f.createdAt).toLocaleString()}</div>
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                        onClick={() => resolveFraud.mutate({ id: f.id, freezeUser: false })}>
+                        Resolve
+                      </Button>
+                      <Button size="sm" variant="outline" className="border-red-500/40 text-red-400 text-xs"
+                        onClick={() => resolveFraud.mutate({ id: f.id, freezeUser: true })}>
+                        Resolve + Freeze
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

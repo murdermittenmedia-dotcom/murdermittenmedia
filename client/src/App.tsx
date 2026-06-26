@@ -37,6 +37,8 @@ import FireOrTrash from "./pages/FireOrTrash";
 import Cashout from "./pages/Cashout";
 import News from "./pages/News";
 import Notifications from "./pages/Notifications";
+import FireVoteWallet from "./pages/FireVoteWallet";
+import CreatorWallet from "./pages/CreatorWallet";
 
 function Router() {
   return (
@@ -63,6 +65,8 @@ function Router() {
       <Route path={"/cashout"} component={Cashout} />
       <Route path={"/news"} component={News} />
       <Route path={"/notifications"} component={Notifications} />
+      <Route path={"/fire-vote-wallet"} component={FireVoteWallet} />
+      <Route path={"/creator-wallet"} component={CreatorWallet} />
 
       {/* XP & Tiers explainer */}
       <Route path={"/how-it-works"} component={HowItWorks} />

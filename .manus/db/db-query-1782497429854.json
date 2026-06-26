@@ -1,0 +1,67 @@
+{
+  "query": "SHOW TABLES LIKE 'live_rewards'; SHOW TABLES LIKE 'fire_vote_balances'; SHOW TABLES LIKE 'economy_config'; SHOW TABLES LIKE 'coin_packages'; SHOW TABLES LIKE 'creator_cashouts'; SHOW TABLES LIKE 'fraud_logs'; SELECT COUNT(*) as gift_count FROM gift_types; SELECT id, name, rarity, coinCost FROM gift_types ORDER BY sortOrder LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SHOW TABLES LIKE 'live_rewards'; SHOW TABLES LIKE 'fire_vote_balances'; SHOW TABLES LIKE 'economy_config'; SHOW TABLES LIKE 'coin_packages'; SHOW TABLES LIKE 'creator_cashouts'; SHOW TABLES LIKE 'fraud_logs'; SELECT COUNT(*) as gift_count FROM gift_types; SELECT id, name, rarity, coinCost FROM gift_types ORDER BY sortOrder LIMIT 5;",
+  "rows": [
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "live_rewards"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "Tables_in_C3bFVoBEaMVXmYZLRysziz (fire_vote_balances)"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "fire_vote_balances"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "Tables_in_C3bFVoBEaMVXmYZLRysziz (economy_config)"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "economy_config"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "Tables_in_C3bFVoBEaMVXmYZLRysziz (coin_packages)"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "coin_packages"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "Tables_in_C3bFVoBEaMVXmYZLRysziz (creator_cashouts)"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "creator_cashouts"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "Tables_in_C3bFVoBEaMVXmYZLRysziz (fraud_logs)"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "fraud_logs"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "gift_count"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "20"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "id\tname\trarity\tcoinCost"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "30001\tMurder Mitten\tcommon\t10"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "30002\tFire\tcommon\t25"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "30003\tRespect\tcommon\t50"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "30004\tOne Mic\tuncommon\t100"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)": "30005\tCamera Flash\tuncommon\t150"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_C3bFVoBEaMVXmYZLRysziz (live_rewards)\nlive_rewards\nTables_in_C3bFVoBEaMVXmYZLRysziz (fire_vote_balances)\nfire_vote_balances\nTables_in_C3bFVoBEaMVXmYZLRysziz (economy_config)\neconomy_config\nTables_in_C3bFVoBEaMVXmYZLRysziz (coin_packages)\ncoin_packages\nTables_in_C3bFVoBEaMVXmYZLRysziz (creator_cashouts)\ncreator_cashouts\nTables_in_C3bFVoBEaMVXmYZLRysziz (fraud_logs)\nfraud_logs\ngift_count\n20\nid\tname\trarity\tcoinCost\n30001\tMurder Mitten\tcommon\t10\n30002\tFire\tcommon\t25\n30003\tRespect\tcommon\t50\n30004\tOne Mic\tuncommon\t100\n30005\tCamera Flash\tuncommon\t150\n",
+  "stderr": "",
+  "execution_time_ms": 360
+}

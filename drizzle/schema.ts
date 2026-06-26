@@ -532,9 +532,15 @@ export const giftTypes = mysqlTable("gift_types", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 64 }).notNull(),
   emoji: varchar("emoji", { length: 8 }).notNull(),
+  description: varchar("description", { length: 256 }),
   coinCost: int("coinCost").notNull(),
   usdValueCents: int("usdValueCents").notNull(),  // USD value in cents (e.g. 100 = $1.00)
+  rarity: mysqlEnum("rarity", ["common", "uncommon", "rare", "epic", "legendary", "mythic"]).default("common").notNull(),
+  animationType: varchar("animationType", { length: 64 }).default("float").notNull(),  // float, burst, explosion, legendary, mythic
+  soundEffect: varchar("soundEffect", { length: 64 }),  // optional sound key
   isActive: boolean("isActive").default(true).notNull(),
+  isLimitedTime: boolean("isLimitedTime").default(false).notNull(),
+  expiresAt: timestamp("expiresAt"),
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -636,3 +642,142 @@ export const fireTrashVotes = mysqlTable("fire_trash_votes", {
 });
 export type FireTrashVote = typeof fireTrashVotes.$inferSelect;
 export type InsertFireTrashVote = typeof fireTrashVotes.$inferInsert;
+
+// ─── Virtual Economy: Live Rewards Wallet ─────────────────────
+// Separate from coinBalances — only created when viewers send gifts
+export const liveRewards = mysqlTable("live_rewards", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),          // the creator
+  available: int("available").default(0).notNull(),  // ready to cash out (in "reward units" = cents)
+  pending: int("pending").default(0).notNull(),      // held for review / fraud check
+  lifetimeEarned: int("lifetimeEarned").default(0).notNull(),
+  lifetimeWithdrawn: int("lifetimeWithdrawn").default(0).notNull(),
+  isFrozen: boolean("isFrozen").default(false).notNull(),
+  frozenReason: varchar("frozenReason", { length: 256 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LiveReward = typeof liveRewards.$inferSelect;
+export type InsertLiveReward = typeof liveRewards.$inferInsert;
+
+// ─── Virtual Economy: Fire Vote Balances ─────────────────────
+export const fireVoteBalances = mysqlTable("fire_vote_balances", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  balance: int("balance").default(0).notNull(),
+  lifetimeEarned: int("lifetimeEarned").default(0).notNull(),
+  lifetimeConverted: int("lifetimeConverted").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type FireVoteBalance = typeof fireVoteBalances.$inferSelect;
+export type InsertFireVoteBalance = typeof fireVoteBalances.$inferInsert;
+
+// ─── Virtual Economy: Fire Vote → Coin Conversions ────────────
+export const fireVoteConversions = mysqlTable("fire_vote_conversions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  fireVotesBurned: int("fireVotesBurned").notNull(),
+  coinsAwarded: int("coinsAwarded").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FireVoteConversion = typeof fireVoteConversions.$inferSelect;
+export type InsertFireVoteConversion = typeof fireVoteConversions.$inferInsert;
+
+// ─── Virtual Economy: Wallet Transactions (unified ledger) ────
+export const walletTransactions = mysqlTable("wallet_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  currency: mysqlEnum("currency", ["coins", "fire_votes", "live_rewards"]).notNull(),
+  type: varchar("type", { length: 64 }).notNull(),  // "purchase", "gift_sent", "gift_received", "conversion", "cashout", "admin_grant", "refund"
+  amount: int("amount").notNull(),                  // positive = credit, negative = debit
+  balanceAfter: int("balanceAfter").notNull(),
+  referenceId: int("referenceId"),                  // e.g. giftId, conversionId, cashoutId
+  referenceType: varchar("referenceType", { length: 64 }),
+  note: varchar("note", { length: 256 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type InsertWalletTransaction = typeof walletTransactions.$inferInsert;
+
+// ─── Virtual Economy: Economy Config ─────────────────────────
+// Single-row config table for admin-configurable rates
+export const economyConfig = mysqlTable("economy_config", {
+  id: int("id").autoincrement().primaryKey(),
+  // Revenue split
+  creatorSplitPct: int("creatorSplitPct").default(70).notNull(),   // default 70%
+  platformSplitPct: int("platformSplitPct").default(30).notNull(), // default 30%
+  // Fire Vote conversion
+  fireVoteConversionEnabled: boolean("fireVoteConversionEnabled").default(true).notNull(),
+  fireVotesPerConversion: int("fireVotesPerConversion").default(50).notNull(),  // 50 FV = 10 coins
+  coinsPerConversion: int("coinsPerConversion").default(10).notNull(),
+  fvDailyCoinCap: int("fvDailyCoinCap").default(100).notNull(),
+  fvWeeklyCoinCap: int("fvWeeklyCoinCap").default(500).notNull(),
+  fvMonthlyCoinCap: int("fvMonthlyCoinCap").default(2000).notNull(),
+  // Cashout
+  minCashoutCents: int("minCashoutCents").default(500).notNull(),  // $5.00 minimum
+  cashAppEnabled: boolean("cashAppEnabled").default(true).notNull(),
+  paypalEnabled: boolean("paypalEnabled").default(true).notNull(),
+  applePayEnabled: boolean("applePayEnabled").default(true).notNull(),
+  // Fraud
+  fraudAutoFreezeEnabled: boolean("fraudAutoFreezeEnabled").default(true).notNull(),
+  fraudRapidGiftThreshold: int("fraudRapidGiftThreshold").default(10).notNull(),  // gifts in 60s
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedBy: int("updatedBy"),
+});
+export type EconomyConfig = typeof economyConfig.$inferSelect;
+export type InsertEconomyConfig = typeof economyConfig.$inferInsert;
+
+// ─── Virtual Economy: Coin Packages ──────────────────────────
+export const coinPackages = mysqlTable("coin_packages", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 64 }).notNull(),
+  coins: int("coins").notNull(),
+  bonusCoins: int("bonusCoins").default(0).notNull(),
+  priceCents: int("priceCents").notNull(),
+  badge: varchar("badge", { length: 32 }),  // "most_popular", "best_value", null
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CoinPackage = typeof coinPackages.$inferSelect;
+export type InsertCoinPackage = typeof coinPackages.$inferInsert;
+
+// ─── Virtual Economy: Creator Cashout Requests ───────────────
+// Separate from coin cashouts — only Live Rewards can be cashed out here
+export const creatorCashouts = mysqlTable("creator_cashouts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amountCents: int("amountCents").notNull(),          // amount in cents
+  paymentMethod: mysqlEnum("paymentMethod", ["cashapp", "paypal", "applepay"]).notNull(),
+  paymentHandle: varchar("paymentHandle", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "paid", "on_hold", "rejected", "cancelled"]).default("pending").notNull(),
+  adminNote: varchar("adminNote", { length: 512 }),
+  processedAt: timestamp("processedAt"),
+  processedBy: int("processedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CreatorCashout = typeof creatorCashouts.$inferSelect;
+export type InsertCreatorCashout = typeof creatorCashouts.$inferInsert;
+
+// ─── Virtual Economy: Fraud Logs ─────────────────────────────
+export const fraudLogs = mysqlTable("fraud_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: varchar("type", { length: 64 }).notNull(),   // "rapid_gifting", "self_gifting", "ip_collision", "vote_farming", etc.
+  riskScore: mysqlEnum("riskScore", ["low", "medium", "high", "critical"]).notNull(),
+  details: text("details"),                           // JSON with context
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  deviceFingerprint: varchar("deviceFingerprint", { length: 128 }),
+  resolved: boolean("resolved").default(false).notNull(),
+  resolvedBy: int("resolvedBy"),
+  resolvedAt: timestamp("resolvedAt"),
+  resolvedNote: varchar("resolvedNote", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FraudLog = typeof fraudLogs.$inferSelect;
+export type InsertFraudLog = typeof fraudLogs.$inferInsert;
+
+// ─── Updated Gift Types (extended with rarity + animation) ────
+// NOTE: giftTypes table already exists — we alter it via migration
+// The existing table gets new columns: rarity, animationType, description
+// These are added via pnpm db:push (Drizzle will ALTER TABLE)
