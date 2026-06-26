@@ -659,7 +659,7 @@ export default function CookUpStream() {
       <div className={`flex-1 flex flex-col lg:flex-row max-w-[1600px] mx-auto w-full lg:px-4 lg:py-4 gap-0 lg:gap-4 ${broadcasterFullscreen ? 'lg:flex-col' : ''}`}>
 
         {/* ── Left: Video ── */}
-        <div className="flex-1 flex flex-col min-w-0 max-h-[calc(100vh-200px)]">
+        <div className="flex-1 flex flex-col min-w-0 max-h-[calc(100vh-200px)] order-first lg:order-none">
 
           {/* Title bar */}
           <div className="flex items-center gap-3 px-4 py-3 bg-[#0f0f0f] border-b border-white/10 lg:rounded-t-lg">
@@ -794,7 +794,7 @@ export default function CookUpStream() {
           )}
 
           {/* Video area */}
-          <div className="relative bg-[#0a0a0a] flex-1 flex items-center justify-center overflow-hidden aspect-video">
+          <div className="relative bg-[#0a0a0a] flex-1 flex items-center justify-center overflow-hidden w-full min-h-[200px] lg:aspect-video">
 
             {/* Viewer mode */}
             {!isStreamer && viewerTokenData && (
@@ -993,7 +993,7 @@ export default function CookUpStream() {
         </div>
 
         {/* ── Right: Chat ── */}
-        <div className={`w-full ${broadcasterFullscreen ? 'lg:h-40' : 'lg:w-80 xl:w-96'} flex flex-col bg-[#0f0f0f] border-t lg:border-t-0 lg:border-l border-white/10 lg:rounded-r-lg`}>
+        <div className={`w-full ${broadcasterFullscreen ? 'lg:h-40' : 'lg:w-80 xl:w-96'} flex flex-col bg-[#0f0f0f] border-t lg:border-t-0 lg:border-l border-white/10 lg:rounded-r-lg order-last lg:order-none`}>
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
             <Users className="w-4 h-4 text-white/40" />
             <span className="text-white/60 text-sm font-semibold">Live Chat</span>
