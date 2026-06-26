@@ -1,7 +1,7 @@
 /* ============================================================
    Shared site navigation for Murder Mitten Media
    Menu order per spec:
-   My Profile · Live Now · Latest News · Artist of the Week
+   My Profile · Live Now · Latest News · Artist of the Month
    Mic Drops · Meeting With The Mitten · Music Reviews
    Music Wars · Forum · Explore · Leaderboards · Get Promoted
    ============================================================ */
@@ -22,7 +22,7 @@ const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 // Ordered menu items — used for both desktop and mobile
 // liveKey: matches the key returned by useLiveStatus to show LIVE badge
 const NAV_ITEMS = [
-  { href: "/artist-of-the-week",label: "Artist of the Week",                   icon: Star                          },
+  { href: "/artist-of-the-week",label: "Artist of the Month",                   icon: Star                          },
   { href: "/music-wars",        label: "Music Wars",                           icon: Swords,  liveKey: "wars"     },
   { href: "/review",            label: "Live Music Reviews",                   icon: Music,   liveKey: "review"   },
   { href: "/mic",               label: "Murder Mitten Mic",                    icon: Mic2                          },
