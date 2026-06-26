@@ -1218,3 +1218,15 @@
 
 ## Bug Fixes
 - [x] Fix infinite loop in useVideoRoom — removed participants from createPeerConnection dependency, use participantsRef instead
+
+
+## Judge Role System
+- [x] Add judge role enum to user role field in schema (already existed)
+- [x] Add cashapp_payment_receipt_url column to users table for judge verification
+- [x] Add procedure: admin.promoteToJudge(userId, cashappReceiptUrl) — verify receipt link, promote user
+- [x] Add procedure: admin.revokeJudgeAccess(userId) — demote judge back to user
+- [ ] Add procedure: judges.submitSkipVote(reviewId) — only callable by judges
+- [ ] Build AdminPanel Judge Management tab with promote/revoke UI
+- [ ] Build Judge Payment Verification form (CashApp receipt link input)
+- [x] Restrict skip button in MusicReview to judges only
+- [ ] Add judge badge to user profiles when viewing

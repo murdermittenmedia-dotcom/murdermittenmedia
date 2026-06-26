@@ -27,6 +27,9 @@ export const users = mysqlTable("users", {
   fanLevel: varchar("fanLevel", { length: 32 }).default("supporter").notNull(), // supporter|top_supporter|biggest_fan|early_supporter|verified_tastemaker
   streak: int("streak").default(0).notNull(),
   lastActiveDate: varchar("lastActiveDate", { length: 10 }),  // YYYY-MM-DD for streak tracking
+  // Judge verification
+  cashappPaymentReceiptUrl: varchar("cashappPaymentReceiptUrl", { length: 512 }),  // CashApp payment receipt link for judge verification
+  judgeVerifiedAt: timestamp("judgeVerifiedAt"),  // when user was verified as judge
 });
 
 export type User = typeof users.$inferSelect;

@@ -450,13 +450,19 @@ function AdminPanel({
                     />
                   ) : null;
                 })()}
-                <button
-                  onClick={handleSkip}
-                  className="w-full flex items-center justify-center gap-1.5 border border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
-                >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Done — Skip to Next Track
-                </button>
+                {isJudge ? (
+                  <button
+                    onClick={handleSkip}
+                    className="w-full flex items-center justify-center gap-1.5 border border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Done — Skip to Next Track
+                  </button>
+                ) : (
+                  <div className="w-full p-2.5 border border-red-500/30 bg-red-500/5 text-red-400 text-xs text-center uppercase tracking-wider">
+                    Judges Only
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-4 gap-1.5">
@@ -484,14 +490,25 @@ function AdminPanel({
                   <RotateCcw className="w-3 h-3" />
                   Rewind
                 </button>
-                <button
-                  onClick={handleSkip}
-                  className="flex items-center justify-center gap-1 border border-white/20 text-white/60 hover:text-white py-2 text-[10px] uppercase tracking-wider transition-colors"
-                  title="Skip to next track"
-                >
-                  <SkipForward className="w-3 h-3" />
-                  Skip
-                </button>
+                {isJudge ? (
+                  <button
+                    onClick={handleSkip}
+                    className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
+                    title="Skip to next track (Judges only)"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                    Skip
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="flex items-center justify-center gap-1 border border-white/20 text-white/30 py-2 text-[10px] uppercase tracking-wider cursor-not-allowed"
+                    title="Only judges can skip"
+                  >
+                    <SkipForward className="w-3 h-3" />
+                    Skip
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -786,6 +803,7 @@ export default function MusicReview() {
 
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isJudge = user?.role === "judge";
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 

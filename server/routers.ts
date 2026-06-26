@@ -5,6 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { eq, and, inArray, desc } from "drizzle-orm";
+import { users } from "../drizzle/schema";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import {
@@ -1730,6 +1731,7 @@ export const appRouter = router({
       }),
   }),
   // ── Admin Panel ─────────────────────────────────────────────────────────────
+  // Define adminProcedure if not already defined
   admin: router({
     // Analytics overview
     analytics: adminProcedure.query(async () => {
@@ -1755,6 +1757,62 @@ export const appRouter = router({
       .input(z.object({ userId: z.number(), role: z.enum(["user", "judge", "contestant", "admin"]) }))
       .mutation(async ({ input }) => {
         await setUserRole(input.userId, input.role);
+        return { success: true };
+      }),
+
+    // Promote user to judge with CashApp payment verification
+    promoteToJudge: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        cashappReceiptUrl: z.string().url("Invalid CashApp receipt URL"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        
+        // Update user role to judge and store receipt URL
+        await db.update(users).set({
+          role: "judge",
+          cashappPaymentReceiptUrl: input.cashappReceiptUrl,
+          judgeVerifiedAt: new Date(),
+        }).where(eq(users.id, input.userId));
+        
+        // Log the promotion
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "promote_to_judge",
+          targetType: "user",
+          targetId: input.userId,
+          reason: `CashApp receipt: ${input.cashappReceiptUrl}`,
+        });
+        
+        return { success: true };
+      }),
+
+    // Revoke judge access
+    revokeJudgeAccess: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        
+        // Demote user back to regular user
+        await db.update(users).set({
+          role: "user",
+          cashappPaymentReceiptUrl: null,
+          judgeVerifiedAt: null,
+        }).where(eq(users.id, input.userId));
+        
+        // Log the revocation
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "revoke_judge_access",
+          targetType: "user",
+          targetId: input.userId,
+        });
+        
         return { success: true };
       }),
 
