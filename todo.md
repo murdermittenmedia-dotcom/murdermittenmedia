@@ -1215,3 +1215,6 @@
 - [x] Add fullscreen button with proper fixed positioning
 - [x] When fullscreen: move chat below video with reduced height
 - [x] Preserve video controls bar when fullscreen
+
+## Bug Fixes
+- [x] Fix infinite loop in useVideoRoom — removed participants from createPeerConnection dependency, use participantsRef instead

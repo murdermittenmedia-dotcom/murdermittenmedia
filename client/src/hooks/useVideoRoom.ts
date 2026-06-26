@@ -63,6 +63,12 @@ export function useVideoRoom({
   const localStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const participantsRef = useRef<VideoParticipant[]>([]);
+
+  // Keep participantsRef in sync with state
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
 
   const createPeerConnection = useCallback((targetSocketId: string, isInitiator: boolean) => {
     const pc = new RTCPeerConnection({
@@ -92,7 +98,7 @@ export function useVideoRoom({
     pc.ontrack = (event) => {
       const stream = event.streams[0];
       if (!stream) return;
-      const participant = participants.find(p => p.socketId === targetSocketId);
+      const participant = participantsRef.current.find(p => p.socketId === targetSocketId);
       setRemoteStreams(prev => {
         const existing = prev.find(s => s.socketId === targetSocketId);
         if (existing) {
@@ -127,7 +133,7 @@ export function useVideoRoom({
     }
 
     return pc;
-  }, [participants]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cleanup = useCallback(() => {
     peersRef.current.forEach(pc => pc.close());
