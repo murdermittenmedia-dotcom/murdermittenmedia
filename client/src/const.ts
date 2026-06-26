@@ -4,7 +4,7 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // The state param encodes both the redirectUri (required by OAuth) and the
 // returnPath (the page the user was on) so the callback can redirect back.
 export const getLoginUrl = (returnPath?: string) => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
+  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL || "https://api.manus.im";
   const appId = import.meta.env.VITE_APP_ID;
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
   const path =
