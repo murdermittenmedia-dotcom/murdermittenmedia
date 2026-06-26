@@ -595,8 +595,30 @@ export default function CookUpStream() {
   };
 
   const livekitUrl = import.meta.env.VITE_LIVEKIT_URL || "wss://mmm-wk6ms581.livekit.cloud";
-  const currentRtmpUrl = stream?.rtmpUrl || `rtmps://${livekitUrl.replace("wss://", "")}/publish`;
-  const currentRtmpKey = stream?.rtmpKey || stream?.livekitRoomName || "";
+  // Always use LiveKit-issued URL and key from the DB — never fall back to manually built values
+  const currentRtmpUrl = stream?.rtmpUrl ?? "";
+  const currentRtmpKey = stream?.rtmpKey ?? "";
+  const currentIngressId = (stream as any)?.ingressId ?? null;
+
+  // ── Ingress status polling (every 10s while OBS panel is open) ──
+  const { data: ingressStatusData, refetch: refetchIngressStatus } = trpc.live.ingressStatus.useQuery(
+    { streamId },
+    {
+      enabled: isStreamer && showRtmp && !!currentIngressId,
+      refetchInterval: showRtmp ? 10000 : false,
+    }
+  );
+  const ingressStatus = ingressStatusData?.status ?? (currentIngressId ? 'CHECKING...' : 'NO_INGRESS');
+
+  // ── Regenerate stream key mutation ──
+  const regenerateMutation = trpc.live.regenerateStreamKey.useMutation({
+    onSuccess: (data) => {
+      toast.success("New stream key generated! Update OBS/Streamlabs with the new credentials.");
+      refetchStream();
+      refetchIngressStatus();
+    },
+    onError: (err) => toast.error("Failed to regenerate: " + err.message),
+  });
 
   if (!stream) {
     return (
@@ -716,14 +738,53 @@ export default function CookUpStream() {
 
               {/* OBS/Streamlabs guide */}
               <div>
-                <button
-                  onClick={() => setShowRtmp(!showRtmp)}
-                  className="flex items-center gap-2 text-white/60 hover:text-white text-xs font-semibold uppercase tracking-widest mb-2"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  {showRtmp ? "Hide" : "Show"} OBS / Streamlabs Setup
-                </button>
-                {showRtmp && <OBSGuide rtmpUrl={currentRtmpUrl} rtmpKey={currentRtmpKey} />}
+                <div className="flex items-center justify-between mb-2">
+                  <button
+                    onClick={() => setShowRtmp(!showRtmp)}
+                    className="flex items-center gap-2 text-white/60 hover:text-white text-xs font-semibold uppercase tracking-widest"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    {showRtmp ? "Hide" : "Show"} OBS / Streamlabs Setup
+                  </button>
+                  {/* Ingress connection status badge */}
+                  {showRtmp && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      ingressStatus === 'ACTIVE' ? 'bg-green-600/20 text-green-400 border border-green-600/40' :
+                      ingressStatus === 'ENDPOINT_BUFFERING' || ingressStatus === 'RECONNECTING' ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/40' :
+                      ingressStatus === 'ENDPOINT_INACTIVE' ? 'bg-white/10 text-white/40 border border-white/20' :
+                      'bg-white/5 text-white/30 border border-white/10'
+                    }`}>
+                      {ingressStatus === 'ACTIVE' ? '🟢 OBS Connected' :
+                       ingressStatus === 'ENDPOINT_BUFFERING' ? '🟡 Buffering...' :
+                       ingressStatus === 'RECONNECTING' ? '🟡 Reconnecting...' :
+                       ingressStatus === 'ENDPOINT_INACTIVE' ? '⚪ Waiting for OBS' :
+                       ingressStatus === 'NO_INGRESS' ? '🔴 No Ingress' :
+                       ingressStatus}
+                    </span>
+                  )}
+                </div>
+                {showRtmp && (
+                  <>
+                    <OBSGuide rtmpUrl={currentRtmpUrl} rtmpKey={currentRtmpKey} />
+                    {/* Regenerate stream key button */}
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <p className="text-white/30 text-xs mb-2">If OBS/Streamlabs won't connect, regenerate your stream key to get a fresh ingress.</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          if (confirm("This will disconnect any active OBS session and generate new credentials. Continue?")) {
+                            regenerateMutation.mutate({ streamId });
+                          }
+                        }}
+                        disabled={regenerateMutation.isPending}
+                        className="border-yellow-600/40 text-yellow-400 hover:bg-yellow-600/10 hover:text-yellow-300 text-xs"
+                      >
+                        {regenerateMutation.isPending ? "Regenerating..." : "🔄 Regenerate Stream Key / Reset OBS Connection"}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

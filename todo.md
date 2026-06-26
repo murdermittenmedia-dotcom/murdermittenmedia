@@ -206,7 +206,7 @@
 - [ ] Song play button in active battle matchup panel
 - [ ] Push notification to user when their name is picked: "You've been picked to compete next!"
 - [ ] Queue position display for logged-in users: "There are X people ahead of you"
-- [ ] Fix VotingPanel TypeScript: use contestant1/contestant2 (actual DB field names) not contestant1Votes/contestant2Votes
+- [x] Fix VotingPanel TypeScript: use contestant1/contestant2 (actual DB field names) not contestant1Votes/contestant2Votes
 
 ## Battle Song Playback System
 - [ ] Wheel picks 2 contestants → their songs auto-load into BattlePlayer
@@ -1197,3 +1197,14 @@
 - [ ] Add artist tip procedure: tipArtist (deducts coins from viewer, credits Live Rewards to artist)
 - [ ] Add tip UI on Live Music Review page for currently playing artist
 - [ ] Build live stats overlay panel for Cook Up streams (total gifts, viewer count, top gifters)
+
+## LiveKit RTMP Ingress Fix
+- [x] Fix LiveKit RTMP ingress: use IngressClient.createIngress() instead of manually building RTMP URL
+- [x] Add ingressId column to live_streams DB table
+- [x] Store LiveKit-issued rtmpUrl and streamKey separately from room name
+- [x] Add backend logging for ingress creation (ingressId, url, streamKey, roomName, participantIdentity, status)
+- [x] Add live.ingressStatus procedure to poll ingress connection state (ACTIVE/ENDPOINT_INACTIVE/etc.)
+- [x] Add live.regenerateStreamKey procedure to delete old ingress and create fresh one
+- [x] Add ingress status badge to OBS/Streamlabs panel in CookUpStream.tsx
+- [x] Add "Regenerate Stream Key / Reset OBS Connection" button in CookUpStream.tsx
+- [x] Clean up old ingresses when user starts a new stream

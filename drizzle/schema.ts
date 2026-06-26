@@ -513,8 +513,9 @@ export const liveStreams = mysqlTable("live_streams", {
   // LiveKit room info
   livekitRoomName: varchar("livekitRoomName", { length: 128 }).notNull(),
   // RTMP ingest details (for OBS/Streamlabs users)
-  rtmpUrl: varchar("rtmpUrl", { length: 512 }),
-  rtmpKey: varchar("rtmpKey", { length: 256 }),
+  ingressId: varchar("ingressId", { length: 256 }),   // LiveKit ingress ID
+  rtmpUrl: varchar("rtmpUrl", { length: 512 }),        // LiveKit-issued RTMP URL
+  rtmpKey: varchar("rtmpKey", { length: 256 }),        // LiveKit-issued stream key (separate from URL)
   // Stats
   viewerCount: int("viewerCount").default(0).notNull(),
   peakViewerCount: int("peakViewerCount").default(0).notNull(),

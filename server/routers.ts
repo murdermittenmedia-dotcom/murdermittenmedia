@@ -55,7 +55,8 @@ import {
 import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
-  deleteRoom, getRoomParticipantCount
+  deleteRoom, getRoomParticipantCount,
+  createRtmpIngress, deleteIngress, getIngressStatus,
 } from "./livekit";
 import { ENV } from "./_core/env";
 import { desc as drizzleDesc, sql } from "drizzle-orm";
@@ -2652,20 +2653,55 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
         // End any existing live streams for this user
+        const existingStreams = await db.select().from(liveStreams)
+          .where(and(eq(liveStreams.userId, ctx.user.id), eq(liveStreams.status, "live")));
+        for (const s of existingStreams) {
+          if (s.ingressId) await deleteIngress(s.ingressId);
+        }
         await db.update(liveStreams).set({ status: "ended", endedAt: new Date() })
           .where(and(eq(liveStreams.userId, ctx.user.id), eq(liveStreams.status, "live")));
+
         const roomName = generateRoomName(ctx.user.id);
         const displayName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
+        const participantIdentity = `ingress-${ctx.user.id}`;
+
+        // ── Create a real LiveKit RTMP_INPUT ingress ────────────────────────────────
+        // LiveKit returns the real RTMP URL and stream key — we never build them manually.
+        let ingressDetails: { ingressId: string; url: string; streamKey: string };
+        try {
+          ingressDetails = await createRtmpIngress(roomName, participantIdentity, displayName);
+        } catch (ingressErr) {
+          console.error('[live.create] IngressClient.createIngress failed:', ingressErr);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Failed to create LiveKit ingress: ${(ingressErr as Error).message}`,
+          });
+        }
+
+        console.log('[live.create] Ingress created successfully:', {
+          ingressId: ingressDetails.ingressId,
+          url: ingressDetails.url,
+          streamKey: ingressDetails.streamKey,
+          roomName,
+          participantIdentity,
+        });
+
+        // Insert stream row — status stays "live" (OBS connects asynchronously)
         const [result] = await db.insert(liveStreams).values({
           userId: ctx.user.id,
           title: input.title,
           livekitRoomName: roomName,
-          rtmpUrl: `rtmps://${ENV.livekitUrl.replace("wss://", "")}/publish`,
-          rtmpKey: roomName,
-        });
+          ingressId: ingressDetails.ingressId,
+          rtmpUrl: ingressDetails.url,        // LiveKit-issued URL (never manually built)
+          rtmpKey: ingressDetails.streamKey,  // LiveKit-issued stream key (separate from URL)
+        } as any);
         const streamId = (result as any).insertId as number;
+
+        // Generate a streamer token (for browser-based preview / admin monitoring)
         const streamerToken = await generateStreamerToken(roomName, `user-${ctx.user.id}`, displayName);
+
         // Notify all users about the new Cook Up stream
         try {
           const { notifications, users: usersTable } = await import('../drizzle/schema');
@@ -2683,13 +2719,16 @@ export const appRouter = router({
             );
           }
         } catch (e) { console.error('[live.create] notification error', e); }
+
         return {
           streamId,
           roomName,
           streamerToken,
           livekitUrl: ENV.livekitUrl,
-          rtmpUrl: `rtmps://${ENV.livekitUrl.replace("wss://", "")}/publish`,
-          rtmpKey: roomName,
+          // OBS/Streamlabs settings — URL and key are SEPARATE fields
+          rtmpUrl: ingressDetails.url,
+          rtmpKey: ingressDetails.streamKey,
+          ingressId: ingressDetails.ingressId,
         };
       }),
 
@@ -2717,9 +2756,98 @@ export const appRouter = router({
         const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
         if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
         if (stream.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-        await db.update(liveStreams).set({ status: "ended", endedAt: new Date() }).where(eq(liveStreams.id, input.streamId));
+        const now = new Date();
+        await db.update(liveStreams).set({ status: "ended", endedAt: now }).where(eq(liveStreams.id, input.streamId));
         await deleteRoom(stream.livekitRoomName);
-        return { success: true };
+
+        // ── Auto-archive stream to stream_summaries ──────────────
+        try {
+          const { streamSummaries, gifts: giftsTable, liveRewards: liveRewardsTable, notifications } = await import('../drizzle/schema');
+          const startedAt = stream.createdAt;
+          const durationSeconds = Math.floor((now.getTime() - new Date(startedAt).getTime()) / 1000);
+
+          // Aggregate gifts sent during this stream
+          const sessionGifts = await db.select().from(giftsTable)
+            .where(and(
+              eq(giftsTable.toUserId, stream.userId),
+              sql`${giftsTable.createdAt} >= ${startedAt}`,
+              sql`${giftsTable.createdAt} <= ${now}`,
+            ));
+          const totalGifts = sessionGifts.length;
+          const totalCoinsGifted = sessionGifts.reduce((s: number, g: any) => s + (g.coinCost || 0), 0);
+
+          // Build top gifters list
+          const gifterMap: Record<number, { userId: number; name: string; coins: number; giftCount: number }> = {};
+          for (const g of sessionGifts) {
+            const uid = g.fromUserId;
+            if (!gifterMap[uid]) gifterMap[uid] = { userId: uid, name: `User ${uid}`, coins: 0, giftCount: 0 };
+            gifterMap[uid].coins += g.coinCost || 0;
+            gifterMap[uid].giftCount++;
+          }
+          // Resolve gifter names
+          const gifterIds = Object.keys(gifterMap).map(Number);
+          if (gifterIds.length > 0) {
+            const gifterUsers = await db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, gifterIds));
+            for (const u of gifterUsers) {
+              if (gifterMap[u.id]) gifterMap[u.id].name = u.artistName || u.name || `User ${u.id}`;
+            }
+          }
+          const topGifters = Object.values(gifterMap).sort((a, b) => b.coins - a.coins).slice(0, 10);
+
+          // Build gift breakdown
+          const giftMap: Record<string, { count: number; coinsTotal: number }> = {};
+          for (const g of sessionGifts) {
+            const name = String(g.giftTypeId);
+            if (!giftMap[name]) giftMap[name] = { count: 0, coinsTotal: 0 };
+            giftMap[name].count++;
+            giftMap[name].coinsTotal += g.coinCost || 0;
+          }
+          const giftBreakdown = Object.entries(giftMap).map(([giftName, d]) => ({ giftName, ...d })).sort((a, b) => b.count - a.count);
+
+          // Get creator's current live rewards balance
+          const [lrRow] = await db.select().from(liveRewardsTable).where(eq(liveRewardsTable.userId, stream.userId)).limit(1);
+          const totalLiveRewards = lrRow?.available ?? 0;
+
+          const avgViewers = stream.peakViewerCount > 0 ? Math.floor(stream.peakViewerCount * 0.6) : 0;
+
+          const [summaryResult] = await db.insert(streamSummaries).values({
+            creatorId: stream.userId,
+            sessionId: stream.id,
+            streamTitle: stream.title || 'Live Stream',
+            startedAt,
+            endedAt: now,
+            durationSeconds,
+            totalViews: stream.viewerCount ?? 0,
+            peakViewers: stream.peakViewerCount ?? 0,
+            avgViewers,
+            totalGifts,
+            totalCoinsGifted,
+            totalLiveRewards,
+            totalFireVotes: 0,
+            totalLikes: 0,
+            newFollowers: 0,
+            topGifters: JSON.stringify(topGifters),
+            giftBreakdown: JSON.stringify(giftBreakdown),
+            likeBreakdown: JSON.stringify([]),
+            engagementSummary: JSON.stringify({ totalGifts, totalCoinsGifted, durationSeconds }),
+          } as any);
+          const summaryId = (summaryResult as any).insertId;
+
+          // Notify the streamer
+          await db.insert(notifications).values({
+            userId: stream.userId,
+            type: 'stream_summary_ready',
+            title: '📊 Stream Archived',
+            body: `Your stream "${stream.title}" has been saved to your profile. ${totalGifts} gifts received, ${totalCoinsGifted} coins earned.`,
+            link: `/profile/${stream.userId}`,
+            isRead: false,
+          } as any);
+
+          return { success: true, summaryId };
+        } catch (archiveErr) {
+          console.error('[live.end] Archive failed (non-fatal):', archiveErr);
+          return { success: true, summaryId: null };
+        }
       }),
 
     // Update stream title
@@ -2750,8 +2878,78 @@ export const appRouter = router({
           streamerToken,
           livekitUrl: ENV.livekitUrl,
           roomName: stream.livekitRoomName,
-          rtmpUrl: stream.rtmpUrl || `rtmps://${ENV.livekitUrl.replace("wss://", "")}/publish`,
-          rtmpKey: stream.rtmpKey || stream.livekitRoomName,
+          // Always return the LiveKit-issued URL and key (never manually built)
+          rtmpUrl: stream.rtmpUrl ?? null,
+          rtmpKey: stream.rtmpKey ?? null,
+          ingressId: (stream as any).ingressId ?? null,
+        };
+      }),
+
+    // Check the current LiveKit ingress connection status
+    ingressStatus: protectedProcedure
+      .input(z.object({ streamId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
+        if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
+        if (stream.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const ingressId = (stream as any).ingressId as string | null;
+        if (!ingressId) return { status: 'NO_INGRESS', ingressId: null };
+        const status = await getIngressStatus(ingressId);
+        return { status, ingressId };
+      }),
+
+    // Regenerate stream key — delete old ingress, create a fresh one
+    regenerateStreamKey: protectedProcedure
+      .input(z.object({ streamId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [stream] = await db.select().from(liveStreams).where(eq(liveStreams.id, input.streamId)).limit(1);
+        if (!stream) throw new TRPCError({ code: "NOT_FOUND" });
+        if (stream.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        if (stream.status === 'ended') throw new TRPCError({ code: "BAD_REQUEST", message: "Stream has ended" });
+
+        // Delete old ingress if it exists
+        const oldIngressId = (stream as any).ingressId as string | null;
+        if (oldIngressId) {
+          await deleteIngress(oldIngressId);
+        }
+
+        const displayName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
+        const participantIdentity = `ingress-${ctx.user.id}`;
+
+        // Create a fresh ingress on the SAME room name so viewers stay connected
+        let ingressDetails: { ingressId: string; url: string; streamKey: string };
+        try {
+          ingressDetails = await createRtmpIngress(stream.livekitRoomName, participantIdentity, displayName);
+        } catch (ingressErr) {
+          console.error('[live.regenerateStreamKey] createIngress failed:', ingressErr);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Failed to regenerate ingress: ${(ingressErr as Error).message}`,
+          });
+        }
+
+        console.log('[live.regenerateStreamKey] New ingress:', {
+          streamId: input.streamId,
+          ingressId: ingressDetails.ingressId,
+          url: ingressDetails.url,
+          streamKey: ingressDetails.streamKey,
+          roomName: stream.livekitRoomName,
+        });
+
+        await db.update(liveStreams).set({
+          ingressId: ingressDetails.ingressId,
+          rtmpUrl: ingressDetails.url,
+          rtmpKey: ingressDetails.streamKey,
+        } as any).where(eq(liveStreams.id, input.streamId));
+
+        return {
+          rtmpUrl: ingressDetails.url,
+          rtmpKey: ingressDetails.streamKey,
+          ingressId: ingressDetails.ingressId,
         };
       }),
 
@@ -2764,6 +2962,25 @@ export const appRouter = router({
         .limit(1);
       return stream ?? null;
     }),
+
+    // Get a user's archived stream sessions (public — visible on their profile)
+    getArchive: publicProcedure
+      .input(z.object({
+        userId: z.number().int(),
+        limit: z.number().int().min(1).max(50).default(20),
+        offset: z.number().int().min(0).default(0),
+      }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { summaries: [], total: 0 };
+        const { streamSummaries } = await import('../drizzle/schema');
+        const rows = await db.select().from(streamSummaries)
+          .where(eq(streamSummaries.creatorId, input.userId))
+          .orderBy(drizzleDesc(streamSummaries.createdAt))
+          .limit(input.limit)
+          .offset(input.offset);
+        return { summaries: rows, total: rows.length };
+      }),
 
   }),
 

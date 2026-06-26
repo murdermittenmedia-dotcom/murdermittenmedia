@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE live_streams ADD COLUMN IF NOT EXISTS ingressId VARCHAR(256) NULL AFTER livekitRoomName;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute ALTER TABLE live_streams ADD COLUMN IF NOT EXISTS ingressId VARCHAR(256) NULL AFTER livekitRoomName;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 489
+}
