@@ -868,6 +868,20 @@ export default function MusicReview() {
   });
 
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
+
+  // Tip artist state
+  const [tipAmount, setTipAmount] = useState<string>("");
+  const [showTipPanel, setShowTipPanel] = useState(false);
+  const { data: coinBalanceData, refetch: refetchCoinBalance } = trpc.coins.getBalance.useQuery(undefined, { enabled: !!user });
+  const tipMutation = trpc.gifts.tipArtist.useMutation({
+    onSuccess: (res: any) => {
+      toast.success(`Tip sent! New balance: ${res.newBalance} coins`);
+      setTipAmount("");
+      setShowTipPanel(false);
+      refetchCoinBalance();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
   const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
   // YouTube timestamp sync state for late-joiner seek
   const [ytSyncState, setYtSyncState] = useState<{ currentTime: number; updatedAt: number } | null>(null);
@@ -1343,6 +1357,80 @@ export default function MusicReview() {
                     )}
                   </div>
                 )}
+                {/* ── TIP ARTIST PANEL ── */}
+                {!isAdmin && liveReviewActive.userId && user && liveReviewActive.userId !== user.id && (
+                  <div className="mt-3 border border-yellow-500/20 bg-yellow-500/5 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-yellow-400 text-sm font-semibold">💰 Tip {liveReviewActive.artistName}</span>
+                        <span className="text-white/30 text-xs">Balance: {coinBalanceData?.balance ?? 0} coins</span>
+                      </div>
+                      <button
+                        onClick={() => setShowTipPanel(v => !v)}
+                        className="text-xs text-yellow-400/70 hover:text-yellow-400 transition-colors"
+                      >
+                        {showTipPanel ? 'Cancel' : 'Send Tip'}
+                      </button>
+                    </div>
+                    {showTipPanel && (
+                      <div className="flex gap-2 items-center">
+                        <div className="flex gap-1">
+                          {[10, 25, 50, 100].map(amt => (
+                            <button
+                              key={amt}
+                              onClick={() => setTipAmount(String(amt))}
+                              className={`px-2 py-1 text-xs border transition-all ${
+                                tipAmount === String(amt)
+                                  ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
+                                  : 'border-white/10 text-white/40 hover:border-yellow-500/50 hover:text-yellow-400'
+                              }`}
+                            >
+                              {amt}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10000"
+                          value={tipAmount}
+                          onChange={e => setTipAmount(e.target.value)}
+                          placeholder="Custom"
+                          className="w-20 bg-transparent border border-white/20 text-white text-xs px-2 py-1 focus:outline-none focus:border-yellow-500/50"
+                        />
+                        <button
+                          disabled={!tipAmount || parseInt(tipAmount) < 1 || tipMutation.isPending}
+                          onClick={() => {
+                            const coins = parseInt(tipAmount);
+                            if (!coins || coins < 1) return;
+                            tipMutation.mutate({ toUserId: liveReviewActive.userId!, coins });
+                          }}
+                          className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black text-xs font-semibold px-3 py-1 transition-all"
+                        >
+                          {tipMutation.isPending ? '...' : 'Tip'}
+                        </button>
+                      </div>
+                    )}
+                    {!showTipPanel && (
+                      <div className="flex gap-1">
+                        {[10, 25, 50, 100].map(amt => (
+                          <button
+                            key={amt}
+                            onClick={() => {
+                              if (!liveReviewActive.userId) return;
+                              tipMutation.mutate({ toUserId: liveReviewActive.userId, coins: amt });
+                            }}
+                            disabled={tipMutation.isPending}
+                            className="px-3 py-1 text-xs border border-yellow-500/30 text-yellow-400/70 hover:border-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-40"
+                          >
+                            💰 {amt}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {liveReviewActive.youtubeUrl && !isAdmin && (() => {
                   const ytId = extractYouTubeId(liveReviewActive.youtubeUrl!);
                   return ytId ? (

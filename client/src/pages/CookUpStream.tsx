@@ -835,6 +835,53 @@ export default function CookUpStream() {
             <FloatingGifts gifts={floatingGifts} />
           </div>
 
+          {/* ── LIVE STATS BAR ── */}
+          <div className="bg-[#0c0c0c] border-t border-white/10 px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+            {/* Viewer count */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white/40">Viewers</span>
+              <span className="text-white font-semibold">{stream.viewerCount ?? 0}</span>
+              {(stream.peakViewerCount ?? 0) > 0 && (
+                <span className="text-white/25 text-[10px]">peak {stream.peakViewerCount}</span>
+              )}
+            </div>
+            {/* Total gifts */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-white/40">Gifts</span>
+              <span className="text-white font-semibold">{streamGifts?.length ?? 0}</span>
+            </div>
+            {/* Total coins gifted */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-yellow-400/60">🪙</span>
+              <span className="text-white/40">Coins Gifted</span>
+              <span className="text-yellow-400 font-semibold">{stream.totalGiftCoins ?? 0}</span>
+            </div>
+            {/* Live Rewards earned (streamer only) */}
+            {isStreamer && (stream.totalGiftUsd ?? 0) > 0 && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-green-400/60">💰</span>
+                <span className="text-white/40">Live Rewards</span>
+                <span className="text-green-400 font-semibold">${((stream.totalGiftUsd ?? 0) / 100).toFixed(2)}</span>
+              </div>
+            )}
+            {/* Most recent gift */}
+            {streamGifts && streamGifts.length > 0 && (() => {
+              const latest = streamGifts[streamGifts.length - 1];
+              const emoji = GIFT_EMOJIS[latest.giftType?.name ?? ""] || latest.giftType?.emoji || "🎁";
+              const from = latest.from?.artistName || latest.from?.name || "Someone";
+              return (
+                <div className="flex items-center gap-1 text-xs ml-auto">
+                  <span className="text-white/25">Latest:</span>
+                  <span>{emoji}</span>
+                  <span className="text-white/50">{latest.giftType?.name ?? "Gift"}</span>
+                  <span className="text-white/25">from</span>
+                  <span className="text-red-400">{from}</span>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Gift panel — viewers */}
           {!isStreamer && (
             <div className="bg-[#0f0f0f] border-t border-white/10 px-4 py-3">

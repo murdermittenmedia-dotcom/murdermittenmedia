@@ -1191,3 +1191,9 @@
 - [ ] Frontend: /notifications page — full inbox with search bar, type filter, read/unread filter, delete buttons, permanent history
 - [ ] Frontend: Notification bell — unread count badge, dropdown preview of latest 5, "View all" link
 - [ ] Admin: Notification Logs tab — searchable log of all notifications sent to all users
+
+## Coin Economy & Live Features (Round 3)
+- [ ] Remove coin cashout section from Wallet page (coins are for gifts/tips only)
+- [ ] Add artist tip procedure: tipArtist (deducts coins from viewer, credits Live Rewards to artist)
+- [ ] Add tip UI on Live Music Review page for currently playing artist
+- [ ] Build live stats overlay panel for Cook Up streams (total gifts, viewer count, top gifters)

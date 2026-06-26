@@ -2947,6 +2947,83 @@ export const appRouter = router({
         const typeMap = Object.fromEntries(types.map(t => [t.id, t]));
         return rows.map(g => ({ ...g, from: userMap[g.fromUserId] ?? null, giftType: typeMap[g.giftTypeId] ?? null }));
         }),
+
+    // Tip an artist on Music Review (coins → creator Live Rewards)
+    tipArtist: protectedProcedure
+      .input(z.object({
+        toUserId: z.number().int(),
+        coins: z.number().int().min(1).max(10000),
+        sessionId: z.number().int().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        if (input.toUserId === ctx.user.id) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot tip yourself' });
+        // Check sender balance
+        const [balance] = await db.select().from(coinBalances).where(eq(coinBalances.userId, ctx.user.id)).limit(1);
+        const currentBalance = balance?.balance ?? 0;
+        if (currentBalance < input.coins) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Insufficient coins' });
+        // Get economy config for split
+        const [cfg] = await db.select().from(economyConfig).limit(1);
+        const creatorPct = cfg?.creatorSplitPct ?? 70;
+        // Deduct coins from sender
+        const newSenderBalance = currentBalance - input.coins;
+        if (balance) {
+          await db.update(coinBalances).set({
+            balance: newSenderBalance,
+            totalSpent: (balance.totalSpent ?? 0) + input.coins,
+          }).where(eq(coinBalances.userId, ctx.user.id));
+        }
+        await db.insert(walletTransactions).values({
+          userId: ctx.user.id,
+          currency: 'coins',
+          type: 'gift_sent',
+          amount: -input.coins,
+          balanceAfter: newSenderBalance,
+          note: `Tipped ${input.coins} coins to user ${input.toUserId}`,
+        });
+        // Credit Live Rewards to artist (1 coin = 0.7 cents, apply creator split)
+        const tipValueCents = Math.floor(input.coins * 0.7);
+        const creatorRewardCents = Math.floor(tipValueCents * creatorPct / 100);
+        const [creatorReward] = await db.select().from(liveRewards).where(eq(liveRewards.userId, input.toUserId)).limit(1);
+        if (creatorReward) {
+          const newAvailable = (creatorReward.available ?? 0) + creatorRewardCents;
+          await db.update(liveRewards).set({
+            available: newAvailable,
+            lifetimeEarned: (creatorReward.lifetimeEarned ?? 0) + creatorRewardCents,
+          }).where(eq(liveRewards.userId, input.toUserId));
+          await db.insert(walletTransactions).values({
+            userId: input.toUserId,
+            currency: 'live_rewards',
+            type: 'gift_received',
+            amount: creatorRewardCents,
+            balanceAfter: newAvailable,
+            note: `Tip from viewer (${input.coins} coins)`,
+          });
+        } else {
+          await db.insert(liveRewards).values({ userId: input.toUserId, available: creatorRewardCents, lifetimeEarned: creatorRewardCents });
+          await db.insert(walletTransactions).values({
+            userId: input.toUserId,
+            currency: 'live_rewards',
+            type: 'gift_received',
+            amount: creatorRewardCents,
+            balanceAfter: creatorRewardCents,
+            note: `Tip from viewer (${input.coins} coins)`,
+          });
+        }
+        // Notify the artist
+        try {
+          const { notifications: notifTable } = await import('../drizzle/schema');
+          await db.insert(notifTable).values({
+            userId: input.toUserId,
+            type: 'live_reward',
+            title: '💰 You received a tip!',
+            body: `${ctx.user.artistName || ctx.user.name} tipped you ${input.coins} coins (+$${(creatorRewardCents / 100).toFixed(2)} Live Rewards)`,
+            link: '/wallet',
+          });
+        } catch {}
+        return { success: true, newBalance: newSenderBalance, creatorRewardCents };
+      }),
     }),
 
   // ─── Cashout Requests ───────────────────────────────────────
