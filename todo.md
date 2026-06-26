@@ -1092,3 +1092,40 @@
 - [x] End stream button fixed
 - [x] Viewer auto-switches to screenshare when active (prefers screen over camera)
 - [x] Desktop audio captured and published to viewers
+
+## Cashout Requests
+- [ ] cashoutRequests table (userId, coins, paymentMethod, paymentDetails, status, adminNote)
+- [ ] cashout.request procedure (user submits cashout)
+- [ ] cashout.getMyRequests procedure
+- [ ] admin.getCashoutRequests procedure
+- [ ] admin.processCashout procedure (approve/deny, deduct coins)
+- [ ] Cashout request UI in user wallet/coins page
+- [ ] Admin cashout management tab in AdminPanel
+
+## Notification System
+- [ ] notifications table (userId, type, title, body, link, isRead, createdAt)
+- [ ] notifications.getMyNotifications procedure (paginated, unread count)
+- [ ] notifications.markRead / markAllRead procedures
+- [ ] Notification bell icon in SiteNav with unread badge
+- [ ] Notification dropdown/panel with all notifications
+- [ ] Trigger: new live stream started
+- [ ] Trigger: live cookup started
+- [ ] Trigger: someone liked your post
+- [ ] Trigger: coin purchase approved/denied
+- [ ] Trigger: cashout approved/denied
+- [ ] Trigger: music review session started
+- [ ] Admin notifications: new user joined
+- [ ] Admin notifications: pending cashout request
+- [ ] Admin notifications: pending coin purchase
+- [ ] Admin notifications: new music submission
+
+## Fire or Trash Swipe Game
+- [ ] fireTrashVotes table (userId, submissionId, vote: fire|trash, createdAt)
+- [ ] fireTrash.getQueue procedure (random unvoted submissions for user)
+- [ ] fireTrash.vote procedure (cast fire/trash vote, update stats)
+- [ ] fireTrash.getLeaderboard procedure (most fire submissions)
+- [ ] fireTrash.getMyStats procedure (user fire/trash ratio)
+- [ ] /fire-or-trash page with swipe left=trash right=fire (mobile touch + keyboard)
+- [ ] Fire/Trash stats shown on submission cards
+- [ ] Fire/Trash leaderboard page
+- [ ] Nav link added for Fire or Trash game

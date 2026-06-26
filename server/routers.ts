@@ -553,6 +553,28 @@ export const appRouter = router({
             }
           }
           await setLiveStatus(input.isLive, input.message, input.streamUrl);
+          // Notify all users when going live
+          if (input.isLive) {
+            try {
+              const db = await getDb();
+              if (db) {
+                const { notifications, users: usersTable } = await import('../drizzle/schema');
+                const allUsers = await db.select({ id: usersTable.id }).from(usersTable);
+                const message = input.message || 'Music Review is now LIVE! Submit your tracks.';
+                if (allUsers.length > 0) {
+                  await db.insert(notifications).values(
+                    allUsers.map(u => ({
+                      userId: u.id,
+                      type: 'live_music_review' as const,
+                      title: '\uD83D\uDD34 Music Review is LIVE',
+                      body: message,
+                      link: '/review',
+                    }))
+                  );
+                }
+              }
+            } catch (e) { console.error('[setLive] notification error', e); }
+          }
           return { success: true };
         } catch (err) {
           console.error("[queue.setLive] Error:", err);
@@ -2641,6 +2663,23 @@ export const appRouter = router({
         });
         const streamId = (result as any).insertId as number;
         const streamerToken = await generateStreamerToken(roomName, `user-${ctx.user.id}`, displayName);
+        // Notify all users about the new Cook Up stream
+        try {
+          const { notifications, users: usersTable } = await import('../drizzle/schema');
+          const { ne } = await import('drizzle-orm');
+          const allUsers = await db.select({ id: usersTable.id }).from(usersTable).where(ne(usersTable.id, ctx.user.id));
+          if (allUsers.length > 0) {
+            await db.insert(notifications).values(
+              allUsers.map(u => ({
+                userId: u.id,
+                type: 'live_cookup',
+                title: `\uD83C\uDFA4 ${displayName} is Live`,
+                body: `${displayName} just started a Cook Up session: "${input.title}"`,
+                link: `/cookup/${streamId}`,
+              }))
+            );
+          }
+        } catch (e) { console.error('[live.create] notification error', e); }
         return {
           streamId,
           roomName,
@@ -2851,8 +2890,252 @@ export const appRouter = router({
         const userMap = Object.fromEntries(giftUsers.map(u => [u.id, u]));
         const typeMap = Object.fromEntries(types.map(t => [t.id, t]));
         return rows.map(g => ({ ...g, from: userMap[g.fromUserId] ?? null, giftType: typeMap[g.giftTypeId] ?? null }));
+        }),
+    }),
+
+  // ─── Cashout Requests ───────────────────────────────────────
+  cashout: router({
+    // User submits a cashout request
+    request: protectedProcedure
+      .input(z.object({
+        coins: z.number().int().min(100),
+        paymentMethod: z.enum(["cashapp", "paypal", "venmo", "zelle"]),
+        paymentHandle: z.string().min(2).max(128),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { cashoutRequests, coinBalances } = await import("../drizzle/schema");
+        // Check balance
+        const [bal] = await db.select().from(coinBalances).where(eq(coinBalances.userId, ctx.user.id));
+        if (!bal || bal.balance < input.coins) throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient coin balance" });
+        // Check no pending request
+        const [pending] = await db.select().from(cashoutRequests).where(and(eq(cashoutRequests.userId, ctx.user.id), eq(cashoutRequests.status, "pending")));
+        if (pending) throw new TRPCError({ code: "BAD_REQUEST", message: "You already have a pending cashout request" });
+        // 100 coins = $1 USD
+        const usdEstimate = Math.floor(input.coins / 100);
+        await db.insert(cashoutRequests).values({
+          userId: ctx.user.id,
+          coins: input.coins,
+          usdEstimate: usdEstimate * 100,
+          paymentMethod: input.paymentMethod,
+          paymentHandle: input.paymentHandle,
+          status: "pending",
+        });
+        // Notify admin
+        const { notifications } = await import("../drizzle/schema");
+        const allAdmins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+        for (const admin of allAdmins) {
+          await db.insert(notifications).values({
+            userId: admin.id,
+            type: "admin_cashout_request",
+            title: "New Cashout Request",
+            body: `${ctx.user.name || ctx.user.artistName || "A user"} requested to cash out ${input.coins} coins ($${usdEstimate})`,
+            link: "/admin",
+          });
+        }
+        return { success: true };
       }),
 
+    // Get user's own cashout history
+    getMyRequests: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const { cashoutRequests } = await import("../drizzle/schema");
+      return db.select().from(cashoutRequests).where(eq(cashoutRequests.userId, ctx.user.id)).orderBy(desc(cashoutRequests.createdAt));
+    }),
+    // Admin: get all pending cashout requests
+    adminGetAll: adminProcedure
+      .input(z.object({ status: z.enum(['pending', 'approved', 'rejected', 'all']).default('pending') }).optional())
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { cashoutRequests } = await import('../drizzle/schema');
+        const status = input?.status ?? 'pending';
+        const query = db.select({
+          id: cashoutRequests.id,
+          userId: cashoutRequests.userId,
+          coins: cashoutRequests.coins,
+          paymentMethod: cashoutRequests.paymentMethod,
+          paymentHandle: cashoutRequests.paymentHandle,
+          status: cashoutRequests.status,
+          adminNote: cashoutRequests.adminNote,
+          createdAt: cashoutRequests.createdAt,
+          userName: users.name,
+          artistName: users.artistName,
+        }).from(cashoutRequests)
+          .leftJoin(users, eq(cashoutRequests.userId, users.id))
+          .orderBy(desc(cashoutRequests.createdAt));
+        if (status !== 'all') {
+          return (await query).filter(r => r.status === status);
+        }
+        return query;
+      }),
+    // Admin: approve or reject a cashout request
+    adminResolve: adminProcedure
+      .input(z.object({
+        id: z.number().int(),
+        action: z.enum(['approved', 'denied']),
+        adminNote: z.string().max(512).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { cashoutRequests, coinBalances, notifications } = await import('../drizzle/schema');
+        const [req] = await db.select().from(cashoutRequests).where(eq(cashoutRequests.id, input.id)).limit(1);
+        if (!req) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (req.status !== 'pending') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Request already resolved' });
+        // Deduct coins if approved
+        if (input.action === 'approved') {
+          const [bal] = await db.select().from(coinBalances).where(eq(coinBalances.userId, req.userId)).limit(1);
+          const current = bal?.balance ?? 0;
+          if (current < req.coins) throw new TRPCError({ code: 'BAD_REQUEST', message: 'User has insufficient coins' });
+          await db.update(coinBalances).set({ balance: current - req.coins }).where(eq(coinBalances.userId, req.userId));
+        }
+        await db.update(cashoutRequests).set({ status: input.action, adminNote: input.adminNote ?? null }).where(eq(cashoutRequests.id, input.id));
+        // Notify user of decision
+        const msg = input.action === 'approved'
+          ? `Your cashout of ${req.coins} coins has been approved! Payment sent to ${req.paymentMethod}: ${req.paymentHandle}`
+          : `Your cashout request for ${req.coins} coins was denied. ${input.adminNote ?? ''}`;
+        await db.insert(notifications).values({
+          userId: req.userId,
+          type: 'cashout_resolved',
+          title: input.action === 'approved' ? '\u2705 Cashout Approved' : '\u274C Cashout Denied',
+          body: msg,
+          link: '/cashout',
+        });
+        return { success: true };
+      }),
+  }),
+
+  // ─── Notifications ──────────────────────────────────────────
+  notifications: router({
+    getMyNotifications: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }).optional())
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { notifications } = await import("../drizzle/schema");
+        const limit = input?.limit ?? 20;
+        const rows = await db.select().from(notifications)
+          .where(eq(notifications.userId, ctx.user.id))
+          .orderBy(desc(notifications.createdAt))
+          .limit(limit);
+        const unreadCount = rows.filter(n => !n.isRead).length;
+        return { notifications: rows, unreadCount };
+      }),
+
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { notifications } = await import("../drizzle/schema");
+        await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.id, input.id), eq(notifications.userId, ctx.user.id)));
+        return { success: true };
+      }),
+
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const { notifications } = await import("../drizzle/schema");
+      await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, ctx.user.id));
+      return { success: true };
+    }),
+  }),
+
+  // ─── Fire or Trash Swipe Game ────────────────────────────────
+  fireTrash: router({
+    // Get a batch of unvoted submissions for the current user
+    getQueue: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(20).default(10) }).optional())
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { fireTrashVotes } = await import("../drizzle/schema");
+        const limit = input?.limit ?? 10;
+        // Get IDs already voted on by this user
+        const voted = await db.select({ submissionId: fireTrashVotes.submissionId })
+          .from(fireTrashVotes).where(eq(fireTrashVotes.userId, ctx.user.id));
+        const votedIds = voted.map(v => v.submissionId);
+        // Get reviewed submissions not yet voted on
+        const query = db.select({
+          id: reviewSubmissions.id,
+          artistName: reviewSubmissions.artistName,
+          songTitle: reviewSubmissions.songTitle,
+          youtubeUrl: reviewSubmissions.youtubeUrl,
+          fileUrl: reviewSubmissions.fileUrl,
+          fireCount: reviewSubmissions.fireCount,
+          trashCount: reviewSubmissions.trashCount,
+        }).from(reviewSubmissions)
+          .where(and(
+            eq(reviewSubmissions.status, "reviewed"),
+            votedIds.length > 0 ? sql`${reviewSubmissions.id} NOT IN (${sql.join(votedIds.map(id => sql`${id}`), sql`, `)})` : sql`1=1`
+          ))
+          .orderBy(sql`RAND()`)
+          .limit(limit);
+        return query;
+      }),
+
+    // Cast a fire or trash vote
+    vote: protectedProcedure
+      .input(z.object({
+        submissionId: z.number().int(),
+        vote: z.enum(["fire", "trash"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { fireTrashVotes } = await import("../drizzle/schema");
+        // Check not already voted
+        const [existing] = await db.select().from(fireTrashVotes)
+          .where(and(eq(fireTrashVotes.userId, ctx.user.id), eq(fireTrashVotes.submissionId, input.submissionId)));
+        if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "Already voted" });
+        await db.insert(fireTrashVotes).values({
+          userId: ctx.user.id,
+          submissionId: input.submissionId,
+          vote: input.vote,
+        });
+        // Update fire/trash count on submission
+        if (input.vote === "fire") {
+          await db.update(reviewSubmissions).set({ fireCount: sql`${reviewSubmissions.fireCount} + 1` }).where(eq(reviewSubmissions.id, input.submissionId));
+        } else {
+          await db.update(reviewSubmissions).set({ trashCount: sql`${reviewSubmissions.trashCount} + 1` }).where(eq(reviewSubmissions.id, input.submissionId));
+        }
+        // Award XP for voting
+        await awardXP(ctx.user.id, "vote_cast");
+        return { success: true };
+      }),
+
+    // Get leaderboard: most fire submissions
+    getLeaderboard: publicProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }).optional())
+      .query(async () => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        return db.select({
+          id: reviewSubmissions.id,
+          artistName: reviewSubmissions.artistName,
+          songTitle: reviewSubmissions.songTitle,
+          fireCount: reviewSubmissions.fireCount,
+          trashCount: reviewSubmissions.trashCount,
+          userId: reviewSubmissions.userId,
+        }).from(reviewSubmissions)
+          .where(eq(reviewSubmissions.status, "reviewed"))
+          .orderBy(desc(reviewSubmissions.fireCount))
+          .limit(20);
+      }),
+
+    // Get current user's vote history + stats
+    getMyStats: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const { fireTrashVotes } = await import("../drizzle/schema");
+      const votes = await db.select().from(fireTrashVotes).where(eq(fireTrashVotes.userId, ctx.user.id));
+      const fireVotes = votes.filter(v => v.vote === "fire").length;
+      const trashVotes = votes.filter(v => v.vote === "trash").length;
+      return { totalVotes: votes.length, fireVotes, trashVotes, votes };
+    }),
   }),
 
 });

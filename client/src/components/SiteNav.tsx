@@ -14,8 +14,10 @@ import LabelBadge from "@/components/LabelBadge";
 import {
   User, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
-  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap, Radio, Coins,
+  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap, Radio, Coins, Bell,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { Link } from "wouter";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -160,6 +162,9 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 
             {user ? (
               <>
+                {/* Notification Bell */}
+                <NotificationBell />
+
                 {/* Profile pill */}
                 <a
                   href="/profile"
@@ -360,5 +365,86 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
         </div>
       </div>
     </>
+  );
+}
+
+// ─── Notification Bell ────────────────────────────────────────
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { data, refetch } = trpc.notifications.getMyNotifications.useQuery(undefined, {
+    refetchInterval: 15000, // poll every 15s
+  });
+  const markRead = trpc.notifications.markRead.useMutation({ onSuccess: () => refetch() });
+  const markAll = trpc.notifications.markAllRead.useMutation({ onSuccess: () => refetch() });
+
+  const unread = data?.unreadCount ?? 0;
+  const notifs = data?.notifications ?? [];
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div className="relative hidden sm:block" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="relative flex items-center justify-center w-8 h-8 border border-white/15 text-white/50 hover:border-red-600/60 hover:text-white transition-all duration-200 rounded-sm"
+        title="Notifications"
+      >
+        <Bell className="w-4 h-4" />
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5">
+            {unread > 99 ? "99+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-[#111] border border-white/10 rounded-lg shadow-2xl z-[200] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <span className="text-white font-semibold text-sm">Notifications</span>
+            {unread > 0 && (
+              <button
+                onClick={() => markAll.mutate()}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {notifs.length === 0 ? (
+              <div className="px-4 py-8 text-center text-white/30 text-sm">No notifications yet</div>
+            ) : notifs.map(n => (
+              <div
+                key={n.id}
+                className={`px-4 py-3 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors ${
+                  !n.isRead ? "bg-red-600/5 border-l-2 border-l-red-600" : ""
+                }`}
+                onClick={() => {
+                  if (!n.isRead) markRead.mutate({ id: n.id });
+                  if (n.link) window.location.href = n.link;
+                  setOpen(false);
+                }}
+              >
+                <p className={`text-sm font-medium ${!n.isRead ? "text-white" : "text-white/60"}`}>{n.title}</p>
+                <p className="text-xs text-white/40 mt-0.5 leading-relaxed">{n.body}</p>
+                <p className="text-[10px] text-white/20 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-2 border-t border-white/10">
+            <Link href="/notifications" className="text-xs text-red-400 hover:text-red-300">
+              View all notifications →
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

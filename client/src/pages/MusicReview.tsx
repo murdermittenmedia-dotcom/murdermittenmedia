@@ -93,6 +93,7 @@ function AdminPanel({
   const [showStreamSettings, setShowStreamSettings] = useState(false);
   const [showReviewed, setShowReviewed] = useState(false);
   const audioPlayer = useAudioPlayer();
+  const { user: currentUser } = useAuth();
 
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
@@ -300,7 +301,7 @@ function AdminPanel({
             placeholder="Stream URL (YouTube Live / HLS)"
             className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
           />
-          {data?.user?.role === "admin" && isLive && (
+          {currentUser?.role === "admin" && isLive && (
             <button
               onClick={() => {
                 setLive.mutate({ isLive: false });

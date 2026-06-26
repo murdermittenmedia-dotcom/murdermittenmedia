@@ -1062,7 +1062,12 @@ function DailyWheelTab() {
 
 // ─── Live Cook Up Admin Tab ─────────────────────────────────
 function LiveCookUpAdminTab() {
-  const [activeSubTab, setActiveSubTab] = useState<"streams" | "coins" | "gifts">("streams");
+  const [activeSubTab, setActiveSubTab] = useState<"streams" | "coins" | "gifts" | "cashout">("streams");
+  const { data: cashoutRequests, refetch: refetchCashouts } = trpc.cashout.adminGetAll.useQuery({ status: 'pending' });
+  const resolveCashoutMutation = trpc.cashout.adminResolve.useMutation({
+    onSuccess: () => { refetchCashouts(); },
+  });
+  const [cashoutNote, setCashoutNote] = useState<Record<number, string>>({});
 
   const { data: allStreams, refetch: refetchStreams } = trpc.admin.adminGetLiveStreams.useQuery();
   const { data: coinRequests, refetch: refetchCoins } = trpc.admin.adminGetCoinRequests.useQuery();
@@ -1111,7 +1116,7 @@ function LiveCookUpAdminTab() {
 
       {/* Sub-tabs */}
       <div className="flex gap-2 mb-6">
-        {(["streams", "coins", "gifts"] as const).map(t => (
+        {(["streams", "coins", "gifts", "cashout"] as const).map(t => (
           <button
             key={t}
             onClick={() => setActiveSubTab(t)}
@@ -1119,7 +1124,7 @@ function LiveCookUpAdminTab() {
               activeSubTab === t ? "bg-red-600 text-white" : "border border-white/20 text-white/50 hover:text-white"
             }`}
           >
-            {t === "streams" ? "Live Streams" : t === "coins" ? "Coin Requests" : "Gift Ledger"}
+            {t === "streams" ? "Live Streams" : t === "coins" ? "Coin Requests" : t === "cashout" ? "Cashouts" : "Gift Ledger"}
           </button>
         ))}
       </div>
@@ -1233,6 +1238,58 @@ function LiveCookUpAdminTab() {
                 </p>
               </div>
               <span className="text-white/40 text-lg shrink-0">{g.giftType?.emoji || "🎁"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cashout Requests */}
+      {activeSubTab === "cashout" && (
+        <div className="space-y-3">
+          {!cashoutRequests || cashoutRequests.length === 0 ? (
+            <p className="text-white/30 text-sm">No pending cashout requests.</p>
+          ) : cashoutRequests.map((req: any) => (
+            <div key={req.id} className="border border-white/10 bg-white/[0.03] rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-yellow-600/20 text-yellow-400 text-xs font-bold px-2 py-0.5 rounded-sm uppercase">Pending</span>
+                    <span className="text-white font-semibold text-sm">{req.artistName || req.userName || `User #${req.userId}`}</span>
+                  </div>
+                  <p className="text-white/60 text-sm">
+                    <span className="text-yellow-400 font-bold">{req.coins.toLocaleString()} coins</span>
+                    {" · "}
+                    <span className="text-white/80">{req.paymentMethod}: {req.paymentHandle}</span>
+                  </p>
+                  <p className="text-white/20 text-xs mt-0.5">{new Date(req.createdAt).toLocaleString()}</p>
+                </div>
+              </div>
+              <input
+                type="text"
+                placeholder="Admin note (optional)"
+                value={cashoutNote[req.id] ?? ''}
+                onChange={e => setCashoutNote(prev => ({ ...prev, [req.id]: e.target.value }))}
+                className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-red-600/50"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => resolveCashoutMutation.mutate({ id: req.id, action: 'approved', adminNote: cashoutNote[req.id] })}
+                  disabled={resolveCashoutMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Approve & Pay
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => resolveCashoutMutation.mutate({ id: req.id, action: 'denied', adminNote: cashoutNote[req.id] })}
+                  disabled={resolveCashoutMutation.isPending}
+                  className="border-red-600/40 text-red-400 hover:bg-red-600/10"
+                >
+                  Reject
+                </Button>
+              </div>
             </div>
           ))}
         </div>

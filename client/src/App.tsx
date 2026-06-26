@@ -33,6 +33,8 @@ import LiveCookUp from "./pages/CookUp";
 import CookUpStream from "./pages/CookUpStream";
 import Coins from "./pages/Coins";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
+import FireOrTrash from "./pages/FireOrTrash";
+import Cashout from "./pages/Cashout";
 
 function Router() {
   return (
@@ -55,6 +57,8 @@ function Router() {
       <Route path={"/cookup"} component={LiveCookUp} />
       <Route path={"/cookup/:id"} component={CookUpStream} />
       <Route path={"/coins"} component={Coins} />
+      <Route path={"/fire-or-trash"} component={FireOrTrash} />
+      <Route path={"/cashout"} component={Cashout} />
 
       {/* XP & Tiers explainer */}
       <Route path={"/how-it-works"} component={HowItWorks} />

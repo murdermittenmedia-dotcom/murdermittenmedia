@@ -36,7 +36,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const reviewSubmissions = mysqlTable("review_submissions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId"),
-  musicReviewSessionId: int("musicReviewSessionId").notNull(),  // Track which session this submission belongs to
+  musicReviewSessionId: int("musicReviewSessionId"),  // Track which session this submission belongs to (optional for legacy)
   artistName: varchar("artistName", { length: 128 }).notNull(),
   songTitle: varchar("songTitle", { length: 128 }).notNull(),
   submissionType: mysqlEnum("submissionType", ["youtube", "file"]).notNull(),
@@ -593,3 +593,46 @@ export const musicReviewSessions = mysqlTable("music_review_sessions", {
 });
 export type MusicReviewSession = typeof musicReviewSessions.$inferSelect;
 export type InsertMusicReviewSession = typeof musicReviewSessions.$inferInsert;
+
+// ─── Cashout Requests ─────────────────────────────────────────
+export const cashoutRequests = mysqlTable("cashout_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  coins: int("coins").notNull(),                                        // coins to cash out
+  usdEstimate: int("usdEstimate").notNull(),                            // estimated USD in cents
+  paymentMethod: mysqlEnum("paymentMethod", ["cashapp", "paypal", "venmo", "zelle"]).notNull(),
+  paymentHandle: varchar("paymentHandle", { length: 128 }).notNull(),   // e.g. $cashtag or email
+  status: mysqlEnum("status", ["pending", "approved", "denied"]).default("pending").notNull(),
+  adminNote: varchar("adminNote", { length: 512 }),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CashoutRequest = typeof cashoutRequests.$inferSelect;
+export type InsertCashoutRequest = typeof cashoutRequests.$inferInsert;
+
+// ─── Notifications ────────────────────────────────────────────
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),                                      // recipient
+  type: varchar("type", { length: 64 }).notNull(),                     // e.g. "live_stream", "cookup", "coin_approved"
+  title: varchar("title", { length: 128 }).notNull(),
+  body: varchar("body", { length: 512 }).notNull(),
+  link: varchar("link", { length: 256 }),                              // optional deep link
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+// ─── Fire or Trash Swipe Game ─────────────────────────────────
+// Reuses song_reactions table for votes but adds a dedicated game queue
+export const fireTrashVotes = mysqlTable("fire_trash_votes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  submissionId: int("submissionId").notNull(),
+  vote: mysqlEnum("vote", ["fire", "trash"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FireTrashVote = typeof fireTrashVotes.$inferSelect;
+export type InsertFireTrashVote = typeof fireTrashVotes.$inferInsert;
