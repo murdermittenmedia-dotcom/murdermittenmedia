@@ -20,7 +20,8 @@ import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
-  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift, CreditCard, DollarSign
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift, CreditCard, DollarSign,
+  Bell, PlayCircle,
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -1422,7 +1423,7 @@ function PaidSubmissionsTab() {
 }
 
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions" | "cashouts" | "economy";
+type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions" | "cashouts" | "economy" | "notifications" | "streams";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
@@ -1435,6 +1436,8 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "live", label: "Live Cook Up", icon: Radio },
   { id: "cashouts", label: "Cashouts", icon: DollarSign },
   { id: "economy", label: "Economy", icon: Coins },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "streams", label: "Streams", icon: PlayCircle },
 ];
 
 export default function AdminPanel() {
@@ -1521,6 +1524,8 @@ export default function AdminPanel() {
         {activeTab === "live" && <LiveCookUpAdminTab />}
         {activeTab === "cashouts" && <CashoutsAdminTab />}
         {activeTab === "economy" && <EconomyAdminTab />}
+        {activeTab === "notifications" && <NotificationsAdminTab />}
+        {activeTab === "streams" && <StreamsAdminTab />}
       </div>
     </div>
   );
@@ -1942,6 +1947,236 @@ function EconomyAdminTab() {
               ))}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Notifications Admin Tab ───────────────────────────────────
+function NotificationsAdminTab() {
+  const [search, setSearch] = useState("");
+  const [userIdFilter, setUserIdFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+
+  const { data: allUsers } = trpc.users.listAll.useQuery();
+
+  // Build a filtered list of users for search
+  const matchedUser = allUsers?.find((u: any) =>
+    u.name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.email?.toLowerCase().includes(search.toLowerCase()) ||
+    String(u.id) === search
+  );
+
+  const targetUserId = userIdFilter ? parseInt(userIdFilter) : (matchedUser?.id ?? 0);
+
+  const { data: userNotifs, isLoading, refetch } = trpc.notifications.getMyNotifications.useQuery(
+    { limit: 50 },
+    { enabled: false } // Admin views their own for now — extend with admin procedure later
+  );
+
+  const TYPE_OPTIONS = [
+    "all", "coin_balance_change", "coin_purchase", "gift_sent", "gift_received",
+    "cashout_requested", "cashout_approved", "cashout_rejected", "live_rewards_earned",
+    "fire_vote_change", "suspicious_activity", "stream_summary_ready", "someone_live",
+    "top_gifter_milestone", "admin_message", "system",
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-['Anton'] text-2xl uppercase mb-1">Notification Logs</h2>
+        <p className="text-white/40 text-sm">View and monitor all user notifications. Notifications are permanent and never auto-deleted.</p>
+      </div>
+
+      {/* Info panel */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { label: "Permanent Storage", desc: "All notifications persist in DB forever unless manually deleted by user" },
+          { label: "Real-time Delivery", desc: "Notifications are created server-side on every economy event" },
+          { label: "Types Tracked", desc: "16 notification types across coins, gifts, cashouts, streams, and security" },
+        ].map(item => (
+          <div key={item.label} className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
+            <div className="text-sm font-semibold text-white mb-1">{item.label}</div>
+            <div className="text-white/40 text-xs leading-relaxed">{item.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Notification types reference */}
+      <div className="border border-white/10 bg-white/[0.03] rounded-lg p-5">
+        <h3 className="font-semibold text-white mb-3 text-sm uppercase tracking-widest">Notification Types</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {[
+            { type: "live_rewards_earned", emoji: "💰", desc: "Creator earns from gifts" },
+            { type: "coin_balance_change", emoji: "🪙", desc: "Coin balance updated" },
+            { type: "fire_vote_change", emoji: "🔥", desc: "Fire Vote balance updated" },
+            { type: "gift_sent", emoji: "🎁", desc: "User sent a gift" },
+            { type: "gift_received", emoji: "🎁", desc: "Creator received a gift" },
+            { type: "cashout_requested", emoji: "💸", desc: "Cashout submitted" },
+            { type: "cashout_approved", emoji: "✅", desc: "Cashout approved" },
+            { type: "cashout_rejected", emoji: "❌", desc: "Cashout rejected" },
+            { type: "suspicious_activity", emoji: "⚠️", desc: "Fraud flag triggered" },
+            { type: "stream_summary_ready", emoji: "📊", desc: "Post-live summary ready" },
+            { type: "someone_live", emoji: "📡", desc: "Followed creator went live" },
+            { type: "top_gifter_milestone", emoji: "🏆", desc: "Top gifter milestone hit" },
+            { type: "coin_purchase", emoji: "🛒", desc: "Coin bundle purchased" },
+            { type: "coin_approved", emoji: "✅", desc: "Coin purchase approved" },
+            { type: "coin_rejected", emoji: "❌", desc: "Coin purchase rejected" },
+            { type: "admin_message", emoji: "📢", desc: "Admin broadcast" },
+          ].map(item => (
+            <div key={item.type} className="flex items-start gap-2 text-xs">
+              <span>{item.emoji}</span>
+              <div>
+                <div className="text-white/70 font-mono">{item.type}</div>
+                <div className="text-white/30">{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Send admin broadcast */}
+      <AdminBroadcastPanel />
+    </div>
+  );
+}
+
+function AdminBroadcastPanel() {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [link, setLink] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const notifyOwner = trpc.system.notifyOwner.useMutation();
+
+  const handleSend = async () => {
+    if (!title.trim()) { toast.error("Title required"); return; }
+    setSending(true);
+    try {
+      await notifyOwner.mutateAsync({ title: `[BROADCAST] ${title}`, content: body });
+      toast.success("Broadcast sent to owner notifications");
+      setTitle(""); setBody(""); setLink("");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="border border-white/10 bg-white/[0.03] rounded-lg p-5">
+      <h3 className="font-semibold text-white mb-3 text-sm uppercase tracking-widest flex items-center gap-2">
+        <Bell className="w-4 h-4 text-red-500" />
+        Send Admin Broadcast
+      </h3>
+      <div className="space-y-3">
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Notification title..."
+          className="w-full bg-white/5 border border-white/10 text-white px-3 py-2 text-sm focus:border-red-600/50 focus:outline-none rounded"
+        />
+        <textarea
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          placeholder="Message body (optional)..."
+          rows={3}
+          className="w-full bg-white/5 border border-white/10 text-white px-3 py-2 text-sm focus:border-red-600/50 focus:outline-none rounded resize-none"
+        />
+        <input
+          value={link}
+          onChange={e => setLink(e.target.value)}
+          placeholder="Action link (optional, e.g. /wallet)..."
+          className="w-full bg-white/5 border border-white/10 text-white px-3 py-2 text-sm focus:border-red-600/50 focus:outline-none rounded"
+        />
+        <button
+          onClick={handleSend}
+          disabled={sending || !title.trim()}
+          className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-5 py-2 text-sm font-semibold uppercase tracking-widest transition-colors rounded"
+        >
+          {sending ? "Sending..." : "Send Broadcast"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Streams Admin Tab ─────────────────────────────────────────
+function StreamsAdminTab() {
+  const { data: summaries, isLoading } = trpc.stream.getHistory.useQuery({ limit: 20 });
+
+  function formatDuration(seconds: number) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-['Anton'] text-2xl uppercase mb-1">Stream History</h2>
+        <p className="text-white/40 text-sm">All past livestream summaries. Permanently stored.</p>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : !summaries || summaries.length === 0 ? (
+        <div className="text-center py-16 text-white/30">
+          <PlayCircle className="w-12 h-12 mx-auto mb-4 opacity-30" />
+          <p>No stream summaries yet.</p>
+          <p className="text-xs mt-1">Summaries are generated when a creator ends their livestream.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {summaries.map((s: any) => (
+            <div key={s.id} className="border border-white/10 bg-white/[0.03] rounded-lg p-5">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <div className="font-semibold text-white">{s.title || "Untitled Stream"}</div>
+                  <div className="text-white/40 text-xs mt-0.5">
+                    {new Date(s.startedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {" · "}Creator ID: {s.userId}
+                  </div>
+                </div>
+                <div className="text-white/30 text-xs">{formatDuration(s.durationSeconds ?? 0)}</div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Views", value: s.totalViews ?? 0 },
+                  { label: "Peak Viewers", value: s.peakViewers ?? 0 },
+                  { label: "Gifts", value: s.totalGifts ?? 0 },
+                  { label: "Coins Gifted", value: s.totalCoinsGifted ?? 0 },
+                  { label: "Live Rewards", value: `${s.totalLiveRewards ?? 0}¢` },
+                  { label: "Fire Votes", value: s.totalFireVotes ?? 0 },
+                  { label: "Likes", value: s.totalLikes ?? 0 },
+                  { label: "New Followers", value: s.newFollowers ?? 0 },
+                ].map(stat => (
+                  <div key={stat.label} className="bg-white/5 rounded p-2.5 text-center">
+                    <div className="text-white font-bold text-lg">{stat.value}</div>
+                    <div className="text-white/40 text-xs">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+              {s.topGifters && s.topGifters.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="text-white/40 text-xs uppercase tracking-widest mb-1.5">Top Gifters</div>
+                  <div className="flex flex-wrap gap-2">
+                    {(s.topGifters as any[]).slice(0, 5).map((g: any, i: number) => (
+                      <span key={i} className="text-xs bg-white/5 text-white/60 px-2 py-1 rounded">
+                        #{i + 1} {g.name} — {g.coins} coins
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

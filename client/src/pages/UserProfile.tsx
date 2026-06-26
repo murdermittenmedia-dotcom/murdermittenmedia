@@ -17,7 +17,7 @@ import { ProfileRewards } from "@/components/ProfileRewards";
 import {
   Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X,
   Instagram, Trophy, Mic, MapPin, Upload, Plus, Globe, Eye, EyeOff,
-  Loader2, Crown,
+  Loader2, Crown, Radio,
 } from "lucide-react";
 
 type Submission = {
@@ -394,6 +394,13 @@ export default function UserProfile() {
   const songs: UserSong[] = (isOwnProfile ? ownSongs : publicSongs) as UserSong[] ?? [];
   const refetchSongs = isOwnProfile ? refetchOwnSongs : refetchPublicSongs;
 
+  // Live status for this profile's user
+  const profileUserId = isOwnProfile ? (user?.id ?? 0) : (visitingId ?? 0);
+  const { data: liveStatus } = trpc.stream.getLiveStatus.useQuery(
+    { userId: profileUserId },
+    { enabled: profileUserId > 0, refetchInterval: 15_000 }
+  );
+
   // Mutations
   const updateProfileMutation = trpc.profile.update.useMutation({
     onSuccess: () => {
@@ -644,6 +651,11 @@ export default function UserProfile() {
                 <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start mb-1">
                   <h1 className="font-['Anton'] text-3xl uppercase">{displayName}</h1>
                   <LabelBadge labels={currentLabels} />
+                  {liveStatus?.isLive && (
+                    <span className="flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm animate-pulse">
+                      <Radio className="w-3 h-3" /> LIVE NOW
+                    </span>
+                  )}
                   {isOwnProfile && (
                     <button
                       className="text-white/30 hover:text-red-500 transition-colors"
@@ -659,6 +671,19 @@ export default function UserProfile() {
                     </button>
                   )}
                 </div>
+
+                {/* Watch Live CTA when creator is live */}
+                {liveStatus?.isLive && (
+                  <a
+                    href={liveStatus.youtubeUrl || "/cookup"}
+                    target={liveStatus.youtubeUrl ? "_blank" : undefined}
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-sm transition-all duration-200 mt-2 mb-3"
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    Watch Live
+                  </a>
+                )}
 
                 {userCity ? (
                   <div className="flex items-center gap-1 text-white/40 text-sm mb-1 justify-center sm:justify-start">

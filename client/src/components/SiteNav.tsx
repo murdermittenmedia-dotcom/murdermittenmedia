@@ -184,12 +184,12 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                 </a>
 
                 <a
-                  href="/cashout"
+                  href="/wallet"
                   className="hidden sm:flex items-center gap-1.5 text-xs border border-white/15 text-white/40 px-3 py-2 hover:border-yellow-500/60 hover:text-yellow-400 transition-all duration-200 rounded-sm"
-                  title="Cashout Coins"
+                  title="My Wallet"
                 >
                   <Wallet className="w-3.5 h-3.5" />
-                  Cashout
+                  Wallet
                 </a>
 
                 {user?.role === "admin" && (
@@ -353,12 +353,12 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
         {/* Drawer footer */}
         <div className="border-t border-white/10 px-5 py-4 flex flex-col gap-2">
           <a
-            href="/cashout"
+            href="/wallet"
             onClick={() => setMenuOpen(false)}
             className="flex items-center gap-2 text-xs text-white/40 hover:text-yellow-400 transition-colors py-1"
           >
             <Wallet className="w-3.5 h-3.5" />
-            Cashout Coins
+            My Wallet
           </a>
           {user?.role === "admin" && (
             <a

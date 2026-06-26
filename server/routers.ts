@@ -3485,6 +3485,174 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── Stream Sessions & Summaries ──────────────────────────
+  stream: router({
+    // Admin starts a live session
+    start: adminProcedure
+      .input(z.object({
+        streamTitle: z.string().default('Live Stream'),
+        youtubeUrl: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { liveSessions } = await import('../drizzle/schema');
+        await db.update(liveSessions).set({ isActive: false, endedAt: new Date() }).where(eq(liveSessions.isActive, true));
+        const [result] = await db.insert(liveSessions).values({
+          creatorId: ctx.user.id,
+          streamTitle: input.streamTitle,
+          youtubeUrl: input.youtubeUrl,
+          isActive: true,
+          startedAt: new Date(),
+        });
+        return { success: true, sessionId: (result as any).insertId };
+      }),
+
+    // Admin ends a live session and generates summary
+    end: adminProcedure
+      .input(z.object({
+        sessionId: z.number().int().optional(),
+        totalViews: z.number().int().default(0),
+        peakViewers: z.number().int().default(0),
+        totalLikes: z.number().int().default(0),
+        newFollowers: z.number().int().default(0),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { liveSessions, streamSummaries, gifts: giftsTable, liveRewards: liveRewardsTable, notifications } = await import('../drizzle/schema');
+        const now = new Date();
+        let session: any = null;
+        if (input.sessionId) {
+          const rows = await db.select().from(liveSessions).where(eq(liveSessions.id, input.sessionId)).limit(1);
+          session = rows[0];
+        } else {
+          const rows = await db.select().from(liveSessions).where(eq(liveSessions.isActive, true)).limit(1);
+          session = rows[0];
+        }
+        if (!session) throw new TRPCError({ code: 'NOT_FOUND', message: 'No active session found' });
+        await db.update(liveSessions).set({ isActive: false, endedAt: now }).where(eq(liveSessions.id, session.id));
+        const durationSeconds = Math.floor((now.getTime() - new Date(session.startedAt).getTime()) / 1000);
+        const sessionGifts = await db.select().from(giftsTable)
+          .where(and(
+            eq(giftsTable.toUserId, session.creatorId),
+            sql`${giftsTable.createdAt} >= ${session.startedAt}`,
+            sql`${giftsTable.createdAt} <= ${now}`,
+          ));
+        const totalGifts = sessionGifts.length;
+        const totalCoinsGifted = sessionGifts.reduce((s: number, g: any) => s + (g.coinCost || 0), 0);
+        const giftMap: Record<string, { count: number; coinsTotal: number }> = {};
+        for (const g of sessionGifts) {
+          const name = String(g.giftTypeId);
+          if (!giftMap[name]) giftMap[name] = { count: 0, coinsTotal: 0 };
+          giftMap[name].count++;
+          giftMap[name].coinsTotal += g.coinCost || 0;
+        }
+        const giftBreakdown = Object.entries(giftMap).map(([giftName, d]) => ({ giftName, ...d })).sort((a, b) => b.count - a.count);
+        const gifterMap: Record<number, { userId: number; name: string; coins: number; giftCount: number }> = {};
+        for (const g of sessionGifts) {
+          const uid = g.fromUserId;
+          if (!gifterMap[uid]) gifterMap[uid] = { userId: uid, name: `User ${uid}`, coins: 0, giftCount: 0 };
+          gifterMap[uid].coins += g.coinCost || 0;
+          gifterMap[uid].giftCount++;
+        }
+        const topGifters = Object.values(gifterMap).sort((a, b) => b.coins - a.coins).slice(0, 10);
+        const lrRows = await db.select().from(liveRewardsTable).where(eq(liveRewardsTable.userId, session.creatorId));
+        const totalLiveRewards = lrRows[0]?.available ?? 0;
+        const avgViewers = input.peakViewers > 0 ? Math.floor(input.peakViewers * 0.6) : 0;
+        const [summaryResult] = await db.insert(streamSummaries).values({
+          creatorId: session.creatorId,
+          sessionId: session.id,
+          streamTitle: session.streamTitle || 'Live Stream',
+          startedAt: session.startedAt,
+          endedAt: now,
+          durationSeconds,
+          totalViews: input.totalViews,
+          peakViewers: input.peakViewers,
+          avgViewers,
+          totalGifts,
+          totalCoinsGifted,
+          totalLiveRewards,
+          totalFireVotes: 0,
+          totalLikes: input.totalLikes,
+          newFollowers: input.newFollowers,
+          topGifters: JSON.stringify(topGifters),
+          giftBreakdown: JSON.stringify(giftBreakdown),
+          likeBreakdown: JSON.stringify([]),
+          engagementSummary: JSON.stringify({ totalGifts, totalCoinsGifted }),
+        });
+        const summaryId = (summaryResult as any).insertId;
+        await db.insert(notifications).values({
+          userId: session.creatorId,
+          type: 'stream_summary_ready',
+          title: '📊 Stream Summary Ready',
+          body: `Your stream "${session.streamTitle}" ended. ${totalGifts} gifts, ${totalCoinsGifted} coins earned.`,
+          link: '/stream-history',
+          isRead: false,
+        } as any);
+        return { success: true, summaryId };
+      }),
+
+    getSummary: protectedProcedure
+      .input(z.object({ summaryId: z.number().int() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { streamSummaries } = await import('../drizzle/schema');
+        const rows = await db.select().from(streamSummaries).where(eq(streamSummaries.id, input.summaryId)).limit(1);
+        if (!rows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (rows[0].creatorId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        return rows[0];
+      }),
+
+    getHistory: protectedProcedure
+      .input(z.object({ userId: z.number().int().optional(), limit: z.number().int().default(20), offset: z.number().int().default(0) }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { streamSummaries } = await import('../drizzle/schema');
+        const targetId = input.userId ?? ctx.user.id;
+        if (targetId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+        return db.select().from(streamSummaries)
+          .where(eq(streamSummaries.creatorId, targetId))
+          .orderBy(desc(streamSummaries.createdAt))
+          .limit(input.limit)
+          .offset(input.offset);
+      }),
+
+    getLatestSummary: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const { streamSummaries } = await import('../drizzle/schema');
+      const rows = await db.select().from(streamSummaries)
+        .where(eq(streamSummaries.creatorId, ctx.user.id))
+        .orderBy(desc(streamSummaries.createdAt))
+        .limit(1);
+      return rows[0] ?? null;
+    }),
+
+    getLiveStatus: publicProcedure
+      .input(z.object({ userId: z.number().int() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { isLive: false, sessionId: null as number | null, streamTitle: null as string | null, youtubeUrl: null as string | null };
+        const { liveSessions } = await import('../drizzle/schema');
+        const rows = await db.select().from(liveSessions)
+          .where(and(eq(liveSessions.creatorId, input.userId), eq(liveSessions.isActive, true)))
+          .limit(1);
+        if (!rows[0]) return { isLive: false, sessionId: null as number | null, streamTitle: null as string | null, youtubeUrl: null as string | null };
+        return { isLive: true, sessionId: rows[0].id, streamTitle: rows[0].streamTitle, youtubeUrl: rows[0].youtubeUrl };
+      }),
+
+    getActiveLive: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return null;
+      const { liveSessions } = await import('../drizzle/schema');
+      const rows = await db.select().from(liveSessions).where(eq(liveSessions.isActive, true)).limit(1);
+      return rows[0] ?? null;
+    }),
+  }),
+
   // -- News / Instagram Feed ------------------------------------
   news: router({
     // Returns live Instagram posts (requires INSTAGRAM_ACCESS_TOKEN + INSTAGRAM_USER_ID env vars)

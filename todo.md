@@ -1159,3 +1159,35 @@
 - [x] Admin: gift catalog management panel
 - [x] Admin: fraud review queue panel
 - [x] Admin: creator cashout approval panel
+
+## Feature 13: Post-Live Stream Summary
+- [ ] DB: stream_summaries table (id, creatorId, streamTitle, startedAt, endedAt, duration, totalViews, peakViewers, avgViewers, totalGifts, totalCoinsGifted, totalLiveRewards, totalFireVotes, totalLikes, newFollowers, topGifters JSON, giftBreakdown JSON, likeBreakdown JSON, engagementSummary JSON, createdAt)
+- [ ] DB: live_sessions table (id, creatorId, streamTitle, youtubeUrl, startedAt, endedAt, isActive, viewerLog JSON, likeLog JSON)
+- [ ] Server: stream.start — admin starts a live session (records startedAt, sets isActive=true)
+- [ ] Server: stream.end — admin ends live session, auto-generates summary from all session data, saves to stream_summaries, sends notification to creator
+- [ ] Server: stream.getSummary — get a single stream summary by id
+- [ ] Server: stream.getHistory — get all stream summaries for a creator (paginated)
+- [ ] Server: stream.getLatestSummary — get most recent summary (for post-live modal)
+- [ ] Frontend: Post-Live Summary modal — shown to creator immediately after stream ends (auto-triggered by notification)
+- [ ] Frontend: /stream-history page — creator's full stream history with summary cards
+- [ ] Frontend: Stream summary card — duration, views, gifts, coins, Fire Votes, top gifters, gift breakdown chart
+
+## Feature 14: Live Now Profile Badge
+- [ ] Server: profile.getLiveStatus — returns whether a user is currently live (checks live_sessions.isActive)
+- [ ] Frontend: Profile page — show LIVE NOW badge + "Watch Live" button when creator is live
+- [ ] Frontend: Live badge polls every 15s for real-time status
+- [ ] Frontend: ArtistStatModal — show LIVE NOW badge if artist is currently live
+- [ ] Frontend: Chat messages — show LIVE badge next to name if user is currently live
+
+## Feature 15: Permanent Notification System
+- [ ] DB: ensure notifications table has permanent storage (no TTL, no auto-delete)
+- [ ] DB: add notificationType enum to notifications (live_reward, coin_change, fire_vote_change, gift_sent, gift_received, cashout_requested, cashout_approved, cashout_rejected, fraud_hold, stream_summary_ready, creator_live, top_gifter_milestone, balance_update, system)
+- [ ] DB: add metadata JSON column to notifications for rich data (amounts, gift names, stream titles, etc.)
+- [ ] Server: notifications.getAll — paginated, filterable by type/read status, searchable
+- [ ] Server: notifications.delete — user can delete individual notifications
+- [ ] Server: notifications.deleteAll — user can delete all their notifications
+- [ ] Server: admin.getNotificationLogs — admin view of all notifications across all users
+- [ ] Server: auto-notify on all economy events (gifts, FV earned, cashouts, fraud holds, stream summary ready)
+- [ ] Frontend: /notifications page — full inbox with search bar, type filter, read/unread filter, delete buttons, permanent history
+- [ ] Frontend: Notification bell — unread count badge, dropdown preview of latest 5, "View all" link
+- [ ] Admin: Notification Logs tab — searchable log of all notifications sent to all users

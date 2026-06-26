@@ -34,11 +34,12 @@ import CookUpStream from "./pages/CookUpStream";
 import Coins from "./pages/Coins";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 import FireOrTrash from "./pages/FireOrTrash";
-import Cashout from "./pages/Cashout";
+import Wallet from "./pages/Wallet";
 import News from "./pages/News";
 import Notifications from "./pages/Notifications";
 import FireVoteWallet from "./pages/FireVoteWallet";
 import CreatorWallet from "./pages/CreatorWallet";
+import StreamHistory from "./pages/StreamHistory";
 
 function Router() {
   return (
@@ -62,11 +63,13 @@ function Router() {
       <Route path={"/cookup/:id"} component={CookUpStream} />
       <Route path={"/coins"} component={Coins} />
       <Route path={"/fire-or-trash"} component={FireOrTrash} />
-      <Route path={"/cashout"} component={Cashout} />
+      <Route path={"/cashout"} component={Wallet} />
+      <Route path={"/wallet"} component={Wallet} />
       <Route path={"/news"} component={News} />
       <Route path={"/notifications"} component={Notifications} />
       <Route path={"/fire-vote-wallet"} component={FireVoteWallet} />
       <Route path={"/creator-wallet"} component={CreatorWallet} />
+      <Route path={"/stream-history"} component={StreamHistory} />
 
       {/* XP & Tiers explainer */}
       <Route path={"/how-it-works"} component={HowItWorks} />

@@ -781,3 +781,49 @@ export type InsertFraudLog = typeof fraudLogs.$inferInsert;
 // NOTE: giftTypes table already exists — we alter it via migration
 // The existing table gets new columns: rarity, animationType, description
 // These are added via pnpm db:push (Drizzle will ALTER TABLE)
+
+// ─── Live Sessions ────────────────────────────────────────────
+// Tracks active and past livestream sessions
+export const liveSessions = mysqlTable("live_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  creatorId: int("creatorId").notNull(),
+  streamTitle: varchar("streamTitle", { length: 256 }).default("Live Stream"),
+  youtubeUrl: varchar("youtubeUrl", { length: 512 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  endedAt: timestamp("endedAt"),
+  peakViewers: int("peakViewers").default(0).notNull(),
+  totalViewerMinutes: int("totalViewerMinutes").default(0).notNull(),
+  viewerSnapshots: text("viewerSnapshots"),  // JSON array of {time, count}
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LiveSession = typeof liveSessions.$inferSelect;
+export type InsertLiveSession = typeof liveSessions.$inferInsert;
+
+// ─── Stream Summaries ─────────────────────────────────────────
+// Permanent post-stream performance summaries
+export const streamSummaries = mysqlTable("stream_summaries", {
+  id: int("id").autoincrement().primaryKey(),
+  creatorId: int("creatorId").notNull(),
+  sessionId: int("sessionId"),               // FK to liveSessions
+  streamTitle: varchar("streamTitle", { length: 256 }).default("Live Stream"),
+  startedAt: timestamp("startedAt").notNull(),
+  endedAt: timestamp("endedAt").notNull(),
+  durationSeconds: int("durationSeconds").default(0).notNull(),
+  totalViews: int("totalViews").default(0).notNull(),
+  peakViewers: int("peakViewers").default(0).notNull(),
+  avgViewers: int("avgViewers").default(0).notNull(),
+  totalGifts: int("totalGifts").default(0).notNull(),
+  totalCoinsGifted: int("totalCoinsGifted").default(0).notNull(),
+  totalLiveRewards: int("totalLiveRewards").default(0).notNull(),  // in cents
+  totalFireVotes: int("totalFireVotes").default(0).notNull(),
+  totalLikes: int("totalLikes").default(0).notNull(),
+  newFollowers: int("newFollowers").default(0).notNull(),
+  topGifters: text("topGifters"),            // JSON: [{userId, name, coins, giftCount}]
+  giftBreakdown: text("giftBreakdown"),      // JSON: [{giftName, count, coinsTotal}]
+  likeBreakdown: text("likeBreakdown"),      // JSON: [{minute, count}]
+  engagementSummary: text("engagementSummary"), // JSON: {chatMessages, uniqueChatters, ...}
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StreamSummary = typeof streamSummaries.$inferSelect;
+export type InsertStreamSummary = typeof streamSummaries.$inferInsert;
