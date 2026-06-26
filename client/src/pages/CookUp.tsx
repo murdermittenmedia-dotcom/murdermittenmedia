@@ -55,8 +55,8 @@ export default function LiveCookUp() {
               <Radio className="w-5 h-5 text-red-500" />
             </div>
             <div>
-              <h1 className="font-['Anton'] text-2xl tracking-wider">LIVE COOK UP</h1>
-              <p className="text-white/40 text-xs uppercase tracking-widest">Studio Sessions · Producer Sets · Live Rap</p>
+              <h1 className="font-['Anton'] text-2xl tracking-wider">LIVE STREAMS</h1>
+              <p className="text-white/40 text-xs uppercase tracking-widest">GO LIVE TO EARN REWARDS</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
