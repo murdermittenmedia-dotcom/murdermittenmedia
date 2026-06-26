@@ -1208,3 +1208,10 @@
 - [x] Add ingress status badge to OBS/Streamlabs panel in CookUpStream.tsx
 - [x] Add "Regenerate Stream Key / Reset OBS Connection" button in CookUpStream.tsx
 - [x] Clean up old ingresses when user starts a new stream
+
+## Stream Player UI Improvements
+- [x] Resize video player to fit naturally on screen without forcing scrolling
+- [x] Maintain original stream aspect ratio (16:9 with aspect-video class)
+- [x] Add fullscreen button with proper fixed positioning
+- [x] When fullscreen: move chat below video with reduced height
+- [x] Preserve video controls bar when fullscreen

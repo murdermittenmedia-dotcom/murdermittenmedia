@@ -150,7 +150,7 @@ function ViewerVideo() {
 }
 
 // ── Broadcaster controls ──────────────────────────────────────
-function BroadcasterVideo({ onEnd, audioPresetIdx, isAdmin }: { onEnd: () => void; audioPresetIdx: number; isAdmin?: boolean }) {
+function BroadcasterVideo({ onEnd, audioPresetIdx, isAdmin, onFullscreenChange }: { onEnd: () => void; audioPresetIdx: number; isAdmin?: boolean; onFullscreenChange?: (fullscreen: boolean) => void }) {
   const room = useRoomContext();
   const [camOn, setCamOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
@@ -278,12 +278,14 @@ function BroadcasterVideo({ onEnd, audioPresetIdx, isAdmin }: { onEnd: () => voi
       document.exitFullscreen?.();
       setFullscreen(false);
     }
+    // Also update parent component state
+    onFullscreenChange?.(!fullscreen);
   };
 
   return (
-    <div className="w-full h-full flex flex-col" ref={videoContainerRef}>
+    <div className={`w-full h-full flex flex-col ${fullscreen ? 'fixed inset-0 z-50 bg-black' : ''}`} ref={videoContainerRef}>
       {/* Video preview */}
-      <div className="relative flex-1 bg-[#0a0a0a] overflow-hidden min-h-[200px]">
+      <div className="relative flex-1 bg-[#0a0a0a] overflow-hidden min-h-[200px] flex items-center justify-center">
         {localVideo ? (
           <VideoTrack trackRef={localVideo} className="w-full h-full object-contain" />
         ) : (
@@ -311,7 +313,8 @@ function BroadcasterVideo({ onEnd, audioPresetIdx, isAdmin }: { onEnd: () => voi
         {/* Fullscreen toggle */}
         <button
           onClick={toggleFullscreen}
-          className="absolute top-3 right-3 text-white/40 hover:text-white bg-black/40 p-1.5 rounded"
+          className="absolute top-3 right-3 text-white/40 hover:text-white bg-black/40 p-1.5 rounded z-40"
+          title={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
         >
           {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </button>
@@ -535,6 +538,7 @@ export default function CookUpStream() {
   const [titleEdit, setTitleEdit] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [audioPresetIdx, setAudioPresetIdx] = useState(0);
+  const [broadcasterFullscreen, setBroadcasterFullscreen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [broadcastMode, setBroadcastMode] = useState<"browser" | "obs" | null>(null);
 
@@ -652,10 +656,10 @@ export default function CookUpStream() {
     <div className="min-h-screen bg-[#080808] text-white flex flex-col">
       <SiteNav />
 
-      <div className="flex-1 flex flex-col lg:flex-row max-w-[1600px] mx-auto w-full lg:px-4 lg:py-4 gap-0 lg:gap-4">
+      <div className={`flex-1 flex flex-col lg:flex-row max-w-[1600px] mx-auto w-full lg:px-4 lg:py-4 gap-0 lg:gap-4 ${broadcasterFullscreen ? 'lg:flex-col' : ''}`}>
 
         {/* ── Left: Video ── */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 max-h-[calc(100vh-200px)]">
 
           {/* Title bar */}
           <div className="flex items-center gap-3 px-4 py-3 bg-[#0f0f0f] border-b border-white/10 lg:rounded-t-lg">
@@ -790,7 +794,7 @@ export default function CookUpStream() {
           )}
 
           {/* Video area */}
-          <div className="relative bg-[#0a0a0a] min-h-[280px] lg:min-h-[480px] flex-1">
+          <div className="relative bg-[#0a0a0a] flex-1 flex items-center justify-center overflow-hidden aspect-video">
 
             {/* Viewer mode */}
             {!isStreamer && viewerTokenData && (
@@ -820,6 +824,7 @@ export default function CookUpStream() {
                   onEnd={() => endMutation.mutate({ streamId })}
                   audioPresetIdx={audioPresetIdx}
                   isAdmin={user?.role === "admin"}
+                  onFullscreenChange={setBroadcasterFullscreen}
                 />
               </LiveKitRoom>
             )}
@@ -988,12 +993,12 @@ export default function CookUpStream() {
         </div>
 
         {/* ── Right: Chat ── */}
-        <div className="w-full lg:w-80 xl:w-96 flex flex-col bg-[#0f0f0f] border-t lg:border-t-0 lg:border-l border-white/10 lg:rounded-r-lg">
+        <div className={`w-full ${broadcasterFullscreen ? 'lg:h-40' : 'lg:w-80 xl:w-96'} flex flex-col bg-[#0f0f0f] border-t lg:border-t-0 lg:border-l border-white/10 lg:rounded-r-lg`}>
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
             <Users className="w-4 h-4 text-white/40" />
             <span className="text-white/60 text-sm font-semibold">Live Chat</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[200px] max-h-[400px] lg:max-h-none">
+          <div className={`flex-1 overflow-y-auto p-3 space-y-2 min-h-[200px] ${broadcasterFullscreen ? 'max-h-24' : 'max-h-[400px] lg:max-h-none'}`}>
             {chatMessages.length === 0 && (
               <p className="text-white/20 text-xs text-center py-8">No messages yet. Say something!</p>
             )}
