@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `cashappPaymentReceiptUrl` varchar(512);\nALTER TABLE `users` ADD COLUMN IF NOT EXISTS `judgeVerifiedAt` timestamp;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `cashappPaymentReceiptUrl` varchar(512);\nALTER TABLE `users` ADD COLUMN IF NOT EXISTS `judgeVerifiedAt` timestamp;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 683
+}

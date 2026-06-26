@@ -1,0 +1,46 @@
+{
+  "query": "SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('cashappPaymentReceiptUrl', 'judgeVerifiedAt', 'accountLabels', 'xp', 'fanXP', 'level', 'fanLevel', 'streak', 'lastActiveDate');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('cashappPaymentReceiptUrl', 'judgeVerifiedAt', 'accountLabels', 'xp', 'fanXP', 'level', 'fanLevel', 'streak', 'lastActiveDate');",
+  "rows": [
+    {
+      "COLUMN_NAME": "accountLabels",
+      "COLUMN_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "xp",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "fanXP",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "level",
+      "COLUMN_TYPE": "varchar(32)"
+    },
+    {
+      "COLUMN_NAME": "fanLevel",
+      "COLUMN_TYPE": "varchar(32)"
+    },
+    {
+      "COLUMN_NAME": "streak",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "lastActiveDate",
+      "COLUMN_TYPE": "varchar(10)"
+    },
+    {
+      "COLUMN_NAME": "cashappPaymentReceiptUrl",
+      "COLUMN_TYPE": "varchar(512)"
+    },
+    {
+      "COLUMN_NAME": "judgeVerifiedAt",
+      "COLUMN_TYPE": "timestamp"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tCOLUMN_TYPE\naccountLabels\ttext\nxp\tint\nfanXP\tint\nlevel\tvarchar(32)\nfanLevel\tvarchar(32)\nstreak\tint\nlastActiveDate\tvarchar(10)\ncashappPaymentReceiptUrl\tvarchar(512)\njudgeVerifiedAt\ttimestamp\n",
+  "stderr": "",
+  "execution_time_ms": 269
+}
