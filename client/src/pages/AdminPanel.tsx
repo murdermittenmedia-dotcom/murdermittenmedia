@@ -1433,7 +1433,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "danger", label: "Danger Zone", icon: AlertTriangle },
   { id: "rewards", label: "Rewards", icon: Trophy },
   { id: "dailywheel", label: "Daily Wheel", icon: Disc },
-  { id: "live", label: "Live Cook Up", icon: Radio },
+  { id: "live", label: "GO LIVE", icon: Radio },
   { id: "cashouts", label: "Cashouts", icon: DollarSign },
   { id: "economy", label: "Economy", icon: Coins },
   { id: "notifications", label: "Notifications", icon: Bell },

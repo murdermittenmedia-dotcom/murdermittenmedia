@@ -32,7 +32,7 @@ const NAV_ITEMS = [
   { href: "/news",              label: "Latest News",                          icon: Newspaper                     },
   { href: "/promo",             label: "Get Promoted",                         icon: Tag                           },
   { href: "/daily-wheel",       label: "Daily Wheel",                          icon: Zap                           },
-  { href: "/cookup",            label: "Live Cook Up",                         icon: Radio                         },
+  { href: "/cookup",            label: "GO LIVE",                         icon: Radio                         },
   { href: "/coins",             label: "Buy Coins",                            icon: Coins                         },
   { href: "/forum",             label: "Forum",                                icon: MessageSquare                 },
   { href: "/explore",           label: "Explore",                              icon: Search                        },

@@ -451,7 +451,7 @@ export default function Home() {
               },
               {
                 icon: "🎧",
-                title: "Live Cook Up",
+                title: "GO LIVE",
                 desc: "Stream your studio session live — camera, mic, screenshare, or OBS/Streamlabs. Earn coins from fans.",
                 href: "/cookup",
                 cta: "Start or Watch",
