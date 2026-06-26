@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, name, email, role, isBanned, banReason, createdAt FROM users WHERE role = 'admin' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, name, email, role, isBanned, banReason, createdAt FROM users WHERE role = 'admin' LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Murder Mitten",
+      "email": "murdermittenmedia@gmail.com",
+      "role": "admin",
+      "isBanned": "0",
+      "banReason": "NULL",
+      "createdAt": "2026-05-07 02:56:54"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\tisBanned\tbanReason\tcreatedAt\n1\tMurder Mitten\tmurdermittenmedia@gmail.com\tadmin\t0\tNULL\t2026-05-07 02:56:54\n",
+  "stderr": "",
+  "execution_time_ms": 317
+}

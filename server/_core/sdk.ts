@@ -126,11 +126,13 @@ class OAuthService {
     code: string,
     state: string
   ): Promise<ExchangeTokenResponse> {
+    const redirectUri = this.getRedirectUri(state);
+    
     const payload: ExchangeTokenRequest = {
       clientId: ENV.appId,
       grantType: "authorization_code",
       code,
-      redirectUri: this.getRedirectUri(state),
+      redirectUri,
     };
 
     return withRetry(async () => {

@@ -50,10 +50,14 @@ export function registerOAuthRoutes(app: Express) {
     const returnPath = sdk.getReturnPathFromState(state);
 
     try {
+      console.log("[OAuth] Starting callback with code and state");
       const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+      console.log("[OAuth] Token exchange successful");
       const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+      console.log("[OAuth] Got user info:", { openId: userInfo.openId, email: userInfo.email });
 
       if (!userInfo.openId) {
+        console.error("[OAuth] Missing openId in userInfo");
         sendErrorPage(res, "Login Failed", "Could not retrieve your account info. Please try again.");
         return;
       }
@@ -65,10 +69,12 @@ export function registerOAuthRoutes(app: Express) {
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+      console.log("[OAuth] User upserted:", userInfo.openId);
 
       // Check if the user is banned — redirect to /banned before issuing any session
       const existingUser = await db.getUserByOpenId(userInfo.openId);
       if (existingUser?.isBanned) {
+        console.log("[OAuth] User is banned:", userInfo.openId);
         res.redirect(302, "/banned");
         return;
       }
@@ -77,12 +83,15 @@ export function registerOAuthRoutes(app: Express) {
         name: userInfo.name || "",
         expiresInMs: ONE_YEAR_MS,
       });
+      console.log("[OAuth] Session token created");
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      console.log("[OAuth] Cookie set with options:", cookieOptions);
 
       // Redirect to the page the user was on before login, or home
       const safeReturnPath = returnPath && returnPath.startsWith("/") ? returnPath : "/";
+      console.log("[OAuth] Redirecting to:", safeReturnPath);
       res.redirect(302, safeReturnPath);
     } catch (error: any) {
       console.error("[OAuth] Callback failed", error);
