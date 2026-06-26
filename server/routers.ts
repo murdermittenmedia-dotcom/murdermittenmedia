@@ -2833,14 +2833,16 @@ export const appRouter = router({
             totalSpent: (balance.totalSpent ?? 0) + giftType.coinCost,
           }).where(eq(coinBalances.userId, ctx.user.id));
         }
-        // Credit to streamer
+        // Credit to streamer — apply 70% payout (platform retains 30%)
+        const streamerCredit = Math.floor(giftType.coinCost * 0.7);
         const [streamerBalance] = await db.select().from(coinBalances).where(eq(coinBalances.userId, stream.userId)).limit(1);
         if (streamerBalance) {
           await db.update(coinBalances).set({
-            totalEarned: (streamerBalance.totalEarned ?? 0) + giftType.coinCost,
+            balance: (streamerBalance.balance ?? 0) + streamerCredit,
+            totalEarned: (streamerBalance.totalEarned ?? 0) + streamerCredit,
           }).where(eq(coinBalances.userId, stream.userId));
         } else {
-          await db.insert(coinBalances).values({ userId: stream.userId, balance: 0, totalEarned: giftType.coinCost });
+          await db.insert(coinBalances).values({ userId: stream.userId, balance: streamerCredit, totalEarned: streamerCredit });
         }
         // Record the gift
         await db.insert(gifts).values({
@@ -2912,8 +2914,8 @@ export const appRouter = router({
         // Check no pending request
         const [pending] = await db.select().from(cashoutRequests).where(and(eq(cashoutRequests.userId, ctx.user.id), eq(cashoutRequests.status, "pending")));
         if (pending) throw new TRPCError({ code: "BAD_REQUEST", message: "You already have a pending cashout request" });
-        // 100 coins = $1 USD
-        const usdEstimate = Math.floor(input.coins / 100);
+        // Cashout rate: 100 coins = $0.70 (platform retains 30%)
+        const usdEstimate = Math.floor((input.coins * 0.7) / 100);
         await db.insert(cashoutRequests).values({
           userId: ctx.user.id,
           coins: input.coins,

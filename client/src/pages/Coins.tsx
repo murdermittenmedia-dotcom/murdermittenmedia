@@ -12,12 +12,17 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Coins as CoinsIcon, Check, Clock, ChevronRight } from "lucide-react";
 
+// Purchase: 100 coins = $1.00 (1¢/coin)
+// Cashout payout: 100 coins = $0.70 (platform retains 30%)
 const COIN_PACKAGES = [
   { coins: 100,   usdCents: 100,  label: "Starter Pack",  popular: false },
-  { coins: 500,   usdCents: 400,  label: "Fan Pack",      popular: true  },
-  { coins: 1200,  usdCents: 800,  label: "Supporter",     popular: false },
-  { coins: 3000,  usdCents: 1800, label: "VIP",           popular: false },
+  { coins: 500,   usdCents: 450,  label: "Fan Pack",      popular: true  },
+  { coins: 1200,  usdCents: 1000, label: "Supporter",     popular: false },
+  { coins: 3000,  usdCents: 2400, label: "VIP",           popular: false },
 ];
+
+// Cashout rate: 100 coins = $0.70 (30% platform fee)
+export const COINS_PER_DOLLAR_CASHOUT = 143; // 143 coins = $1 payout (1/0.007)
 
 export default function CoinsPage() {
   const { user, isAuthenticated } = useAuth();

@@ -9,6 +9,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { useLiveStatus } from "@/hooks/useLiveStatus";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { trpc } from "@/lib/trpc";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -68,7 +69,7 @@ function Stat({ value, label, delay, started }: { value: number; label: string; 
 export default function Home() {
   const { ref: statsRef, inView: statsInView } = useInView(0.2);
   const { ref: sectionsRef, inView: sectionsInView } = useInView(0.1);
-  const { reviewIsLive, reviewStreamUrl, warsIsLive, warsStreamUrl, anyLive } = useLiveStatus();
+  const { reviewIsLive, reviewStreamUrl, warsIsLive, warsStreamUrl, cookUpIsLive, activeCookUpStreams, anyLive } = useLiveStatus();
   const { play: playAudio } = useAudioPlayer();
 
   // Set page title and meta tags for SEO
@@ -114,6 +115,42 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
       <SiteNav />
+
+      {/* ══════════════════════════════════════════════════════
+          LIVE NOW BANNER -- Shows when anyone is live
+      ══════════════════════════════════════════════════════ */}
+      {anyLive && (
+        <section className="bg-red-600/10 border-b border-red-600/40 py-3">
+          <div className="container">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-red-400 text-xs font-bold uppercase tracking-widest">LIVE NOW</span>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap flex-1">
+                {reviewIsLive && (
+                  <Link href="/review" className="flex items-center gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-white transition-all">
+                    🎙 Music Review — Live
+                    <span className="text-red-400">→</span>
+                  </Link>
+                )}
+                {warsIsLive && (
+                  <Link href="/music-wars" className="flex items-center gap-2 bg-orange-600/20 hover:bg-orange-600/30 border border-orange-600/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-white transition-all">
+                    ⚔️ Music Wars — Live
+                    <span className="text-orange-400">→</span>
+                  </Link>
+                )}
+                {activeCookUpStreams.slice(0, 3).map((stream: any) => (
+                  <Link key={stream.id} href={`/cookup/${stream.id}`} className="flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-white transition-all">
+                    🎧 {stream.title || stream.streamerName || 'Cook Up'} — Live
+                    <span className="text-blue-400">→</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           HERO -- Clean, focused, breathing room
@@ -310,7 +347,7 @@ export default function Home() {
           {/* Section label */}
           <div className="flex items-center gap-3 mb-10">
             <div className="w-8 h-px bg-red-600" />
-            <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-semibold">⭐ Artist of the Week</span>
+            <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-semibold">⭐ Artist of the Month — June 2026</span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
 
@@ -319,7 +356,7 @@ export default function Home() {
             {/* Video thumbnails side */}
             <div className="relative bg-black">
               <div className="grid grid-cols-2 gap-0.5">
-                {["1bgjhsoC5AI", "5bJS_HG1XyI", "3E8WSjpXXRo", "Ot_QoWLhBdI"].map((id, i) => (
+                {["jBj8Wr8JQHY", "5bJS_HG1XyI", "3E8WSjpXXRo", "Ot_QoWLhBdI"].map((id, i) => (
                   <a
                     key={id}
                     href={`https://www.youtube.com/watch?v=${id}`}
@@ -329,7 +366,7 @@ export default function Home() {
                   >
                     <img
                       src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`}
-                      alt={`CEO Stew - Artist of the Week video ${i + 1}`}
+                      alt={`ITSMANMAN - Artist of the Month video ${i + 1}`}
                       className="w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                     />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
@@ -345,18 +382,17 @@ export default function Home() {
             {/* Text side */}
             <div className="p-8 md:p-12 bg-[#0d0d0d] flex flex-col justify-center">
               <div className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">
-                Money Bag Boys · Eastside Detroit
+                Detroit, MI · Propdemic Co-Sign
               </div>
               <h2 className="font-['Anton'] text-6xl md:text-7xl uppercase leading-none mb-4">
-                CEO<br /><span className="text-red-600">STEW</span>
+                ITS<br /><span className="text-red-600">MANMAN</span>
               </h2>
               <p className="text-white/50 leading-relaxed mb-8 text-sm">
-                One of Michigan's most consistent voices right now. CEO Stew brings raw Eastside energy with
-                polished delivery -- a member of Money Bag Boys who is quickly building his own lane in Michigan rap.
-                This week we put the spotlight on him.
+                Detroit's rising force. ITSMANMAN blends raw street energy with melodic precision — his debut album
+                MANMAN IVERSON is already making noise. Backed by a Propdemic co-sign, June 2026 belongs to him.
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
-                {["The Mitten", "Money Bag Boys", "Eastside", "Michigan Rap"].map(tag => (
+                {["Detroit", "MANMAN IVERSON", "Propdemic", "Michigan Rap"].map(tag => (
                   <span key={tag} className="text-xs border border-white/10 text-white/30 px-3 py-1 uppercase tracking-wider">
                     {tag}
                   </span>
@@ -366,7 +402,7 @@ export default function Home() {
                 href="/artist-of-the-week"
                 className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_25px_rgba(209,0,0,0.4)] self-start"
               >
-                Read the Full Feature
+                Read the Full Feature — ITSMANMAN
                 <span className="group-hover:translate-x-1 transition-transform">→</span>
               </Link>
             </div>
@@ -393,7 +429,7 @@ export default function Home() {
               {
                 icon: "🎤",
                 title: "Murder Mitten Mic",
-                desc: "Raw one-mic performances from Michigan's hottest artists. No studio tricks -- just bars.",
+                desc: "Raw one-mic performances from Michigan's hottest artists. No studio tricks — just bars.",
                 href: "/mic",
                 cta: "Watch Performances",
                 accent: "border-red-600/30",
@@ -401,7 +437,7 @@ export default function Home() {
               {
                 icon: "🎙",
                 title: "Meeting with the Mitten",
-                desc: "15 in-depth interviews with Michigan artists, producers, and culture figures. Real talk, no filter.",
+                desc: "In-depth interviews with Michigan artists, producers, and culture figures. Real talk, no filter.",
                 href: "/podcast",
                 cta: "Listen to Episodes",
                 accent: "border-zinc-600/30",
@@ -415,12 +451,28 @@ export default function Home() {
                 accent: "border-orange-600/30",
               },
               {
-                icon: "📺",
-                title: "Live Stream",
-                desc: "Catch us live on YouTube via Streamlabs. Music reviews, interviews, and more in real time.",
-                href: "/live",
-                cta: "Watch Live",
+                icon: "🎧",
+                title: "Live Cook Up",
+                desc: "Stream your studio session live — camera, mic, screenshare, or OBS/Streamlabs. Earn coins from fans.",
+                href: "/cookup",
+                cta: "Start or Watch",
                 accent: "border-blue-600/30",
+              },
+              {
+                icon: "🔥",
+                title: "Fire or Trash",
+                desc: "Swipe right for fire, left for trash. Rate real submissions. Stats tracked to your account.",
+                href: "/fire-or-trash",
+                cta: "Start Rating",
+                accent: "border-yellow-600/30",
+              },
+              {
+                icon: "🪙",
+                title: "Coin Store",
+                desc: "Buy coins to gift streamers, skip the review queue, or support your favorite artists live.",
+                href: "/coins",
+                cta: "Get Coins",
+                accent: "border-amber-600/30",
               },
             ].map((s, i) => (
               <Link
