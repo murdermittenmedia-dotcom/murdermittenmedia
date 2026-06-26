@@ -3128,7 +3128,7 @@ export const appRouter = router({
           .limit(20);
       }),
 
-    // Get current user's vote history + stats
+     // Get current user's vote history + stats
     getMyStats: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
@@ -3140,5 +3140,27 @@ export const appRouter = router({
     }),
   }),
 
+  // -- News / Instagram Feed ------------------------------------
+  news: router({
+    // Returns live Instagram posts (requires INSTAGRAM_ACCESS_TOKEN + INSTAGRAM_USER_ID env vars)
+    // Falls back to empty array if not configured — frontend shows static fallback
+    getPosts: publicProcedure.query(async () => {
+      const now = Date.now();
+      if (igCache && now - igCache.fetchedAt < CACHE_TTL_MS) return igCache.posts;
+      const posts = await fetchInstagramPosts();
+      igCache = { posts, fetchedAt: now };
+      return posts.map(p => ({
+        id: p.id,
+        caption: p.caption,
+        permalink: p.permalink,
+        mediaType: p.mediaType as "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM",
+        thumbnailUrl: p.thumbnailUrl,
+        mediaUrl: p.mediaUrl,
+        timestamp: p.timestamp,
+        likeCount: p.likes,
+        commentsCount: p.comments,
+      }));
+    }),
+  }),
 });
 export type AppRouter = typeof appRouter;

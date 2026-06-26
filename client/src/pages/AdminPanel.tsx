@@ -257,6 +257,9 @@ function UsersTab() {
   const [search, setSearch] = useState("");
   const [expandedUser, setExpandedUser] = useState<number | null>(null);
   const [banReason, setBanReason] = useState("");
+  const [addCoinsUserId, setAddCoinsUserId] = useState<number | null>(null);
+  const [addCoinsAmount, setAddCoinsAmount] = useState(100);
+  const [addCoinsReason, setAddCoinsReason] = useState("");
   const utils = trpc.useUtils();
 
   const { data: users, isLoading } = trpc.admin.listUsers.useQuery({ search: search || undefined, limit: 200 });
@@ -283,6 +286,16 @@ function UsersTab() {
   const deleteUser = trpc.admin.deleteUser.useMutation({
     onSuccess: () => { utils.admin.listUsers.invalidate(); setDeleteConfirmId(null); toast.success("User deleted permanently"); },
     onError: (e) => { toast.error(e.message); setDeleteConfirmId(null); },
+  });
+
+  const addCoinsMutation = trpc.admin.adminAddCoins.useMutation({
+    onSuccess: () => {
+      toast.success(`Added ${addCoinsAmount} coins successfully.`);
+      setAddCoinsUserId(null);
+      setAddCoinsAmount(100);
+      setAddCoinsReason("");
+    },
+    onError: (e) => toast.error(e.message),
   });
 
   return (
@@ -442,6 +455,47 @@ function UsersTab() {
                   {/* Edit Stats */}
                   <div className="pt-2 border-t border-white/10">
                     <UserStatsEditor userId={user.id} user={user} utils={utils} />
+                  </div>
+
+                  {/* Add Coins */}
+                  <div className="pt-2 border-t border-white/10">
+                    <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Add Coins</p>
+                    {addCoinsUserId === user.id ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={addCoinsAmount}
+                          onChange={e => setAddCoinsAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-24 bg-white/5 border-white/10 text-white text-sm"
+                          placeholder="Amount"
+                        />
+                        <Input
+                          placeholder="Reason (optional)..."
+                          value={addCoinsReason}
+                          onChange={e => setAddCoinsReason(e.target.value)}
+                          className="flex-1 min-w-[140px] bg-white/5 border-white/10 text-white placeholder:text-white/30 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                          onClick={() => addCoinsMutation.mutate({ userId: user.id, coins: addCoinsAmount, reason: addCoinsReason || undefined })}
+                          disabled={addCoinsMutation.isPending}
+                        >
+                          <Coins className="w-3 h-3 mr-1" /> {addCoinsMutation.isPending ? "Adding..." : "Add"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={() => setAddCoinsUserId(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-yellow-600/40 text-yellow-400 hover:bg-yellow-600/20"
+                        onClick={() => setAddCoinsUserId(user.id)}
+                      >
+                        <Coins className="w-3 h-3 mr-1" /> Add Coins
+                      </Button>
+                    )}
                   </div>
 
                   {/* Delete user */}

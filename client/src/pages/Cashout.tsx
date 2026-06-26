@@ -17,7 +17,7 @@ const PAYMENT_METHODS = [
   { id: "zelle", label: "Zelle", placeholder: "phone or email" },
 ] as const;
 
-const COIN_TO_USD = 0.01; // 100 coins = $1
+const COIN_TO_USD = 0.007; // 100 coins = $0.70 (platform keeps 30%)
 
 export default function Cashout() {
   const { user, isAuthenticated } = useAuth();
@@ -90,11 +90,11 @@ export default function Cashout() {
             <div>
               <p className="text-white/50 text-sm uppercase tracking-widest">Your Balance</p>
               <p className="font-['Anton'] text-5xl text-red-500 mt-1">{coinBalance.toLocaleString()}</p>
-              <p className="text-white/30 text-sm">coins = ${(coinBalance * COIN_TO_USD).toFixed(2)}</p>
+              <p className="text-white/30 text-sm">coins ≈ ${(coinBalance * COIN_TO_USD).toFixed(2)}</p>
             </div>
             <div className="text-right">
               <p className="text-white/30 text-xs uppercase tracking-widest">Rate</p>
-              <p className="text-white/60 text-sm">100 coins = $1.00</p>
+              <p className="text-white/60 text-sm">100 coins = $0.70</p>
               <p className="text-white/30 text-xs mt-1">Min cashout: 100 coins</p>
             </div>
           </div>

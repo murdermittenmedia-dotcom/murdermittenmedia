@@ -14,7 +14,7 @@ import LabelBadge from "@/components/LabelBadge";
 import {
   User, Star, Mic2, Podcast,
   Music, Swords, MessageSquare, Search, Trophy, Tag,
-  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap, Radio, Coins, Bell,
+  LogOut, LogIn, ChevronDown, X, Menu, Shield, Zap, Radio, Coins, Bell, Newspaper,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -29,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/review",            label: "Live Music Reviews",                   icon: Music,   liveKey: "review"   },
   { href: "/mic",               label: "Murder Mitten Mic",                    icon: Mic2                          },
   { href: "/podcast",           label: "Meeting with the Mitten",              icon: Podcast                       },
+  { href: "/news",              label: "Latest News",                          icon: Newspaper                     },
   { href: "/promo",             label: "Get Promoted",                         icon: Tag                           },
   { href: "/daily-wheel",       label: "Daily Wheel",                          icon: Zap                           },
   { href: "/cookup",            label: "Live Cook Up",                         icon: Radio                         },
