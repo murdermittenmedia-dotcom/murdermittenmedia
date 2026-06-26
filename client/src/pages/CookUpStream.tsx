@@ -638,6 +638,16 @@ export default function CookUpStream() {
                 </Button>
               </div>
             )}
+            {user?.role === "admin" && stream?.status === "live" && (
+              <Button
+                onClick={() => endMutation.mutate({ streamId })}
+                size="sm"
+                className="bg-red-900/40 border border-red-600/60 text-red-300 hover:bg-red-900/60 h-7 text-xs shrink-0"
+                title="Admin: Force end this stream"
+              >
+                Admin End
+              </Button>
+            )}
           </div>
 
           {/* Streamer settings panel */}
