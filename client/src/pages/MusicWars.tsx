@@ -106,10 +106,16 @@ function LiveStreamPanel({
         {isAdmin && (
           <div className="flex gap-2">
             {isLive ? (
-              <button onClick={handleGoOffline} disabled={saving}
-                className="text-xs border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-3 py-1 uppercase tracking-widest transition-colors">
-                End Stream
-              </button>
+              <>
+                <button onClick={handleGoOffline} disabled={saving}
+                  className="text-xs border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-3 py-1 uppercase tracking-widest transition-colors">
+                  End Stream
+                </button>
+                <button onClick={handleGoOffline} disabled={saving}
+                  className="text-xs bg-red-900/40 border border-red-600/60 text-red-300 hover:bg-red-900/60 px-3 py-1 uppercase tracking-widest transition-colors">
+                  Admin End
+                </button>
+              </>
             ) : (
               <button onClick={handleGoLive} disabled={saving}
                 className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 uppercase tracking-widest transition-colors">

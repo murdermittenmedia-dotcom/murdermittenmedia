@@ -2096,6 +2096,29 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Admin: directly add coins to a user account
+    adminAddCoins: adminProcedure
+      .input(z.object({ userId: z.number(), coins: z.number().min(1), reason: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [existing] = await db.select().from(coinBalances).where(eq(coinBalances.userId, input.userId)).limit(1);
+        if (existing) {
+          await db.update(coinBalances).set({ balance: existing.balance + input.coins }).where(eq(coinBalances.userId, input.userId));
+        } else {
+          await db.insert(coinBalances).values({ userId: input.userId, balance: input.coins });
+        }
+        await createModerationLog({
+          adminId: ctx.user.id,
+          adminName: ctx.user.name ?? "Admin",
+          action: "add_coins",
+          targetType: "user",
+          targetId: input.userId,
+          reason: input.reason || `Added ${input.coins} coins`,
+        });
+        return { success: true };
+      }),
+
     // Admin: mark payout as sent for a stream
     adminMarkPayoutSent: adminProcedure
       .input(z.object({ streamId: z.number() }))

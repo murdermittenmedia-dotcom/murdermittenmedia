@@ -300,6 +300,19 @@ function AdminPanel({
             placeholder="Stream URL (YouTube Live / HLS)"
             className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
           />
+          {data?.user?.role === "admin" && isLive && (
+            <button
+              onClick={() => {
+                setLive.mutate({ isLive: false });
+                toast.success("Stream ended by admin");
+              }}
+              disabled={setLive.isPending}
+              className="flex-shrink-0 px-3 py-2.5 text-xs font-bold uppercase tracking-widest bg-red-900/40 border border-red-600/60 text-red-300 hover:bg-red-900/60 transition-all"
+              title="Admin: End this stream"
+            >
+              ⏹ Admin End
+            </button>
+          )}
           <button
             onClick={() => setShowStreamSettings(v => !v)}
             className="border border-white/20 text-white/40 hover:text-white px-3 transition-colors flex-shrink-0"
