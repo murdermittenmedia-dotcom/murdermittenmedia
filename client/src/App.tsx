@@ -36,6 +36,7 @@ import { PWAInstallBanner } from "./components/PWAInstallBanner";
 import FireOrTrash from "./pages/FireOrTrash";
 import Cashout from "./pages/Cashout";
 import News from "./pages/News";
+import Notifications from "./pages/Notifications";
 
 function Router() {
   return (
@@ -61,6 +62,7 @@ function Router() {
       <Route path={"/fire-or-trash"} component={FireOrTrash} />
       <Route path={"/cashout"} component={Cashout} />
       <Route path={"/news"} component={News} />
+      <Route path={"/notifications"} component={Notifications} />
 
       {/* XP & Tiers explainer */}
       <Route path={"/how-it-works"} component={HowItWorks} />
