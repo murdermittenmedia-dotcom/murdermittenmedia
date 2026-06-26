@@ -168,8 +168,8 @@ function ViewerVideo() {
       <div className="flex-1 flex items-center justify-center bg-[#0a0a0a] relative group">
         <VideoTrack trackRef={remoteVideo} className="w-full h-full object-contain" />
         
-        {/* Video controls overlay */}
-        <div className="absolute inset-0 flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
+        {/* Desktop controls (hover-based) */}
+        <div className="absolute inset-0 hidden lg:flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
           {/* Top controls */}
           <div className="flex justify-end gap-2">
             <button
@@ -202,6 +202,40 @@ function ViewerVideo() {
               />
               <span className="text-xs text-white/60 w-6">{Math.round(volume * 100)}%</span>
             </div>
+          </div>
+        </div>
+        
+        {/* Mobile controls (always visible) */}
+        <div className="absolute inset-0 flex lg:hidden flex-col justify-between p-2 bg-gradient-to-t from-black/60 to-transparent">
+          {/* Top controls */}
+          <div className="flex justify-end gap-1">
+            <button
+              onClick={toggleFullscreen}
+              className="bg-black/60 hover:bg-black/80 text-white p-1.5 rounded transition-colors"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+            </button>
+          </div>
+          
+          {/* Bottom controls - Mobile */}
+          <div className="flex items-center gap-2 bg-black/60 rounded px-2 py-1.5 w-fit text-xs">
+            {volume === 0 ? (
+              <VolumeX className="w-3 h-3 text-white/60 shrink-0" />
+            ) : (
+              <Volume2 className="w-3 h-3 text-white/60 shrink-0" />
+            )}
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              className="w-16 h-0.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-red-600"
+              title="Volume"
+            />
+            <span className="text-white/60 w-5">{Math.round(volume * 100)}%</span>
           </div>
         </div>
       </div>
