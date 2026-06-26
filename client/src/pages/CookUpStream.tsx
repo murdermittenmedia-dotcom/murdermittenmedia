@@ -145,10 +145,21 @@ function ViewerVideo() {
 
   const toggleFullscreen = () => {
     if (!isFullscreen && videoContainerRef.current) {
-      videoContainerRef.current.requestFullscreen?.();
-      setIsFullscreen(true);
+      const elem = videoContainerRef.current;
+      const requestFullscreen = elem.requestFullscreen || (elem as any).webkitRequestFullscreen || (elem as any).mozRequestFullScreen || (elem as any).msRequestFullscreen;
+      if (requestFullscreen) {
+        requestFullscreen.call(elem).catch(() => {
+          setIsFullscreen(true);
+        });
+        setIsFullscreen(true);
+      }
     } else {
-      document.exitFullscreen?.();
+      const exitFullscreen = document.exitFullscreen || (document as any).webkitExitFullscreen || (document as any).mozCancelFullScreen || (document as any).msExitFullscreen;
+      if (exitFullscreen) {
+        exitFullscreen.call(document).catch(() => {
+          setIsFullscreen(false);
+        });
+      }
       setIsFullscreen(false);
     }
   };
@@ -243,9 +254,6 @@ function ViewerVideo() {
         <AudioTrack
           key={`${t.participant.identity}-${t.source}`}
           trackRef={t}
-          onPlaybackStatusChange={(status) => {
-            // Ref will be set by AudioTrack component
-          }}
         />
       ))}
     </div>
