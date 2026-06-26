@@ -1,0 +1,163 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME;",
+  "rows": [
+    {
+      "TABLE_NAME": "__drizzle_migrations"
+    },
+    {
+      "TABLE_NAME": "active_battle"
+    },
+    {
+      "TABLE_NAME": "active_sessions"
+    },
+    {
+      "TABLE_NAME": "artist_of_week"
+    },
+    {
+      "TABLE_NAME": "battle_records"
+    },
+    {
+      "TABLE_NAME": "cashout_requests"
+    },
+    {
+      "TABLE_NAME": "chat_messages"
+    },
+    {
+      "TABLE_NAME": "coin_balances"
+    },
+    {
+      "TABLE_NAME": "coin_packages"
+    },
+    {
+      "TABLE_NAME": "coin_purchases"
+    },
+    {
+      "TABLE_NAME": "creator_cashouts"
+    },
+    {
+      "TABLE_NAME": "daily_spins"
+    },
+    {
+      "TABLE_NAME": "economy_config"
+    },
+    {
+      "TABLE_NAME": "fire_trash_votes"
+    },
+    {
+      "TABLE_NAME": "fire_vote_balances"
+    },
+    {
+      "TABLE_NAME": "fire_vote_conversions"
+    },
+    {
+      "TABLE_NAME": "forum_comments"
+    },
+    {
+      "TABLE_NAME": "forum_posts"
+    },
+    {
+      "TABLE_NAME": "forum_reactions"
+    },
+    {
+      "TABLE_NAME": "fraud_logs"
+    },
+    {
+      "TABLE_NAME": "gift_types"
+    },
+    {
+      "TABLE_NAME": "gifts"
+    },
+    {
+      "TABLE_NAME": "judge_applications"
+    },
+    {
+      "TABLE_NAME": "line_skip_credits"
+    },
+    {
+      "TABLE_NAME": "live_radio_queue"
+    },
+    {
+      "TABLE_NAME": "live_radio_state"
+    },
+    {
+      "TABLE_NAME": "live_rewards"
+    },
+    {
+      "TABLE_NAME": "live_sessions"
+    },
+    {
+      "TABLE_NAME": "live_streams"
+    },
+    {
+      "TABLE_NAME": "moderation_logs"
+    },
+    {
+      "TABLE_NAME": "music_review_sessions"
+    },
+    {
+      "TABLE_NAME": "notifications"
+    },
+    {
+      "TABLE_NAME": "page_views"
+    },
+    {
+      "TABLE_NAME": "queue_state"
+    },
+    {
+      "TABLE_NAME": "review_submissions"
+    },
+    {
+      "TABLE_NAME": "reward_logs"
+    },
+    {
+      "TABLE_NAME": "rewards"
+    },
+    {
+      "TABLE_NAME": "site_settings"
+    },
+    {
+      "TABLE_NAME": "song_reactions"
+    },
+    {
+      "TABLE_NAME": "stream_summaries"
+    },
+    {
+      "TABLE_NAME": "user_badges"
+    },
+    {
+      "TABLE_NAME": "user_rewards"
+    },
+    {
+      "TABLE_NAME": "user_songs"
+    },
+    {
+      "TABLE_NAME": "users"
+    },
+    {
+      "TABLE_NAME": "votes"
+    },
+    {
+      "TABLE_NAME": "wallet_transactions"
+    },
+    {
+      "TABLE_NAME": "wheel_entries"
+    },
+    {
+      "TABLE_NAME": "wheel_of_names_entries"
+    },
+    {
+      "TABLE_NAME": "wheel_of_names_paid_entries"
+    },
+    {
+      "TABLE_NAME": "wheel_of_names_spins"
+    },
+    {
+      "TABLE_NAME": "xp_events"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\n__drizzle_migrations\nactive_battle\nactive_sessions\nartist_of_week\nbattle_records\ncashout_requests\nchat_messages\ncoin_balances\ncoin_packages\ncoin_purchases\ncreator_cashouts\ndaily_spins\neconomy_config\nfire_trash_votes\nfire_vote_balances\nfire_vote_conversions\nforum_comments\nforum_posts\nforum_reactions\nfraud_logs\ngift_types\ngifts\njudge_applications\nline_skip_credits\nlive_radio_queue\nlive_radio_state\nlive_rewards\nlive_sessions\nlive_streams\nmoderation_logs\nmusic_review_sessions\nnotifications\npage_views\nqueue_state\nreview_submissions\nreward_logs\nrewards\nsite_settings\nsong_reactions\nstream_summaries\nuser_badges\nuser_rewards\nuser_songs\nusers\nvotes\nwallet_transactions\nwheel_entries\nwheel_of_names_entries\nwheel_of_names_paid_entries\nwheel_of_names_spins\nxp_events\n",
+  "stderr": "",
+  "execution_time_ms": 272
+}

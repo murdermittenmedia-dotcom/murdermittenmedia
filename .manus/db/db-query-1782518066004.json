@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `judge_streams` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `userId` int NOT NULL,\n  `musicReviewSessionId` int DEFAULT NULL,\n  `roomName` varchar(128) NOT NULL,\n  `ingressId` varchar(256) NOT NULL,\n  `rtmpUrl` varchar(512) NOT NULL,\n  `rtmpKey` varchar(256) NOT NULL,\n  `status` enum('active','ended','error') NOT NULL DEFAULT 'active',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `endedAt` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute CREATE TABLE IF NOT EXISTS `judge_streams` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `userId` int NOT NULL,\n  `musicReviewSessionId` int DEFAULT NULL,\n  `roomName` varchar(128) NOT NULL,\n  `ingressId` varchar(256) NOT NULL,\n  `rtmpUrl` varchar(512) NOT NULL,\n  `rtmpKey` varchar(256) NOT NULL,\n  `status` enum('active','ended','error') NOT NULL DEFAULT 'active',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `endedAt` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 316
+}

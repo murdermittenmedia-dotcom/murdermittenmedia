@@ -1,0 +1,64 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('judge_streams','judge_applications','live_sessions','stream_summaries','xp_events','user_badges','song_reactions','moderation_logs','notifications','page_views','live_radio_queue','live_radio_state','line_skip_credits','reward_logs','rewards','user_rewards','wheel_of_names_entries','wheel_of_names_paid_entries','wheel_of_names_spins') ORDER BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('judge_streams','judge_applications','live_sessions','stream_summaries','xp_events','user_badges','song_reactions','moderation_logs','notifications','page_views','live_radio_queue','live_radio_state','line_skip_credits','reward_logs','rewards','user_rewards','wheel_of_names_entries','wheel_of_names_paid_entries','wheel_of_names_spins') ORDER BY TABLE_NAME;",
+  "rows": [
+    {
+      "TABLE_NAME": "judge_applications"
+    },
+    {
+      "TABLE_NAME": "line_skip_credits"
+    },
+    {
+      "TABLE_NAME": "live_radio_queue"
+    },
+    {
+      "TABLE_NAME": "live_radio_state"
+    },
+    {
+      "TABLE_NAME": "live_sessions"
+    },
+    {
+      "TABLE_NAME": "moderation_logs"
+    },
+    {
+      "TABLE_NAME": "notifications"
+    },
+    {
+      "TABLE_NAME": "page_views"
+    },
+    {
+      "TABLE_NAME": "reward_logs"
+    },
+    {
+      "TABLE_NAME": "rewards"
+    },
+    {
+      "TABLE_NAME": "song_reactions"
+    },
+    {
+      "TABLE_NAME": "stream_summaries"
+    },
+    {
+      "TABLE_NAME": "user_badges"
+    },
+    {
+      "TABLE_NAME": "user_rewards"
+    },
+    {
+      "TABLE_NAME": "wheel_of_names_entries"
+    },
+    {
+      "TABLE_NAME": "wheel_of_names_paid_entries"
+    },
+    {
+      "TABLE_NAME": "wheel_of_names_spins"
+    },
+    {
+      "TABLE_NAME": "xp_events"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\njudge_applications\nline_skip_credits\nlive_radio_queue\nlive_radio_state\nlive_sessions\nmoderation_logs\nnotifications\npage_views\nreward_logs\nrewards\nsong_reactions\nstream_summaries\nuser_badges\nuser_rewards\nwheel_of_names_entries\nwheel_of_names_paid_entries\nwheel_of_names_spins\nxp_events\n",
+  "stderr": "",
+  "execution_time_ms": 278
+}

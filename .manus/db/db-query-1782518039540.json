@@ -1,0 +1,163 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "active_battle"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "active_sessions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "artist_of_week"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "battle_records"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "cashout_requests"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "chat_messages"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "coin_balances"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "coin_packages"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "coin_purchases"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "creator_cashouts"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "daily_spins"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "economy_config"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "fire_trash_votes"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "fire_vote_balances"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "fire_vote_conversions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "forum_comments"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "forum_posts"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "forum_reactions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "fraud_logs"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "gift_types"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "gifts"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "judge_applications"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "line_skip_credits"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "live_radio_queue"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "live_radio_state"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "live_rewards"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "live_sessions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "live_streams"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "moderation_logs"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "music_review_sessions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "notifications"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "page_views"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "queue_state"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "review_submissions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "reward_logs"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "rewards"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "site_settings"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "song_reactions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "stream_summaries"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "user_badges"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "user_rewards"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "user_songs"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "users"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "votes"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "wallet_transactions"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "wheel_entries"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "wheel_of_names_entries"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "wheel_of_names_paid_entries"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "wheel_of_names_spins"
+    },
+    {
+      "Tables_in_C3bFVoBEaMVXmYZLRysziz": "xp_events"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_C3bFVoBEaMVXmYZLRysziz\n__drizzle_migrations\nactive_battle\nactive_sessions\nartist_of_week\nbattle_records\ncashout_requests\nchat_messages\ncoin_balances\ncoin_packages\ncoin_purchases\ncreator_cashouts\ndaily_spins\neconomy_config\nfire_trash_votes\nfire_vote_balances\nfire_vote_conversions\nforum_comments\nforum_posts\nforum_reactions\nfraud_logs\ngift_types\ngifts\njudge_applications\nline_skip_credits\nlive_radio_queue\nlive_radio_state\nlive_rewards\nlive_sessions\nlive_streams\nmoderation_logs\nmusic_review_sessions\nnotifications\npage_views\nqueue_state\nreview_submissions\nreward_logs\nrewards\nsite_settings\nsong_reactions\nstream_summaries\nuser_badges\nuser_rewards\nuser_songs\nusers\nvotes\nwallet_transactions\nwheel_entries\nwheel_of_names_entries\nwheel_of_names_paid_entries\nwheel_of_names_spins\nxp_events\n",
+  "stderr": "",
+  "execution_time_ms": 255
+}
