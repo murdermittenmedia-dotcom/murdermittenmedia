@@ -47,6 +47,32 @@ const APPLEPAY = "313-420-9004";
 
 type SubmitTab = "queue" | "history" | "submit" | "skip-info";
 
+// ── Judge Broadcast Card Component ────────────────────────────
+function JudgeBroadcastCard({ broadcast }: { broadcast: any }) {
+  return (
+    <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
+      <div className="aspect-video bg-black/60 flex items-center justify-center relative group">
+        <div className="text-green-400/50 text-xs text-center">Judge Stream</div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+          <a
+            href={`/profile/${broadcast.userId}`}
+            className="text-xs text-green-400 hover:text-green-300 truncate"
+          >
+            View Judge Profile →
+          </a>
+        </div>
+      </div>
+      <div className="p-2 border-t border-green-500/20">
+        <div className="text-white/80 text-xs font-semibold truncate">Judge #{broadcast.userId}</div>
+        <div className="text-green-400 text-[10px] flex items-center gap-1 mt-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          Live
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 function extractYouTubeId(url: string): string | null {
   return url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)(\w[\w-]{10})/)?.[1] ?? null;
@@ -804,6 +830,23 @@ export default function MusicReview() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const isJudge = user?.role === "judge";
+  const [showOBSSetup, setShowOBSSetup] = useState(false);
+  const [myBroadcast, setMyBroadcast] = useState<any>(null);
+  const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
+  
+  // Fetch judge broadcasts
+  const { data: broadcasts } = trpc.review.getActive.useQuery(undefined, { refetchInterval: 3000 });
+  const { data: myBroadcastData } = trpc.review.getMyBroadcast.useQuery(undefined, { enabled: isJudge || isAdmin });
+  const startBroadcast = trpc.review.startBroadcast.useMutation();
+  const endBroadcast = trpc.review.endBroadcast.useMutation();
+  
+  useEffect(() => {
+    if (broadcasts) setActiveBroadcasts(broadcasts);
+  }, [broadcasts]);
+  
+  useEffect(() => {
+    if (myBroadcastData) setMyBroadcast(myBroadcastData);
+  }, [myBroadcastData]);
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
@@ -1191,6 +1234,122 @@ export default function MusicReview() {
           <p className="text-white/40 text-sm max-w-xl mb-5">
             Submit your track for a live review. Get in line, or skip to the front for $10.
           </p>
+
+          {/* Judge Broadcast Panel */}
+          {(isJudge || isAdmin) && (
+            <div className="mb-6 border border-green-500/30 bg-green-500/5 p-4 rounded">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-1">Judge Broadcast</div>
+                  <div className="text-white/60 text-sm">{myBroadcast ? "🟢 Broadcasting" : "Ready to broadcast"}</div>
+                </div>
+                {myBroadcast ? (
+                  <>
+                    <button
+                      onClick={() => setShowOBSSetup(true)}
+                      className="text-xs border border-green-500/50 text-green-400 px-3 py-1.5 mr-2 hover:bg-green-500/10 transition-colors"
+                    >
+                      OBS Settings
+                    </button>
+                    <button
+                      onClick={() => endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
+                        onSuccess: () => {
+                          setMyBroadcast(null);
+                          toast.success("Broadcast ended");
+                        }
+                      })}
+                      className="text-xs border border-red-500/50 text-red-400 px-3 py-1.5 hover:bg-red-500/10 transition-colors"
+                    >
+                      Stop Broadcasting
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => startBroadcast.mutate(undefined, {
+                      onSuccess: (data) => {
+                        if (data.success) {
+                          setMyBroadcast(data.broadcast);
+                          setShowOBSSetup(true);
+                          toast.success("Broadcast started! Configure OBS");
+                        }
+                      }
+                    })}
+                    className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors"
+                  >
+                    Start Broadcasting
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Active Judges Grid */}
+          {activeBroadcasts && activeBroadcasts.length > 0 && (
+            <div className="mb-6">
+              <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-3">Active Judge Broadcasts ({activeBroadcasts.length})</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {activeBroadcasts.map((broadcast) => (
+                  <JudgeBroadcastCard key={broadcast.id} broadcast={broadcast} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* OBS Setup Modal */}
+          {showOBSSetup && myBroadcast && (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+              <div className="bg-black border border-white/20 rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-4 border-b border-white/10">
+                  <h2 className="text-white font-['Anton'] text-lg uppercase">OBS Setup</h2>
+                  <button onClick={() => setShowOBSSetup(false)} className="text-white/40 hover:text-white">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div>
+                    <div className="text-white/60 text-xs uppercase tracking-widest mb-2">Server URL</div>
+                    <div className="bg-black/40 border border-white/10 p-3 rounded font-mono text-sm text-green-400 break-all">
+                      {myBroadcast.rtmpUrl}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(myBroadcast.rtmpUrl);
+                        toast.success("Copied!");
+                      }}
+                      className="text-xs text-white/50 hover:text-white mt-2"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-white/60 text-xs uppercase tracking-widest mb-2">Stream Key</div>
+                    <div className="bg-black/40 border border-white/10 p-3 rounded font-mono text-sm text-yellow-400 break-all">
+                      {myBroadcast.rtmpKey}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(myBroadcast.rtmpKey);
+                        toast.success("Copied!");
+                      }}
+                      className="text-xs text-white/50 hover:text-white mt-2"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/30 p-3 rounded text-white/70 text-xs">
+                    <strong>Steps:</strong>
+                    <ol className="list-decimal list-inside mt-2 space-y-1">
+                      <li>Open OBS or Streamlabs</li>
+                      <li>Go to Settings → Stream</li>
+                      <li>Paste Server URL above</li>
+                      <li>Paste Stream Key above</li>
+                      <li>Click Start Streaming</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Stream embed / live radio card */}
           {isLive && streamUrl ? (

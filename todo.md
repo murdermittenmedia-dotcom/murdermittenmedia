@@ -1230,3 +1230,16 @@
 - [ ] Build Judge Payment Verification form (CashApp receipt link input)
 - [x] Restrict skip button in MusicReview to judges only
 - [ ] Add judge badge to user profiles when viewing
+
+
+## Judge/Admin Broadcast for Music Review
+- [x] Add judge_streams table to track active judge broadcasts (userId, roomName, ingressId, rtmpUrl, rtmpKey, status, createdAt)
+- [x] Add procedure: review.startBroadcast() — create LiveKit ingress and judge_streams row
+- [x] Add procedure: review.endBroadcast() — delete ingress and mark stream as ended
+- [x] Add procedure: review.getActive() — fetch active judge streams
+- [x] Add procedure: review.getMyBroadcast() — get OBS credentials for current judge
+- [x] Build JudgeBroadcastPanel in MusicReview with Start/Stop button
+- [x] Build OBS Setup modal for judges (same as GO LIVE)
+- [x] Build judge video grid in Music Review (responsive, max 4 judges visible)
+- [ ] Wire judge stream status polling and real-time video display (LiveKit VideoTrack)
+- [x] Add judge name badge to each broadcast video

@@ -31,6 +31,7 @@ import {
   rewardLogs,
   lineSkipCredits,
   musicReviewSessions,
+  judgeStreams, InsertJudgeStream, JudgeStream,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1820,4 +1821,51 @@ export async function countUserSubmissionsInActiveSession(userId: number): Promi
     ));
   
   return result[0]?.count ?? 0;
+}
+
+
+// ─── Judge Broadcast Helpers ────────────────────────────────────────
+
+/** Create a new judge broadcast stream with LiveKit ingress */
+export async function createJudgeBroadcast(data: InsertJudgeStream) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  
+  const result = await db.insert(judgeStreams).values(data);
+  return result;
+}
+
+/** Get active judge broadcasts */
+export async function getActiveJudgeBroadcasts() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(judgeStreams)
+    .where(eq(judgeStreams.status, "active"))
+    .orderBy(desc(judgeStreams.createdAt));
+}
+
+/** Get a judge's current broadcast (if active) */
+export async function getJudgeBroadcast(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(judgeStreams)
+    .where(and(
+      eq(judgeStreams.userId, userId),
+      eq(judgeStreams.status, "active")
+    ))
+    .limit(1);
+  
+  return result[0] ?? null;
+}
+
+/** End a judge broadcast */
+export async function endJudgeBroadcast(judgeStreamId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  
+  await db.update(judgeStreams)
+    .set({ status: "ended", endedAt: new Date() })
+    .where(eq(judgeStreams.id, judgeStreamId));
 }

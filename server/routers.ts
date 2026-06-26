@@ -48,12 +48,13 @@ import {
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
   getDb,
+  createJudgeBroadcast, getActiveJudgeBroadcasts, getJudgeBroadcast, endJudgeBroadcast,
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
   confirmPaidSubmission,
   getOrCreateActiveMusicReviewSession, endActiveMusicReviewSession, countUserSubmissionsInActiveSession,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -770,6 +771,88 @@ export const appRouter = router({
         return getUserSongReaction(input.submissionId, ctx.user.id);
       }),
   }),
+
+  // -- Music Review Judge Broadcasts --------------------------------
+  review: router({
+    // Start a judge/admin broadcast during music review
+    startBroadcast: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        // Only judges and admins can broadcast
+        if (ctx.user.role !== "judge" && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only judges and admins can broadcast" });
+        }
+        
+        // Check if user already has an active broadcast
+        const existing = await getJudgeBroadcast(ctx.user.id);
+        if (existing) {
+          return { success: false, error: "You already have an active broadcast", broadcast: existing };
+        }
+        
+        // Create LiveKit ingress for this judge
+        const roomName = `review-judge-${ctx.user.id}-${Date.now()}`;
+        const ingressId = await createRtmpIngress(roomName);
+        
+        if (!ingressId) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create ingress" });
+        }
+        
+        // Get the RTMP URL and key from LiveKit
+        const ingressStatus = await getIngressStatus(ingressId);
+        if (!ingressStatus || !ingressStatus.url || !ingressStatus.streamKey) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to get ingress credentials" });
+        }
+        
+        // Create judge_streams record
+        const broadcast = await createJudgeBroadcast({
+          userId: ctx.user.id,
+          musicReviewSessionId: null,
+          roomName,
+          ingressId,
+          rtmpUrl: ingressStatus.url,
+          rtmpKey: ingressStatus.streamKey,
+          status: "active",
+        });
+        
+        console.log(`[Judge Broadcast] ${ctx.user.name} started broadcast in room ${roomName}`);
+        
+        return { success: true, broadcast };
+      }),
+
+    // End a judge broadcast
+    endBroadcast: protectedProcedure
+      .input(z.object({ broadcastId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        
+        // Verify ownership
+        const broadcast = await db.select().from(judgeStreams).where(eq(judgeStreams.id, input.broadcastId)).limit(1);
+        if (!broadcast[0] || broadcast[0].userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Not your broadcast" });
+        }
+        
+        // Delete ingress
+        await deleteIngress(broadcast[0].ingressId);
+        
+        // End broadcast
+        await endJudgeBroadcast(input.broadcastId);
+        
+        console.log(`[Judge Broadcast] ${ctx.user.name} ended broadcast`);
+        
+        return { success: true };
+      }),
+
+    // Get active judge broadcasts
+    getActive: publicProcedure.query(async () => {
+      return getActiveJudgeBroadcasts();
+    }),
+
+    // Get a specific judge's broadcast credentials (for OBS setup)
+    getMyBroadcast: protectedProcedure.query(async ({ ctx }) => {
+      return getJudgeBroadcast(ctx.user.id);
+    }),
+  }),
+
   // -- Artist of the Weekk ---------------------------------------
   artistOfWeek: router({
     getCurrent: publicProcedure.query(async () => {

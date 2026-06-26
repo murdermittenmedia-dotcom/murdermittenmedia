@@ -831,3 +831,21 @@ export const streamSummaries = mysqlTable("stream_summaries", {
 });
 export type StreamSummary = typeof streamSummaries.$inferSelect;
 export type InsertStreamSummary = typeof streamSummaries.$inferInsert;
+
+
+// Judge/Admin broadcasts during music review sessions
+export const judgeStreams = mysqlTable("judge_streams", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),  // references users.id
+  musicReviewSessionId: int("musicReviewSessionId"),  // optional: link to review session
+  roomName: varchar("roomName", { length: 128 }).notNull(),  // LiveKit room name
+  ingressId: varchar("ingressId", { length: 256 }).notNull(),  // LiveKit ingress ID
+  rtmpUrl: varchar("rtmpUrl", { length: 512 }).notNull(),  // RTMP server URL for OBS
+  rtmpKey: varchar("rtmpKey", { length: 256 }).notNull(),  // stream key for OBS
+  status: mysqlEnum("status", ["active", "ended", "error"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  endedAt: timestamp("endedAt"),
+});
+
+export type JudgeStream = typeof judgeStreams.$inferSelect;
+export type InsertJudgeStream = typeof judgeStreams.$inferInsert;
