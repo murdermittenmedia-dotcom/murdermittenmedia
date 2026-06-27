@@ -1,0 +1,37 @@
+{
+  "query": "SELECT id, userId, title, status, ingressId, createdAt, endedAt FROM live_streams WHERE ingressId IS NOT NULL ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT id, userId, title, status, ingressId, createdAt, endedAt FROM live_streams WHERE ingressId IS NOT NULL ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "60009",
+      "userId": "11010001",
+      "title": "UNK Phillie DJ set",
+      "status": "ended",
+      "ingressId": "IN_jUBXY7PqVTUY",
+      "createdAt": "2026-06-26 21:25:57",
+      "endedAt": "2026-06-26 23:56:10"
+    },
+    {
+      "id": "60008",
+      "userId": "1",
+      "title": "test",
+      "status": "ended",
+      "ingressId": "IN_zPwYZBjQH8LF",
+      "createdAt": "2026-06-26 21:25:53",
+      "endedAt": "2026-06-26 21:44:46"
+    },
+    {
+      "id": "60007",
+      "userId": "2370046",
+      "title": "testtr",
+      "status": "ended",
+      "ingressId": "IN_cBY9fccHBGWD",
+      "createdAt": "2026-06-26 21:05:46",
+      "endedAt": "2026-06-26 21:14:20"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\ttitle\tstatus\tingressId\tcreatedAt\tendedAt\n60009\t11010001\tUNK Phillie DJ set\tended\tIN_jUBXY7PqVTUY\t2026-06-26 21:25:57\t2026-06-26 23:56:10\n60008\t1\ttest\tended\tIN_zPwYZBjQH8LF\t2026-06-26 21:25:53\t2026-06-26 21:44:46\n60007\t2370046\ttesttr\tended\tIN_cBY9fccHBGWD\t2026-06-26 21:05:46\t2026-06-26 21:14:20\n",
+  "stderr": "",
+  "execution_time_ms": 281
+}

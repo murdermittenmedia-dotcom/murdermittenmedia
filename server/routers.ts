@@ -2894,6 +2894,12 @@ export const appRouter = router({
         const now = new Date();
         await db.update(liveStreams).set({ status: "ended", endedAt: now }).where(eq(liveStreams.id, input.streamId));
         await deleteRoom(stream.livekitRoomName);
+        // Always delete the RTMP ingress to free up the LiveKit ingress quota
+        if ((stream as any).ingressId) {
+          await deleteIngress((stream as any).ingressId).catch((e: unknown) => {
+            console.warn('[live.end] Ingress delete failed (non-fatal):', e);
+          });
+        }
 
         // ── Auto-archive stream to stream_summaries ──────────────
         try {
