@@ -27,6 +27,7 @@ import { UserBadges } from "@/components/UserBadges";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
+import { JudgeLiveBroadcast, JudgeBroadcastViewer } from "@/components/JudgeLiveBroadcast";
 
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
@@ -47,20 +48,27 @@ const APPLEPAY = "313-420-9004";
 
 type SubmitTab = "queue" | "history" | "submit" | "skip-info";
 
-// ── Judge Broadcast Card Component ────────────────────────────
+// ── Judge Broadcast Card Component (LiveKit viewer) ───────────
 function JudgeBroadcastCard({ broadcast }: { broadcast: any }) {
+  const { data: viewerData } = trpc.review.getJudgeViewerToken.useQuery(
+    { broadcastId: broadcast.id },
+    { retry: false, staleTime: 1000 * 60 * 5 }
+  );
+  if (viewerData) {
+    return (
+      <JudgeBroadcastViewer
+        roomName={viewerData.roomName}
+        livekitUrl={viewerData.livekitUrl}
+        viewerToken={viewerData.token}
+        judgeName={`Judge #${broadcast.userId}`}
+        judgeUserId={broadcast.userId}
+      />
+    );
+  }
   return (
     <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
-      <div className="aspect-video bg-black/60 flex items-center justify-center relative group">
-        <div className="text-green-400/50 text-xs text-center">Judge Stream</div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-          <a
-            href={`/profile/${broadcast.userId}`}
-            className="text-xs text-green-400 hover:text-green-300 truncate"
-          >
-            View Judge Profile →
-          </a>
-        </div>
+      <div className="aspect-video bg-black/60 flex items-center justify-center">
+        <div className="text-green-400/50 text-xs text-center">Connecting…</div>
       </div>
       <div className="p-2 border-t border-green-500/20">
         <div className="text-white/80 text-xs font-semibold truncate">Judge #{broadcast.userId}</div>
@@ -834,12 +842,14 @@ export default function MusicReview() {
   const [showOBSSetup, setShowOBSSetup] = useState(false);
   const [myBroadcast, setMyBroadcast] = useState<any>(null);
   const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
+  const [livekitBroadcastData, setLivekitBroadcastData] = useState<{ token: string; roomName: string; livekitUrl: string } | null>(null);
   
   // Fetch judge broadcasts
   const { data: broadcasts } = trpc.review.getActive.useQuery(undefined, { refetchInterval: 3000 });
   const { data: myBroadcastData } = trpc.review.getMyBroadcast.useQuery(undefined, { enabled: isJudge || isAdmin });
   const startBroadcast = trpc.review.startBroadcast.useMutation();
   const endBroadcast = trpc.review.endBroadcast.useMutation();
+  const getJudgeToken = trpc.review.getJudgeToken.useMutation();
   
   useEffect(() => {
     if (broadcasts) setActiveBroadcasts(broadcasts);
@@ -1238,49 +1248,102 @@ export default function MusicReview() {
 
           {/* Judge Broadcast Panel */}
           {(isJudge || isAdmin) && (
-            <div className="mb-6 border border-green-500/30 bg-green-500/5 p-4 rounded">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-1">Judge Broadcast</div>
-                  <div className="text-white/60 text-sm">{myBroadcast ? "🟢 Broadcasting" : "Ready to broadcast"}</div>
-                </div>
-                {myBroadcast ? (
-                  <>
+            <div className="mb-6">
+              {livekitBroadcastData && myBroadcast ? (
+                // Native browser broadcast active
+                <JudgeLiveBroadcast
+                  broadcastId={myBroadcast.id}
+                  token={livekitBroadcastData.token}
+                  livekitUrl={livekitBroadcastData.livekitUrl}
+                  onStop={() => {
+                    endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
+                      onSuccess: () => {
+                        setMyBroadcast(null);
+                        setLivekitBroadcastData(null);
+                        toast.success("Broadcast ended");
+                      }
+                    });
+                  }}
+                />
+              ) : myBroadcast ? (
+                // Broadcast exists but not using native — show OBS fallback + go live button
+                <div className="border border-green-500/30 bg-green-500/5 p-4 rounded">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-1">Judge Broadcast</div>
+                      <div className="text-white/60 text-sm">🟢 Broadcast ready — choose how to go live</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        getJudgeToken.mutate({ broadcastId: myBroadcast.id }, {
+                          onSuccess: (data) => {
+                            setLivekitBroadcastData(data);
+                            toast.success("Camera & mic ready!");
+                          },
+                          onError: (e) => toast.error("Failed to start: " + e.message),
+                        });
+                      }}
+                      disabled={getJudgeToken.isPending}
+                      className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                    >
+                      {getJudgeToken.isPending ? "Starting…" : "📷 Use Camera & Mic"}
+                    </button>
                     <button
                       onClick={() => setShowOBSSetup(true)}
-                      className="text-xs border border-green-500/50 text-green-400 px-3 py-1.5 mr-2 hover:bg-green-500/10 transition-colors"
+                      className="text-xs border border-white/20 text-white/60 px-3 py-1.5 hover:bg-white/5 transition-colors"
                     >
                       OBS Settings
                     </button>
                     <button
                       onClick={() => endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
-                        onSuccess: () => {
-                          setMyBroadcast(null);
-                          toast.success("Broadcast ended");
-                        }
+                        onSuccess: () => { setMyBroadcast(null); toast.success("Broadcast ended"); }
                       })}
                       className="text-xs border border-red-500/50 text-red-400 px-3 py-1.5 hover:bg-red-500/10 transition-colors"
                     >
-                      Stop Broadcasting
+                      Stop
                     </button>
-                  </>
-                ) : (
+                  </div>
+                </div>
+              ) : (
+                // No broadcast yet — start one
+                <div className="border border-green-500/30 bg-green-500/5 p-4 rounded flex items-center justify-between">
+                  <div>
+                    <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-1">Judge Broadcast</div>
+                    <div className="text-white/60 text-sm">Ready to broadcast</div>
+                  </div>
                   <button
                     onClick={() => startBroadcast.mutate(undefined, {
                       onSuccess: (data) => {
-                        if (data.success) {
-                          setMyBroadcast(data.broadcast);
-                          setShowOBSSetup(true);
-                          toast.success("Broadcast started! Configure OBS");
+                        if (data.success && data.broadcast) {
+                          const b = data.broadcast as any;
+                          const broadcastId = b.id;
+                          // Immediately get a LiveKit token for native browser broadcast
+                          getJudgeToken.mutate({ broadcastId }, {
+                            onSuccess: (tokenData) => {
+                              setMyBroadcast({ id: broadcastId, ...b });
+                              setLivekitBroadcastData(tokenData);
+                              toast.success("Camera & mic ready!");
+                            },
+                            onError: () => {
+                              // Fallback: show OBS setup
+                              setMyBroadcast({ id: broadcastId, ...b });
+                              setShowOBSSetup(true);
+                              toast.success("Broadcast started!");
+                            },
+                          });
                         }
-                      }
+                      },
+                      onError: (e) => toast.error("Failed to start broadcast: " + e.message),
                     })}
-                    className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors"
+                    disabled={startBroadcast.isPending || getJudgeToken.isPending}
+                    className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors disabled:opacity-50"
                   >
-                    Start Broadcasting
+                    {startBroadcast.isPending ? "Starting…" : "Start Broadcasting"}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 

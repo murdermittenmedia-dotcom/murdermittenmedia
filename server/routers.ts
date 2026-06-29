@@ -797,7 +797,7 @@ export const appRouter = router({
         }
         
         // Create judge_streams record
-        const broadcast = await createJudgeBroadcast({
+        const insertResult = await createJudgeBroadcast({
           userId: ctx.user.id,
           musicReviewSessionId: null,
           roomName,
@@ -805,11 +805,12 @@ export const appRouter = router({
           rtmpUrl: ingressDetails.url,
           rtmpKey: ingressDetails.streamKey,
           status: "active",
-        });
+        }) as any;
+        const broadcastId = insertResult.insertId as number;
         
-        console.log(`[Judge Broadcast] ${ctx.user.name} started broadcast in room ${roomName}`);
+        console.log(`[Judge Broadcast] ${ctx.user.name} started broadcast in room ${roomName} (id=${broadcastId})`);
         
-        return { success: true, broadcast };
+        return { success: true, broadcast: { id: broadcastId, userId: ctx.user.id, roomName, rtmpUrl: ingressDetails.url, rtmpKey: ingressDetails.streamKey, status: "active" } };
       }),
 
     // End a judge broadcast
@@ -845,6 +846,41 @@ export const appRouter = router({
     getMyBroadcast: protectedProcedure.query(async ({ ctx }) => {
       return getJudgeBroadcast(ctx.user.id);
     }),
+
+    // Generate a LiveKit publish token for native browser broadcasting (no RTMP ingress needed)
+    getJudgeToken: protectedProcedure
+      .input(z.object({ broadcastId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'judge' && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Only judges and admins can broadcast' });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [broadcast] = await db.select().from(judgeStreams).where(eq(judgeStreams.id, input.broadcastId)).limit(1);
+        if (!broadcast || broadcast.userId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your broadcast' });
+        }
+        const identity = `judge-browser-${ctx.user.id}`;
+        const displayName = ctx.user.artistName || ctx.user.name || `Judge ${ctx.user.id}`;
+        const token = await generateStreamerToken(broadcast.roomName, identity, displayName);
+        return { token, roomName: broadcast.roomName, livekitUrl: ENV.livekitUrl };
+      }),
+
+    // Generate a viewer token to watch a judge's native broadcast
+    getJudgeViewerToken: publicProcedure
+      .input(z.object({ broadcastId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [broadcast] = await db.select().from(judgeStreams).where(eq(judgeStreams.id, input.broadcastId)).limit(1);
+        if (!broadcast || broadcast.status !== 'active') {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Broadcast not found or ended' });
+        }
+        const identity = ctx.user ? `viewer-${ctx.user.id}` : `anon-${Date.now()}`;
+        const displayName = ctx.user ? (ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`) : 'Viewer';
+        const token = await generateViewerToken(broadcast.roomName, identity, displayName);
+        return { token, roomName: broadcast.roomName, livekitUrl: ENV.livekitUrl };
+      }),
   }),
 
   // -- Artist of the Weekk ---------------------------------------
