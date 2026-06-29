@@ -842,6 +842,29 @@ export const appRouter = router({
       return getActiveJudgeBroadcasts();
     }),
 
+    // Admin: force-end any judge broadcast
+    forceEnd: adminProcedure
+      .input(z.object({ broadcastId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const [broadcast] = await db.select().from(judgeStreams).where(eq(judgeStreams.id, input.broadcastId)).limit(1);
+        if (!broadcast) throw new TRPCError({ code: 'NOT_FOUND', message: 'Broadcast not found' });
+        
+        // Delete LiveKit ingress if it exists
+        if (broadcast.ingressId) {
+          try {
+            await deleteIngress(broadcast.ingressId);
+          } catch (e) {
+            console.warn(`[Judge Broadcast] Failed to delete ingress ${broadcast.ingressId}:`, e);
+          }
+        }
+        
+        // Mark as ended in database
+        await db.update(judgeStreams).set({ status: 'ended' }).where(eq(judgeStreams.id, input.broadcastId));
+        return { success: true };
+      }),
+
     // Get a specific judge's broadcast credentials (for OBS setup)
     getMyBroadcast: protectedProcedure.query(async ({ ctx }) => {
       return getJudgeBroadcast(ctx.user.id);

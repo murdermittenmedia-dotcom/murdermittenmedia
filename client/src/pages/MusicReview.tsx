@@ -134,6 +134,11 @@ function AdminPanel({
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
   const updateStatus = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
   const confirmSkip = trpc.queue.confirmSkip.useMutation({ onSuccess: () => refetch() });
+  const { data: activeBroadcasts } = trpc.review.getActive.useQuery();
+  const forceEndBroadcast = trpc.review.forceEnd.useMutation({
+    onSuccess: () => { toast.success("Judge broadcast ended"); },
+    onError: (e: any) => toast.error("Failed to end broadcast: " + e.message),
+  });
   const requeueMutation = trpc.queue.requeue.useMutation({
     onSuccess: () => { refetch(); broadcastReviewQueueUpdated(); toast.success("Song re-queued"); },
     onError: () => toast.error("Failed to re-queue song"),
@@ -348,6 +353,21 @@ function AdminPanel({
             >
               ⏹ Admin End
             </button>
+          )}
+          {currentUser?.role === "admin" && activeBroadcasts && activeBroadcasts.length > 0 && (
+            <div className="flex gap-1">
+              {activeBroadcasts.map((b: any) => (
+                <button
+                  key={b.id}
+                  onClick={() => forceEndBroadcast.mutate({ broadcastId: b.id })}
+                  disabled={forceEndBroadcast.isPending}
+                  className="flex-shrink-0 px-2 py-2.5 text-xs font-bold uppercase tracking-widest bg-green-900/40 border border-green-600/60 text-green-300 hover:bg-green-900/60 transition-all"
+                  title="End judge broadcast"
+                >
+                  X Judge
+                </button>
+              ))}
+            </div>
           )}
           <button
             onClick={() => setShowStreamSettings(v => !v)}
@@ -1282,7 +1302,7 @@ export default function MusicReview() {
                             setLivekitBroadcastData(data);
                             toast.success("Camera & mic ready!");
                           },
-                          onError: (e) => toast.error("Failed to start: " + e.message),
+                          onError: (e: any) => toast.error("Failed to start: " + e.message),
                         });
                       }}
                       disabled={getJudgeToken.isPending}
@@ -1335,7 +1355,7 @@ export default function MusicReview() {
                           });
                         }
                       },
-                      onError: (e) => toast.error("Failed to start broadcast: " + e.message),
+                      onError: (e: any) => toast.error("Failed to start broadcast: " + e.message),
                     })}
                     disabled={startBroadcast.isPending || getJudgeToken.isPending}
                     className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors disabled:opacity-50"
