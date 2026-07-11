@@ -1243,3 +1243,15 @@
 - [x] Build judge video grid in Music Review (responsive, max 4 judges visible)
 - [ ] Wire judge stream status polling and real-time video display (LiveKit VideoTrack)
 - [x] Add judge name badge to each broadcast video
+
+## Major UI Redesign — Music Review Page
+- [x] Premium "Studio Control Room" aesthetic overhaul
+- [x] Dramatic hero section with gradient accents and status indicators
+- [x] Redesigned admin Control Board with dark panel styling
+- [x] Pill-style navigation tabs (Queue, History, Submit, Skip)
+- [x] Premium queue cards with glass-morphism hover effects
+- [x] Refined right column (Live Chat, Voice Room) with rounded-xl panels
+- [x] Now Being Reviewed spotlight card with neon glow effects
+- [x] Fire/Trash poll redesign with gradient progress bars
+- [x] Judge Broadcast cards with status indicators
+- [x] Removed unused imports and cleaned up code

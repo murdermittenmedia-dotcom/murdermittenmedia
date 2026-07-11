@@ -1,20 +1,15 @@
 /* ============================================================
-   MURDER MITTEN MEDIA — Music Review (Revamped)
-   Clean, functional layout for viewers and admin.
-   Admin: compact top bar, now-playing card, drag queue
-   Viewer: hero, now-being-reviewed banner, fire/trash poll,
-           queue list, submit form, chat sidebar
+   MURDER MITTEN MEDIA — Music Review (V2 Major Redesign)
+   Premium "Studio Control Room" aesthetic
    ============================================================ */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "wouter";
-import { io } from "socket.io-client";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
 import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { ArtistLink } from "@/components/ArtistLink";
-import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/hooks/useChat";
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
@@ -22,8 +17,6 @@ import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
-import LabelBadge from "@/components/LabelBadge";
-import { UserBadges } from "@/components/UserBadges";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
@@ -38,7 +31,7 @@ import {
   Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
   ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw, Music,
-  GripVertical, X, Send, LogIn,
+  GripVertical, X, Send, LogIn, Headphones, Zap, Eye,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -66,7 +59,7 @@ function JudgeBroadcastCard({ broadcast }: { broadcast: any }) {
     );
   }
   return (
-    <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
+    <div className="border border-green-500/30 bg-black/40 rounded-lg overflow-hidden">
       <div className="aspect-video bg-black/60 flex items-center justify-center">
         <div className="text-green-400/50 text-xs text-center">Connecting…</div>
       </div>
@@ -90,13 +83,13 @@ function extractYouTubeId(url: string): string | null {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     pending: { label: "In Queue", cls: "bg-yellow-600/20 text-yellow-400 border-yellow-600/40" },
-    playing: { label: "🎵 Now Playing", cls: "bg-red-600/30 text-red-400 border-red-600/60 animate-pulse" },
+    playing: { label: "Playing", cls: "bg-red-600/30 text-red-400 border-red-600/60 animate-pulse" },
     reviewed: { label: "Reviewed", cls: "bg-green-600/20 text-green-400 border-green-600/40" },
     removed: { label: "Removed", cls: "bg-white/10 text-white/30 border-white/20" },
   };
   const s = map[status] ?? map.pending;
   return (
-    <span className={`text-xs border px-2 py-0.5 uppercase tracking-wider font-semibold rounded-sm ${s.cls}`}>
+    <span className={`text-[10px] border px-1.5 py-0.5 uppercase tracking-wider font-semibold rounded-full ${s.cls}`}>
       {s.label}
     </span>
   );
@@ -146,17 +139,16 @@ function AdminPanel({
 
   const isLive = data?.state?.isLive ?? false;
   const currentPlaying = data?.currentPlaying;
-  const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? [];
-
+   const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? [];
+  const queueKey = JSON.stringify(queue.map(s => s.id + ':' + s.status + ':' + s.position));
   // Drag-to-reorder state
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [localQueue, setLocalQueue] = useState<ReviewSubmission[]>([]);
-  // Keep a stable ref to localQueue so onEnded callback always sees latest without re-subscribing
   const localQueueRef = useRef<ReviewSubmission[]>([]);
   localQueueRef.current = localQueue;
   useEffect(() => {
     if (draggedId === null) setLocalQueue(queue);
-  }, [queue, draggedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [queueKey, draggedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reorderMutation = trpc.queue.reorder.useMutation({
     onSuccess: () => { refetch(); broadcastReviewQueueUpdated(); },
@@ -187,15 +179,11 @@ function AdminPanel({
     toast.success(isLive ? "Stream ended" : "You're now live!");
   };
 
-  // YouTube timer: when a YouTube track is loaded, admin can manually skip or it stays until skipped
-  // We track whether the current playing track is a YouTube submission
   const currentIsYouTube = currentPlaying?.submissionType === "youtube";
 
   const handleSetPlaying = async (id: number) => {
-    // Search localQueue first (respects drag order), fall back to full queue
     const sub = localQueue.find(s => s.id === id) ?? queue.find(s => s.id === id);
     if (!sub) return;
-    // Clear any existing YouTube embed before loading new track
     setSelectedYouTube(null);
     setPlaying.mutate({ submissionId: id }, {
       onSuccess: () => {
@@ -218,12 +206,9 @@ function AdminPanel({
     });
   };
 
-  // Helper: advance to next track in localQueue order (respects drag reorder)
   const advanceToNext = (skipId: number) => {
-    // Use localQueue order — this is the drag-reordered order
     const pendingInOrder = localQueue.filter(s => s.status === "pending" && s.id !== skipId);
     const next = pendingInOrder[0] ?? null;
-    // Clear YouTube embed
     setSelectedYouTube(null);
     if (next) {
       setTimeout(() => {
@@ -242,7 +227,7 @@ function AdminPanel({
               fileUrl: next.fileUrl ?? null,
             });
             broadcastReviewQueueUpdated();
-            toast.success(`\u25b6 Auto-advancing to: ${next.songTitle}`);
+            toast.success(`▶ Auto-advancing to: ${next.songTitle}`);
           }
         });
       }, 400);
@@ -251,7 +236,7 @@ function AdminPanel({
         onSuccess: () => {
           broadcastReviewActive({ submissionId: null });
           broadcastReviewQueueUpdated();
-          toast("Queue finished \u2014 all tracks reviewed!");
+          toast("Queue finished — all tracks reviewed!");
         }
       });
     }
@@ -270,7 +255,6 @@ function AdminPanel({
     toast.success("Removed from queue");
   };
 
-  // Stable refs so the onEnded callback never has a stale closure
   const updateStatusRef = useRef(updateStatus);
   updateStatusRef.current = updateStatus;
   const advanceToNextRef = useRef(advanceToNext);
@@ -278,13 +262,9 @@ function AdminPanel({
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
 
-  // Auto-advance: when an audio track finishes, mark it reviewed and load the next one in localQueue order.
-  // Uses refs so this effect only subscribes ONCE and never fires with stale data.
   useEffect(() => {
     const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
-      // Only handle tracks that are live Music Review streams (not regular audio)
       if (!finishedTrack.isStream || finishedTrack.sourcePage !== "Music Review") return;
-      // Match against localQueueRef (always latest drag-reordered state)
       const currentQueue = localQueueRef.current;
       const match = currentQueue.find(
         s => (s.status === "pending" || s.status === "playing") &&
@@ -303,45 +283,46 @@ function AdminPanel({
   }, [audioPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="border border-red-600/40 bg-[#0d0000] rounded-sm mb-8">
+    <div className="rounded-xl overflow-hidden mb-5 border border-red-600/30 bg-gradient-to-b from-[#1a0000] to-[#0a0000] shadow-[0_0_30px_rgba(209,0,0,0.08)]">
       {/* ── Admin header bar ── */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-red-600/20 bg-red-600/5">
-        <div className="flex items-center gap-2">
-          <Crown className="w-3.5 h-3.5 text-red-500" />
-          <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Admin Controls</span>
+      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-600/15 via-red-600/5 to-transparent border-b border-red-600/20">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-red-600/20 border border-red-600/30 flex items-center justify-center">
+            <Crown className="w-3.5 h-3.5 text-red-500" />
+          </div>
+          <span className="text-red-400 text-xs uppercase tracking-[0.2em] font-bold">Control Board</span>
         </div>
         <div className="flex items-center gap-3">
           {isLive && (
-            <span className="flex items-center gap-1.5 text-red-500 text-xs font-bold">
+            <span className="flex items-center gap-1.5 bg-red-600/20 border border-red-600/40 rounded-full px-3 py-1">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              LIVE
+              <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">On Air</span>
             </span>
           )}
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* ── Row 1: Go Live + Stream URL inline ── */}
+      <div className="p-4 space-y-3">
+        {/* ── Row 1: Go Live + Stream URL ── */}
         <div className="flex gap-2 items-stretch">
           <button
             onClick={handleGoLive}
             disabled={setLive.isPending}
-            className={`flex-shrink-0 px-5 py-2.5 text-xs font-bold uppercase tracking-widest transition-all ${
+            className={`flex-shrink-0 px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-lg transition-all ${
               isLive
-                ? "bg-red-600/20 border border-red-600/60 text-red-400 hover:bg-red-600/30"
-                : "bg-red-600 hover:bg-red-700 text-white shadow-[0_0_20px_rgba(209,0,0,0.3)]"
+                ? "bg-red-600/20 border border-red-600/50 text-red-400 hover:bg-red-600/30"
+                : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_20px_rgba(209,0,0,0.4)]"
             }`}
           >
-            {isLive ? "⏹ End Stream" : "🔴 Go Live"}
+            {isLive ? "⏹ End" : "🔴 Go Live"}
           </button>
           <input
             type="url"
             value={streamUrlInput}
             onChange={e => setStreamUrlInput(e.target.value)}
             placeholder="Stream URL (YouTube Live / HLS)"
-            className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
+            className="flex-1 bg-white/5 border border-white/10 rounded-lg text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
           />
-          {/* Admin End is handled by the Go Live toggle button above */}
           {currentUser?.role === "admin" && activeBroadcasts && activeBroadcasts.length > 0 && (
             <div className="flex gap-1">
               {activeBroadcasts.map((b: any) => (
@@ -349,7 +330,7 @@ function AdminPanel({
                   key={b.id}
                   onClick={() => forceEndBroadcast.mutate({ broadcastId: b.id })}
                   disabled={forceEndBroadcast.isPending}
-                  className="flex-shrink-0 px-2 py-2.5 text-xs font-bold uppercase tracking-widest bg-green-900/40 border border-green-600/60 text-green-300 hover:bg-green-900/60 transition-all"
+                  className="flex-shrink-0 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-green-900/40 border border-green-600/50 text-green-300 hover:bg-green-900/60 transition-all"
                   title="End judge broadcast"
                 >
                   X Judge
@@ -359,7 +340,7 @@ function AdminPanel({
           )}
           <button
             onClick={() => setShowStreamSettings(v => !v)}
-            className="border border-white/20 text-white/40 hover:text-white px-3 transition-colors flex-shrink-0"
+            className="border border-white/15 rounded-lg text-white/40 hover:text-white hover:border-white/30 px-3 transition-all flex-shrink-0"
             title="More stream settings"
           >
             <Settings className="w-3.5 h-3.5" />
@@ -368,15 +349,15 @@ function AdminPanel({
 
         {/* Stream settings (collapsible) */}
         {showStreamSettings && (
-          <div className="border border-white/10 bg-black/30 p-3 space-y-2">
+          <div className="border border-white/10 bg-black/40 rounded-lg p-3 space-y-2">
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-1">Live Message</label>
+              <label className="text-white/40 text-[10px] uppercase tracking-wider block mb-1">Live Message</label>
               <input
                 type="text"
                 value={liveMsg}
                 onChange={e => setLiveMsg(e.target.value)}
                 placeholder="e.g. Submitting tracks now — drop yours below!"
-                className="w-full bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20"
+                className="w-full bg-white/5 border border-white/10 rounded-lg text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20"
               />
             </div>
             <button
@@ -384,21 +365,21 @@ function AdminPanel({
                 setLive.mutate({ isLive, message: liveMsg || undefined, streamUrl: streamUrlInput || undefined });
                 toast.success("Settings saved");
               }}
-              className="w-full border border-white/20 text-white/60 hover:text-white py-1.5 text-xs uppercase tracking-widest transition-colors"
+              className="w-full border border-white/15 rounded-lg text-white/60 hover:text-white py-1.5 text-xs uppercase tracking-widest transition-colors"
             >
               Save Settings
             </button>
           </div>
         )}
 
-        {/* ── Row 2: Mic / Camera / Mic→Radio in one row ── */}
+        {/* ── Row 2: Mic / Camera / Mic→Radio ── */}
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={audioRoom.toggleMic}
-            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-wider border transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border transition-all ${
               audioRoom.isMuted
-                ? "border-white/20 text-white/40 hover:border-white/40"
-                : "border-green-500/50 bg-green-500/10 text-green-400"
+                ? "border-white/15 text-white/40 hover:border-white/30"
+                : "border-green-500/50 bg-green-500/10 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.1)]"
             }`}
           >
             {audioRoom.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
@@ -406,10 +387,10 @@ function AdminPanel({
           </button>
           <button
             onClick={videoRoom.toggleCamera}
-            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-wider border transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border transition-all ${
               videoRoom.cameraActive
-                ? "border-blue-500/50 bg-blue-500/10 text-blue-400"
-                : "border-white/20 text-white/40 hover:border-white/40"
+                ? "border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                : "border-white/15 text-white/40 hover:border-white/30"
             }`}
           >
             {videoRoom.cameraActive ? <Video className="w-3 h-3" /> : <VideoOff className="w-3 h-3" />}
@@ -428,10 +409,10 @@ function AdminPanel({
                 toast.error("Could not access microphone");
               }
             }}
-            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-wider border transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border transition-all ${
               adminMicBroadcast.isBroadcasting
-                ? "border-red-500/60 bg-red-500/15 text-red-400 animate-pulse"
-                : "border-white/20 text-white/40 hover:border-red-500/40 hover:text-red-400"
+                ? "border-red-500/60 bg-red-500/15 text-red-400 animate-pulse shadow-[0_0_10px_rgba(209,0,0,0.2)]"
+                : "border-white/15 text-white/40 hover:border-red-500/40 hover:text-red-400"
             }`}
             title={adminMicBroadcast.isBroadcasting ? "Stop mic broadcast" : "Broadcast mic to radio"}
           >
@@ -442,20 +423,20 @@ function AdminPanel({
 
         {/* ── Pending skip payments ── */}
         {pendingSkips.length > 0 && (
-          <div className="border border-yellow-500/30 bg-yellow-500/5 p-3">
-            <div className="text-yellow-400 text-xs uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
+          <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
+            <div className="text-yellow-400 text-[10px] uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
               <AlertCircle className="w-3.5 h-3.5" />
-              {pendingSkips.length} Unconfirmed Skip Payment{pendingSkips.length > 1 ? "s" : ""}
+              {pendingSkips.length} Unconfirmed Skip{pendingSkips.length > 1 ? "s" : ""}
             </div>
             {pendingSkips.map(s => (
               <div key={s.id} className="flex items-center justify-between gap-2 py-1.5 border-t border-yellow-500/10 first:border-0">
                 <div>
                   <span className="text-white text-xs font-semibold">{s.artistName}</span>
-                  <span className="text-white/40 text-xs ml-2">— {s.songTitle}</span>
+                  <span className="text-white/40 text-[10px] ml-2">— {s.songTitle}</span>
                 </div>
                 <button
                   onClick={() => { confirmSkip.mutate({ id: s.id }); toast.success("Skip payment confirmed"); }}
-                  className="text-xs bg-yellow-500 text-black px-2 py-1 font-bold uppercase hover:bg-yellow-400 transition-colors flex-shrink-0"
+                  className="text-[10px] bg-yellow-500 text-black px-2 py-1 rounded font-bold uppercase hover:bg-yellow-400 transition-colors flex-shrink-0"
                 >
                   Confirm $10
                 </button>
@@ -466,21 +447,22 @@ function AdminPanel({
 
         {/* ── Now Playing card ── */}
         {currentPlaying ? (
-          <div className="border border-red-600/40 bg-red-600/8 p-3">
+          <div className="rounded-lg border border-red-600/40 bg-gradient-to-r from-red-600/10 to-transparent p-3 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 via-red-500 to-transparent" />
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-red-400 text-xs uppercase tracking-wider font-bold flex items-center gap-1.5">
+              <span className="text-red-400 text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 Now Playing
               </span>
             </div>
             <div className="text-white font-semibold text-sm truncate mb-0.5">{currentPlaying.songTitle}</div>
-            <div className="text-white/50 text-xs mb-3">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
-            {/* Transport controls — YouTube vs audio */}
+            <div className="text-white/50 text-xs mb-2.5">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></div>
+            {/* Transport controls */}
             {currentIsYouTube ? (
               <div className="space-y-2">
-                <div className="border border-orange-500/30 bg-orange-500/5 p-2 text-[10px] text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+                <div className="border border-orange-500/30 bg-orange-500/5 rounded-lg p-2 text-[10px] text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
                   <ExternalLink className="w-3 h-3" />
-                  YouTube track — your position is synced to viewers in real-time.
+                  YouTube — synced to viewers
                 </div>
                 {currentPlaying.youtubeUrl && (() => {
                   const ytId = extractYouTubeId(currentPlaying.youtubeUrl!);
@@ -489,20 +471,20 @@ function AdminPanel({
                       videoId={ytId}
                       submissionId={currentPlaying.id}
                       isAdmin={true}
-                      className="border border-white/10"
+                      className="border border-white/10 rounded-lg overflow-hidden"
                     />
                   ) : null;
                 })()}
                 {isJudge ? (
                   <button
                     onClick={handleSkip}
-                    className="w-full flex items-center justify-center gap-1.5 border border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 border border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg py-2 text-[10px] font-bold uppercase tracking-wider transition-colors"
                   >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    Done — Skip to Next Track
+                    <CheckCircle className="w-3 h-3" />
+                    Done — Next Track
                   </button>
                 ) : (
-                  <div className="w-full p-2.5 border border-red-500/30 bg-red-500/5 text-red-400 text-xs text-center uppercase tracking-wider">
+                  <div className="w-full p-2 border border-red-500/30 bg-red-500/5 rounded-lg text-red-400 text-[10px] text-center uppercase tracking-wider">
                     Judges Only
                   </div>
                 )}
@@ -511,24 +493,21 @@ function AdminPanel({
               <div className="grid grid-cols-4 gap-1.5">
                 <button
                   onClick={() => { audioPlayer.pause(); broadcastRadioPause(audioPlayer.currentTime); }}
-                  className="flex items-center justify-center gap-1 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
-                  title="Pause for all listeners"
+                  className="flex items-center justify-center gap-1 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-lg py-2 text-[10px] uppercase tracking-wider transition-colors"
                 >
                   <Pause className="w-3 h-3" />
                   Pause
                 </button>
                 <button
                   onClick={() => { audioPlayer.resume(); broadcastRadioResume(audioPlayer.currentTime); }}
-                  className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
-                  title="Resume for all listeners"
+                  className="flex items-center justify-center gap-1 border border-green-500/30 text-green-400 hover:bg-green-500/10 rounded-lg py-2 text-[10px] uppercase tracking-wider transition-colors"
                 >
                   <Play className="w-3 h-3" />
                   Play
                 </button>
                 <button
                   onClick={() => { audioPlayer.seek(0); broadcastRadioSeek(0); }}
-                  className="flex items-center justify-center gap-1 border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
-                  title="Rewind to start"
+                  className="flex items-center justify-center gap-1 border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 rounded-lg py-2 text-[10px] uppercase tracking-wider transition-colors"
                 >
                   <RotateCcw className="w-3 h-3" />
                   Rewind
@@ -536,8 +515,7 @@ function AdminPanel({
                 {isJudge ? (
                   <button
                     onClick={handleSkip}
-                    className="flex items-center justify-center gap-1 border border-green-500/40 text-green-400 hover:bg-green-500/10 py-2 text-[10px] uppercase tracking-wider transition-colors"
-                    title="Skip to next track (Judges only)"
+                    className="flex items-center justify-center gap-1 border border-green-500/30 text-green-400 hover:bg-green-500/10 rounded-lg py-2 text-[10px] uppercase tracking-wider transition-colors"
                   >
                     <SkipForward className="w-3 h-3" />
                     Skip
@@ -545,8 +523,7 @@ function AdminPanel({
                 ) : (
                   <button
                     disabled
-                    className="flex items-center justify-center gap-1 border border-white/20 text-white/30 py-2 text-[10px] uppercase tracking-wider cursor-not-allowed"
-                    title="Only judges can skip"
+                    className="flex items-center justify-center gap-1 border border-white/10 text-white/20 rounded-lg py-2 text-[10px] uppercase tracking-wider cursor-not-allowed"
                   >
                     <SkipForward className="w-3 h-3" />
                     Skip
@@ -556,23 +533,23 @@ function AdminPanel({
             )}
           </div>
         ) : (
-          <div className="border border-white/10 bg-white/[0.02] p-3 text-center">
-            <span className="text-white/30 text-xs uppercase tracking-wider">No track loaded — select from queue below</span>
+          <div className="border border-white/10 bg-white/[0.02] rounded-lg p-3 text-center">
+            <span className="text-white/30 text-xs uppercase tracking-wider">No track loaded — select from queue</span>
           </div>
         )}
 
         {/* ── Queue with drag handles ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-white/50 text-xs uppercase tracking-wider font-semibold">
+            <span className="text-white/50 text-[10px] uppercase tracking-wider font-semibold">
               Queue ({localQueue.length})
             </span>
             <span className="text-white/20 text-[10px]">Drag to reorder</span>
           </div>
           {localQueue.length === 0 ? (
-            <div className="text-center py-4 text-white/20 text-xs border border-white/10">Queue is empty</div>
+            <div className="text-center py-4 text-white/20 text-xs border border-white/10 rounded-lg">Queue is empty</div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
               {localQueue.map((sub, i) => (
                 <div
                   key={sub.id}
@@ -581,7 +558,7 @@ function AdminPanel({
                   onDragOver={(e) => handleDragOver(e, sub.id)}
                   onDrop={handleDrop}
                   onDragEnd={() => setDraggedId(null)}
-                  className={`flex items-center gap-2 p-2 border text-xs cursor-grab active:cursor-grabbing transition-all ${
+                  className={`flex items-center gap-2 p-2 border rounded-lg text-xs cursor-grab active:cursor-grabbing transition-all ${
                     draggedId === sub.id ? "opacity-30 scale-95" :
                     sub.status === "playing"
                       ? "border-red-600/50 bg-red-600/10"
@@ -591,11 +568,11 @@ function AdminPanel({
                   }`}
                 >
                   <GripVertical className="w-3 h-3 text-white/20 flex-shrink-0" />
-                  <span className="text-white/30 w-4 text-center flex-shrink-0 font-mono">
+                  <span className="text-white/30 w-4 text-center flex-shrink-0 font-mono text-[10px]">
                     {sub.status === "playing" ? "▶" : i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white font-semibold truncate">{sub.songTitle}</div>
+                    <div className="text-white font-semibold truncate text-[11px]">{sub.songTitle}</div>
                     <div className="text-white/40 truncate text-[10px]">
                       <ArtistLink artistName={sub.artistName} userId={sub.userId} />
                     </div>
@@ -607,14 +584,13 @@ function AdminPanel({
                     {sub.status !== "playing" && (
                       <button
                         onClick={() => handleSetPlaying(sub.id)}
-                        className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-green-500/40 text-green-400 hover:bg-green-500/10 px-1.5 py-0.5 transition-colors"
-                        title="Load to Now Playing"
+                        className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-green-500/40 text-green-400 hover:bg-green-500/10 rounded px-1.5 py-0.5 transition-colors"
                       >
                         <Play className="w-2.5 h-2.5" /> Load
                       </button>
                     )}
                     {sub.status === "playing" && (
-                      <span className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-red-500/40 text-red-400 px-1.5 py-0.5">
+                      <span className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-red-500/40 text-red-400 rounded px-1.5 py-0.5">
                         ▶ Live
                       </span>
                     )}
@@ -637,7 +613,7 @@ function AdminPanel({
           <div>
             <button
               onClick={() => setShowReviewed(v => !v)}
-              className="flex items-center justify-between w-full text-white/40 text-xs uppercase tracking-wider hover:text-white/60 transition-colors py-1"
+              className="flex items-center justify-between w-full text-white/40 text-[10px] uppercase tracking-wider hover:text-white/60 transition-colors py-1"
             >
               <span>Previously Reviewed ({reviewedTracks.length})</span>
               {showReviewed ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -645,9 +621,9 @@ function AdminPanel({
             {showReviewed && (
               <div className="space-y-1 mt-2 max-h-48 overflow-y-auto">
                 {reviewedTracks.map(sub => (
-                  <div key={sub.id} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] text-xs">
+                  <div key={sub.id} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] rounded-lg text-xs">
                     <div className="flex-1 min-w-0">
-                      <div className="text-white font-semibold truncate">{sub.songTitle}</div>
+                      <div className="text-white font-semibold truncate text-[11px]">{sub.songTitle}</div>
                       <div className="text-white/40 truncate text-[10px]">{sub.artistName}</div>
                     </div>
                     <button
@@ -666,16 +642,16 @@ function AdminPanel({
                         });
                         toast.success(`Loading: ${sub.songTitle}`);
                       }}
-                      className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 px-1.5 py-0.5 transition-colors flex-shrink-0"
+                      className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-red-600 hover:text-red-400 rounded px-1.5 py-0.5 transition-colors flex-shrink-0"
                     >
                       <Play className="w-2.5 h-2.5" /> Load
                     </button>
                     <button
                       onClick={() => requeueMutation.mutate({ id: sub.id })}
                       disabled={requeueMutation.isPending}
-                      className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-1.5 py-0.5 transition-colors flex-shrink-0 disabled:opacity-40"
+                      className="flex items-center gap-0.5 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 rounded px-1.5 py-0.5 transition-colors flex-shrink-0 disabled:opacity-40"
                     >
-                      <RotateCcw className="w-2.5 h-2.5" /> Re-queue
+                      <RotateCcw className="w-2.5 h-2.5" /> Re-q
                     </button>
                   </div>
                 ))}
@@ -687,23 +663,23 @@ function AdminPanel({
         {/* ── Participants ── */}
         {audioRoom.participants.filter(p => p.role !== "viewer").length > 0 && (
           <div>
-            <div className="text-white/40 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <div className="text-white/40 text-[10px] uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Users className="w-3 h-3" />
-              Room Participants
+              Room ({audioRoom.participants.filter(p => p.role !== "viewer").length})
             </div>
             <div className="space-y-1">
               {audioRoom.participants.filter(p => p.role !== "viewer").map(p => (
-                <div key={p.socketId} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] text-xs">
+                <div key={p.socketId} className="flex items-center gap-2 p-2 border border-white/10 bg-white/[0.02] rounded-lg text-xs">
                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
                   <div className="flex-1 min-w-0">
-                    <span className="text-white font-semibold">{p.username}</span>
+                    <span className="text-white font-semibold text-[11px]">{p.username}</span>
                     <span className={`ml-2 text-[10px] uppercase font-bold ${
                       p.role === "judge" ? "text-yellow-400" : p.role === "admin" ? "text-red-400" : "text-white/40"
                     }`}>{p.role}</span>
                   </div>
                   <button
                     onClick={() => audioRoom.adminToggleParticipantMic(p.socketId, !p.micActive)}
-                    className={`flex items-center gap-1 px-2 py-1 border text-[10px] uppercase font-bold transition-colors ${
+                    className={`flex items-center gap-1 px-2 py-1 border rounded text-[10px] uppercase font-bold transition-colors ${
                       p.micActive
                         ? "border-green-500/40 text-green-400 hover:bg-red-600/10 hover:border-red-600/40 hover:text-red-400"
                         : "border-white/20 text-white/30 hover:border-green-500/40 hover:text-green-400"
@@ -722,7 +698,7 @@ function AdminPanel({
   );
 }
 
-// ── Fire/Trash Poll ───────────────────────────────────────────
+// ── Fire/Trash Poll (Redesigned) ─────────────────────────────
 function FireTrashPoll({
   submissionId,
   songTitle,
@@ -752,12 +728,12 @@ function FireTrashPoll({
   const hasVoted = !!myReaction;
 
   return (
-    <div className="border border-white/10 bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between">
-        <span className="text-white/50 text-xs uppercase tracking-widest font-semibold">Rate This Track</span>
+        <span className="text-white/50 text-[10px] uppercase tracking-[0.2em] font-semibold">Rate This Track</span>
         {hasVoted && (
-          <span className="text-xs font-semibold">
+          <span className="text-[10px] font-semibold">
             {myReaction === "fire" ? <span className="text-orange-400">🔥 You voted Fire</span> : <span className="text-blue-400">🗑️ You voted Trash</span>}
           </span>
         )}
@@ -772,20 +748,20 @@ function FireTrashPoll({
             onVote("fire");
           }}
           disabled={hasVoted || isPending}
-          className={`group flex flex-col items-center justify-center gap-3 py-10 transition-all duration-200 ${
+          className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
             myReaction === "fire" ? "bg-orange-500/20 cursor-default" :
             hasVoted ? "opacity-40 cursor-not-allowed" :
             "hover:bg-orange-500/10 active:bg-orange-500/20 cursor-pointer"
           }`}
         >
-          <span className={`text-6xl transition-transform duration-200 select-none ${
-            myReaction === "fire" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
+          <span className={`text-5xl transition-transform duration-200 select-none ${
+            myReaction === "fire" ? "scale-110" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
           }`}>🔥</span>
           <div className="text-center">
-            <div className={`font-['Anton'] text-3xl transition-colors ${
+            <div className={`font-['Anton'] text-2xl transition-colors ${
               myReaction === "fire" ? "text-orange-300" : "text-orange-400 group-hover:text-orange-300"
             }`}>FIRE</div>
-            <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">This a banger</div>
+            <div className="text-white/30 text-[10px] uppercase tracking-widest mt-0.5">This a banger</div>
           </div>
         </button>
         <button
@@ -795,20 +771,20 @@ function FireTrashPoll({
             onVote("trash");
           }}
           disabled={hasVoted || isPending}
-          className={`group flex flex-col items-center justify-center gap-3 py-10 transition-all duration-200 ${
+          className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
             myReaction === "trash" ? "bg-blue-500/20 cursor-default" :
             hasVoted ? "opacity-40 cursor-not-allowed" :
             "hover:bg-blue-500/10 active:bg-blue-500/20 cursor-pointer"
           }`}
         >
-          <span className={`text-6xl transition-transform duration-200 select-none ${
-            myReaction === "trash" ? "scale-125" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
+          <span className={`text-5xl transition-transform duration-200 select-none ${
+            myReaction === "trash" ? "scale-110" : hasVoted ? "" : "group-hover:scale-125 group-active:scale-110"
           }`}>🗑️</span>
           <div className="text-center">
-            <div className={`font-['Anton'] text-3xl transition-colors ${
+            <div className={`font-['Anton'] text-2xl transition-colors ${
               myReaction === "trash" ? "text-blue-300" : "text-blue-400 group-hover:text-blue-300"
             }`}>TRASH</div>
-            <div className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Next track please</div>
+            <div className="text-white/30 text-[10px] uppercase tracking-widest mt-0.5">Next track please</div>
           </div>
         </button>
       </div>
@@ -816,10 +792,10 @@ function FireTrashPoll({
       {/* Live results bar */}
       <div className="border-t border-white/10">
         <div className="flex">
-          <div className="h-2 bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700" style={{ width: `${firePct}%` }} />
-          <div className="h-2 bg-gradient-to-l from-blue-600 to-blue-400 transition-all duration-700" style={{ width: `${trashPct}%` }} />
+          <div className="h-1.5 bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700 rounded-bl-xl" style={{ width: `${firePct}%` }} />
+          <div className="h-1.5 bg-gradient-to-l from-blue-600 to-blue-400 transition-all duration-700 rounded-br-xl" style={{ width: `${trashPct}%` }} />
         </div>
-        <div className="flex justify-between px-4 py-2 text-xs">
+        <div className="flex justify-between px-4 py-2 text-[10px]">
           <span className="text-orange-400 font-bold">🔥 {fireCount} ({firePct}%)</span>
           <span className="text-white/30">{total} vote{total !== 1 ? "s" : ""}</span>
           <span className="text-blue-400 font-bold">{trashPct}% ({trashCount}) 🗑️</span>
@@ -859,12 +835,20 @@ export default function MusicReview() {
   const endBroadcast = trpc.review.endBroadcast.useMutation();
   const getJudgeToken = trpc.review.getJudgeToken.useMutation();
   
+  const broadcastsRef = useRef<any[]>([]);
   useEffect(() => {
-    if (broadcasts) setActiveBroadcasts(broadcasts);
+    if (broadcasts && JSON.stringify(broadcasts) !== JSON.stringify(broadcastsRef.current)) {
+      broadcastsRef.current = broadcasts;
+      setActiveBroadcasts(broadcasts);
+    }
   }, [broadcasts]);
   
+  const myBroadcastRef = useRef<any>(null);
   useEffect(() => {
-    if (myBroadcastData) setMyBroadcast(myBroadcastData);
+    if (myBroadcastData && JSON.stringify(myBroadcastData) !== JSON.stringify(myBroadcastRef.current)) {
+      myBroadcastRef.current = myBroadcastData;
+      setMyBroadcast(myBroadcastData);
+    }
   }, [myBroadcastData]);
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
@@ -873,7 +857,6 @@ export default function MusicReview() {
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
 
   const [limitReachedData, setLimitReachedData] = useState<{ success: false; limitReached: true; message: string; upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
-  // Stores the pending form data so we can re-submit with paidSubmissionType when user picks an upgrade
   const [pendingFormData, setPendingFormData] = useState<{
     type: 'youtube' | 'file';
     songTitle: string;
@@ -963,7 +946,6 @@ export default function MusicReview() {
     onError: (err: any) => toast.error(err.message),
   });
   const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
-  // YouTube timestamp sync state for late-joiner seek
   const [ytSyncState, setYtSyncState] = useState<{ currentTime: number; updatedAt: number } | null>(null);
   const currentPlayingId = activeSubmissionId ?? data?.currentPlaying?.id ?? null;
 
@@ -975,8 +957,6 @@ export default function MusicReview() {
     { submissionId: currentPlayingId! },
     { enabled: !!currentPlayingId, refetchInterval: 3000 }
   );
-
-  // Auto-advance is handled inside AdminPanel where mutations are available
 
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -1114,7 +1094,6 @@ export default function MusicReview() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const base64 = (ev.target?.result as string).split(",")[1];
-        // Save pending data in case limit is hit
         setPendingFormData({
           type: 'file',
           songTitle: form.songTitle,
@@ -1135,7 +1114,6 @@ export default function MusicReview() {
       };
       reader.readAsDataURL(audioFile);
     } else {
-      // Save pending data in case limit is hit
       setPendingFormData({
         type: 'youtube',
         songTitle: form.songTitle,
@@ -1153,7 +1131,6 @@ export default function MusicReview() {
     }
   };
 
-  // Re-submit with paid flag after user chooses an upgrade option
   const handlePaidSubmit = (paidType: 'reentry5' | 'reentry10' | 'skip') => {
     if (!pendingFormData) return;
     setSubmitting(true);
@@ -1231,36 +1208,46 @@ export default function MusicReview() {
       {!isAdmin && !isLive && <LiveRadioBanner filter="review" />}
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className="pt-16 pb-4 border-b border-white/10">
-        <div className="container">
-          {/* Status + title */}
-          <div className="flex items-center gap-3 mb-2">
-            {isLive ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-bold">Live Now</span>
-              </>
-            ) : (
-              <>
-                <span className="w-2 h-2 rounded-full bg-white/20" />
-                <span className="text-white/30 text-xs uppercase tracking-[0.3em]">Offline</span>
-              </>
-            )}
-          </div>
-          <div className="flex items-baseline gap-3 mb-1">
-            <h1 className="font-['Anton'] text-3xl md:text-4xl uppercase">
-              MUSIC <span className="text-red-600">REVIEW</span>
-            </h1>
-            <p className="text-white/40 text-xs hidden md:block">
+      <section className="relative pt-14 pb-5 border-b border-white/[0.06] overflow-hidden">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-red-600/[0.03] via-transparent to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-600/40 to-transparent" />
+        
+        <div className="container relative">
+          {/* Status + title row */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              {isLive ? (
+                <div className="flex items-center gap-2 bg-red-600/15 border border-red-600/30 rounded-full px-3 py-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-red-400 text-[10px] uppercase tracking-[0.3em] font-bold">Live Now</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1">
+                  <span className="w-2 h-2 rounded-full bg-white/20" />
+                  <span className="text-white/30 text-[10px] uppercase tracking-[0.3em]">Offline</span>
+                </div>
+              )}
+              {pendingQueue.length > 0 && (
+                <span className="text-white/20 text-[10px] uppercase tracking-wider hidden md:block">
+                  {pendingQueue.length} track{pendingQueue.length !== 1 ? "s" : ""} in queue
+                </span>
+              )}
+            </div>
+            <p className="text-white/30 text-[10px] uppercase tracking-wider hidden md:block">
               Submit your track · skip to front for $10
             </p>
           </div>
 
+          {/* Title */}
+          <h1 className="font-['Anton'] text-4xl md:text-5xl uppercase leading-none mb-4">
+            MUSIC <span className="text-red-600">REVIEW</span>
+          </h1>
+
           {/* Judge Broadcast Panel */}
           {(isJudge || isAdmin) && (
-            <div className="mb-6">
+            <div className="mb-4">
               {livekitBroadcastData && myBroadcast ? (
-                // Native browser broadcast active
                 <JudgeLiveBroadcast
                   broadcastId={myBroadcast.id}
                   token={livekitBroadcastData.token}
@@ -1276,12 +1263,11 @@ export default function MusicReview() {
                   }}
                 />
               ) : (
-                // No broadcast / broadcast exists but no token — single click to go live
-                <div className="border border-green-500/30 bg-green-500/5 p-4 rounded flex items-center justify-between">
+                <div className="border border-green-500/30 bg-gradient-to-r from-green-500/5 to-transparent rounded-xl p-4 flex items-center justify-between">
                   <div>
-                    <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-1">Judge Broadcast</div>
+                    <div className="text-green-400 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Judge Broadcast</div>
                     <div className="text-white/60 text-sm">
-                      {myBroadcast ? "🟢 Session active — click to resume camera" : "Ready to broadcast"}
+                      {myBroadcast ? "Session active — click to resume camera" : "Ready to broadcast"}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1297,16 +1283,16 @@ export default function MusicReview() {
                         onError: (e: any) => toast.error("Failed to start broadcast: " + e.message),
                       })}
                       disabled={startBroadcast.isPending}
-                      className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                      className="text-xs border border-green-500/50 bg-green-500/10 text-green-400 px-4 py-2 rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50"
                     >
-                      {startBroadcast.isPending ? "Starting…" : myBroadcast ? "📷 Resume Camera" : "📷 Go Live"}
+                      {startBroadcast.isPending ? "Starting…" : myBroadcast ? "📷 Resume" : "📷 Go Live"}
                     </button>
                     {myBroadcast && (
                       <button
                         onClick={() => endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
                           onSuccess: () => { setMyBroadcast(null); setLivekitBroadcastData(null); toast.success("Broadcast ended"); }
                         })}
-                        className="text-xs border border-red-500/50 text-red-400 px-3 py-1.5 hover:bg-red-500/10 transition-colors"
+                        className="text-xs border border-red-500/50 text-red-400 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
                       >
                         Stop
                       </button>
@@ -1317,12 +1303,10 @@ export default function MusicReview() {
             </div>
           )}
 
-          {/* Active Judges Grid moved to right column */}
-
           {/* OBS Setup Modal */}
           {showOBSSetup && myBroadcast && (
             <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-              <div className="bg-black border border-white/20 rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="bg-[#111] border border-white/20 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between p-4 border-b border-white/10">
                   <h2 className="text-white font-['Anton'] text-lg uppercase">OBS Setup</h2>
                   <button onClick={() => setShowOBSSetup(false)} className="text-white/40 hover:text-white">
@@ -1332,43 +1316,19 @@ export default function MusicReview() {
                 <div className="p-4 space-y-4">
                   <div>
                     <div className="text-white/60 text-xs uppercase tracking-widest mb-2">Server URL</div>
-                    <div className="bg-black/40 border border-white/10 p-3 rounded font-mono text-sm text-green-400 break-all">
+                    <div className="bg-black/40 border border-white/10 p-3 rounded-lg font-mono text-sm text-green-400 break-all">
                       {myBroadcast.rtmpUrl}
                     </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(myBroadcast.rtmpUrl);
-                        toast.success("Copied!");
-                      }}
-                      className="text-xs text-white/50 hover:text-white mt-2"
-                    >
-                      Copy
-                    </button>
+                    <button onClick={() => { navigator.clipboard.writeText(myBroadcast.rtmpUrl); toast.success("Copied!"); }}
+                      className="text-xs text-white/50 hover:text-white mt-2">Copy</button>
                   </div>
                   <div>
                     <div className="text-white/60 text-xs uppercase tracking-widest mb-2">Stream Key</div>
-                    <div className="bg-black/40 border border-white/10 p-3 rounded font-mono text-sm text-yellow-400 break-all">
+                    <div className="bg-black/40 border border-white/10 p-3 rounded-lg font-mono text-sm text-yellow-400 break-all">
                       {myBroadcast.rtmpKey}
                     </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(myBroadcast.rtmpKey);
-                        toast.success("Copied!");
-                      }}
-                      className="text-xs text-white/50 hover:text-white mt-2"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                  <div className="bg-blue-500/10 border border-blue-500/30 p-3 rounded text-white/70 text-xs">
-                    <strong>Steps:</strong>
-                    <ol className="list-decimal list-inside mt-2 space-y-1">
-                      <li>Open OBS or Streamlabs</li>
-                      <li>Go to Settings → Stream</li>
-                      <li>Paste Server URL above</li>
-                      <li>Paste Stream Key above</li>
-                      <li>Click Start Streaming</li>
-                    </ol>
+                    <button onClick={() => { navigator.clipboard.writeText(myBroadcast.rtmpKey); toast.success("Copied!"); }}
+                      className="text-xs text-white/50 hover:text-white mt-2">Copy</button>
                   </div>
                 </div>
               </div>
@@ -1379,7 +1339,7 @@ export default function MusicReview() {
           {isLive && streamUrl ? (
             <div className="mb-2">
               {(streamUrl.includes("youtube.com") || streamUrl.includes("youtu.be")) ? (
-                <div className="relative w-full aspect-video max-w-3xl bg-black border border-white/10">
+                <div className="relative w-full aspect-video max-w-3xl bg-black border border-white/10 rounded-xl overflow-hidden">
                   <iframe
                     src={`https://www.youtube.com/embed/${
                       streamUrl.includes("v=")
@@ -1392,8 +1352,8 @@ export default function MusicReview() {
                   />
                 </div>
               ) : (
-                <div className="border border-red-600/30 bg-red-600/5 p-5 max-w-3xl flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center flex-shrink-0">
+                <div className="border border-red-600/30 bg-gradient-to-r from-red-600/10 to-transparent rounded-xl p-5 max-w-3xl flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(209,0,0,0.2)]">
                     <Radio className="w-5 h-5 text-red-500" />
                   </div>
                   <div className="flex-1">
@@ -1402,15 +1362,15 @@ export default function MusicReview() {
                   </div>
                   <button
                     onClick={playStream}
-                    className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-2"
+                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(209,0,0,0.3)]"
                   >
-                    <Play className="w-3.5 h-3.5" /> Listen Live
+                    <Headphones className="w-3.5 h-3.5" /> Listen Live
                   </button>
                 </div>
               )}
             </div>
           ) : isLive ? (
-            <div className="border border-red-600/30 bg-red-600/5 p-4 max-w-3xl mb-2 flex items-center gap-3">
+            <div className="border border-red-600/30 bg-red-600/5 rounded-xl p-4 max-w-3xl mb-2 flex items-center gap-3">
               <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
               <div>
                 <div className="text-red-400 text-sm font-semibold">Session is Live</div>
@@ -1422,11 +1382,11 @@ export default function MusicReview() {
       </section>
 
       {/* ── MAIN CONTENT ──────────────────────────────────────── */}
-      <div className="container py-3">
-        <div className="grid lg:grid-cols-[1fr_340px] gap-4">
+      <div className="container py-4">
+        <div className="grid lg:grid-cols-[1fr_320px] gap-5">
 
           {/* ── LEFT COLUMN ── */}
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-4">
 
             {/* Admin panel */}
             {isAdmin && (
@@ -1453,7 +1413,7 @@ export default function MusicReview() {
             {selectedYouTube && (() => {
               const ytId = extractYouTubeId(selectedYouTube.url);
               return (
-                <div className="mb-3 border border-white/20 bg-black/60 p-4 relative">
+                <div className="rounded-xl border border-white/15 bg-black/60 p-4 relative">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <div className="font-['Anton'] text-lg uppercase">{selectedYouTube.title}</div>
@@ -1464,10 +1424,10 @@ export default function MusicReview() {
                     </button>
                   </div>
                   {ytId ? (
-                    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                    <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingTop: '56.25%' }}>
                       <iframe
                         src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
-                        className="absolute inset-0 w-full h-full border border-white/10"
+                        className="absolute inset-0 w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                         title={selectedYouTube.title}
@@ -1482,207 +1442,206 @@ export default function MusicReview() {
               );
             })()}
 
-            {/* ── NOW BEING REVIEWED banner ── */}
+            {/* ── NOW BEING REVIEWED — Dramatic spotlight card ── */}
             {liveReviewActive && liveReviewActive.submissionId !== null && (
-              <div className="mb-3 border border-red-600/50 bg-red-600/10 p-3 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent animate-pulse" />
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-red-400 text-xs uppercase tracking-widest font-bold">Now Being Reviewed</span>
-                </div>
-                <div className="font-['Anton'] text-2xl md:text-3xl uppercase mb-0.5">{liveReviewActive.songTitle}</div>
-                <div className="text-white/60 text-sm mb-3">
-                  by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={liveReviewActive.userId ?? null} />
-                </div>
-                {liveReviewActive.audioUrl && !isAdmin && (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2 text-red-400 text-sm">
-                      <Radio className="w-4 h-4 animate-pulse" />
-                      <span className="font-semibold text-xs uppercase tracking-wider">Playing Live — synced to admin</span>
-                    </div>
-                    {/* Big Tune In CTA — user gesture required for browser autoplay */}
-                    {!audioPlayer.isPlaying ? (
-                      <button
-                        onClick={() => {
-                          const track = {
-                            url: liveReviewActive.audioUrl!,
-                            title: liveReviewActive.songTitle ?? 'Live Track',
-                            artist: liveReviewActive.artistName ?? 'Murder Mitten Media',
-                            artworkUrl: LOGO,
-                            isStream: true,
-                            submissionId: liveReviewActive.submissionId ?? undefined,
-                            sourcePage: 'Music Review',
-                            sourceUrl: '/review',
-                          };
-                          // Request current radio state to sync to admin's exact position
-                          const socket = io(window.location.origin, {
-                            path: "/api/socket.io",
-                            query: { room: "global" },
-                          });
-                          let responded = false;
-                          socket.on("connect", () => socket.emit("radio:get_state"));
-                          socket.on("radio:state", (data: any) => {
-                            if (responded) return;
-                            responded = true;
-                            socket.disconnect();
-                            const seekTo = data?.currentTime ?? 0;
-                            if (seekTo > 1) {
-                              // playWithSeek: starts audio and seeks to admin's position on canplay
-                              audioPlayer.playWithSeek(track, seekTo);
-                              if (data?.pausedAt !== null && data?.pausedAt !== undefined) {
-                                setTimeout(() => audioPlayer.pause(), 500);
-                              }
-                            } else {
-                              audioPlayer.play(track);
-                            }
-                          });
-                          // Fallback: if no response in 1.5s, play from start
-                          setTimeout(() => {
-                            if (!responded) {
+              <div className="rounded-xl border border-red-600/40 bg-gradient-to-br from-red-600/10 via-[#0d0000] to-transparent p-5 relative overflow-hidden shadow-[0_0_40px_rgba(209,0,0,0.08)]">
+                {/* Top accent line */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-red-500 to-transparent" />
+                {/* Corner glow */}
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(209,0,0,0.6)]" />
+                    <span className="text-red-400 text-[10px] uppercase tracking-[0.3em] font-bold">Now Being Reviewed</span>
+                  </div>
+                  <div className="font-['Anton'] text-3xl md:text-4xl uppercase mb-1 leading-tight">{liveReviewActive.songTitle}</div>
+                  <div className="text-white/60 text-sm mb-4">
+                    by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={liveReviewActive.userId ?? null} />
+                  </div>
+                  
+                  {liveReviewActive.audioUrl && !isAdmin && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2 text-red-400 text-xs">
+                        <Radio className="w-4 h-4 animate-pulse" />
+                        <span className="font-semibold text-xs uppercase tracking-wider">Playing Live — synced to admin</span>
+                      </div>
+                      {/* Tune In CTA */}
+                      {!audioPlayer.isPlaying ? (
+                        <button
+                          onClick={() => {
+                            const track = {
+                              url: liveReviewActive.audioUrl!,
+                              title: liveReviewActive.songTitle ?? 'Live Track',
+                              artist: liveReviewActive.artistName ?? 'Murder Mitten Media',
+                              artworkUrl: LOGO,
+                              isStream: true,
+                              submissionId: liveReviewActive.submissionId ?? undefined,
+                              sourcePage: 'Music Review',
+                              sourceUrl: '/review',
+                            };
+                            const socket = io(window.location.origin, {
+                              path: "/api/socket.io",
+                              query: { room: "global" },
+                            });
+                            let responded = false;
+                            socket.on("connect", () => socket.emit("radio:get_state"));
+                            socket.on("radio:state", (data: any) => {
+                              if (responded) return;
                               responded = true;
                               socket.disconnect();
-                              audioPlayer.play(track);
-                            }
-                          }, 1500);
-                        }}
-                        className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-500 active:scale-95 text-white py-4 text-base font-bold uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(209,0,0,0.5)]"
-                      >
-                        <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
-                        🎙 Tap to Listen Live
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2 text-green-400 text-xs font-semibold uppercase tracking-wider">
-                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                        You're tuned in
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* ── TIP ARTIST PANEL ── */}
-                {!isAdmin && liveReviewActive.userId && user && liveReviewActive.userId !== user.id && (
-                  <div className="mt-3 border border-yellow-500/20 bg-yellow-500/5 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-yellow-400 text-sm font-semibold">💰 Tip {liveReviewActive.artistName}</span>
-                        <span className="text-white/30 text-xs">Balance: {coinBalanceData?.balance ?? 0} coins</span>
-                      </div>
-                      <button
-                        onClick={() => setShowTipPanel(v => !v)}
-                        className="text-xs text-yellow-400/70 hover:text-yellow-400 transition-colors"
-                      >
-                        {showTipPanel ? 'Cancel' : 'Send Tip'}
-                      </button>
+                              const seekTo = data?.currentTime ?? 0;
+                              if (seekTo > 1) {
+                                audioPlayer.playWithSeek(track, seekTo);
+                                if (data?.pausedAt !== null && data?.pausedAt !== undefined) {
+                                  setTimeout(() => audioPlayer.pause(), 500);
+                                }
+                              } else {
+                                audioPlayer.play(track);
+                              }
+                            });
+                            setTimeout(() => {
+                              if (!responded) {
+                                responded = true;
+                                socket.disconnect();
+                                audioPlayer.play(track);
+                              }
+                            }, 1500);
+                          }}
+                          className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 active:scale-[0.98] text-white py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-[0_0_25px_rgba(209,0,0,0.3)] hover:shadow-[0_0_35px_rgba(209,0,0,0.5)]"
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                          🎙 Tap to Listen Live
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2 text-green-400 text-xs font-semibold uppercase tracking-wider bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+                          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                          You're tuned in
+                        </div>
+                      )}
                     </div>
-                    {showTipPanel && (
-                      <div className="flex gap-2 items-center">
+                  )}
+
+                  {/* ── TIP ARTIST PANEL ── */}
+                  {!isAdmin && liveReviewActive.userId && user && liveReviewActive.userId !== user.id && (
+                    <div className="mt-4 border border-yellow-500/20 bg-yellow-500/5 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-yellow-400 text-sm font-semibold">💰 Tip {liveReviewActive.artistName}</span>
+                          <span className="text-white/30 text-[10px]">Balance: {coinBalanceData?.balance ?? 0} coins</span>
+                        </div>
+                        <button
+                          onClick={() => setShowTipPanel(v => !v)}
+                          className="text-[10px] text-yellow-400/70 hover:text-yellow-400 transition-colors"
+                        >
+                          {showTipPanel ? 'Cancel' : 'Send Tip'}
+                        </button>
+                      </div>
+                      {showTipPanel && (
+                        <div className="flex gap-2 items-center">
+                          <div className="flex gap-1">
+                            {[10, 25, 50, 100].map(amt => (
+                              <button
+                                key={amt}
+                                onClick={() => setTipAmount(String(amt))}
+                                className={`px-2 py-1 text-[10px] border rounded transition-all ${
+                                  tipAmount === String(amt)
+                                    ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
+                                    : 'border-white/10 text-white/40 hover:border-yellow-500/50 hover:text-yellow-400'
+                                }`}
+                              >
+                                {amt}
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="number" min="1" max="10000" value={tipAmount}
+                            onChange={e => setTipAmount(e.target.value)} placeholder="Custom"
+                            className="w-16 bg-transparent border border-white/20 rounded text-white text-[10px] px-2 py-1 focus:outline-none focus:border-yellow-500/50"
+                          />
+                          <button
+                            disabled={!tipAmount || parseInt(tipAmount) < 1 || tipMutation.isPending}
+                            onClick={() => {
+                              const coins = parseInt(tipAmount);
+                              if (!coins || coins < 1) return;
+                              tipMutation.mutate({ toUserId: liveReviewActive.userId!, coins });
+                            }}
+                            className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black text-[10px] font-semibold px-3 py-1 rounded transition-all"
+                          >
+                            {tipMutation.isPending ? '...' : 'Tip'}
+                          </button>
+                        </div>
+                      )}
+                      {!showTipPanel && (
                         <div className="flex gap-1">
                           {[10, 25, 50, 100].map(amt => (
                             <button
                               key={amt}
-                              onClick={() => setTipAmount(String(amt))}
-                              className={`px-2 py-1 text-xs border transition-all ${
-                                tipAmount === String(amt)
-                                  ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
-                                  : 'border-white/10 text-white/40 hover:border-yellow-500/50 hover:text-yellow-400'
-                              }`}
+                              onClick={() => {
+                                if (!liveReviewActive.userId) return;
+                                tipMutation.mutate({ toUserId: liveReviewActive.userId, coins: amt });
+                              }}
+                              disabled={tipMutation.isPending}
+                              className="px-3 py-1 text-[10px] border border-yellow-500/30 text-yellow-400/70 rounded hover:border-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-40"
                             >
-                              {amt}
+                              💰 {amt}
                             </button>
                           ))}
                         </div>
-                        <input
-                          type="number"
-                          min="1"
-                          max="10000"
-                          value={tipAmount}
-                          onChange={e => setTipAmount(e.target.value)}
-                          placeholder="Custom"
-                          className="w-20 bg-transparent border border-white/20 text-white text-xs px-2 py-1 focus:outline-none focus:border-yellow-500/50"
-                        />
-                        <button
-                          disabled={!tipAmount || parseInt(tipAmount) < 1 || tipMutation.isPending}
-                          onClick={() => {
-                            const coins = parseInt(tipAmount);
-                            if (!coins || coins < 1) return;
-                            tipMutation.mutate({ toUserId: liveReviewActive.userId!, coins });
-                          }}
-                          className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black text-xs font-semibold px-3 py-1 transition-all"
-                        >
-                          {tipMutation.isPending ? '...' : 'Tip'}
-                        </button>
-                      </div>
-                    )}
-                    {!showTipPanel && (
-                      <div className="flex gap-1">
-                        {[10, 25, 50, 100].map(amt => (
-                          <button
-                            key={amt}
-                            onClick={() => {
-                              if (!liveReviewActive.userId) return;
-                              tipMutation.mutate({ toUserId: liveReviewActive.userId, coins: amt });
-                            }}
-                            disabled={tipMutation.isPending}
-                            className="px-3 py-1 text-xs border border-yellow-500/30 text-yellow-400/70 hover:border-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-40"
-                          >
-                            💰 {amt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {liveReviewActive.youtubeUrl && !isAdmin && (() => {
-                  const ytId = extractYouTubeId(liveReviewActive.youtubeUrl!);
-                  return ytId ? (
-                    <div className="mt-3">
-                      <div className="flex items-center gap-2 mb-2 text-orange-400 text-xs font-semibold uppercase tracking-wider">
-                        <Radio className="w-3.5 h-3.5 animate-pulse" />
-                        Watch synced to admin’s position
-                      </div>
-                      <SyncedYouTubePlayer
-                        videoId={ytId}
-                        submissionId={liveReviewActive.submissionId!}
-                        isAdmin={false}
-                        initialCurrentTime={ytSyncState?.currentTime ?? null}
-                        initialUpdatedAt={ytSyncState?.updatedAt ?? null}
-                        className="border border-white/10"
-                      />
-                      <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-red-400 transition-colors mt-2">
-                        <ExternalLink className="w-3 h-3" /> Open on YouTube
-                      </a>
+                      )}
                     </div>
-                  ) : (
-                    <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-1">
-                      <ExternalLink className="w-3.5 h-3.5" /> Open on YouTube
-                    </a>
-                  );
-                })()}
+                  )}
+
+                  {liveReviewActive.youtubeUrl && !isAdmin && (() => {
+                    const ytId = extractYouTubeId(liveReviewActive.youtubeUrl!);
+                    return ytId ? (
+                      <div className="mt-4">
+                        <div className="flex items-center gap-2 mb-2 text-orange-400 text-[10px] font-semibold uppercase tracking-wider">
+                          <Radio className="w-3.5 h-3.5 animate-pulse" />
+                          Watch synced to admin's position
+                        </div>
+                        <SyncedYouTubePlayer
+                          videoId={ytId}
+                          submissionId={liveReviewActive.submissionId!}
+                          isAdmin={false}
+                          initialCurrentTime={ytSyncState?.currentTime ?? null}
+                          initialUpdatedAt={ytSyncState?.updatedAt ?? null}
+                          className="border border-white/10 rounded-lg overflow-hidden"
+                        />
+                        <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[10px] text-white/30 hover:text-red-400 transition-colors mt-2">
+                          <ExternalLink className="w-3 h-3" /> Open on YouTube
+                        </a>
+                      </div>
+                    ) : (
+                      <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-2">
+                        <ExternalLink className="w-3.5 h-3.5" /> Open on YouTube
+                      </a>
+                    );
+                  })()}
+                </div>
               </div>
             )}
 
             {/* ── FIRE / TRASH POLL ── */}
             {liveReviewActive && liveReviewActive.submissionId !== null && (
-              <div className="mb-3">
-                <FireTrashPoll
-                  submissionId={liveReviewActive.submissionId}
-                  songTitle={liveReviewActive.songTitle ?? ""}
-                  artistName={liveReviewActive.artistName ?? ""}
-                  fireCount={fire}
-                  trashCount={trash}
-                  myReaction={myReaction?.reaction ?? null}
-                  onVote={(reaction) => reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction })}
-                  isPending={reactMutation.isPending}
-                  user={user}
-                />
-              </div>
+              <FireTrashPoll
+                submissionId={liveReviewActive.submissionId}
+                songTitle={liveReviewActive.songTitle ?? ""}
+                artistName={liveReviewActive.artistName ?? ""}
+                fireCount={fire}
+                trashCount={trash}
+                myReaction={myReaction?.reaction ?? null}
+                onVote={(reaction) => reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction })}
+                isPending={reactMutation.isPending}
+                user={user}
+              />
             )}
 
             {/* Fallback poll for currentPlaying when liveReviewActive is not set */}
             {!liveReviewActive && currentPlaying && (
-              <div className="mb-3">
+              <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   <span className="font-['Anton'] text-lg uppercase">{currentPlaying.songTitle}</span>
@@ -1703,37 +1662,39 @@ export default function MusicReview() {
               </div>
             )}
 
-            {/* ── TABS: Queue / Submit / Skip Line ── */}
-            <div className="flex gap-0 mb-4 border border-white/10">
-             {(["queue", "history", "submit", "skip-info"] as SubmitTab[]).map(t => (
+            {/* ── TABS: Queue / History / Submit / Skip Line — Pill style ── */}
+            <div className="flex gap-1 p-1 bg-white/[0.03] border border-white/10 rounded-xl">
+              {(["queue", "history", "submit", "skip-info"] as SubmitTab[]).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold transition-all border-r last:border-r-0 border-white/10 ${
+                  className={`flex-1 py-2.5 text-[10px] uppercase tracking-widest font-semibold rounded-lg transition-all ${
                     tab === t
-                      ? "bg-red-600 text-white"
+                      ? t === "skip-info"
+                        ? "bg-yellow-500/20 text-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.1)]"
+                        : "bg-red-600/20 text-red-400 shadow-[0_0_10px_rgba(209,0,0,0.1)]"
                       : t === "skip-info"
-                      ? "text-yellow-500/70 hover:text-yellow-400"
-                      : "text-white/40 hover:text-white"
+                      ? "text-yellow-500/60 hover:text-yellow-400 hover:bg-yellow-500/5"
+                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.03]"
                   }`}
                 >
-                  {t === "queue" ? `Queue (${pendingQueue.length})` : t === "history" ? "History" : t === "submit" ? "Submit Track" : "⚡ Skip Line ($10)"}
+                  {t === "queue" ? `Queue (${pendingQueue.length})` : t === "history" ? "History" : t === "submit" ? "Submit" : "⚡ Skip ($10)"}
                 </button>
               ))}
             </div>
 
-            {/* ── QUEUE VIEW ── */}
+            {/* ── QUEUE TAB ── */}
             {tab === "queue" && (
               <div>
                 {isLoading ? (
                   <div className="text-center py-16 text-white/30 text-sm">Loading queue...</div>
                 ) : pendingQueue.length === 0 ? (
-                  <div className="text-center py-12 border border-white/10 bg-white/[0.02]">
+                  <div className="text-center py-12 border border-white/10 bg-white/[0.02] rounded-xl">
                     <div className="font-['Anton'] text-2xl uppercase mb-2">Queue is Empty</div>
                     <p className="text-white/40 text-sm mb-5">Be the first to submit your track!</p>
                     <button
                       onClick={() => setTab("submit")}
-                      className="bg-red-600 hover:bg-red-700 text-white px-8 py-2.5 text-xs font-semibold uppercase tracking-widest transition-all"
+                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-8 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(209,0,0,0.2)]"
                     >
                       Submit Your Track →
                     </button>
@@ -1743,17 +1704,17 @@ export default function MusicReview() {
                     {pendingQueue.map((sub, i) => (
                       <div
                         key={sub.id}
-                        className={`flex items-center gap-3 p-3 border transition-all ${
+                        className={`flex items-center gap-3 p-3 border rounded-xl transition-all hover:translate-x-0.5 ${
                           sub.status === "playing"
-                            ? "border-red-600/60 bg-red-600/10"
+                            ? "border-red-600/50 bg-gradient-to-r from-red-600/10 to-transparent shadow-[0_0_15px_rgba(209,0,0,0.08)]"
                             : sub.skipPaymentConfirmed
                             ? "border-yellow-500/40 bg-yellow-500/5"
-                            : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                            : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
                         }`}
                       >
                         {/* Position number */}
-                        <div className={`w-8 h-8 flex items-center justify-center font-['Anton'] text-lg flex-shrink-0 ${
-                          sub.status === "playing" ? "text-red-500" : "text-white/20"
+                        <div className={`w-7 h-7 flex items-center justify-center font-['Anton'] text-base flex-shrink-0 rounded-lg ${
+                          sub.status === "playing" ? "text-red-500 bg-red-600/20" : "text-white/20 bg-white/[0.04]"
                         }`}>
                           {sub.status === "playing" ? "▶" : i + 1}
                         </div>
@@ -1762,18 +1723,18 @@ export default function MusicReview() {
                           <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
                           <div className="text-white/50 text-xs truncate">
                             <ArtistLink artistName={sub.artistName} userId={sub.userId} />
-                            {sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-400 font-bold">⚡ Skip Confirmed</span>}
-                            {sub.skippedLine && !sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-600">⚡ Pending Payment</span>}
+                            {sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-400 font-bold">⚡ Skip</span>}
+                            {sub.skippedLine && !sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-600">⚡ Pending</span>}
                           </div>
                         </div>
                         {/* Status + reactions */}
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <StatusBadge status={sub.status} />
-                          <span className="flex items-center gap-1 text-xs text-white/30">
+                          <span className="flex items-center gap-0.5 text-[10px] text-white/30">
                             <Flame className="w-3 h-3 text-orange-500/60" />
                             {sub.fireCount}
                           </span>
-                          <span className="flex items-center gap-1 text-xs text-white/30">
+                          <span className="flex items-center gap-0.5 text-[10px] text-white/30">
                             <ThumbsDown className="w-3 h-3 text-blue-500/60" />
                             {sub.trashCount}
                           </span>
@@ -1794,24 +1755,91 @@ export default function MusicReview() {
               </div>
             )}
 
+            {/* ── HISTORY TAB ── */}
+            {tab === "history" && (
+              <div>
+                {!reviewedTracks || reviewedTracks.length === 0 ? (
+                  <div className="text-center py-12 border border-white/10 bg-white/[0.02] rounded-xl">
+                    <div className="font-['Anton'] text-xl uppercase mb-2">No History Yet</div>
+                    <p className="text-white/40 text-sm">Tracks will appear here after they've been reviewed.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {reviewedTracks.map((sub: ReviewSubmission) => (
+                      <div
+                        key={sub.id}
+                        className="flex items-center gap-3 p-3 border border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04] rounded-xl transition-all"
+                      >
+                        {sub.fileUrl ? (
+                          <AudioPlayButton
+                            url={sub.fileUrl}
+                            urlSource="queue"
+                            title={sub.songTitle}
+                            artist={sub.artistName}
+                            submissionId={sub.id}
+                            sourcePage="Music Review"
+                            sourceUrl="/review"
+                            size="md"
+                          />
+                        ) : sub.youtubeUrl ? (
+                          <a
+                            href={sub.youtubeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-9 h-9 flex items-center justify-center flex-shrink-0 border border-red-600/50 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-all"
+                            title="Open on YouTube"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        ) : (
+                          <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 border border-white/10 text-white/20 rounded-lg">
+                            <Music className="w-3.5 h-3.5" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
+                          <div className="text-white/40 text-xs truncate">
+                            <ArtistLink artistName={sub.artistName} userId={sub.userId} />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0 text-[10px] text-white/30">
+                          <span>🔥 {sub.fireCount}</span>
+                          <span>🗑️ {sub.trashCount}</span>
+                        </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => requeueFromHistoryMutation.mutate({ id: sub.id })}
+                            disabled={requeueFromHistoryMutation.isPending}
+                            className="flex items-center gap-1 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 rounded px-2 py-1 transition-colors flex-shrink-0 disabled:opacity-40"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Re-q
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── SUBMIT FORM ── */}
             {tab === "submit" && (
               <div>
                 {submitted ? (
-                  <div className="text-center py-12 border border-green-500/30 bg-green-500/5">
+                  <div className="text-center py-12 border border-green-500/30 bg-green-500/5 rounded-xl">
                     <div className="text-4xl mb-3">✅</div>
                     <div className="font-['Anton'] text-3xl uppercase mb-2">You're in the Queue!</div>
                     <p className="text-white/50 text-sm mb-5">We'll review your track during the next live session.</p>
                     <div className="flex gap-3 justify-center">
                       <button
                         onClick={() => { setSubmitted(false); setForm({ songTitle: "", youtubeUrl: "", contactInfo: "", wantsSkip: false }); setAudioFile(null); }}
-                        className="border border-white/20 text-white/60 hover:text-white px-6 py-2.5 text-xs uppercase tracking-widest transition-colors"
+                        className="border border-white/20 text-white/60 hover:text-white px-6 py-2.5 rounded-lg text-xs uppercase tracking-widest transition-colors"
                       >
                         Submit Another
                       </button>
                       <button
                         onClick={() => setTab("queue")}
-                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 text-xs uppercase tracking-widest transition-all"
+                        className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-2.5 rounded-lg text-xs uppercase tracking-widest transition-all"
                       >
                         View Queue
                       </button>
@@ -1820,11 +1848,11 @@ export default function MusicReview() {
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-4">
                     {/* File / YouTube toggle */}
-                    <div className="flex gap-0 border border-white/10">
+                    <div className="flex gap-1 p-1 bg-white/[0.03] border border-white/10 rounded-xl">
                       {(["file", "youtube"] as const).map(t => (
                         <button key={t} type="button" onClick={() => setSubmitType(t)}
-                          className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold transition-all ${
-                            submitType === t ? "bg-red-600 text-white" : "text-white/40 hover:text-white"
+                          className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold rounded-lg transition-all ${
+                            submitType === t ? "bg-red-600/20 text-red-400" : "text-white/40 hover:text-white/70"
                           }`}>
                           {t === "youtube" ? "YouTube Link" : "Upload File"}
                         </button>
@@ -1832,34 +1860,34 @@ export default function MusicReview() {
                     </div>
 
                     {/* Submitting as */}
-                    <div className="bg-white/5 border border-white/10 px-4 py-2.5 flex items-center justify-between">
-                      <span className="text-white/30 text-xs uppercase tracking-wider">Submitting as</span>
+                    <div className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-white/30 text-[10px] uppercase tracking-wider">Submitting as</span>
                       <span className="text-white font-semibold text-sm">{user?.artistName || user?.name || "Unknown Artist"}</span>
                     </div>
 
                     {/* Song title */}
                     <div>
-                      <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">Song Title *</label>
+                      <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">Song Title *</label>
                       <input type="text" value={form.songTitle}
                         onChange={e => setForm(f => ({ ...f, songTitle: e.target.value }))}
                         placeholder="Track name" required
-                        className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
+                        className="w-full bg-white/5 border border-white/10 rounded-lg text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
                     </div>
 
                     {/* File or YouTube */}
                     {submitType === "youtube" ? (
                       <div>
-                        <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">YouTube Link *</label>
+                        <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">YouTube Link *</label>
                         <input type="url" value={form.youtubeUrl}
                           onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))}
                           placeholder="https://youtube.com/watch?v=..." required
-                          className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
+                          className="w-full bg-white/5 border border-white/10 rounded-lg text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
                       </div>
                     ) : (
                       <div>
-                        <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">Audio File * (MP3, WAV, M4A — max 20MB)</label>
+                        <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">Audio File * (MP3, WAV, M4A — max 20MB)</label>
                         <div
-                          className={`border-2 border-dashed p-6 text-center cursor-pointer transition-all ${
+                          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
                             audioFile ? "border-green-500/50 bg-green-500/5" : "border-white/20 hover:border-red-600/50"
                           }`}
                           onClick={() => fileInputRef.current?.click()}
@@ -1891,25 +1919,25 @@ export default function MusicReview() {
 
                     {/* Contact */}
                     <div>
-                      <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">Instagram / Contact (Optional)</label>
+                      <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">Instagram / Contact (Optional)</label>
                       <input type="text" value={form.contactInfo}
                         onChange={e => setForm(f => ({ ...f, contactInfo: e.target.value }))}
                         placeholder="@yourinstagram or phone number"
-                        className="w-full bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
+                        className="w-full bg-white/5 border border-white/10 rounded-lg text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
                     </div>
 
                     {/* Skip the line */}
                     <div
-                      className={`border p-4 cursor-pointer transition-all ${form.wantsSkip ? "border-yellow-500/50 bg-yellow-500/5" : "border-white/10 hover:border-yellow-500/30"}`}
+                      className={`border rounded-xl p-4 cursor-pointer transition-all ${form.wantsSkip ? "border-yellow-500/50 bg-yellow-500/5" : "border-white/10 hover:border-yellow-500/30"}`}
                       onClick={() => setForm(f => ({ ...f, wantsSkip: !f.wantsSkip }))}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 border-2 flex items-center justify-center flex-shrink-0 ${form.wantsSkip ? "border-yellow-500 bg-yellow-500" : "border-white/30"}`}>
+                        <div className={`w-5 h-5 border-2 rounded flex items-center justify-center flex-shrink-0 ${form.wantsSkip ? "border-yellow-500 bg-yellow-500" : "border-white/30"}`}>
                           {form.wantsSkip && <span className="text-black text-xs font-bold">✓</span>}
                         </div>
                         <div>
                           <div className="font-semibold text-sm text-yellow-400">⚡ Skip the Line — $10</div>
-                          <div className="text-white/40 text-xs mt-0.5">
+                          <div className="text-white/40 text-[10px] mt-0.5">
                             Move to the front. Send $10 to {CASHAPP} / PayPal: {PAYPAL} / Apple Pay: {APPLEPAY}
                           </div>
                         </div>
@@ -1917,14 +1945,14 @@ export default function MusicReview() {
                     </div>
 
                     {!user && (
-                      <a href={getLoginUrl()} className="flex items-center justify-center gap-2 w-full border border-white/20 text-white/60 hover:text-white py-3 text-xs uppercase tracking-widest transition-colors">
+                      <a href={getLoginUrl()} className="flex items-center justify-center gap-2 w-full border border-white/20 text-white/60 hover:text-white rounded-lg py-3 text-xs uppercase tracking-widest transition-colors">
                         <LogIn className="w-3.5 h-3.5" /> Login to Submit
                       </a>
                     )}
 
                     {user && (
                       <button type="submit" disabled={submitting}
-                        className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3.5 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(209,0,0,0.4)]">
+                        className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white py-3.5 rounded-xl text-sm font-semibold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(209,0,0,0.2)]">
                         {submitting ? "Submitting..." : "Submit to Queue →"}
                       </button>
                     )}
@@ -1936,68 +1964,54 @@ export default function MusicReview() {
             {/* ── LIMIT REACHED / PAYWALL MODAL ── */}
             {limitReachedData && !paidSubmitSuccess && (
               <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-[#111] border border-red-600/60 rounded-lg p-8 max-w-lg w-full my-4">
+                <div className="bg-[#111] border border-red-600/60 rounded-xl p-8 max-w-lg w-full my-4">
                   <div className="text-center mb-6">
                     <div className="text-5xl mb-3">🔒</div>
                     <h2 className="font-['Anton'] text-3xl text-red-600 mb-2 uppercase">2 Free Submissions Used</h2>
-                    <p className="text-white/60 text-sm">You've hit your daily limit of 2 free submissions. Submit additional songs for a fee — your song enters the queue once payment is confirmed.</p>
+                    <p className="text-white/60 text-sm">You've hit your daily limit. Submit additional songs for a fee.</p>
                   </div>
 
-                  {/* Payment options */}
                   <div className="space-y-3 mb-6">
-                    <button
-                      onClick={() => handlePaidSubmit('reentry5')}
-                      disabled={submitting}
-                      className="w-full bg-red-600/20 border border-red-600 hover:bg-red-600/40 text-white py-4 px-4 rounded transition-all"
-                    >
+                    <button onClick={() => handlePaidSubmit('reentry5')} disabled={submitting}
+                      className="w-full bg-red-600/20 border border-red-600 hover:bg-red-600/40 text-white py-4 px-4 rounded-xl transition-all">
                       <div className="font-['Anton'] text-xl text-red-400 mb-1">$5 REENTRY</div>
                       <div className="text-white/60 text-xs">Submit 1 more song — enters queue in normal position</div>
                     </button>
-                    <button
-                      onClick={() => handlePaidSubmit('reentry10')}
-                      disabled={submitting}
-                      className="w-full bg-orange-600/20 border border-orange-500 hover:bg-orange-600/40 text-white py-4 px-4 rounded transition-all"
-                    >
+                    <button onClick={() => handlePaidSubmit('reentry10')} disabled={submitting}
+                      className="w-full bg-orange-600/20 border border-orange-500 hover:bg-orange-600/40 text-white py-4 px-4 rounded-xl transition-all">
                       <div className="font-['Anton'] text-xl text-orange-400 mb-1">$10 REENTRY</div>
                       <div className="text-white/60 text-xs">Submit 1 more song — enters queue in normal position</div>
                     </button>
-                    <button
-                      onClick={() => handlePaidSubmit('skip')}
-                      disabled={submitting}
-                      className="w-full bg-yellow-600/20 border border-yellow-500 hover:bg-yellow-600/40 text-white py-4 px-4 rounded transition-all"
-                    >
+                    <button onClick={() => handlePaidSubmit('skip')} disabled={submitting}
+                      className="w-full bg-yellow-600/20 border border-yellow-500 hover:bg-yellow-600/40 text-white py-4 px-4 rounded-xl transition-all">
                       <div className="font-['Anton'] text-xl text-yellow-400 mb-1">$15 REENTRY + SKIP THE LINE</div>
-                      <div className="text-white/60 text-xs">Submit 1 more song — jumps to front of queue after admin approves skip</div>
+                      <div className="text-white/60 text-xs">Submit 1 more song — jumps to front of queue</div>
                     </button>
                   </div>
 
-                  {/* Payment instructions */}
-                  <div className="border border-white/10 bg-white/5 rounded p-4 mb-6">
-                    <p className="text-white/50 text-xs uppercase tracking-widest mb-3">Send payment to any of the following:</p>
+                  <div className="border border-white/10 bg-white/5 rounded-xl p-4 mb-6">
+                    <p className="text-white/50 text-[10px] uppercase tracking-widest mb-3">Send payment to:</p>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-black/30 rounded p-3">
+                      <div className="bg-black/30 rounded-lg p-3">
                         <div className="text-lg mb-1">💸</div>
-                        <div className="text-green-400 text-xs font-bold">CashApp</div>
-                        <div className="text-white text-xs mt-1 font-mono">{CASHAPP}</div>
+                        <div className="text-green-400 text-[10px] font-bold">CashApp</div>
+                        <div className="text-white text-[10px] mt-1 font-mono">{CASHAPP}</div>
                       </div>
-                      <div className="bg-black/30 rounded p-3">
+                      <div className="bg-black/30 rounded-lg p-3">
                         <div className="text-lg mb-1">🅿</div>
-                        <div className="text-blue-400 text-xs font-bold">PayPal</div>
-                        <div className="text-white text-xs mt-1 font-mono">{PAYPAL}</div>
+                        <div className="text-blue-400 text-[10px] font-bold">PayPal</div>
+                        <div className="text-white text-[10px] mt-1 font-mono">{PAYPAL}</div>
                       </div>
-                      <div className="bg-black/30 rounded p-3">
+                      <div className="bg-black/30 rounded-lg p-3">
                         <div className="text-lg mb-1">🍎</div>
-                        <div className="text-white/80 text-xs font-bold">Apple Pay</div>
-                        <div className="text-white text-xs mt-1 font-mono">{APPLEPAY}</div>
+                        <div className="text-white/80 text-[10px] font-bold">Apple Pay</div>
+                        <div className="text-white text-[10px] mt-1 font-mono">{APPLEPAY}</div>
                       </div>
                     </div>
-                    <p className="text-white/40 text-xs mt-3 text-center">Include your artist name in the payment note. Your submission will be activated once payment is verified.</p>
                   </div>
 
-                  <button
-                    onClick={() => { setLimitReachedData(null); setPendingFormData(null); }}
-                    className="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded transition-all text-sm"
-                  >
+                  <button onClick={() => { setLimitReachedData(null); setPendingFormData(null); }}
+                    className="w-full border border-white/20 text-white/60 hover:text-white py-3 rounded-xl text-xs uppercase tracking-widest transition-colors">
                     Cancel
                   </button>
                 </div>
@@ -2007,13 +2021,13 @@ export default function MusicReview() {
             {/* ── PAID SUBMISSION SUCCESS ── */}
             {paidSubmitSuccess && (
               <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-                <div className="bg-[#111] border border-green-600/60 rounded-lg p-8 max-w-md w-full text-center">
+                <div className="bg-[#111] border border-green-600/60 rounded-xl p-8 max-w-md w-full text-center">
                   <div className="text-5xl mb-4">✅</div>
                   <h2 className="font-['Anton'] text-3xl text-green-400 mb-3 uppercase">Submission Received!</h2>
-                  <p className="text-white/70 mb-2">Your song has been submitted and is <span className="text-yellow-400 font-semibold">pending payment confirmation</span>.</p>
-                  <p className="text-white/50 text-sm mb-6">Once we verify your payment, your track will be activated in the queue. This usually takes a few minutes to a few hours.</p>
-                  <div className="bg-white/5 border border-white/10 rounded p-4 mb-6 text-left">
-                    <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Payment details:</p>
+                  <p className="text-white/70 mb-2">Your song is <span className="text-yellow-400 font-semibold">pending payment confirmation</span>.</p>
+                  <p className="text-white/50 text-sm mb-6">Once verified, your track will be activated in the queue.</p>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 text-left">
+                    <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">Payment details:</p>
                     <div className="text-white text-sm space-y-1">
                       <div>💸 CashApp: <span className="font-mono text-green-400">{CASHAPP}</span></div>
                       <div>🅿 PayPal: <span className="font-mono text-blue-400">{PAYPAL}</span></div>
@@ -2023,8 +2037,7 @@ export default function MusicReview() {
                   </div>
                   <button
                     onClick={() => { setPaidSubmitSuccess(null); setLimitReachedData(null); refetch(); }}
-                    className="w-full bg-green-600 hover:bg-green-500 text-white py-3 px-4 rounded transition-all font-semibold"
-                  >
+                    className="w-full bg-green-600 hover:bg-green-500 text-white py-3 px-4 rounded-xl transition-all font-semibold">
                     Got it!
                   </button>
                 </div>
@@ -2033,11 +2046,11 @@ export default function MusicReview() {
 
             {/* ── SKIP INFO ── */}
             {tab === "skip-info" && (
-              <div className="border border-yellow-500/30 bg-yellow-500/5 p-8">
+              <div className="border border-yellow-500/30 bg-gradient-to-b from-yellow-500/5 to-transparent rounded-xl p-8">
                 <div className="text-center mb-7">
                   <div className="text-4xl mb-3">⚡</div>
                   <h2 className="font-['Anton'] text-4xl uppercase mb-2">Skip the <span className="text-yellow-400">Line</span></h2>
-                  <p className="text-white/50 text-sm">Move your submission to the front of the review queue for just $10.</p>
+                  <p className="text-white/50 text-sm">Move your submission to the front for just $10.</p>
                 </div>
                 <div className="grid md:grid-cols-3 gap-3 mb-7">
                   {[
@@ -2045,16 +2058,16 @@ export default function MusicReview() {
                     { label: "PayPal", value: PAYPAL, icon: "🅿" },
                     { label: "Apple Pay", value: APPLEPAY, icon: "🍎" },
                   ].map(p => (
-                    <div key={p.label} className="border border-yellow-500/20 bg-black/30 p-4 text-center">
+                    <div key={p.label} className="border border-yellow-500/20 bg-black/30 rounded-xl p-4 text-center">
                       <div className="text-2xl mb-2">{p.icon}</div>
-                      <div className="text-yellow-400 text-xs uppercase tracking-widest mb-1">{p.label}</div>
+                      <div className="text-yellow-400 text-[10px] uppercase tracking-widest mb-1">{p.label}</div>
                       <div className="font-['Anton'] text-lg text-white">{p.value}</div>
                     </div>
                   ))}
                 </div>
                 <button
                   onClick={() => { setTab("submit"); setForm(f => ({ ...f, wantsSkip: true })); }}
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 text-sm font-bold uppercase tracking-widest transition-all"
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all"
                 >
                   Submit & Skip the Line →
                 </button>
@@ -2062,262 +2075,168 @@ export default function MusicReview() {
             )}
           </div>
 
-          {/* ── RIGHT COLUMN: Chat + Voice ── */}
-          <div className="flex flex-col gap-4">
+          {/* ── RIGHT COLUMN ── */}
+          <div className="space-y-4 hidden lg:block">
 
-            {/* ── Judge Cams (compact strip) ── */}
-            {activeBroadcasts && activeBroadcasts.length > 0 && (
-              <div className="border border-green-500/20 bg-green-500/5">
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-green-500/10">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-green-400 text-[10px] uppercase tracking-widest font-bold">Judges Live ({activeBroadcasts.length})</span>
+            {/* Judge Broadcast Viewers */}
+            {activeBroadcasts.filter((b: any) => b.userId !== user?.id).length > 0 && (
+              <div className="space-y-2">
+                <div className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-semibold flex items-center gap-1.5">
+                  <Video className="w-3 h-3" />
+                  Live Judges
                 </div>
-                <div className="grid grid-cols-2 gap-1 p-1">
-                  {activeBroadcasts.map((broadcast) => (
-                    <JudgeBroadcastCard key={broadcast.id} broadcast={broadcast} />
-                  ))}
-                </div>
+                {activeBroadcasts.filter((b: any) => b.userId !== user?.id).map((b: any) => (
+                  <JudgeBroadcastCard key={b.id} broadcast={b} />
+                ))}
               </div>
             )}
 
             {/* Live Chat */}
-            <div className="border border-white/10 bg-white/[0.02] flex flex-col" style={{ height: "500px" }}>
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
-                <span className="text-white/60 text-xs uppercase tracking-widest font-semibold">Live Chat</span>
-                <span className={`flex items-center gap-1.5 text-xs ${chatConnected ? "text-green-400" : "text-white/20"}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${chatConnected ? "bg-green-400" : "bg-white/20"}`} />
-                  {chatConnected ? "Live" : "Connecting..."}
-                </span>
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden flex flex-col" style={{ height: '380px' }}>
+              {/* Chat header */}
+              <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10 bg-white/[0.03]">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${chatConnected ? "bg-green-500" : "bg-red-500"}`} />
+                  <span className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-semibold">Live Chat</span>
+                </div>
+                <span className="text-white/20 text-[10px]">{chatMessages.length} msg{chatMessages.length !== 1 ? "s" : ""}</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {chatMessages.length === 0 && (
-                  <p className="text-white/20 text-xs text-center py-6">No messages yet — be the first!</p>
+                  <div className="text-center text-white/20 text-xs py-8">No messages yet — say something!</div>
                 )}
-                {chatMessages.map(msg => (
-                  <div key={msg.id} className="text-xs leading-relaxed">
-                    <span className={`font-semibold ${msg.isAdmin ? "text-red-400" : "text-white/70"}`}>
-                      {msg.isAdmin && <span className="text-red-500 text-[10px] font-bold uppercase mr-1">[HOST]</span>}
-                      {msg.userId ? (
-                        <Link href={`/profile/${msg.userId}`} className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</Link>
-                      ) : (
-                        <ArtistStatModal artistName={msg.username}>
-                          <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
-                        </ArtistStatModal>
-                      )}
-                      {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}
-                      {msg.userId && <span className="ml-1"><UserBadges userId={msg.userId} size="xs" maxVisible={2} /></span>}
-                      <span className="text-white/30">:</span>
-                    </span>{" "}
-                    <span className="text-white/80">{msg.message}</span>
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className="text-xs">
+                    {msg.type === "system" ? (
+                      <div className="text-white/20 text-center text-[10px] py-1">{msg.text}</div>
+                    ) : (
+                      <div>
+                        <span className={`font-semibold ${
+                          msg.role === "admin" ? "text-red-400" : msg.role === "judge" ? "text-yellow-400" : "text-white/70"
+                        }`}>
+                          {msg.username}
+                          {msg.role === "admin" && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
+                          {msg.role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
+                        </span>
+                        <span className="text-white/50 ml-1.5">{msg.text}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div ref={chatBottomRef} />
               </div>
-              <div className="border-t border-white/10 flex gap-1.5 p-2 flex-shrink-0">
+
+              {/* Chat input */}
+              <div className="border-t border-white/10 p-2">
                 {user ? (
-                  <>
+                  <div className="flex gap-1.5">
                     <input
-                      type="text" value={chatInput}
+                      type="text"
+                      value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && handleSendChat()}
-                      placeholder="Say something..."
-                      maxLength={500}
-                      className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20"
+                      placeholder="Type a message..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/40 placeholder-white/20"
                     />
-                    <button onClick={handleSendChat} disabled={!chatInput.trim()}
-                      className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-3 py-2 transition-colors">
+                    <button
+                      onClick={handleSendChat}
+                      disabled={!chatInput.trim()}
+                      className="bg-red-600/20 border border-red-600/40 text-red-400 hover:bg-red-600/30 disabled:opacity-30 rounded-lg px-3 transition-all"
+                    >
                       <Send className="w-3.5 h-3.5" />
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <a href={getLoginUrl()} className="flex-1 flex items-center justify-center gap-2 text-white/40 hover:text-white text-xs py-2 transition-colors">
-                    <LogIn className="w-3.5 h-3.5" /> Login to chat
+                  <a href={getLoginUrl()} className="flex items-center justify-center gap-2 w-full border border-white/15 text-white/40 hover:text-white rounded-lg py-2 text-[10px] uppercase tracking-widest transition-colors">
+                    <LogIn className="w-3 h-3" /> Login to Chat
                   </a>
                 )}
               </div>
             </div>
 
-            {/* Voice Chat Panel */}
-            <div className="border border-white/10 bg-white/[0.02]">
-              <button
-                onClick={() => setShowVoicePanel(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 text-xs uppercase tracking-widest font-semibold text-white/50 hover:text-white transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Mic className="w-3.5 h-3.5" />
-                  Voice Chat
-                  <span className={`w-1.5 h-1.5 rounded-full ${audioRoom.isConnected ? "bg-green-400 animate-pulse" : "bg-white/20"}`} />
-                  <span className="text-white/30 normal-case font-normal">{audioRoom.participants.length} in room</span>
-                </div>
-                {showVoicePanel ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-
-              {showVoicePanel && (
-                <div className="px-4 pb-4 border-t border-white/10 pt-3">
-                  {audioRoom.error && (
-                    <div className="text-red-400 text-xs bg-red-900/20 border border-red-600/20 p-2 mb-3">{audioRoom.error}</div>
+            {/* Voice Room Panel */}
+            {user && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10 bg-white/[0.03]">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-3 h-3 text-white/40" />
+                    <span className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-semibold">Voice Room</span>
+                  </div>
+                  {voiceJoined && (
+                    <span className="flex items-center gap-1 text-green-400 text-[10px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> Connected
+                    </span>
                   )}
-                  {!user ? (
-                    <a href={getLoginUrl()} className="block w-full text-center text-xs bg-red-600 hover:bg-red-700 text-white py-2 uppercase tracking-widest transition-colors">
-                      Login to Join Voice
-                    </a>
-                  ) : !voiceJoined && !isAdmin ? (
-                    <button onClick={() => setVoiceJoined(true)} className="w-full bg-red-600 hover:bg-red-700 text-white py-2 text-xs font-semibold uppercase tracking-widest transition-colors">
-                      Join Voice Chat
+                </div>
+                <div className="p-3">
+                  {!voiceJoined ? (
+                    <button
+                      onClick={() => setVoiceJoined(true)}
+                      className="w-full border border-white/15 text-white/50 hover:text-white hover:border-white/30 rounded-lg py-2.5 text-[10px] uppercase tracking-widest transition-all"
+                    >
+                      🎤 Join Voice Room
                     </button>
                   ) : (
-                    <>
-                      <div className="space-y-1 mb-3 max-h-28 overflow-y-auto">
-                        {audioRoom.participants.length === 0 && <p className="text-white/20 text-xs text-center py-2">No one in voice yet</p>}
-                        {audioRoom.participants.map(p => (
-                          <div key={p.userId || p.socketId} className="flex items-center justify-between py-1 border-b border-white/5">
-                            <div className="flex items-center gap-1.5">
+                    <div className="space-y-2">
+                      <button
+                        onClick={audioRoom.toggleMic}
+                        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest font-semibold border transition-all ${
+                          audioRoom.isMuted
+                            ? "border-white/15 text-white/40 hover:border-white/30"
+                            : "border-green-500/50 bg-green-500/10 text-green-400"
+                        }`}
+                      >
+                        {audioRoom.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                        {audioRoom.isMuted ? "Unmute" : "Muted"}
+                      </button>
+                      <button
+                        onClick={() => { setVoiceJoined(false); }}
+                        className="w-full border border-red-500/30 text-red-400/60 hover:text-red-400 hover:border-red-500/50 rounded-lg py-2 text-[10px] uppercase tracking-widest transition-all"
+                      >
+                        Leave Voice
+                      </button>
+                      {/* Participants */}
+                      {audioRoom.participants.filter(p => p.role !== "viewer").length > 0 && (
+                        <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
+                          {audioRoom.participants.filter(p => p.role !== "viewer").map(p => (
+                            <div key={p.socketId} className="flex items-center gap-2 text-[10px]">
                               <span className={`w-1.5 h-1.5 rounded-full ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
-                              <span className="text-xs text-white/70">{p.username}</span>
-                              {p.role === "admin" && <span className="text-[10px] text-red-400 font-bold uppercase">HOST</span>}
+                              <span className="text-white/60">{p.username}</span>
+                              <span className={`ml-auto uppercase font-bold ${
+                                p.role === "admin" ? "text-red-400" : p.role === "judge" ? "text-yellow-400" : "text-white/30"
+                              }`}>{p.role}</span>
                             </div>
-                            {isAdmin && (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => audioRoom.adminToggleParticipantMic(p.socketId, !p.micActive)}
-                                  className={`text-[10px] px-1.5 py-0.5 border transition-colors ${p.micActive ? "border-red-600/40 text-red-400 hover:bg-red-600/20" : "border-green-600/40 text-green-400 hover:bg-green-600/20"}`}
-                                >
-                                  {p.micActive ? "Mute" : "Unmute"}
-                                </button>
-                                <button
-                                  onClick={() => audioRoom.kickParticipant(p.socketId)}
-                                  className="text-[10px] px-1.5 py-0.5 border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors"
-                                >
-                                  Kick
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex gap-2 mb-2">
-                        <button
-                          onClick={audioRoom.toggleMic}
-                          className={`flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border transition-colors ${
-                            audioRoom.isMuted ? "border-white/20 text-white/40 hover:border-green-600 hover:text-green-400" : "border-green-600 text-green-400 hover:bg-green-600/20"
-                          }`}
-                        >
-                          {audioRoom.isMuted ? <><MicOff className="w-3 h-3 inline mr-1" />Mic Off</> : <><Mic className="w-3 h-3 inline mr-1" />Mic On</>}
-                        </button>
-                        {!isAdmin && (
-                          <button onClick={() => setVoiceJoined(false)} className="flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider border border-white/20 text-white/40 hover:border-red-600 hover:text-red-400 transition-colors">
-                            Leave
-                          </button>
-                        )}
-                      </div>
-                      {/* Voice mix volume */}
-                      <div className="pt-2 border-t border-white/10">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-white/40 uppercase tracking-widest">Voice Mix Volume</span>
-                          <span className="text-[10px] text-white/60 font-mono">{Math.round(audioRoom.voiceVolume * 100)}%</span>
+                          ))}
                         </div>
-                        <input
-                          type="range" min="0" max="1" step="0.05"
-                          value={audioRoom.voiceVolume}
-                          onChange={e => audioRoom.setVoiceVolume(parseFloat(e.target.value))}
-                          className="w-full h-1.5 accent-red-600 cursor-pointer"
-                          title="Voice chat volume (does not affect radio)"
-                        />
-                      </div>
-                    </>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Line Skip Credits */}
+            {user && lineSkipCreditsData && lineSkipCreditsData.credits > 0 && (
+              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-yellow-400 text-[10px] uppercase tracking-wider font-bold">⚡ Line Skip Credits</span>
+                  <span className="text-yellow-400 font-['Anton'] text-lg">{lineSkipCreditsData.credits}</span>
+                </div>
+                <button
+                  onClick={() => useLineSkipMutation.mutate()}
+                  disabled={useLineSkipMutation.isPending || pendingQueue.filter(s => s.userId === user.id && s.status === "pending").length === 0}
+                  className="w-full border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 rounded-lg py-2 text-[10px] uppercase tracking-widest font-semibold transition-all disabled:opacity-30"
+                >
+                  Use Credit — Skip to Front
+                </button>
+              </div>
+            )}
           </div>
+
         </div>
       </div>
-
-      {/* ── PREVIOUSLY REVIEWED TRACKS ── */}
-      {reviewedTracks && reviewedTracks.length > 0 && (
-        <section className="border-t border-white/10 py-10">
-          <div className="container">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-1 h-8 bg-red-600" />
-              <div>
-                <h2 className="font-['Anton'] text-2xl uppercase">Previously Submitted Tracks</h2>
-                <p className="text-white/40 text-xs uppercase tracking-widest mt-0.5">Tracks reviewed on air — play them anytime</p>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {reviewedTracks.map((sub: ReviewSubmission) => (
-                <div
-                  key={sub.id}
-                  className="border border-white/10 bg-white/[0.02] hover:border-red-600/30 hover:bg-white/[0.04] transition-all duration-200 p-4 flex items-center gap-3"
-                >
-                  {sub.fileUrl ? (
-                    <AudioPlayButton
-                      url={sub.fileUrl}
-                      urlSource="queue"
-                      title={sub.songTitle}
-                      artist={sub.artistName}
-                      submissionId={sub.id}
-                      sourcePage="Music Review"
-                      sourceUrl="/review"
-                      size="md"
-                    />
-                  ) : sub.youtubeUrl ? (
-                    <a
-                      href={sub.youtubeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-10 h-10 flex items-center justify-center flex-shrink-0 border border-red-600/50 text-red-500 hover:bg-red-600 hover:text-white transition-all"
-                      title="Open on YouTube"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  ) : (
-                    <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 border border-white/10 text-white/20">
-                      <Music className="w-4 h-4" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
-                    <div className="text-white/40 text-xs truncate">
-                      <ArtistLink artistName={sub.artistName} userId={sub.userId} />
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-white/30">
-                      <span>🔥 {sub.fireCount}</span>
-                      <span>🗑️ {sub.trashCount}</span>
-                    </div>
-                  </div>
-                  {isAdmin && (
-                    <button
-                      onClick={() => requeueFromHistoryMutation.mutate({ id: sub.id })}
-                      disabled={requeueFromHistoryMutation.isPending}
-                      className="flex items-center gap-1 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 px-2 py-1 transition-colors flex-shrink-0 disabled:opacity-40"
-                    >
-                      <RotateCcw className="w-3 h-3" /> Re-queue
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── FOOTER ── */}
-      <footer className="border-t border-white/10 py-8 mt-4">
-        <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
-          <a href="/" className="flex items-center gap-3">
-            <img src={LOGO} alt="Murder Mitten Media" className="w-8 h-8 rounded-full object-cover" />
-            <span className="font-['Anton'] text-lg tracking-wider">
-              MURDER MITTEN <span className="text-red-600">MEDIA</span>
-            </span>
-          </a>
-          <div className="text-white/30 text-xs">© 2022-{new Date().getFullYear()} Murder Mitten Media ™ · Michigan</div>
-          <div className="flex items-center gap-4 text-xs text-white/30 uppercase tracking-widest">
-            <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">Instagram</a>
-            <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-500 transition-colors">YouTube</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
