@@ -110,7 +110,8 @@ export function useFakeLiveChat() {
   useEffect(() => {
     const realNameUsers = (allUsers ?? []).filter(u => {
       const name = u.artistName || u.username || "";
-      return name.trim().length > 0;
+      // Only regular users — exclude admins and judges
+      return name.trim().length > 0 && u.role === "user";
     });
 
     // Shuffle real users and pick up to 12
