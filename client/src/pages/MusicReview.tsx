@@ -98,7 +98,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
-  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube, reviewedTracks,
+  data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube, reviewedTracks, triggerReaction,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -115,6 +115,7 @@ function AdminPanel({
   playTrack: (sub: ReviewSubmission) => void;
   setSelectedYouTube: (val: { url: string; title: string; artist: string } | null) => void;
   reviewedTracks?: ReviewSubmission[];
+  triggerReaction: (reaction: "hype" | "trash" | "knife" | "bars" | "weak" | "next", duration?: number) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -1458,6 +1459,7 @@ export default function MusicReview() {
                 playTrack={playTrack}
                 setSelectedYouTube={setSelectedYouTube}
                 reviewedTracks={reviewedTracks ?? []}
+                triggerReaction={triggerReaction}
               />
             )}
 
