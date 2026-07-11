@@ -341,19 +341,7 @@ function AdminPanel({
             placeholder="Stream URL (YouTube Live / HLS)"
             className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
           />
-          {currentUser?.role === "admin" && isLive && (
-            <button
-              onClick={() => {
-                setLive.mutate({ isLive: false });
-                toast.success("Stream ended by admin");
-              }}
-              disabled={setLive.isPending}
-              className="flex-shrink-0 px-3 py-2.5 text-xs font-bold uppercase tracking-widest bg-red-900/40 border border-red-600/60 text-red-300 hover:bg-red-900/60 transition-all"
-              title="Admin: End this stream"
-            >
-              ⏹ Admin End
-            </button>
-          )}
+          {/* Admin End is handled by the Go Live toggle button above */}
           {currentUser?.role === "admin" && activeBroadcasts && activeBroadcasts.length > 0 && (
             <div className="flex gap-1">
               {activeBroadcasts.map((b: any) => (
@@ -1243,28 +1231,30 @@ export default function MusicReview() {
       {!isAdmin && !isLive && <LiveRadioBanner filter="review" />}
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className="pt-20 pb-6 border-b border-white/10">
+      <section className="pt-16 pb-4 border-b border-white/10">
         <div className="container">
           {/* Status + title */}
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-2">
             {isLive ? (
               <>
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-bold">Live Now</span>
               </>
             ) : (
               <>
-                <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
-                <span className="text-white/30 text-xs uppercase tracking-[0.3em]">Stream Offline</span>
+                <span className="w-2 h-2 rounded-full bg-white/20" />
+                <span className="text-white/30 text-xs uppercase tracking-[0.3em]">Offline</span>
               </>
             )}
           </div>
-          <h1 className="font-['Anton'] text-5xl md:text-7xl uppercase mb-2">
-            MUSIC <span className="text-red-600">REVIEW</span>
-          </h1>
-          <p className="text-white/40 text-sm max-w-xl mb-5">
-            Submit your track for a live review. Get in line, or skip to the front for $10.
-          </p>
+          <div className="flex items-baseline gap-3 mb-1">
+            <h1 className="font-['Anton'] text-3xl md:text-4xl uppercase">
+              MUSIC <span className="text-red-600">REVIEW</span>
+            </h1>
+            <p className="text-white/40 text-xs hidden md:block">
+              Submit your track · skip to front for $10
+            </p>
+          </div>
 
           {/* Judge Broadcast Panel */}
           {(isJudge || isAdmin) && (
@@ -1327,17 +1317,7 @@ export default function MusicReview() {
             </div>
           )}
 
-          {/* Active Judges Grid */}
-          {activeBroadcasts && activeBroadcasts.length > 0 && (
-            <div className="mb-6">
-              <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-3">Active Judge Broadcasts ({activeBroadcasts.length})</div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {activeBroadcasts.map((broadcast) => (
-                  <JudgeBroadcastCard key={broadcast.id} broadcast={broadcast} />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Active Judges Grid moved to right column */}
 
           {/* OBS Setup Modal */}
           {showOBSSetup && myBroadcast && (
@@ -1442,8 +1422,8 @@ export default function MusicReview() {
       </section>
 
       {/* ── MAIN CONTENT ──────────────────────────────────────── */}
-      <div className="container py-6">
-        <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+      <div className="container py-3">
+        <div className="grid lg:grid-cols-[1fr_340px] gap-4">
 
           {/* ── LEFT COLUMN ── */}
           <div className="min-w-0">
@@ -1473,7 +1453,7 @@ export default function MusicReview() {
             {selectedYouTube && (() => {
               const ytId = extractYouTubeId(selectedYouTube.url);
               return (
-                <div className="mb-5 border border-white/20 bg-black/60 p-4 relative">
+                <div className="mb-3 border border-white/20 bg-black/60 p-4 relative">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <div className="font-['Anton'] text-lg uppercase">{selectedYouTube.title}</div>
@@ -1504,7 +1484,7 @@ export default function MusicReview() {
 
             {/* ── NOW BEING REVIEWED banner ── */}
             {liveReviewActive && liveReviewActive.submissionId !== null && (
-              <div className="mb-5 border border-red-600/50 bg-red-600/10 p-5 relative overflow-hidden">
+              <div className="mb-3 border border-red-600/50 bg-red-600/10 p-3 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 to-transparent animate-pulse" />
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -1685,7 +1665,7 @@ export default function MusicReview() {
 
             {/* ── FIRE / TRASH POLL ── */}
             {liveReviewActive && liveReviewActive.submissionId !== null && (
-              <div className="mb-5">
+              <div className="mb-3">
                 <FireTrashPoll
                   submissionId={liveReviewActive.submissionId}
                   songTitle={liveReviewActive.songTitle ?? ""}
@@ -1702,7 +1682,7 @@ export default function MusicReview() {
 
             {/* Fallback poll for currentPlaying when liveReviewActive is not set */}
             {!liveReviewActive && currentPlaying && (
-              <div className="mb-5">
+              <div className="mb-3">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   <span className="font-['Anton'] text-lg uppercase">{currentPlaying.songTitle}</span>
@@ -2084,6 +2064,22 @@ export default function MusicReview() {
 
           {/* ── RIGHT COLUMN: Chat + Voice ── */}
           <div className="flex flex-col gap-4">
+
+            {/* ── Judge Cams (compact strip) ── */}
+            {activeBroadcasts && activeBroadcasts.length > 0 && (
+              <div className="border border-green-500/20 bg-green-500/5">
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-green-500/10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-green-400 text-[10px] uppercase tracking-widest font-bold">Judges Live ({activeBroadcasts.length})</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 p-1">
+                  {activeBroadcasts.map((broadcast) => (
+                    <JudgeBroadcastCard key={broadcast.id} broadcast={broadcast} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Live Chat */}
             <div className="border border-white/10 bg-white/[0.02] flex flex-col" style={{ height: "500px" }}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">

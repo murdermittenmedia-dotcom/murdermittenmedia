@@ -251,9 +251,12 @@ interface JudgeBroadcastViewerProps {
 
 export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeName, judgeUserId }: JudgeBroadcastViewerProps) {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
   const [connected, setConnected] = useState(false);
   const [hasVideo, setHasVideo] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
+  const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -265,11 +268,23 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
       if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
         track.attach(remoteVideoRef.current);
         setHasVideo(true);
+      } else if (track.kind === Track.Kind.Audio) {
+        // Attach audio to a dedicated audio element so judge mic is heard
+        if (remoteAudioRef.current) {
+          track.attach(remoteAudioRef.current);
+        } else {
+          // Fallback: create a new audio element
+          const audioEl = track.attach() as HTMLAudioElement;
+          audioEl.autoplay = true;
+          document.body.appendChild(audioEl);
+        }
+        setHasAudio(true);
       }
     });
 
     room.on(RoomEvent.TrackUnsubscribed, (track) => {
       if (track.kind === Track.Kind.Video) setHasVideo(false);
+      if (track.kind === Track.Kind.Audio) setHasAudio(false);
     });
 
     room.on(RoomEvent.Connected, () => {
@@ -286,11 +301,14 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
 
   return (
     <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
-      <div className="relative aspect-video bg-black">
+      {/* Hidden audio element for judge mic */}
+      <audio ref={remoteAudioRef} autoPlay playsInline muted={muted} />
+      <div className="relative bg-black" style={{ aspectRatio: '16/9', maxHeight: '180px' }}>
         <video
           ref={remoteVideoRef}
           autoPlay
           playsInline
+          muted
           className={`w-full h-full object-cover ${hasVideo ? "opacity-100" : "opacity-0"}`}
         />
         {!hasVideo && (
@@ -298,22 +316,38 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
             <div className="text-center">
               {connected ? (
                 <>
-                  <VideoOff className="w-6 h-6 text-white/30 mx-auto mb-1" />
+                  <VideoOff className="w-5 h-5 text-white/30 mx-auto mb-1" />
                   <div className="text-white/30 text-xs">Camera off</div>
                 </>
               ) : (
                 <>
-                  <Loader2 className="w-5 h-5 text-green-400 animate-spin mx-auto mb-1" />
+                  <Loader2 className="w-4 h-4 text-green-400 animate-spin mx-auto mb-1" />
                   <div className="text-white/40 text-xs">Connecting…</div>
                 </>
               )}
             </div>
           </div>
         )}
+        {/* Mic indicator overlay */}
+        {hasAudio && (
+          <div className="absolute bottom-1 right-1">
+            <button
+              onClick={() => setMuted(v => !v)}
+              className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                muted ? 'bg-red-600/80' : 'bg-green-600/80'
+              }`}
+              title={muted ? 'Unmute judge' : 'Mute judge'}
+            >
+              {muted
+                ? <MicOff className="w-2.5 h-2.5 text-white" />
+                : <Mic className="w-2.5 h-2.5 text-white" />}
+            </button>
+          </div>
+        )}
       </div>
-      <div className="p-2 border-t border-green-500/20">
+      <div className="px-2 py-1.5 border-t border-green-500/20">
         <div className="flex items-center justify-between">
-          <a href={`/profile/${judgeUserId}`} className="text-white/80 text-xs font-semibold hover:text-white truncate">
+          <a href={`/profile/${judgeUserId}`} className="text-white/70 text-xs font-semibold hover:text-white truncate">
             {judgeName}
           </a>
           <div className="text-green-400 text-[10px] flex items-center gap-1">
