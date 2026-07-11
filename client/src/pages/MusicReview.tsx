@@ -2185,18 +2185,34 @@ export default function MusicReview() {
                     )}
                   </div>
                 ))}
-                {fakeMessages.map((msg) => (
-                  <div key={msg.id} className="text-xs">
-                    <span className={`font-semibold ${
-                      msg.role === "admin" ? "text-red-400" : msg.role === "judge" ? "text-yellow-400" : "text-white/70"
-                    }`}>
-                      {msg.username}
-                      {msg.role === "admin" && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
-                      {msg.role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
-                    </span>
-                    <span className="text-white/50 ml-1.5">{msg.text}</span>
-                  </div>
-                ))}
+                {fakeMessages.map((msg) => {
+                  // Real named accounts (not auto-generated User IDs) get clickable profile links
+                  const isRealAccount = msg.userId > 0 && !msg.username.match(/^User\d+$/);
+                  const nameClass = `font-semibold ${
+                    msg.role === "admin" ? "text-red-400" : msg.role === "judge" ? "text-yellow-400" : "text-white/70"
+                  }`;
+                  return (
+                    <div key={msg.id} className="text-xs">
+                      {isRealAccount ? (
+                        <a
+                          href={`/profile/${msg.userId}`}
+                          className={`${nameClass} hover:underline hover:opacity-80 transition-opacity cursor-pointer`}
+                        >
+                          {msg.username}
+                          {msg.role === "admin" && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
+                          {msg.role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
+                        </a>
+                      ) : (
+                        <span className={nameClass}>
+                          {msg.username}
+                          {msg.role === "admin" && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
+                          {msg.role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
+                        </span>
+                      )}
+                      <span className="text-white/50 ml-1.5">{msg.text}</span>
+                    </div>
+                  );
+                })}
                 <div ref={chatBottomRef} />
               </div>
 
