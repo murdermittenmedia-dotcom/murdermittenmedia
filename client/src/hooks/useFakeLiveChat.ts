@@ -59,6 +59,13 @@ const COMMENT_VARIANTS = [
   "🔥", "🔥🔥", "🔥🔥🔥", "🗑️", "🗑️🗑️", "🔪", "🔪🔪",
   "🎵", "🎶", "🎤", "🎧", "🙌", "🙌🙌",
   "🔥🎵", "🎤🔥", "🎧🔥", "🔥🗑️",
+  "💯", "💯💯", "🤯", "😤", "🥶", "🫡", "🤌", "🤌🤌",
+  "👏", "👏👏", "💀", "💀💀", "😭", "😭😭",
+  "🎯", "⚡", "⚡⚡", "🔊", "🔊🔊",
+  "🫶", "🫶🫶", "🙏", "🙏🙏",
+  "😮", "😮😮", "🤩", "🤩🤩",
+  "🔥💯", "💯🔥", "🎤💯", "🔥🎤🔥",
+  "💀🔥", "🥶🔥", "🤯🔥", "😭🔥",
 
   // Short reactions
   "yes", "no", "ok", "wow", "omg", "lol", "bro", "fam",
@@ -77,7 +84,7 @@ export type ReactionType = "hype" | "trash" | "knife" | "bars" | "weak" | "next"
 const REACTION_MAP: Record<ReactionType, string[]> = {
   hype: ["🔥", "fire", "FIRE", "this hard", "THIS HARD", "go off", "GO OFF", "bars", "BARS", "heat", "HEAT", "🔥🔥🔥", "slaps", "banger", "BANGER", "flames", "crazy", "insane", "absolute heat"],
   trash: ["🗑️", "trash", "TRASH", "weak", "WEAK", "mid", "MID", "skip", "SKIP", "next", "NEXT", "🗑️🗑️🗑️", "garbage", "corny", "lame", "not it", "pass"],
-  knife: ["🔪", "🔪🔪🔪", "cut it", "CUT IT", "slice", "SLICE"],
+  knife: ["🔪", "🔪🔪", "🔪🔪🔪", "🔪🔪🔪🔪", "🔪🔪🔪🔪🔪"],
   bars: ["🔥", "bars", "BARS", "fire", "FIRE", "this hard", "slaps", "🔥🔥🔥", "banger", "flow nasty", "bars crazy", "verse hard"],
   weak: ["🗑️", "weak", "WEAK", "trash", "TRASH", "mid", "MID", "garbage", "lame", "not it"],
   next: ["next", "NEXT", "skip", "SKIP", "lets go", "drop it", "need this", "send link"],
