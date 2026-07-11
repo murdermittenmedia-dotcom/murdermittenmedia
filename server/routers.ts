@@ -773,7 +773,7 @@ export const appRouter = router({
 
   // -- Music Review Judge Broadcasts --------------------------------
   review: router({
-    // Start a judge/admin broadcast during music review
+    // Start a judge/admin broadcast during music review (browser WebRTC — no RTMP ingress)
     startBroadcast: protectedProcedure
       .mutation(async ({ ctx }) => {
         // Only judges and admins can broadcast
@@ -781,36 +781,37 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Only judges and admins can broadcast" });
         }
         
-        // Check if user already has an active broadcast
+        // Reuse existing active broadcast if present — return a fresh token
         const existing = await getJudgeBroadcast(ctx.user.id);
         if (existing) {
-          return { success: false, error: "You already have an active broadcast", broadcast: existing };
+          const identity = `judge-browser-${ctx.user.id}`;
+          const displayName = ctx.user.artistName || ctx.user.name || `Judge ${ctx.user.id}`;
+          const token = await generateStreamerToken(existing.roomName, identity, displayName);
+          return { success: true, broadcast: { id: existing.id, userId: existing.userId, roomName: existing.roomName, status: existing.status }, token, livekitUrl: ENV.livekitUrl };
         }
         
-        // Create LiveKit ingress for this judge
+        // Browser-first: create room + publisher token WITHOUT RTMP ingress
         const roomName = `review-judge-${ctx.user.id}-${Date.now()}`;
-        const judgeIdentity = `judge-${ctx.user.id}`;
-        const ingressDetails = await createRtmpIngress(roomName, judgeIdentity, ctx.user.name || judgeIdentity);
+        const identity = `judge-browser-${ctx.user.id}`;
+        const displayName = ctx.user.artistName || ctx.user.name || `Judge ${ctx.user.id}`;
         
-        if (!ingressDetails || !ingressDetails.ingressId) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create ingress" });
-        }
-        
-        // Create judge_streams record
         const insertResult = await createJudgeBroadcast({
           userId: ctx.user.id,
           musicReviewSessionId: null,
           roomName,
-          ingressId: ingressDetails.ingressId,
-          rtmpUrl: ingressDetails.url,
-          rtmpKey: ingressDetails.streamKey,
+          ingressId: null as any,
+          rtmpUrl: null as any,
+          rtmpKey: null as any,
           status: "active",
         }) as any;
         const broadcastId = insertResult.insertId as number;
         
-        console.log(`[Judge Broadcast] ${ctx.user.name} started broadcast in room ${roomName} (id=${broadcastId})`);
+        // Generate LiveKit publisher token immediately — one click to go live
+        const token = await generateStreamerToken(roomName, identity, displayName);
         
-        return { success: true, broadcast: { id: broadcastId, userId: ctx.user.id, roomName, rtmpUrl: ingressDetails.url, rtmpKey: ingressDetails.streamKey, status: "active" } };
+        console.log(`[Judge Broadcast] ${ctx.user.name} started browser broadcast in room ${roomName} (id=${broadcastId})`);
+        
+        return { success: true, broadcast: { id: broadcastId, userId: ctx.user.id, roomName, status: "active" }, token, livekitUrl: ENV.livekitUrl };
       }),
 
     // End a judge broadcast
@@ -826,8 +827,10 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Not your broadcast" });
         }
         
-        // Delete ingress
-        await deleteIngress(broadcast[0].ingressId);
+        // Delete ingress if one exists (browser-only broadcasts have no ingress)
+        if (broadcast[0].ingressId) {
+          await deleteIngress(broadcast[0].ingressId);
+        }
         
         // End broadcast
         await endJudgeBroadcast(input.broadcastId);

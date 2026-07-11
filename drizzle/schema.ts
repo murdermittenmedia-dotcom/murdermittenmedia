@@ -839,9 +839,9 @@ export const judgeStreams = mysqlTable("judge_streams", {
   userId: int("userId").notNull(),  // references users.id
   musicReviewSessionId: int("musicReviewSessionId"),  // optional: link to review session
   roomName: varchar("roomName", { length: 128 }).notNull(),  // LiveKit room name
-  ingressId: varchar("ingressId", { length: 256 }).notNull(),  // LiveKit ingress ID
-  rtmpUrl: varchar("rtmpUrl", { length: 512 }).notNull(),  // RTMP server URL for OBS
-  rtmpKey: varchar("rtmpKey", { length: 256 }).notNull(),  // stream key for OBS
+  ingressId: varchar("ingressId", { length: 256 }),  // LiveKit ingress ID (null for browser-only broadcasts)
+  rtmpUrl: varchar("rtmpUrl", { length: 512 }),  // RTMP server URL for OBS
+  rtmpKey: varchar("rtmpKey", { length: 256 }),  // stream key for OBS
   status: mysqlEnum("status", ["active", "ended", "error"]).default("active").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   endedAt: timestamp("endedAt"),

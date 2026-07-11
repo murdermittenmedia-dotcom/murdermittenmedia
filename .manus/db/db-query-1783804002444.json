@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE artist_of_week SET isActive = 0 WHERE isActive = 1; INSERT INTO artist_of_week (artistName, bio, imageUrl, instagramUrl, isActive, weekOf) VALUES ('Duffle Cole', 'Ypsilanti artist Duffle Cole is back and hungrier than ever after serving a 4-year prison sentence. Fresh home and locked in, Cole is ready to make his mark on the Michigan music scene with raw, authentic street narratives that only someone who lived it can tell.', NULL, NULL, 1, NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute UPDATE artist_of_week SET isActive = 0 WHERE isActive = 1; INSERT INTO artist_of_week (artistName, bio, imageUrl, instagramUrl, isActive, weekOf) VALUES ('Duffle Cole', 'Ypsilanti artist Duffle Cole is back and hungrier than ever after serving a 4-year prison sentence. Fresh home and locked in, Cole is ready to make his mark on the Michigan music scene with raw, authentic street narratives that only someone who lived it can tell.', NULL, NULL, 1, NOW());",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 274
+}

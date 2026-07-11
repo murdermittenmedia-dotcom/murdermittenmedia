@@ -1,0 +1,8 @@
+{
+  "query": "SELECT * FROM artist_of_week WHERE is_active = 1 ORDER BY week_of DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT * FROM artist_of_week WHERE is_active = 1 ORDER BY week_of DESC LIMIT 1;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'week_of' in 'order clause'"
+  ]
+}

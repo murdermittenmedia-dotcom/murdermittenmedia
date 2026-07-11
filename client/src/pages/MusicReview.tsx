@@ -1285,83 +1285,43 @@ export default function MusicReview() {
                     });
                   }}
                 />
-              ) : myBroadcast ? (
-                // Broadcast exists but not using native — show OBS fallback + go live button
-                <div className="border border-green-500/30 bg-green-500/5 p-4 rounded">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-1">Judge Broadcast</div>
-                      <div className="text-white/60 text-sm">🟢 Broadcast ready — choose how to go live</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => {
-                        getJudgeToken.mutate({ broadcastId: myBroadcast.id }, {
-                          onSuccess: (data) => {
-                            setLivekitBroadcastData(data);
-                            toast.success("Camera & mic ready!");
-                          },
-                          onError: (e: any) => toast.error("Failed to start: " + e.message),
-                        });
-                      }}
-                      disabled={getJudgeToken.isPending}
-                      className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors disabled:opacity-50"
-                    >
-                      {getJudgeToken.isPending ? "Starting…" : "📷 Use Camera & Mic"}
-                    </button>
-                    <button
-                      onClick={() => setShowOBSSetup(true)}
-                      className="text-xs border border-white/20 text-white/60 px-3 py-1.5 hover:bg-white/5 transition-colors"
-                    >
-                      OBS Settings
-                    </button>
-                    <button
-                      onClick={() => endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
-                        onSuccess: () => { setMyBroadcast(null); toast.success("Broadcast ended"); }
-                      })}
-                      className="text-xs border border-red-500/50 text-red-400 px-3 py-1.5 hover:bg-red-500/10 transition-colors"
-                    >
-                      Stop
-                    </button>
-                  </div>
-                </div>
               ) : (
-                // No broadcast yet — start one
+                // No broadcast / broadcast exists but no token — single click to go live
                 <div className="border border-green-500/30 bg-green-500/5 p-4 rounded flex items-center justify-between">
                   <div>
                     <div className="text-green-400 text-xs uppercase tracking-widest font-bold mb-1">Judge Broadcast</div>
-                    <div className="text-white/60 text-sm">Ready to broadcast</div>
+                    <div className="text-white/60 text-sm">
+                      {myBroadcast ? "🟢 Session active — click to resume camera" : "Ready to broadcast"}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => startBroadcast.mutate(undefined, {
-                      onSuccess: (data) => {
-                        if (data.success && data.broadcast) {
-                          const b = data.broadcast as any;
-                          const broadcastId = b.id;
-                          // Immediately get a LiveKit token for native browser broadcast
-                          getJudgeToken.mutate({ broadcastId }, {
-                            onSuccess: (tokenData) => {
-                              setMyBroadcast({ id: broadcastId, ...b });
-                              setLivekitBroadcastData(tokenData);
-                              toast.success("Camera & mic ready!");
-                            },
-                            onError: () => {
-                              // Fallback: show OBS setup
-                              setMyBroadcast({ id: broadcastId, ...b });
-                              setShowOBSSetup(true);
-                              toast.success("Broadcast started!");
-                            },
-                          });
-                        }
-                      },
-                      onError: (e: any) => toast.error("Failed to start broadcast: " + e.message),
-                    })}
-                    disabled={startBroadcast.isPending || getJudgeToken.isPending}
-                    className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors disabled:opacity-50"
-                  >
-                    {startBroadcast.isPending ? "Starting…" : "Start Broadcasting"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => startBroadcast.mutate(undefined, {
+                        onSuccess: (data: any) => {
+                          if (data.success && data.broadcast && data.token) {
+                            setMyBroadcast(data.broadcast);
+                            setLivekitBroadcastData({ token: data.token, roomName: data.broadcast.roomName, livekitUrl: data.livekitUrl });
+                            toast.success("Camera & mic ready!");
+                          }
+                        },
+                        onError: (e: any) => toast.error("Failed to start broadcast: " + e.message),
+                      })}
+                      disabled={startBroadcast.isPending}
+                      className="text-xs border border-green-500 bg-green-500/10 text-green-400 px-4 py-1.5 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                    >
+                      {startBroadcast.isPending ? "Starting…" : myBroadcast ? "📷 Resume Camera" : "📷 Go Live"}
+                    </button>
+                    {myBroadcast && (
+                      <button
+                        onClick={() => endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
+                          onSuccess: () => { setMyBroadcast(null); setLivekitBroadcastData(null); toast.success("Broadcast ended"); }
+                        })}
+                        className="text-xs border border-red-500/50 text-red-400 px-3 py-1.5 hover:bg-red-500/10 transition-colors"
+                      >
+                        Stop
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
