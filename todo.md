@@ -1255,3 +1255,35 @@
 - [x] Fire/Trash poll redesign with gradient progress bars
 - [x] Judge Broadcast cards with status indicators
 - [x] Removed unused imports and cleaned up code
+
+## Music Wars Revamp
+- [ ] Remove YouTube stream panel from Music Wars page
+- [ ] Move wheel to prominent center position at top of main content
+- [ ] Add live battle queue/matchup display at top when contestants are selected
+- [ ] Improve Triple Threat mode UI with clear 3-way battle display
+- [ ] Move live chat to bottom of page (full width)
+- [ ] Add round results section showing current battle results
+- [ ] Make submission form more prominent with song entry for wheel
+- [ ] Clean up overall layout and visual hierarchy
+
+## Music Wars Revamp (Jul 11, 2026)
+- [x] Remove YouTube stream embed from Music Wars page
+- [x] Add Live Battle Banner at top showing current matchup (1v1 and Triple Threat)
+- [x] Add Triple Threat mode toggle (3 contestants battle at once)
+- [x] Redesign Battle Wheel section with entry count and Triple Threat indicator
+- [x] Add song submission form with wheel entry queue
+- [x] Add Round Results section with past battles history
+- [x] Add Live Chat panel at bottom of page
+- [x] Add Season Standings / Leaderboard section
+- [x] Clean up overall layout: hero, battle banner, wheel+form grid, results, chat
+
+## Music Wars Major Revamp (Jul 11, 2026)
+- [x] Remove YouTube stream embed from Music Wars page
+- [x] Add Live Battle Banner at top showing current matchup (1v1 and Triple Threat)
+- [x] Add Triple Threat mode toggle (3 contestants battle at once)
+- [x] Redesign Battle Wheel section with entry count and Triple Threat indicator
+- [x] Add song submission form with wheel entry queue
+- [x] Add Round Results section with past battles history
+- [x] Add Live Chat panel at bottom of page
+- [x] Add Season Standings / Leaderboard section
+- [x] Clean up overall layout: hero, battle banner, wheel+form grid, results, chat

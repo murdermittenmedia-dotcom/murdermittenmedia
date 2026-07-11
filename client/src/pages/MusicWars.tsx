@@ -1869,6 +1869,216 @@ export default function MusicWars() {
   };
 
   const activeEntries = wheelData?.entries.filter(e => e.status === "active") || [];
+  const isTripleActive = !!(activeBattle?.isTripleThreat && activeBattle?.contestant3Name);
+
+  // ── Live Battle Banner — shown when a battle is active ──────────────────────
+  const LiveBattleBanner = () => {
+    if (!activeBattle) return null;
+    const total = (voteResults?.contestant1 ?? 0) + (voteResults?.contestant2 ?? 0) + (isTripleActive ? (voteResults?.contestant3 ?? 0) : 0);
+    const c1Pct = total > 0 ? Math.round(((voteResults?.contestant1 ?? 0) / total) * 100) : isTripleActive ? 33 : 50;
+    const c2Pct = total > 0 ? Math.round(((voteResults?.contestant2 ?? 0) / total) * 100) : isTripleActive ? 33 : 50;
+    const c3Pct = isTripleActive ? (100 - c1Pct - c2Pct) : 0;
+    const getUserId = (name: string) => (wheelData?.entries ?? []).find(e => e.artistName === name)?.userId ?? undefined;
+
+    return (
+      <div className="relative overflow-hidden border-b border-red-600/40 bg-gradient-to-r from-red-950/60 via-[#0d0d0d] to-red-950/60">
+        {/* Animated glow lines */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-600/60 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-600/30 to-transparent" />
+        </div>
+        <div className="container py-5">
+          {/* Header row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(209,0,0,0.8)]" />
+              <span className="font-['Anton'] text-sm uppercase tracking-[0.3em] text-red-400">
+                {isTripleActive ? "⚡ Triple Threat — Live Now" : "🥊 Battle — Live Now"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-white/40">
+              <span>{total} vote{total !== 1 ? "s" : ""}</span>
+              {activeBattle.status === "voting" && <span className="text-green-400 font-semibold">Voting Open</span>}
+            </div>
+          </div>
+
+          {/* Contestant cards */}
+          <div className={`grid gap-3 items-stretch ${isTripleActive ? "grid-cols-3" : "grid-cols-[1fr_auto_1fr]"}`}>
+            {/* Contestant 1 */}
+            <div className={`relative rounded-lg border p-4 transition-all ${myVote?.candidate === "contestant1" ? "border-red-500 bg-red-950/30" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
+              <div className="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-2">Contestant 1</div>
+              <ArtistStatModal artistName={activeBattle.contestant1Name} userId={getUserId(activeBattle.contestant1Name)}>
+                <button className="font-['Anton'] text-xl text-white hover:text-red-400 transition-colors leading-tight text-left w-full">
+                  {activeBattle.contestant1Name}
+                </button>
+              </ArtistStatModal>
+              {activeBattle.contestant1SongTitle && (
+                <div className="text-xs text-white/40 mt-1 truncate">
+                  {activeBattle.contestant1SongUrl
+                    ? <a href={activeBattle.contestant1SongUrl} target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">🎵 {activeBattle.contestant1SongTitle}</a>
+                    : <span>🎵 {activeBattle.contestant1SongTitle}</span>}
+                </div>
+              )}
+              {/* Vote bar */}
+              <div className="mt-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-white/50">{voteResults?.contestant1 ?? 0} votes</span>
+                  <span className="font-bold text-white">{c1Pct}%</span>
+                </div>
+                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-red-600 rounded-full transition-all duration-700" style={{ width: `${c1Pct}%` }} />
+                </div>
+              </div>
+              {/* Vote button */}
+              {user && !myVote && activeBattle.status === "voting" && (
+                <button
+                  onClick={() => castVoteMutation.mutate({ battleId: activeBattle.id, candidate: "contestant1" })}
+                  className="mt-3 w-full bg-red-600/20 hover:bg-red-600 border border-red-600/40 hover:border-red-600 text-red-400 hover:text-white text-xs py-2 uppercase tracking-widest transition-all font-semibold"
+                >
+                  Vote
+                </button>
+              )}
+              {myVote?.candidate === "contestant1" && (
+                <div className="mt-3 text-center text-xs text-red-400 font-semibold">✓ Your Vote</div>
+              )}
+            </div>
+
+            {/* VS divider (1v1) or Contestant 2 (triple) */}
+            {!isTripleActive ? (
+              <div className="flex items-center justify-center">
+                <div className="font-['Anton'] text-3xl text-red-600 drop-shadow-[0_0_20px_rgba(209,0,0,0.6)]">VS</div>
+              </div>
+            ) : (
+              <div className={`relative rounded-lg border p-4 transition-all ${myVote?.candidate === "contestant2" ? "border-yellow-500 bg-yellow-950/20" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
+                <div className="text-[10px] text-yellow-400 uppercase tracking-widest font-bold mb-2">Contestant 2</div>
+                <ArtistStatModal artistName={activeBattle.contestant2Name} userId={getUserId(activeBattle.contestant2Name)}>
+                  <button className="font-['Anton'] text-xl text-white hover:text-yellow-400 transition-colors leading-tight text-left w-full">
+                    {activeBattle.contestant2Name}
+                  </button>
+                </ArtistStatModal>
+                {activeBattle.contestant2SongTitle && (
+                  <div className="text-xs text-white/40 mt-1 truncate">
+                    {activeBattle.contestant2SongUrl
+                      ? <a href={activeBattle.contestant2SongUrl} target="_blank" rel="noopener noreferrer" className="hover:text-yellow-400 transition-colors">🎵 {activeBattle.contestant2SongTitle}</a>
+                      : <span>🎵 {activeBattle.contestant2SongTitle}</span>}
+                  </div>
+                )}
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-white/50">{voteResults?.contestant2 ?? 0} votes</span>
+                    <span className="font-bold text-white">{c2Pct}%</span>
+                  </div>
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-500 rounded-full transition-all duration-700" style={{ width: `${c2Pct}%` }} />
+                  </div>
+                </div>
+                {user && !myVote && activeBattle.status === "voting" && (
+                  <button
+                    onClick={() => castVoteMutation.mutate({ battleId: activeBattle.id, candidate: "contestant2" })}
+                    className="mt-3 w-full bg-yellow-600/20 hover:bg-yellow-600 border border-yellow-600/40 hover:border-yellow-600 text-yellow-400 hover:text-white text-xs py-2 uppercase tracking-widest transition-all font-semibold"
+                  >
+                    Vote
+                  </button>
+                )}
+                {myVote?.candidate === "contestant2" && (
+                  <div className="mt-3 text-center text-xs text-yellow-400 font-semibold">✓ Your Vote</div>
+                )}
+              </div>
+            )}
+
+            {/* Contestant 2 (1v1) or Contestant 3 (triple) */}
+            {!isTripleActive ? (
+              <div className={`relative rounded-lg border p-4 transition-all ${myVote?.candidate === "contestant2" ? "border-red-500 bg-red-950/30" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
+                <div className="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-2">Contestant 2</div>
+                <ArtistStatModal artistName={activeBattle.contestant2Name} userId={getUserId(activeBattle.contestant2Name)}>
+                  <button className="font-['Anton'] text-xl text-white hover:text-red-400 transition-colors leading-tight text-left w-full">
+                    {activeBattle.contestant2Name}
+                  </button>
+                </ArtistStatModal>
+                {activeBattle.contestant2SongTitle && (
+                  <div className="text-xs text-white/40 mt-1 truncate">
+                    {activeBattle.contestant2SongUrl
+                      ? <a href={activeBattle.contestant2SongUrl} target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">🎵 {activeBattle.contestant2SongTitle}</a>
+                      : <span>🎵 {activeBattle.contestant2SongTitle}</span>}
+                  </div>
+                )}
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-white/50">{voteResults?.contestant2 ?? 0} votes</span>
+                    <span className="font-bold text-white">{c2Pct}%</span>
+                  </div>
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-red-600 rounded-full transition-all duration-700" style={{ width: `${c2Pct}%` }} />
+                  </div>
+                </div>
+                {user && !myVote && activeBattle.status === "voting" && (
+                  <button
+                    onClick={() => castVoteMutation.mutate({ battleId: activeBattle.id, candidate: "contestant2" })}
+                    className="mt-3 w-full bg-red-600/20 hover:bg-red-600 border border-red-600/40 hover:border-red-600 text-red-400 hover:text-white text-xs py-2 uppercase tracking-widest transition-all font-semibold"
+                  >
+                    Vote
+                  </button>
+                )}
+                {myVote?.candidate === "contestant2" && (
+                  <div className="mt-3 text-center text-xs text-red-400 font-semibold">✓ Your Vote</div>
+                )}
+              </div>
+            ) : (
+              activeBattle.contestant3Name && (
+                <div className={`relative rounded-lg border p-4 transition-all ${myVote?.candidate === "contestant3" ? "border-orange-500 bg-orange-950/20" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
+                  <div className="text-[10px] text-orange-400 uppercase tracking-widest font-bold mb-2">Contestant 3</div>
+                  <ArtistStatModal artistName={activeBattle.contestant3Name} userId={getUserId(activeBattle.contestant3Name)}>
+                    <button className="font-['Anton'] text-xl text-white hover:text-orange-400 transition-colors leading-tight text-left w-full">
+                      {activeBattle.contestant3Name}
+                    </button>
+                  </ArtistStatModal>
+                  {activeBattle.contestant3SongTitle && (
+                    <div className="text-xs text-white/40 mt-1 truncate">
+                      {activeBattle.contestant3SongUrl
+                        ? <a href={activeBattle.contestant3SongUrl} target="_blank" rel="noopener noreferrer" className="hover:text-orange-400 transition-colors">🎵 {activeBattle.contestant3SongTitle}</a>
+                        : <span>🎵 {activeBattle.contestant3SongTitle}</span>}
+                    </div>
+                  )}
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-white/50">{voteResults?.contestant3 ?? 0} votes</span>
+                      <span className="font-bold text-white">{c3Pct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-orange-500 rounded-full transition-all duration-700" style={{ width: `${c3Pct}%` }} />
+                    </div>
+                  </div>
+                  {user && !myVote && activeBattle.status === "voting" && (
+                    <button
+                      onClick={() => castVoteMutation.mutate({ battleId: activeBattle.id, candidate: "contestant3" })}
+                      className="mt-3 w-full bg-orange-600/20 hover:bg-orange-600 border border-orange-600/40 hover:border-orange-600 text-orange-400 hover:text-white text-xs py-2 uppercase tracking-widest transition-all font-semibold"
+                    >
+                      Vote
+                    </button>
+                  )}
+                  {myVote?.candidate === "contestant3" && (
+                    <div className="mt-3 text-center text-xs text-orange-400 font-semibold">✓ Your Vote</div>
+                  )}
+                </div>
+              )
+            )}
+          </div>
+
+          {/* Login to vote prompt */}
+          {!user && activeBattle.status === "voting" && (
+            <div className="mt-4 text-center">
+              <a href={getLoginUrl()} className="text-xs text-red-400 hover:underline">Login to cast your vote →</a>
+            </div>
+          )}
+          {myVote && (
+            <div className="mt-4 text-center text-xs text-white/40">
+              Vote locked in. Results update live.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
@@ -1876,92 +2086,152 @@ export default function MusicWars() {
       <LiveRadioBanner filter="wars" />
       <OnboardingModal />
 
-      {/* Hero */}
-      <div className="pt-16 bg-gradient-to-b from-red-950/30 to-[#080808]">
-        <div className="container py-10">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs text-red-400 uppercase tracking-[0.3em] font-semibold">Live Battle Event</span>
-          </div>
-          <h1 className="font-['Anton'] text-5xl md:text-7xl uppercase leading-none mb-2">
-            MUSIC <span className="text-red-600">WARS</span>
-          </h1>
-          <p className="text-white/50 text-sm max-w-xl">
-            Michigan's hardest rap battle competition. Spin the wheel, battle live, get judged by the culture. Presented by Murder Mitten Media.
-          </p>
-          <div className="flex flex-wrap gap-3 mt-4">
-            <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer"
-              className="text-xs border border-white/20 text-white/50 hover:border-white/50 hover:text-white px-4 py-2 uppercase tracking-widest transition-colors">
-              @murdermittenmedia
-            </a>
-            {!user && (
-              <a href={getLoginUrl()}
-                className="text-xs bg-red-600 hover:bg-red-700 text-white px-4 py-2 uppercase tracking-widest transition-colors">
-                Login to Participate
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <div className="pt-16 relative overflow-hidden">
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-red-950/40 via-[#080808]/80 to-[#080808]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(209,0,0,0.15)_0%,transparent_60%)]" />
+        <div className="container relative z-10 py-10">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(209,0,0,0.8)]" />
+                <span className="text-xs text-red-400 uppercase tracking-[0.3em] font-semibold">Live Battle Event</span>
+                {tripleTheatMode && (
+                  <span className="text-xs bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 px-2 py-0.5 uppercase tracking-wider font-bold">
+                    ⚡ Triple Threat Mode
+                  </span>
+                )}
+              </div>
+              <h1 className="font-['Anton'] text-5xl md:text-7xl uppercase leading-none mb-2">
+                MUSIC <span className="text-red-600">WARS</span>
+              </h1>
+              <p className="text-white/50 text-sm max-w-xl">
+                Michigan's hardest rap battle. Spin the wheel, battle live, get judged by the culture.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 shrink-0">
+              {!user ? (
+                <a href={getLoginUrl()} className="bg-red-600 hover:bg-red-700 text-white text-xs px-5 py-2.5 uppercase tracking-widest font-semibold transition-colors">
+                  Login to Enter
+                </a>
+              ) : (
+                <span className="text-xs border border-green-600/40 text-green-400 px-3 py-2 uppercase tracking-widest">
+                  ✓ Logged in as {username}
+                </span>
+              )}
+              <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer"
+                className="text-xs border border-white/20 text-white/50 hover:border-white/50 hover:text-white px-4 py-2 uppercase tracking-widest transition-colors">
+                @murdermittenmedia
               </a>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main layout */}
+      {/* ── LIVE BATTLE QUEUE (shown when battle is active) ──── */}
+      <LiveBattleBanner />
+
+      {/* ── MAIN CONTENT ─────────────────────────────────────── */}
       <div className="container py-8">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-          {/* LEFT: Stream + Wheel + Submission */}
+          {/* ── LEFT COLUMN (2/3 width) ───────────────────────── */}
           <div className="xl:col-span-2 space-y-6">
 
-            {/* Live Stream — offline-aware */}
-            <LiveStreamPanel eventData={eventData} isAdmin={isAdmin}
-              onSetLive={(isLive: boolean, streamUrl?: string) => setLiveMutation.mutateAsync({ isLive, streamUrl })}
-              onScheduleEvent={(title: string, date: string, streamUrl?: string) => setEventMutation.mutateAsync({ title, date, streamUrl })}
-            />
-
-            {/* Wheel + Submission */}
+            {/* ── WHEEL + ENTRY FORM ─────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-[#0d0d0d] border border-white/10 p-5 flex flex-col items-center">
-                <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-4 self-start">
-                  Battle <span className="text-red-600">Wheel</span>
-                </h2>
+
+              {/* Spin Wheel */}
+              <div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5 flex flex-col items-center">
+                {/* Header */}
+                <div className="flex items-center justify-between w-full mb-4">
+                  <h2 className="font-['Anton'] text-lg uppercase tracking-widest">
+                    Battle <span className="text-red-600">Wheel</span>
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    {tripleTheatMode && (
+                      <span className="text-[10px] bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 px-2 py-0.5 uppercase tracking-wider font-bold rounded-full">
+                        Triple Threat
+                      </span>
+                    )}
+                    <span className="text-xs text-white/30">{activeEntries.length} entries</span>
+                  </div>
+                </div>
+
                 <SpinWheel
                   entries={activeEntries}
                   isSpinning={wheelSpinning}
                   winner={wheelWinner}
-                  winnerLabel={spinCount === 0 ? "Contestant 1" : spinCount === 1 ? (tripleTheatMode ? "Contestant 2" : "Contestant 2") : "Contestant 3"}
+                  winnerLabel={spinCount === 0 ? "Contestant 1" : spinCount === 1 ? "Contestant 2" : "Contestant 3"}
                   onSpin={handleSpin}
                   isAdmin={isAdmin}
                   onSpinComplete={handleSpinComplete}
                   spinCount={spinCount}
                 />
-                {/* Contestant selection status */}
+
+                {/* Contestant selection status (admin only) */}
                 {isAdmin && (contestant1Entry || spinCount > 0) && (
-                  <div className="w-full mt-3 space-y-2">
-                    <div className={`flex items-center gap-2 px-3 py-2 border text-sm ${
-                      contestant1Entry ? "border-red-600/50 bg-red-950/20" : "border-white/10 bg-white/5"
-                    }`}>
-                      <span className="text-red-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 1</span>
-                      <span className="text-white font-semibold">{contestant1Entry?.artistName ?? "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-2 border border-white/10 bg-white/5 text-sm">
-                      <span className="text-red-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 2</span>
-                      <span className="text-white font-semibold">{contestant2Entry?.artistName ?? (spinCount === 1 ? "Pending spin…" : "—")}</span>
-                    </div>
-                    {tripleTheatMode && (
-                      <div className="flex items-center gap-2 px-3 py-2 border border-yellow-600/30 bg-yellow-950/10 text-sm">
-                        <span className="text-yellow-400 text-xs uppercase tracking-widest w-28 shrink-0">Contestant 3</span>
-                        <span className="text-white font-semibold">{spinCount === 2 ? "Pending spin…" : "—"}</span>
+                  <div className="w-full mt-4 space-y-2">
+                    <div className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Selection Progress</div>
+                    {[
+                      { label: "Contestant 1", entry: contestant1Entry, color: "red", picked: !!contestant1Entry },
+                      { label: "Contestant 2", entry: contestant2Entry, color: "red", picked: !!contestant2Entry },
+                      ...(tripleTheatMode ? [{ label: "Contestant 3", entry: null as typeof contestant1Entry, color: "yellow", picked: false }] : []),
+                    ].map((slot, i) => (
+                      <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded border text-sm ${
+                        slot.picked
+                          ? slot.color === "yellow" ? "border-yellow-600/50 bg-yellow-950/10" : "border-red-600/50 bg-red-950/20"
+                          : "border-white/10 bg-white/5"
+                      }`}>
+                        <span className={`text-[10px] uppercase tracking-widest w-24 shrink-0 font-bold ${
+                          slot.picked ? (slot.color === "yellow" ? "text-yellow-400" : "text-red-400") : "text-white/30"
+                        }`}>{slot.label}</span>
+                        <span className="text-white font-semibold truncate">
+                          {slot.entry?.artistName ?? (i === spinCount ? "Pending spin…" : "—")}
+                        </span>
+                        {slot.entry?.songTitle && (
+                          <span className="text-white/30 text-xs truncate ml-auto">🎵 {slot.entry.songTitle}</span>
+                        )}
                       </div>
-                    )}
+                    ))}
                     {spinCount < maxSpins && (
-                      <p className="text-white/40 text-xs text-center">Spin again to pick Contestant {spinCount + 1}</p>
+                      <p className="text-white/30 text-xs text-center pt-1">
+                        Spin to select Contestant {spinCount + 1}
+                      </p>
                     )}
                   </div>
                 )}
+
+                {/* Triple Threat toggle (admin) */}
+                {isAdmin && (
+                  <div className="w-full mt-4 pt-4 border-t border-white/10">
+                    <button
+                      onClick={() => setTripleTheat(!tripleTheatMode)}
+                      className={`w-full py-2 text-xs font-bold uppercase tracking-widest border transition-all ${
+                        tripleTheatMode
+                          ? "border-yellow-500 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20"
+                          : "border-white/20 text-white/40 hover:border-yellow-500/50 hover:text-yellow-400"
+                      }`}
+                    >
+                      ⚡ Triple Threat {tripleTheatMode ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Entry Form */}
               <div>
-                <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-4">
-                  Enter <span className="text-red-600">Battle</span>
-                </h2>
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="font-['Anton'] text-lg uppercase tracking-widest">
+                    Enter <span className="text-red-600">Battle</span>
+                  </h2>
+                  <span className={`text-[10px] border px-2 py-0.5 uppercase tracking-wider rounded-full ${
+                    wheelData?.isPaid ? "border-red-600/50 text-red-400" : "border-green-600/50 text-green-400"
+                  }`}>
+                    {wheelData?.isPaid ? `$${wheelData?.entryFee ?? "10"} Entry` : "Free Entry"}
+                  </span>
+                </div>
                 <SubmissionForm
                   isPaid={wheelData?.isPaid ?? false}
                   entryFee={wheelData?.entryFee ?? "10"}
@@ -1972,19 +2242,93 @@ export default function MusicWars() {
                   requiresPayment={requiresPayment}
                   user={user}
                 />
+
+                {/* How it works */}
+                <div className="mt-4 bg-[#0d0d0d] border border-white/10 rounded-xl p-4">
+                  <h3 className="font-['Anton'] text-xs uppercase tracking-widest mb-3 text-white/60">How It Works</h3>
+                  <ol className="space-y-2">
+                    {[
+                      "Submit your song to enter the wheel",
+                      "Admin approves and adds you to the wheel",
+                      "Wheel spins live to pick matchups",
+                      "Battle in the audio room — judges vote",
+                      "Winner advances up the leaderboard",
+                    ].map((step, i) => (
+                      <li key={i} className="flex gap-2 text-xs text-white/40">
+                        <span className="text-red-500 font-bold flex-shrink-0 w-4">{i + 1}.</span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
               </div>
             </div>
 
-            {/* Leaderboard */}
-            <Leaderboard />
+            {/* ── NOW PLAYING (Wars Radio) ────────────────────── */}
+            {warsRadioState && warsRadioState.tracks.length > 0 && (
+              <div className="border border-red-600/30 bg-gradient-to-r from-red-950/20 to-[#0d0d0d] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-['Anton'] text-lg uppercase tracking-widest">
+                    Now <span className="text-red-600">Playing</span>
+                  </h2>
+                  <span className="flex items-center gap-1.5 text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    Live
+                  </span>
+                </div>
+                {(() => {
+                  const currentTrack = warsRadioState.tracks[warsRadioState.currentIndex];
+                  if (!currentTrack) return null;
+                  return (
+                    <div className="mb-4">
+                      <div className="text-white font-semibold truncate">{currentTrack.songTitle}</div>
+                      <div className="text-white/50 text-xs mt-0.5">
+                        by <ArtistLink artistName={currentTrack.contestantName} />
+                        <span className="ml-2 text-white/30">· Contestant {currentTrack.contestantNumber}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="flex gap-2">
+                  {warsRadioState.tracks.map((t, i) => (
+                    <div key={i} className={`flex-1 text-center py-2 text-xs uppercase tracking-wider rounded border ${
+                      i === warsRadioState.currentIndex
+                        ? "border-red-600 bg-red-600/20 text-red-400"
+                        : "border-white/10 text-white/30"
+                    }`}>
+                      {t.contestantName}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* Past Battles */}
-            <PastBattles />
+            {/* ── ROUND RESULTS ──────────────────────────────── */}
+            <div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-['Anton'] text-xl uppercase tracking-widest">
+                  Round <span className="text-red-600">Results</span>
+                </h2>
+                <span className="text-xs text-white/30 uppercase tracking-widest">
+                  Round {wheelData?.currentRound ?? 1}
+                </span>
+              </div>
+              <PastBattles />
+            </div>
+
+            {/* ── LEADERBOARD ────────────────────────────────── */}
+            <div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5">
+              <h2 className="font-['Anton'] text-xl uppercase tracking-widest mb-4">
+                Season <span className="text-red-600">Standings</span>
+              </h2>
+              <Leaderboard />
+            </div>
           </div>
 
-          {/* RIGHT: Chat + Audio Room + Admin Hub */}
+          {/* ── RIGHT COLUMN ─────────────────────────────────── */}
           <div className="space-y-4">
-            {/* Admin Hub — consolidated admin controls, visible only to admins */}
+
+            {/* Admin Hub */}
             {isAdmin && (
               <MusicWarsAdminHub
                 warsRadioState={warsRadioState}
@@ -1998,19 +2342,14 @@ export default function MusicWars() {
                 tripleTheatMode={tripleTheatMode}
                 onToggleTripleThreat={() => setTripleTheat(!tripleTheatMode)}
                 onSetActiveBattle={async (c1, c2, c3, isTriple) => {
-                  await setActiveBattleMutation.mutateAsync({
-                    contestant1Name: c1,
-                    contestant2Name: c2,
-                    contestant3Name: c3,
-                    isTripleThreat: isTriple,
-                  });
+                  await setActiveBattleMutation.mutateAsync({ contestant1Name: c1, contestant2Name: c2, contestant3Name: c3 ?? undefined, isTripleThreat: isTriple });
                 }}
                 onClearVotes={async () => { if (activeBattle?.id) await clearVotesMutation.mutateAsync({ battleId: activeBattle.id }); }}
                 entries={allEntries ?? []}
                 onLoadToRadio={(contestantName, songTitle, songUrl, contestantNumber) => {
                   const existing = warsRadioState?.tracks ?? [];
-                  const updated = existing.filter(t => t.contestantNumber !== contestantNumber);
-                  loadTracks([...updated, { contestantName, songTitle, songUrl, contestantNumber }]);
+                  const updated = existing.map((t, i) => i === contestantNumber - 1 ? { ...t, contestantName, songTitle, songUrl } : t);
+                  loadTracks(updated.length > 0 ? updated : [{ contestantName, songTitle, songUrl, contestantNumber }]);
                 }}
                 onConfirmPayment={async (id) => { await confirmPaymentMutation.mutateAsync({ id }); refetchAllEntries(); refetchWheel(); }}
                 onUpdateStatus={async (id, status) => { await updateStatusMutation.mutateAsync({ id, status: status as any }); refetchAllEntries(); refetchWheel(); }}
@@ -2025,75 +2364,8 @@ export default function MusicWars() {
               />
             )}
 
-            <div>
-              <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
-                Live <span className="text-red-600">Chat</span>
-              </h2>
-              <ChatPanel messages={messages} isConnected={chatConnected} onSend={sendMessage} username={user ? username : ""} />
-              {!user && (
-                <p className="text-white/30 text-xs mt-2 text-center">
-                  <a href={getLoginUrl()} className="text-red-400 hover:underline">Login</a> to chat
-                </p>
-              )}
-            </div>
-
-            {/* Wars Radio — Now Playing (viewer-facing, no admin controls) */}
-            {warsRadioState && warsRadioState.tracks.length > 0 && (
-              <div className="border border-red-600/30 bg-red-600/5 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-['Anton'] text-lg uppercase tracking-widest">
-                    Now <span className="text-red-600">Playing</span>
-                  </h2>
-                  <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    LIVE
-                  </span>
-                </div>
-                {/* Current track info */}
-                {(() => {
-                  const currentTrack = warsRadioState.tracks[warsRadioState.currentIndex];
-                  if (!currentTrack) return null;
-                  return (
-                    <div className="mb-3">
-                      <div className="text-white font-semibold text-sm truncate">{currentTrack.songTitle}</div>
-                      <div className="text-white/50 text-xs">
-                        by <ArtistLink artistName={currentTrack.contestantName} />
-                        <span className="ml-2 text-white/30">• Contestant {currentTrack.contestantNumber}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-                {/* Track list */}
-                <div className="flex gap-2">
-                  {warsRadioState.tracks.map((t, i) => (
-                    <div key={i} className={`flex-1 text-center py-1.5 text-xs uppercase tracking-wider border ${i === warsRadioState.currentIndex ? "border-red-600 bg-red-600/20 text-red-400" : "border-white/10 text-white/30"}`}>
-                      {t.contestantName}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Live Voting Panel — viewer-facing only (admin controls moved to Admin Hub) */}
-            <div>
-              <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
-                Live <span className="text-red-600">Voting</span>
-              </h2>
-              <VotingPanel
-                activeBattle={activeBattle}
-                voteResults={voteResults}
-                myVote={myVote}
-                user={user ? { id: user.id, name: user.name ?? "Anonymous", role: user.role } : undefined}
-                isJudge={isJudge}
-                isAdmin={false}
-                onVote={async (candidate) => { if (activeBattle?.id) await castVoteMutation.mutateAsync({ battleId: activeBattle.id, candidate }); }}
-                onSetActiveBattle={async () => {}}
-                onClearVotes={async () => {}}
-                entries={[]}
-                tripleTheatMode={tripleTheatMode}
-                onToggleTripleThreat={() => {}}
-              />
-            </div>
-            <div>
+            {/* Audio Room */}
+            <div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5">
               <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
                 Audio <span className="text-red-600">Room</span>
               </h2>
@@ -2107,42 +2379,78 @@ export default function MusicWars() {
                   voiceVolume={voiceVolume} onVoiceVolumeChange={setVoiceVolume}
                 />
               ) : (
-                <div className="bg-[#0d0d0d] border border-white/10 p-5 text-center">
+                <div className="text-center py-4">
                   <p className="text-white/40 text-sm mb-3">Login to join the audio battle room</p>
-                  <a href={getLoginUrl()} className="text-xs bg-red-600 hover:bg-red-700 text-white px-6 py-2 uppercase tracking-widest transition-colors inline-block">Login</a>
+                  <a href={getLoginUrl()} className="text-xs bg-red-600 hover:bg-red-700 text-white px-6 py-2 uppercase tracking-widest transition-colors inline-block">
+                    Login
+                  </a>
                 </div>
               )}
             </div>
 
-            {/* How it works */}
-            <div className="bg-[#0d0d0d] border border-white/10 p-5">
-              <h3 className="font-['Anton'] text-sm uppercase tracking-widest mb-3">How It Works</h3>
-              <ol className="space-y-2 text-xs text-white/50">
-                {[
-                  "Submit your song to enter the battle",
-                  "Admin adds confirmed entries to the wheel",
-                  "Wheel spins live on stream to pick matchups",
-                  "Contestants battle in the audio room",
-                  "Judges vote, winner advances up the leaderboard",
-                  "Click any artist name to view their record and songs",
-                ].map((step, i) => (
-                  <li key={i} className="flex gap-2">
-                    <span className="text-red-500 font-bold flex-shrink-0">{i + 1}.</span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
+            {/* Wheel Entries (viewer-facing) */}
+            {activeEntries.length > 0 && (
+              <div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5">
+                <h2 className="font-['Anton'] text-lg uppercase tracking-widest mb-3">
+                  On The <span className="text-red-600">Wheel</span>
+                  <span className="ml-2 text-sm text-white/30 font-['DM_Sans'] normal-case tracking-normal">({activeEntries.length})</span>
+                </h2>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {activeEntries.map((entry, i) => (
+                    <div key={entry.id} className="flex items-center gap-3 py-2 border-b border-white/5 text-xs">
+                      <span className="text-red-500 font-bold w-5 text-center flex-shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <ArtistStatModal artistName={entry.artistName} userId={entry.userId ?? undefined}>
+                          <button className="text-white/80 font-semibold hover:text-red-400 transition-colors truncate block">
+                            {entry.artistName}
+                          </button>
+                        </ArtistStatModal>
+                        {entry.songTitle && (
+                          <div className="text-white/30 truncate mt-0.5">
+                            {entry.songUrl
+                              ? <a href={entry.songUrl} target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">🎵 {entry.songTitle}</a>
+                              : <span>🎵 {entry.songTitle}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── LIVE CHAT (full width, bottom) ─────────────────── */}
+        <div className="mt-8 bg-[#0d0d0d] border border-white/10 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <span className={`w-2 h-2 rounded-full ${chatConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+              <h2 className="font-['Anton'] text-lg uppercase tracking-widest">
+                Live <span className="text-red-600">Chat</span>
+              </h2>
             </div>
+            {!user && (
+              <a href={getLoginUrl()} className="text-xs text-red-400 hover:underline">Login to chat →</a>
+            )}
+          </div>
+          <div className="p-4">
+            <ChatPanel
+              messages={messages}
+              isConnected={chatConnected}
+              onSend={sendMessage}
+              username={user ? username : ""}
+            />
           </div>
         </div>
       </div>
 
       <footer className="border-t border-white/10 py-8 mt-8">
         <div className="container text-center text-white/30 text-xs">
-          <p>Murder Mitten Media Music Wars &copy; {new Date().getFullYear()} &middot; Michigan</p>
+          <p>Murder Mitten Media Music Wars &copy; {new Date().getFullYear()} · Michigan</p>
           <p className="mt-1">
             <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">Instagram</a>
-            {" "}&middot;{" "}
+            {" "}·{" "}
             <a href="https://youtube.com/@MurderMittenMedia" target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">YouTube</a>
           </p>
         </div>
