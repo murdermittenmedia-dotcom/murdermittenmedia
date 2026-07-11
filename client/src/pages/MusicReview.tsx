@@ -1436,7 +1436,7 @@ export default function MusicReview() {
 
       {/* ── MAIN CONTENT ──────────────────────────────────────── */}
       <div className="container py-4">
-        <div className="grid lg:grid-cols-[1fr_320px] gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
 
           {/* ── LEFT COLUMN ── */}
           <div className="min-w-0 space-y-4">
@@ -2130,7 +2130,7 @@ export default function MusicReview() {
           </div>
 
           {/* ── RIGHT COLUMN ── */}
-          <div className="space-y-4 hidden lg:block">
+          <div className="space-y-4">
 
             {/* Judge Broadcast Viewers */}
             {activeBroadcasts.filter((b: any) => b.userId !== user?.id).length > 0 && (
