@@ -12,6 +12,17 @@ export interface FakeChatMessage {
 
 const REACTIONS = ["🔥", "🗑️", "🔪", "THIS HARD", "SKIP", "FIRE", "TRASH", "BARS", "WEAK", "NEXT", "GO OFF", "MID", "HEAT"];
 
+export type ReactionType = "hype" | "trash" | "knife" | "bars" | "weak" | "next";
+
+const REACTION_MAP: Record<ReactionType, string[]> = {
+  hype: ["🔥", "FIRE", "THIS HARD", "GO OFF"],
+  trash: ["🗑️", "TRASH", "WEAK", "MID"],
+  knife: ["🔪", "KNIFE"],
+  bars: ["🔥", "BARS", "THIS HARD"],
+  weak: ["🗑️", "WEAK", "MID"],
+  next: ["NEXT", "SKIP"],
+};
+
 /**
  * Hook that generates fake viewer count (50-250) and random chat messages
  * from real signed-up users on the website
@@ -19,6 +30,7 @@ const REACTIONS = ["🔥", "🗑️", "🔪", "THIS HARD", "SKIP", "FIRE", "TRAS
 export function useFakeLiveChat() {
   const [viewerCount, setViewerCount] = useState(50);
   const [fakeMessages, setFakeMessages] = useState<FakeChatMessage[]>([]);
+  const [triggeredReaction, setTriggeredReaction] = useState<ReactionType | null>(null);
   
   // Fetch all users for generating fake messages
   const { data: allUsers } = trpc.admin.listUsers.useQuery(
@@ -39,13 +51,19 @@ export function useFakeLiveChat() {
     return () => clearInterval(interval);
   }, []);
 
-  // Generate fake chat messages every 4-12 seconds
+  // Generate fake chat messages every 4-12 seconds (or triggered reactions)
   useEffect(() => {
     if (!allUsers || allUsers.length === 0) return;
 
     const interval = setInterval(() => {
       const randomUser = allUsers[Math.floor(Math.random() * allUsers.length)];
-      const randomReaction = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+      
+      // Use triggered reaction or random reaction
+      let reactionPool = REACTIONS;
+      if (triggeredReaction) {
+        reactionPool = REACTION_MAP[triggeredReaction];
+      }
+      const randomReaction = reactionPool[Math.floor(Math.random() * reactionPool.length)];
       
       const newMessage: FakeChatMessage = {
         id: `fake-${Date.now()}-${Math.random()}`,
@@ -61,13 +79,20 @@ export function useFakeLiveChat() {
         const updated = [...prev, newMessage];
         return updated.slice(-20);
       });
-    }, 4000 + Math.random() * 8000);
+    }, triggeredReaction ? 300 : 4000 + Math.random() * 8000); // Faster during triggered reactions
 
     return () => clearInterval(interval);
-  }, [allUsers]);
+  }, [allUsers, triggeredReaction]);
+
+  const triggerReaction = (reaction: ReactionType, duration: number = 3000) => {
+    setTriggeredReaction(reaction);
+    setTimeout(() => setTriggeredReaction(null), duration);
+  };
 
   return {
     viewerCount,
     fakeMessages,
+    triggerReaction,
+    triggeredReaction,
   };
 }

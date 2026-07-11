@@ -422,6 +422,54 @@ function AdminPanel({
           </button>
         </div>
 
+        {/* ── Reaction triggers (admin only) ── */}
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => triggerReaction("hype", 3000)}
+            className="flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border border-orange-500/50 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-all"
+            title="Flood chat with fire emojis"
+          >
+            🔥 Hype
+          </button>
+          <button
+            onClick={() => triggerReaction("trash", 3000)}
+            className="flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+            title="Flood chat with trash emojis"
+          >
+            🗑️ Trash
+          </button>
+          <button
+            onClick={() => triggerReaction("knife", 3000)}
+            className="flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border border-purple-500/50 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-all"
+            title="Flood chat with knife emojis"
+          >
+            🔪 Knife
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => triggerReaction("bars", 3000)}
+            className="flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border border-cyan-500/50 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all"
+            title="Flood chat with bars reactions"
+          >
+            🎵 Bars
+          </button>
+          <button
+            onClick={() => triggerReaction("weak", 3000)}
+            className="flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border border-gray-500/50 bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 transition-all"
+            title="Flood chat with weak reactions"
+          >
+            😴 Weak
+          </button>
+          <button
+            onClick={() => triggerReaction("next", 3000)}
+            className="flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg border border-blue-500/50 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
+            title="Flood chat with skip reactions"
+          >
+            ⏭️ Next
+          </button>
+        </div>
+
         {/* ── Pending skip payments ── */}
         {pendingSkips.length > 0 && (
           <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
@@ -962,7 +1010,7 @@ export default function MusicReview() {
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fake live viewer count and auto-chat messages
-  const { viewerCount, fakeMessages } = useFakeLiveChat();
+  const { viewerCount, fakeMessages, triggerReaction } = useFakeLiveChat();
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
 
