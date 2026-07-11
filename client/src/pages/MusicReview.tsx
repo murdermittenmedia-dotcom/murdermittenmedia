@@ -21,6 +21,7 @@ import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 import { JudgeLiveBroadcast, JudgeBroadcastViewer } from "@/components/JudgeLiveBroadcast";
+import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
@@ -959,6 +960,9 @@ export default function MusicReview() {
   );
 
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fake live viewer count and auto-chat messages
+  const { viewerCount, fakeMessages } = useFakeLiveChat();
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
 
@@ -2099,12 +2103,18 @@ export default function MusicReview() {
                   <span className={`w-2 h-2 rounded-full ${chatConnected ? "bg-green-500" : "bg-red-500"}`} />
                   <span className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-semibold">Live Chat</span>
                 </div>
-                <span className="text-white/20 text-[10px]">{chatMessages.length} msg{chatMessages.length !== 1 ? "s" : ""}</span>
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1 text-white/40 text-[10px]">
+                    <Eye className="w-3 h-3" />
+                    {viewerCount.toLocaleString()}
+                  </span>
+                  <span className="text-white/20 text-[10px]">{(chatMessages.length + fakeMessages.length)} msg{(chatMessages.length + fakeMessages.length) !== 1 ? "s" : ""}</span>
+                </div>
               </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {chatMessages.length === 0 && (
+                {chatMessages.length === 0 && fakeMessages.length === 0 && (
                   <div className="text-center text-white/20 text-xs py-8">No messages yet — say something!</div>
                 )}
                 {chatMessages.map((msg, i) => (
@@ -2123,6 +2133,18 @@ export default function MusicReview() {
                         <span className="text-white/50 ml-1.5">{msg.text}</span>
                       </div>
                     )}
+                  </div>
+                ))}
+                {fakeMessages.map((msg) => (
+                  <div key={msg.id} className="text-xs">
+                    <span className={`font-semibold ${
+                      msg.role === "admin" ? "text-red-400" : msg.role === "judge" ? "text-yellow-400" : "text-white/70"
+                    }`}>
+                      {msg.username}
+                      {msg.role === "admin" && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
+                      {msg.role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
+                    </span>
+                    <span className="text-white/50 ml-1.5">{msg.text}</span>
                   </div>
                 ))}
                 <div ref={chatBottomRef} />
