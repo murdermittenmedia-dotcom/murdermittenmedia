@@ -1,0 +1,40 @@
+{
+  "query": "SELECT * FROM artist_of_week ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute SELECT * FROM artist_of_week ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "30001",
+      "artistName": "Duffle Cole",
+      "bio": "Ypsilanti artist Duffle Cole is back and hungrier than ever after serving a 4-year prison sentence. Fresh home and locked in, Cole is ready to make his mark on the Michigan music scene with raw, authentic street narratives that only someone who lived it can tell.",
+      "imageUrl": "NULL",
+      "instagramUrl": "https://www.instagram.com/therealdufflecole/",
+      "youtubeUrl": "NULL",
+      "spotifyUrl": "NULL",
+      "featuredVideoId": "NULL",
+      "isActive": "1",
+      "weekOf": "2026-07-11 21:06:42",
+      "createdAt": "2026-07-11 21:06:42",
+      "audioTrackUrl": "NULL",
+      "audioTrackTitle": "NULL"
+    },
+    {
+      "id": "1",
+      "artistName": "YLG N3RO",
+      "bio": "",
+      "imageUrl": "",
+      "instagramUrl": "https://www.instagram.com/ylgn3ro",
+      "youtubeUrl": "",
+      "spotifyUrl": "",
+      "featuredVideoId": "",
+      "isActive": "0",
+      "weekOf": "2026-06-13 13:31:53",
+      "createdAt": "2026-06-13 13:31:53",
+      "audioTrackUrl": "",
+      "audioTrackTitle": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tartistName\tbio\timageUrl\tinstagramUrl\tyoutubeUrl\tspotifyUrl\tfeaturedVideoId\tisActive\tweekOf\tcreatedAt\taudioTrackUrl\taudioTrackTitle\n30001\tDuffle Cole\tYpsilanti artist Duffle Cole is back and hungrier than ever after serving a 4-year prison sentence. Fresh home and locked in, Cole is ready to make his mark on the Michigan music scene with raw, authentic street narratives that only someone who lived it can tell.\tNULL\thttps://www.instagram.com/therealdufflecole/\tNULL\tNULL\tNULL\t1\t2026-07-11 21:06:42\t2026-07-11 21:06:42\tNULL\tNULL\n1\tYLG N3RO\t\t\thttps://www.instagram.com/ylgn3ro\t\t\t\t0\t2026-06-13 13:31:53\t2026-06-13 13:31:53\t\t\n",
+  "stderr": "",
+  "execution_time_ms": 302
+}

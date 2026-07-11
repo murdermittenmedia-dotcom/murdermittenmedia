@@ -65,6 +65,141 @@ function Stat({ value, label, delay, started }: { value: number; label: string; 
   );
 }
 
+// --- Artist of the Month Section (dynamic from DB) ----------
+function ArtistOfMonthSection() {
+  const { data: artist, isLoading } = trpc.artistOfWeek.getCurrent.useQuery();
+
+  const monthLabel = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+  if (isLoading) {
+    return (
+      <section className="py-20 relative overflow-hidden">
+        <div className="container">
+          <div className="h-64 bg-white/5 animate-pulse rounded" />
+        </div>
+      </section>
+    );
+  }
+
+  if (!artist) return null;
+
+  return (
+    <section className="py-20 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-[#080808] via-[#080808]/95 to-[#080808]/70" />
+      {artist.imageUrl && (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-10"
+          style={{ backgroundImage: `url(${artist.imageUrl})` }}
+        />
+      )}
+      <div className="container relative z-10">
+        {/* Section label */}
+        <div className="flex items-center gap-3 mb-10">
+          <div className="w-8 h-px bg-red-600" />
+          <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-semibold">
+            ⭐ Artist of the Month — {monthLabel}
+          </span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
+
+        {/* Feature card */}
+        <div className="grid md:grid-cols-2 gap-0 border border-white/10 overflow-hidden">
+          {/* Left: image or YouTube thumbnail */}
+          <div className="relative bg-black min-h-[240px] flex items-center justify-center overflow-hidden">
+            {artist.imageUrl ? (
+              <img
+                src={artist.imageUrl}
+                alt={artist.artistName}
+                className="w-full h-full object-cover opacity-80"
+              />
+            ) : artist.featuredVideoId ? (
+              <a
+                href={`https://www.youtube.com/watch?v=${artist.featuredVideoId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative w-full h-full block group"
+              >
+                <img
+                  src={`https://img.youtube.com/vi/${artist.featuredVideoId}/maxresdefault.jpg`}
+                  alt={artist.artistName}
+                  className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-all duration-500"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-red-600/90 flex items-center justify-center shadow-[0_0_30px_rgba(209,0,0,0.5)]">
+                    <span className="text-white text-xl ml-1">▶</span>
+                  </div>
+                </div>
+              </a>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
+                <div className="font-['Anton'] text-8xl text-red-600/20">810</div>
+                <div className="text-white/20 text-xs uppercase tracking-widest">Flint, MI</div>
+              </div>
+            )}
+          </div>
+
+          {/* Text side */}
+          <div className="p-8 md:p-12 bg-[#0d0d0d] flex flex-col justify-center">
+            <div className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">
+              Flint, MI · 810 · ScammLikeelyy
+            </div>
+            <h2 className="font-['Anton'] text-5xl md:text-6xl lg:text-7xl uppercase leading-none mb-4">
+              {artist.artistName.split(' ').map((word, i) => (
+                <span key={i}>
+                  {i === 1 ? <span className="text-red-600">{word}</span> : word}
+                  {i < artist.artistName.split(' ').length - 1 && <br />}
+                </span>
+              ))}
+            </h2>
+            <p className="text-white/50 leading-relaxed mb-8 text-sm">
+              {artist.bio}
+            </p>
+            <div className="flex flex-wrap gap-3 mb-8">
+              {artist.instagramUrl && (
+                <a
+                  href={artist.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs border border-white/20 text-white/60 hover:text-white hover:border-white/40 px-4 py-2 uppercase tracking-wider transition-all"
+                >
+                  Instagram →
+                </a>
+              )}
+              {artist.youtubeUrl && (
+                <a
+                  href={artist.youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs border border-white/20 text-white/60 hover:text-white hover:border-white/40 px-4 py-2 uppercase tracking-wider transition-all"
+                >
+                  YouTube →
+                </a>
+              )}
+              {artist.spotifyUrl && (
+                <a
+                  href={artist.spotifyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs border border-green-600/40 text-green-400/70 hover:text-green-400 hover:border-green-600/60 px-4 py-2 uppercase tracking-wider transition-all"
+                >
+                  Spotify →
+                </a>
+              )}
+            </div>
+            <Link
+              href="/artist-of-the-week"
+              className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_25px_rgba(209,0,0,0.4)] self-start"
+            >
+              Read the Full Feature — {artist.artistName}
+              <span>→</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // --- Main -----------------------------------------------------
 export default function Home() {
   const { ref: statsRef, inView: statsInView } = useInView(0.2);
@@ -347,82 +482,9 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          ARTIST OF THE WEEK -- Full-width feature, top billing
+          ARTIST OF THE MONTH -- Dynamic from DB
       ══════════════════════════════════════════════════════ */}
-      <section className="py-20 relative overflow-hidden">
-        {/* Background image from CEO Stew video */}
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-10"
-          style={{ backgroundImage: "url(https://img.youtube.com/vi/1bgjhsoC5AI/maxresdefault.jpg)" }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#080808] via-[#080808]/95 to-[#080808]/70" />
-
-        <div className="container relative z-10">
-          {/* Section label */}
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-8 h-px bg-red-600" />
-            <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-semibold">⭐ Artist of the Month — June 2026</span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
-
-          {/* Feature card */}
-          <div className="grid md:grid-cols-2 gap-0 border border-white/10 overflow-hidden">
-            {/* Video thumbnails side */}
-            <div className="relative bg-black">
-              <div className="grid grid-cols-2 gap-0.5">
-                {["7HLFhigwfgM", "sz-P_jopTz0", "_5dZbJHlEh0", "OqZ10eNat7U"].map((id, i) => (
-                  <a
-                    key={id}
-                    href={`https://www.youtube.com/watch?v=${id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="relative aspect-video overflow-hidden group"
-                  >
-                    <img
-                      src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`}
-                      alt={`ITSMANMAN - Artist of the Month video ${i + 1}`}
-                      className="w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-                      <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center">
-                        <span className="text-white text-xs ml-0.5">▶</span>
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Text side */}
-            <div className="p-8 md:p-12 bg-[#0d0d0d] flex flex-col justify-center">
-              <div className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">
-                Detroit, MI · Propdemic Co-Sign
-              </div>
-              <h2 className="font-['Anton'] text-6xl md:text-7xl uppercase leading-none mb-4">
-                ITS<br /><span className="text-red-600">MANMAN</span>
-              </h2>
-              <p className="text-white/50 leading-relaxed mb-8 text-sm">
-                Detroit's rising force. ITSMANMAN blends raw street energy with melodic precision — his debut album
-                MANMAN IVERSON is already making noise. Backed by a Propdemic co-sign, June 2026 belongs to him.
-              </p>
-              <div className="flex flex-wrap gap-2 mb-8">
-                {["Detroit", "MANMAN IVERSON", "Propdemic", "Michigan Rap"].map(tag => (
-                  <span key={tag} className="text-xs border border-white/10 text-white/30 px-3 py-1 uppercase tracking-wider">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <Link
-                href="/artist-of-the-week"
-                className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-sm font-semibold uppercase tracking-widest transition-all hover:shadow-[0_0_25px_rgba(209,0,0,0.4)] self-start"
-              >
-                Read the Full Feature — ITSMANMAN
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ArtistOfMonthSection />
 
       {/* ══════════════════════════════════════════════════════
           CONTENT SECTIONS -- Clean 2-col grid, no clutter
