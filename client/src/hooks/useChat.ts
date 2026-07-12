@@ -54,6 +54,7 @@ export interface ChatControlsData {
   sentimentBias?: number;
   ghostFireIntervalSec?: number;
   ghostTrashIntervalSec?: number;
+  viewerCount?: number;
 }
 
 interface UseChatOptions {

@@ -795,7 +795,12 @@ export function useFakeLiveChat({
       setViewerCount(prev => {
         const range = viewerMax - viewerMin;
         const change = Math.floor(Math.random() * Math.max(range * 0.16, 10)) - Math.floor(Math.max(range * 0.08, 5));
-        return Math.max(viewerMin, Math.min(viewerMax, prev + change));
+        const newCount = Math.max(viewerMin, Math.min(viewerMax, prev + change));
+        // Admin: broadcast viewer count to all viewers
+        if (isAdminRef.current && emitFakeChatMessageRef.current) {
+          emitChatControlsRef.current?.({ viewerCount: newCount });
+        }
+        return newCount;
       });
     };
     // Snap current count into new range immediately
@@ -880,9 +885,8 @@ export function useFakeLiveChat({
     setTimeout(() => setTriggeredReaction(null), duration);
   };
 
-  // Viewer: receive fake messages from admin via socket
+  // Receive fake messages from admin via socket (all users including admin)
   const receiveFakeMessage = useCallback((data: FakeChatMessageData) => {
-    if (isAdminRef.current) return; // admin doesn't receive their own relay
     const msg: FakeChatMessage = {
       id: `relay-${data.timestamp}-${Math.random()}`,
       username: data.username,
@@ -894,13 +898,14 @@ export function useFakeLiveChat({
     setFakeMessages(prev => [...prev, msg].slice(-50));
   }, []);
 
-  // Viewer: receive chat control settings from admin via socket
+  // Receive chat control settings from admin via socket (all users including admin)
   const receiveChatControls = useCallback((data: ChatControlsData) => {
-    if (isAdminRef.current) return; // admin doesn't apply their own relay
+    // All users apply the relay settings
     if (data.commentIntervalMs !== undefined) setCommentIntervalMs(data.commentIntervalMs);
     if (data.sentimentBias !== undefined) setSentimentBias(data.sentimentBias);
     if (data.ghostFireIntervalSec !== undefined) setGhostFireIntervalSec(data.ghostFireIntervalSec);
     if (data.ghostTrashIntervalSec !== undefined) setGhostTrashIntervalSec(data.ghostTrashIntervalSec);
+    if (data.viewerCount !== undefined) setViewerCount(data.viewerCount);
   }, []);
 
   // Admin: broadcast chat controls whenever they change
