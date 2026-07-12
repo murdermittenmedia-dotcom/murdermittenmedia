@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import type { FakeChatMessageData, ChatControlsData } from "./useChat";
 
 export interface FakeChatMessage {
   id: string;
@@ -696,7 +697,20 @@ export interface FakeLiveChatConfig {
   viewerMax: number;
 }
 
-export function useFakeLiveChat() {
+interface UseFakeLiveChatOptions {
+  /** When true, this client is the admin — fake messages are emitted to all viewers via socket */
+  isAdmin?: boolean;
+  /** Socket emit function from useChat — used by admin to broadcast fake messages */
+  emitFakeChatMessage?: (data: FakeChatMessageData) => void;
+  /** Socket emit function from useChat — used by admin to broadcast chat control settings */
+  emitChatControls?: (data: ChatControlsData) => void;
+}
+
+export function useFakeLiveChat({
+  isAdmin = false,
+  emitFakeChatMessage,
+  emitChatControls,
+}: UseFakeLiveChatOptions = {}) {
   const [viewerCount, setViewerCount] = useState(50);
   const [fakeMessages, setFakeMessages] = useState<FakeChatMessage[]>([]);
   const [triggeredReaction, setTriggeredReaction] = useState<ReactionType | null>(null);
@@ -732,6 +746,25 @@ export function useFakeLiveChat() {
 
   // Track last comment time per user (userId -> timestamp)
   const lastCommentTime = useRef<Record<string, number>>({});
+
+  // Admin: when a fake message is generated, also emit it over the socket so viewers see it
+  const emitFakeChatMessageRef = useRef(emitFakeChatMessage);
+  emitFakeChatMessageRef.current = emitFakeChatMessage;
+  const isAdminRef = useRef(isAdmin);
+  isAdminRef.current = isAdmin;
+
+  // Intercept setFakeMessages to also emit over socket when admin
+  const addFakeMessage = useCallback((msg: FakeChatMessage) => {
+    setFakeMessages(prev => [...prev, msg].slice(-50));
+    if (isAdminRef.current && emitFakeChatMessageRef.current) {
+      emitFakeChatMessageRef.current({
+        username: msg.username,
+        text: msg.text,
+        userId: msg.userId,
+        timestamp: msg.timestamp,
+      });
+    }
+  }, []);
 
   const { data: allUsers } = trpc.admin.listUsers.useQuery(
     { limit: 100, offset: 0 },
@@ -787,14 +820,14 @@ export function useFakeLiveChat() {
         const key = String(randomUser.id);
         lastCommentTime.current[key] = now;
 
-        setFakeMessages(prev => [...prev, {
+        addFakeMessage({
           id: `fake-${now}-${Math.random()}`,
           username: randomUser.artistName || randomUser.username || `User${randomUser.id}`,
           text,
           timestamp: now,
           role: "user" as const,
           userId: randomUser.id,
-        }].slice(-50));
+        });
         return;
       }
 
@@ -828,24 +861,51 @@ export function useFakeLiveChat() {
       const key = String(randomUser.id);
       lastCommentTime.current[key] = now;
 
-      setFakeMessages(prev => [...prev, {
-        id: `fake-${now}-${Math.random()}`,
-        username: randomUser.artistName || randomUser.username || `User${randomUser.id}`,
-        text,
-        timestamp: now,
-        role: "user" as const,
-        userId: randomUser.id,
-      }].slice(-50));
+      addFakeMessage({
+          id: `fake-${now}-${Math.random()}`,
+          username: randomUser.artistName || randomUser.username || `User${randomUser.id}`,
+          text,
+          timestamp: now,
+          role: "user" as const,
+          userId: randomUser.id,
+        });
 
     }, triggeredReaction ? 300 : commentIntervalMs * (0.7 + Math.random() * 0.6));
 
     return () => clearInterval(interval);
-  }, [chatPool, triggeredReaction, commentIntervalMs, sentimentBias]);
+  }, [chatPool, triggeredReaction, commentIntervalMs, sentimentBias, addFakeMessage]);
 
   const triggerReaction = (reaction: ReactionType, duration = 3000) => {
     setTriggeredReaction(reaction);
     setTimeout(() => setTriggeredReaction(null), duration);
   };
+
+  // Viewer: receive fake messages from admin via socket
+  const receiveFakeMessage = useCallback((data: FakeChatMessageData) => {
+    if (isAdminRef.current) return; // admin doesn't receive their own relay
+    const msg: FakeChatMessage = {
+      id: `relay-${data.timestamp}-${Math.random()}`,
+      username: data.username,
+      text: data.text,
+      timestamp: data.timestamp,
+      role: "user" as const,
+      userId: data.userId ?? -999,
+    };
+    setFakeMessages(prev => [...prev, msg].slice(-50));
+  }, []);
+
+  // Viewer: receive chat control settings from admin via socket
+  const receiveChatControls = useCallback((data: ChatControlsData) => {
+    if (isAdminRef.current) return; // admin doesn't apply their own relay
+    if (data.commentIntervalMs !== undefined) setCommentIntervalMs(data.commentIntervalMs);
+    if (data.sentimentBias !== undefined) setSentimentBias(data.sentimentBias);
+    if (data.ghostFireIntervalSec !== undefined) setGhostFireIntervalSec(data.ghostFireIntervalSec);
+    if (data.ghostTrashIntervalSec !== undefined) setGhostTrashIntervalSec(data.ghostTrashIntervalSec);
+  }, []);
+
+  // Admin: broadcast chat controls whenever they change
+  const emitChatControlsRef = useRef(emitChatControls);
+  emitChatControlsRef.current = emitChatControls;
 
   return {
     viewerCount,
@@ -871,5 +931,8 @@ export function useFakeLiveChat() {
     // Comment sentiment bias (0=trash, 50=mixed, 100=fire)
     sentimentBias,
     setSentimentBias,
+    // Socket relay helpers (pass to useChat callbacks)
+    receiveFakeMessage,
+    receiveChatControls,
   };
 }

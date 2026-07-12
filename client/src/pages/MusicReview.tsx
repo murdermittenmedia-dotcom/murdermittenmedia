@@ -1359,7 +1359,7 @@ export default function MusicReview() {
     },
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
   });
-  const { data: lineSkipCreditsData, refetch: refetchLineSkipCredits } = trpc.dailyWheel.getMyLineSkipCredits.useQuery();
+  const { data: lineSkipCreditsData, refetch: refetchLineSkipCredits } = trpc.dailyWheel.getMyLineSkipCredits.useQuery(undefined, { enabled: !!user });
   const useLineSkipMutation = trpc.dailyWheel.useLineSkip.useMutation({
     onSuccess: (data) => {
       toast.success(`Line skip applied! Credits remaining: ${data.creditsRemaining}`);
@@ -1415,6 +1415,10 @@ export default function MusicReview() {
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fake live viewer count and auto-chat messages
+  // NOTE: emitFakeChatMessage and emitChatControls are wired in after useChat is initialized
+  const fakeChatEmitRef = useRef<((data: any) => void) | undefined>(undefined);
+  const chatControlsEmitRef = useRef<((data: any) => void) | undefined>(undefined);
+
   const {
     viewerCount, fakeMessages, triggerReaction,
     commentIntervalMs, setCommentIntervalMs,
@@ -1424,7 +1428,13 @@ export default function MusicReview() {
     ghostFireIntervalSec, setGhostFireIntervalSec,
     ghostTrashIntervalSec, setGhostTrashIntervalSec,
     sentimentBias, setSentimentBias,
-  } = useFakeLiveChat();
+    receiveFakeMessage,
+    receiveChatControls,
+  } = useFakeLiveChat({
+    isAdmin,
+    emitFakeChatMessage: (data) => fakeChatEmitRef.current?.(data),
+    emitChatControls: (data) => chatControlsEmitRef.current?.(data),
+  });
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
 
@@ -1456,11 +1466,17 @@ export default function MusicReview() {
     broadcastReviewQueueUpdated,
     broadcastLastSong,
     broadcastReactionsUpdated,
+    emitFakeChatMessage,
+    emitChatControls,
+    emitTriggerReaction,
   } = useChat({
     room: "music_review",
     username: chatUsername,
     userId: user?.id,
     isAdmin,
+    onFakeChatMessage: receiveFakeMessage,
+    onChatControlsReceived: receiveChatControls,
+    onTriggerReaction: (data) => { if (!isAdmin) triggerReaction(data.reaction as any, data.duration); },
     onReviewActiveChanged: (item) => {
       setActiveSubmissionId(item.submissionId);
       setLiveReviewActive(item);
@@ -1495,6 +1511,12 @@ export default function MusicReview() {
       refetchReactions();
       refetchMyReaction();
     },
+  });
+
+  // Wire the emit refs so useFakeLiveChat can call them
+  useEffect(() => {
+    fakeChatEmitRef.current = emitFakeChatMessage;
+    chatControlsEmitRef.current = emitChatControls;
   });
 
   // Initialize from DB for late joiners
@@ -1790,9 +1812,9 @@ export default function MusicReview() {
             playTrack={playTrack}
             setSelectedYouTube={setSelectedYouTube}
             reviewedTracks={reviewedTracks}
-            triggerReaction={triggerReaction}
+            triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
             commentIntervalMs={commentIntervalMs}
-            setCommentIntervalMs={setCommentIntervalMs}
+            setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); }}
             viewerMin={viewerMin}
             setViewerMin={setViewerMin}
             viewerMax={viewerMax}
@@ -1802,11 +1824,11 @@ export default function MusicReview() {
             ghostTrashCount={ghostTrashCount}
             setGhostTrashCount={setGhostTrashCount}
             ghostFireIntervalSec={ghostFireIntervalSec}
-            setGhostFireIntervalSec={setGhostFireIntervalSec}
+            setGhostFireIntervalSec={(v) => { setGhostFireIntervalSec(v); emitChatControls({ ghostFireIntervalSec: v }); }}
             ghostTrashIntervalSec={ghostTrashIntervalSec}
-            setGhostTrashIntervalSec={setGhostTrashIntervalSec}
+            setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
             sentimentBias={sentimentBias}
-            setSentimentBias={setSentimentBias}
+            setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
           />
         )}
 
@@ -1848,7 +1870,7 @@ export default function MusicReview() {
                     </div>
                   );
                   return null;
-                })}
+                })()}
               </div>
 
               {/* Track info */}

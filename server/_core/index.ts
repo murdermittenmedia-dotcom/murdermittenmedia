@@ -659,6 +659,34 @@ async function startServer() {
       io.to("music_review").emit("review:reactions_updated", data);
     });
 
+    // ── Review: Fake chat message relay (admin → all viewers) ──
+    // Admin emits a fake chat message; server relays it to all OTHER viewers
+    socket.on("review:fake_chat_message", (data: {
+      username: string;
+      text: string;
+      userId?: number | null;
+      timestamp: number;
+    }) => {
+      socket.to("music_review").emit("review:fake_chat_message", data);
+    });
+
+    // ── Review: Chat controls relay (admin → all viewers) ──────
+    // Admin changes speed/sentiment/ghost vote settings; relay to all viewers
+    socket.on("review:chat_controls", (data: {
+      commentIntervalMs?: number;
+      sentimentBias?: number;
+      ghostFireIntervalSec?: number;
+      ghostTrashIntervalSec?: number;
+    }) => {
+      socket.to("music_review").emit("review:chat_controls", data);
+    });
+
+    // ── Review: Reaction trigger relay (admin → all viewers) ──
+    // Admin triggers a reaction flood; relay to all viewers so their fake chat floods too
+    socket.on("review:trigger_reaction", (data: { reaction: string; duration: number }) => {
+      socket.to("music_review").emit("review:trigger_reaction", data);
+    });
+
     // ── Music Wars Radio Events ─────────────────────────────────
     // Admin loads battle tracks (auto-called when battle is set)
     socket.on("wars_radio:load", (data: { tracks: WarsRadioTrack[] }) => {

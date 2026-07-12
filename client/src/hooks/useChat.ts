@@ -42,6 +42,20 @@ export interface LastSongRestoredData {
   fileKey: string | null;
 }
 
+export interface FakeChatMessageData {
+  username: string;
+  text: string;
+  userId?: number | null;
+  timestamp: number;
+}
+
+export interface ChatControlsData {
+  commentIntervalMs?: number;
+  sentimentBias?: number;
+  ghostFireIntervalSec?: number;
+  ghostTrashIntervalSec?: number;
+}
+
 interface UseChatOptions {
   room: "music_wars" | "music_review";
   username: string;
@@ -58,6 +72,12 @@ interface UseChatOptions {
   onRadioResumed?: (data: { startedAt: number }) => void;
   onRadioSeeked?: (data: { currentTime: number; startedAt: number }) => void;
   onReactionsUpdated?: (data: { submissionId: number }) => void;
+  /** Viewer: called when a fake chat message arrives from admin via socket */
+  onFakeChatMessage?: (data: FakeChatMessageData) => void;
+  /** Viewer: called when admin broadcasts updated chat control settings */
+  onChatControlsReceived?: (data: ChatControlsData) => void;
+  /** Viewer: called when admin triggers a reaction flood */
+  onTriggerReaction?: (data: { reaction: string; duration: number }) => void;
 }
 
 export function useChat({
@@ -76,6 +96,8 @@ export function useChat({
   onRadioResumed,
   onRadioSeeked,
   onReactionsUpdated,
+  onFakeChatMessage,
+  onChatControlsReceived,
 }: UseChatOptions) {
   const socketRef = useRef<Socket | null>(null);
   const onSpinStateRef = useRef(onSpinStateChange);
@@ -96,6 +118,12 @@ export function useChat({
   onRadioSeekedRef.current = onRadioSeeked;
   const onReactionsUpdatedRef = useRef(onReactionsUpdated);
   onReactionsUpdatedRef.current = onReactionsUpdated;
+  const onFakeChatMessageRef = useRef(onFakeChatMessage);
+  onFakeChatMessageRef.current = onFakeChatMessage;
+  const onChatControlsReceivedRef = useRef(onChatControlsReceived);
+  onChatControlsReceivedRef.current = onChatControlsReceived;
+  const onTriggerReactionRef = useRef(onTriggerReaction);
+  onTriggerReactionRef.current = onTriggerReaction;
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isConnected, setIsConnected] = useState(false);
@@ -176,6 +204,21 @@ export function useChat({
       onLastSongRestoredRef.current?.(data);
     });
 
+    // Fake chat message relayed from admin — viewers receive and display it
+    socket.on("review:fake_chat_message", (data: FakeChatMessageData) => {
+      onFakeChatMessageRef.current?.(data);
+    });
+
+    // Chat control settings relayed from admin — viewers apply them
+    socket.on("review:chat_controls", (data: ChatControlsData) => {
+      onChatControlsReceivedRef.current?.(data);
+    });
+
+    // Reaction trigger relayed from admin — viewers flood their fake chat
+    socket.on("review:trigger_reaction", (data: { reaction: string; duration: number }) => {
+      onTriggerReactionRef.current?.(data);
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -242,6 +285,21 @@ export function useChat({
     socketRef.current?.emit("radio:last_song");
   }, []);
 
+  // Admin: emit a fake chat message so all viewers see it in real time
+  const emitFakeChatMessage = useCallback((data: FakeChatMessageData) => {
+    socketRef.current?.emit("review:fake_chat_message", data);
+  }, []);
+
+  // Admin: broadcast updated chat control settings to all viewers
+  const emitChatControls = useCallback((data: ChatControlsData) => {
+    socketRef.current?.emit("review:chat_controls", data);
+  }, []);
+
+  // Admin: broadcast a reaction trigger to all viewers
+  const emitTriggerReaction = useCallback((reaction: string, duration: number) => {
+    socketRef.current?.emit("review:trigger_reaction", { reaction, duration });
+  }, []);
+
   return {
     messages,
     isConnected,
@@ -258,6 +316,9 @@ export function useChat({
     broadcastReviewQueueUpdated,
     broadcastReactionsUpdated,
     broadcastLastSong,
+    emitFakeChatMessage,
+    emitChatControls,
+    emitTriggerReaction,
     socket: socketRef.current,
   };
 }
