@@ -99,6 +99,7 @@ function StatusBadge({ status }: { status: string }) {
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
   data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube, reviewedTracks, triggerReaction,
+  commentIntervalMs, setCommentIntervalMs, viewerMin, setViewerMin, viewerMax, setViewerMax,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -116,6 +117,12 @@ function AdminPanel({
   setSelectedYouTube: (val: { url: string; title: string; artist: string } | null) => void;
   reviewedTracks?: ReviewSubmission[];
   triggerReaction: (reaction: "hype" | "trash" | "knife" | "bars" | "weak" | "next", duration?: number) => void;
+  commentIntervalMs: number;
+  setCommentIntervalMs: (v: number) => void;
+  viewerMin: number;
+  setViewerMin: (v: number) => void;
+  viewerMax: number;
+  setViewerMax: (v: number) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -469,6 +476,73 @@ function AdminPanel({
           >
             ⏭️ Next
           </button>
+        </div>
+
+        {/* ── Chat & Viewer Controls ── */}
+        <div className="border border-white/10 bg-white/[0.02] rounded-lg p-3 space-y-3">
+          <div className="text-white/40 text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5">
+            <span>💬</span> Chat &amp; Viewer Controls
+          </div>
+
+          {/* Comment speed slider */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Comment Speed</span>
+              <span className="text-white/70 text-[10px] font-mono">
+                {commentIntervalMs >= 1000
+                  ? `${(commentIntervalMs / 1000).toFixed(1)}s`
+                  : `${commentIntervalMs}ms`
+                } / msg
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-white/30">Fast</span>
+              <input
+                type="range"
+                min={500}
+                max={30000}
+                step={500}
+                value={commentIntervalMs}
+                onChange={e => setCommentIntervalMs(Number(e.target.value))}
+                className="flex-1 h-1.5 rounded-full accent-red-500 cursor-pointer"
+              />
+              <span className="text-[9px] text-white/30">Slow</span>
+            </div>
+          </div>
+
+          {/* Viewer count range slider */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Viewer Range</span>
+              <span className="text-white/70 text-[10px] font-mono">{viewerMin}–{viewerMax}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-white/30">Min</span>
+              <input
+                type="range"
+                min={10}
+                max={viewerMax - 10}
+                step={10}
+                value={viewerMin}
+                onChange={e => setViewerMin(Number(e.target.value))}
+                className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
+              />
+              <span className="text-[9px] text-white/30">{viewerMin}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-white/30">Max</span>
+              <input
+                type="range"
+                min={viewerMin + 10}
+                max={5000}
+                step={10}
+                value={viewerMax}
+                onChange={e => setViewerMax(Number(e.target.value))}
+                className="flex-1 h-1.5 rounded-full accent-green-500 cursor-pointer"
+              />
+              <span className="text-[9px] text-white/30">{viewerMax}</span>
+            </div>
+          </div>
         </div>
 
         {/* ── Pending skip payments ── */}
@@ -1011,7 +1085,11 @@ export default function MusicReview() {
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fake live viewer count and auto-chat messages
-  const { viewerCount, fakeMessages, triggerReaction } = useFakeLiveChat();
+  const {
+    viewerCount, fakeMessages, triggerReaction,
+    commentIntervalMs, setCommentIntervalMs,
+    viewerMin, setViewerMin, viewerMax, setViewerMax,
+  } = useFakeLiveChat();
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
 
@@ -1460,6 +1538,12 @@ export default function MusicReview() {
                 setSelectedYouTube={setSelectedYouTube}
                 reviewedTracks={reviewedTracks ?? []}
                 triggerReaction={triggerReaction}
+                commentIntervalMs={commentIntervalMs}
+                setCommentIntervalMs={setCommentIntervalMs}
+                viewerMin={viewerMin}
+                setViewerMin={setViewerMin}
+                viewerMax={viewerMax}
+                setViewerMax={setViewerMax}
               />
             )}
 

@@ -700,11 +700,24 @@ const FAKE_USER_ACCOUNTS = [
   { id: -105, username: "User62840193",    artistName: null,            role: "user" as const },
 ];
 
+export interface FakeLiveChatConfig {
+  /** Comment interval in ms (normal mode). Default 4000-12000ms. Range: 500-30000 */
+  commentIntervalMs: number;
+  /** Min viewer count. Default 50. */
+  viewerMin: number;
+  /** Max viewer count. Default 250. */
+  viewerMax: number;
+}
+
 export function useFakeLiveChat() {
   const [viewerCount, setViewerCount] = useState(50);
   const [fakeMessages, setFakeMessages] = useState<FakeChatMessage[]>([]);
   const [triggeredReaction, setTriggeredReaction] = useState<ReactionType | null>(null);
   const [chatPool, setChatPool] = useState<any[]>([]);
+  // Configurable controls
+  const [commentIntervalMs, setCommentIntervalMs] = useState(6000); // default ~6s between msgs
+  const [viewerMin, setViewerMin] = useState(50);
+  const [viewerMax, setViewerMax] = useState(250);
 
   // Track last comment time per user (userId -> timestamp)
   const lastCommentTime = useRef<Record<string, number>>({});
@@ -732,17 +745,20 @@ export function useFakeLiveChat() {
     setChatPool([...shuffledReal, ...shuffledFake]);
   }, [allUsers]);
 
-  // Viewer count fluctuation
+  // Viewer count fluctuation — respects viewerMin/viewerMax
   useEffect(() => {
     const tick = () => {
       setViewerCount(prev => {
-        const change = Math.floor(Math.random() * 40) - 20;
-        return Math.max(50, Math.min(250, prev + change));
+        const range = viewerMax - viewerMin;
+        const change = Math.floor(Math.random() * Math.max(range * 0.16, 10)) - Math.floor(Math.max(range * 0.08, 5));
+        return Math.max(viewerMin, Math.min(viewerMax, prev + change));
       });
     };
+    // Snap current count into new range immediately
+    setViewerCount(prev => Math.max(viewerMin, Math.min(viewerMax, prev)));
     const id = setInterval(tick, 3000 + Math.random() * 5000);
     return () => clearInterval(id);
-  }, []);
+  }, [viewerMin, viewerMax]);
 
   // Auto-chat messages with per-user cooldown
   useEffect(() => {
@@ -795,15 +811,27 @@ export function useFakeLiveChat() {
         userId: randomUser.id,
       }].slice(-50));
 
-    }, triggeredReaction ? 300 : 4000 + Math.random() * 8000);
+    }, triggeredReaction ? 300 : commentIntervalMs * (0.7 + Math.random() * 0.6));
 
     return () => clearInterval(interval);
-  }, [chatPool, triggeredReaction]);
+  }, [chatPool, triggeredReaction, commentIntervalMs]);
 
   const triggerReaction = (reaction: ReactionType, duration = 3000) => {
     setTriggeredReaction(reaction);
     setTimeout(() => setTriggeredReaction(null), duration);
   };
 
-  return { viewerCount, fakeMessages, triggerReaction, triggeredReaction };
+  return {
+    viewerCount,
+    fakeMessages,
+    triggerReaction,
+    triggeredReaction,
+    // Slider controls
+    commentIntervalMs,
+    setCommentIntervalMs,
+    viewerMin,
+    setViewerMin,
+    viewerMax,
+    setViewerMax,
+  };
 }
