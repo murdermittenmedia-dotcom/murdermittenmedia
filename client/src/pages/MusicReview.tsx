@@ -185,6 +185,7 @@ function StatusBadge({ status }: { status: string }) {
 function AdminPanel({
   data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube, reviewedTracks, triggerReaction,
   commentIntervalMs, setCommentIntervalMs, viewerMin, setViewerMin, viewerMax, setViewerMax,
+  ghostFireCount, setGhostFireCount, ghostTrashCount, setGhostTrashCount,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -208,6 +209,10 @@ function AdminPanel({
   setViewerMin: (v: number) => void;
   viewerMax: number;
   setViewerMax: (v: number) => void;
+  ghostFireCount: number;
+  setGhostFireCount: (v: number) => void;
+  ghostTrashCount: number;
+  setGhostTrashCount: (v: number) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -625,11 +630,50 @@ function AdminPanel({
                 onChange={e => setViewerMax(Number(e.target.value))}
                 className="flex-1 h-1.5 rounded-full accent-green-500 cursor-pointer"
               />
-              <span className="text-[9px] text-white/30">{viewerMax}</span>
+               <span className="text-[9px] text-white/30">{viewerMax}</span>
+            </div>
+          </div>
+          {/* Ghost Fire votes slider */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🔥 Fire Votes</span>
+              <span className="text-orange-400 text-[10px] font-mono font-bold">{ghostFireCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-white/30">0</span>
+              <input
+                type="range"
+                min={0}
+                max={500}
+                step={1}
+                value={ghostFireCount}
+                onChange={e => setGhostFireCount(Number(e.target.value))}
+                className="flex-1 h-1.5 rounded-full accent-orange-500 cursor-pointer"
+              />
+              <span className="text-[9px] text-white/30">500</span>
+            </div>
+          </div>
+          {/* Ghost Trash votes slider */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🗑️ Trash Votes</span>
+              <span className="text-blue-400 text-[10px] font-mono font-bold">{ghostTrashCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-white/30">0</span>
+              <input
+                type="range"
+                min={0}
+                max={500}
+                step={1}
+                value={ghostTrashCount}
+                onChange={e => setGhostTrashCount(Number(e.target.value))}
+                className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
+              />
+              <span className="text-[9px] text-white/30">500</span>
             </div>
           </div>
         </div>
-
         {/* ── Pending skip payments ── */}
         {pendingSkips.length > 0 && (
           <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
@@ -1175,6 +1219,8 @@ export default function MusicReview() {
     viewerCount, fakeMessages, triggerReaction,
     commentIntervalMs, setCommentIntervalMs,
     viewerMin, setViewerMin, viewerMax, setViewerMax,
+    ghostFireCount, setGhostFireCount,
+    ghostTrashCount, setGhostTrashCount,
   } = useFakeLiveChat();
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
@@ -1255,6 +1301,7 @@ export default function MusicReview() {
       setActiveSubmissionId(cp.id);
       setLiveReviewActive({
         submissionId: cp.id,
+        userId: cp.userId ?? null,
         artistName: cp.artistName,
         songTitle: cp.songTitle,
         audioUrl: cp.fileUrl ?? null,
@@ -1495,6 +1542,10 @@ export default function MusicReview() {
             setViewerMin={setViewerMin}
             viewerMax={viewerMax}
             setViewerMax={setViewerMax}
+            ghostFireCount={ghostFireCount}
+            setGhostFireCount={setGhostFireCount}
+            ghostTrashCount={ghostTrashCount}
+            setGhostTrashCount={setGhostTrashCount}
           />
         )}
 
@@ -1570,13 +1621,21 @@ export default function MusicReview() {
               ) : null}
 
               {/* Fire/Trash voting */}
-              {currentPlaying && (
+              {currentPlayingId && (
                 <FireTrashPoll
-                  submissionId={currentPlaying.id}
-                  fireCount={currentPlaying.fireCount}
-                  trashCount={currentPlaying.trashCount}
-                  isAdmin={isAdmin}
-                  onVote={() => refetch()}
+                  submissionId={currentPlayingId}
+                  songTitle={liveReviewActive?.songTitle ?? currentPlaying?.songTitle ?? ""}
+                  artistName={liveReviewActive?.artistName ?? currentPlaying?.artistName ?? ""}
+                  artistUserId={liveReviewActive?.userId ?? currentPlaying?.userId ?? null}
+                  fireCount={(reactionCounts?.fire ?? currentPlaying?.fireCount ?? 0) + ghostFireCount}
+                  trashCount={(reactionCounts?.trash ?? currentPlaying?.trashCount ?? 0) + ghostTrashCount}
+                  myReaction={myReaction?.reaction ?? null}
+                  onVote={(reaction) => {
+                    if (!user) { toast.error("Login to vote"); return; }
+                    reactMutation.mutate({ submissionId: currentPlayingId, reaction });
+                  }}
+                  isPending={reactMutation.isPending}
+                  user={user}
                 />
               )}
             </div>

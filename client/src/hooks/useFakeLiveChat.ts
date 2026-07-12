@@ -710,6 +710,9 @@ export function useFakeLiveChat() {
   const [commentIntervalMs, setCommentIntervalMs] = useState(6000); // default ~6s between msgs
   const [viewerMin, setViewerMin] = useState(50);
   const [viewerMax, setViewerMax] = useState(250);
+  // Ghost vote controls — fake fire/trash votes added on top of real counts
+  const [ghostFireCount, setGhostFireCount] = useState(0);
+  const [ghostTrashCount, setGhostTrashCount] = useState(0);
 
   // Track last comment time per user (userId -> timestamp)
   const lastCommentTime = useRef<Record<string, number>>({});
@@ -825,5 +828,10 @@ export function useFakeLiveChat() {
     setViewerMin,
     viewerMax,
     setViewerMax,
+    // Ghost vote controls
+    ghostFireCount,
+    setGhostFireCount,
+    ghostTrashCount,
+    setGhostTrashCount,
   };
 }
