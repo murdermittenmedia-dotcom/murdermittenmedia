@@ -687,6 +687,19 @@ async function startServer() {
       socket.to("music_review").emit("review:trigger_reaction", data);
     });
 
+    // ── Review: Admin control sync relay (admin → all other admins) ──
+    // One admin changes settings; relay to all other admins so they stay in sync
+    socket.on("review:admin_control_sync", (data: {
+      commentIntervalMs?: number;
+      sentimentBias?: number;
+      ghostFireIntervalSec?: number;
+      ghostTrashIntervalSec?: number;
+      viewerMin?: number;
+      viewerMax?: number;
+    }) => {
+      socket.to("music_review").emit("review:admin_control_sync", data);
+    });
+
     // ── Music Wars Radio Events ─────────────────────────────────
     // Admin loads battle tracks (auto-called when battle is set)
     socket.on("wars_radio:load", (data: { tracks: WarsRadioTrack[] }) => {
