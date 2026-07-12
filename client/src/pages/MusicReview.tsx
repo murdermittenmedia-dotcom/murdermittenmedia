@@ -186,6 +186,7 @@ function AdminPanel({
   data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube, reviewedTracks, triggerReaction,
   commentIntervalMs, setCommentIntervalMs, viewerMin, setViewerMin, viewerMax, setViewerMax,
   ghostFireCount, setGhostFireCount, ghostTrashCount, setGhostTrashCount,
+  ghostFireIntervalSec, setGhostFireIntervalSec, ghostTrashIntervalSec, setGhostTrashIntervalSec,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -213,6 +214,10 @@ function AdminPanel({
   setGhostFireCount: (v: number) => void;
   ghostTrashCount: number;
   setGhostTrashCount: (v: number) => void;
+  ghostFireIntervalSec: number;
+  setGhostFireIntervalSec: (v: number) => void;
+  ghostTrashIntervalSec: number;
+  setGhostTrashIntervalSec: (v: number) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -633,44 +638,56 @@ function AdminPanel({
                <span className="text-[9px] text-white/30">{viewerMax}</span>
             </div>
           </div>
-          {/* Ghost Fire votes slider */}
+          {/* Ghost Fire votes — speed slider */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🔥 Fire Votes</span>
-              <span className="text-orange-400 text-[10px] font-mono font-bold">{ghostFireCount}</span>
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🔥 Fire Speed</span>
+              <div className="flex items-center gap-2">
+                <span className="text-orange-400 text-[10px] font-mono font-bold">
+                  {ghostFireIntervalSec === 0 ? "OFF" : `every ${ghostFireIntervalSec}s`}
+                </span>
+                <span className="text-orange-300/60 text-[10px]">({ghostFireCount} added)</span>
+                <button onClick={() => setGhostFireCount(0)} className="text-[9px] text-white/30 hover:text-white/60 border border-white/10 px-1 rounded">reset</button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-white/30">0</span>
+              <span className="text-[9px] text-white/30">off</span>
               <input
                 type="range"
                 min={0}
-                max={500}
+                max={30}
                 step={1}
-                value={ghostFireCount}
-                onChange={e => setGhostFireCount(Number(e.target.value))}
+                value={ghostFireIntervalSec}
+                onChange={e => setGhostFireIntervalSec(Number(e.target.value))}
                 className="flex-1 h-1.5 rounded-full accent-orange-500 cursor-pointer"
               />
-              <span className="text-[9px] text-white/30">500</span>
+              <span className="text-[9px] text-white/30">1s</span>
             </div>
           </div>
-          {/* Ghost Trash votes slider */}
+          {/* Ghost Trash votes — speed slider */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🗑️ Trash Votes</span>
-              <span className="text-blue-400 text-[10px] font-mono font-bold">{ghostTrashCount}</span>
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🗑️ Trash Speed</span>
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400 text-[10px] font-mono font-bold">
+                  {ghostTrashIntervalSec === 0 ? "OFF" : `every ${ghostTrashIntervalSec}s`}
+                </span>
+                <span className="text-blue-300/60 text-[10px]">({ghostTrashCount} added)</span>
+                <button onClick={() => setGhostTrashCount(0)} className="text-[9px] text-white/30 hover:text-white/60 border border-white/10 px-1 rounded">reset</button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-white/30">0</span>
+              <span className="text-[9px] text-white/30">off</span>
               <input
                 type="range"
                 min={0}
-                max={500}
+                max={30}
                 step={1}
-                value={ghostTrashCount}
-                onChange={e => setGhostTrashCount(Number(e.target.value))}
+                value={ghostTrashIntervalSec}
+                onChange={e => setGhostTrashIntervalSec(Number(e.target.value))}
                 className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
               />
-              <span className="text-[9px] text-white/30">500</span>
+              <span className="text-[9px] text-white/30">1s</span>
             </div>
           </div>
         </div>
@@ -1221,6 +1238,8 @@ export default function MusicReview() {
     viewerMin, setViewerMin, viewerMax, setViewerMax,
     ghostFireCount, setGhostFireCount,
     ghostTrashCount, setGhostTrashCount,
+    ghostFireIntervalSec, setGhostFireIntervalSec,
+    ghostTrashIntervalSec, setGhostTrashIntervalSec,
   } = useFakeLiveChat();
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
@@ -1563,6 +1582,10 @@ export default function MusicReview() {
             setGhostFireCount={setGhostFireCount}
             ghostTrashCount={ghostTrashCount}
             setGhostTrashCount={setGhostTrashCount}
+            ghostFireIntervalSec={ghostFireIntervalSec}
+            setGhostFireIntervalSec={setGhostFireIntervalSec}
+            ghostTrashIntervalSec={ghostTrashIntervalSec}
+            setGhostTrashIntervalSec={setGhostTrashIntervalSec}
           />
         )}
 

@@ -625,22 +625,17 @@ const FAKE_USER_ACCOUNTS = [
   fu(-87,"Jermaine"), fu(-88,"Damien_L","Damien L"), fu(-89,"Ronell"), fu(-90,"Kevontae"),
   fu(-91,"Shaquille"), fu(-92,"Trevon"), fu(-93,"Dontrell"), fu(-94,"Jaquez"), fu(-95,"Rayshawn"),
   fu(-96,"Kadeem"), fu(-97,"Demetrius"), fu(-98,"Tavares"), fu(-99,"Leondre"), fu(-100,"Zayden"),
-  // ── One-word nicknames ──────────────────────────────────────────
-  fu(-101,"Blaze"), fu(-102,"Phantom"), fu(-103,"Venom"), fu(-104,"Reaper"), fu(-105,"Cipher"),
-  fu(-106,"Drako"), fu(-107,"Steelo"), fu(-108,"Grimy"), fu(-109,"Hustle"), fu(-110,"Grind"),
-  fu(-111,"Clutch"), fu(-112,"Finesse"), fu(-113,"Savage"), fu(-114,"Menace"), fu(-115,"Reckless"),
-  fu(-116,"Wraith"), fu(-117,"Specter"), fu(-118,"Cobra"), fu(-119,"Viper"), fu(-120,"Trigger"),
-  fu(-121,"Bandit"), fu(-122,"Rogue"), fu(-123,"Stealth"), fu(-124,"Maverick"), fu(-125,"Outlaw"),
-  fu(-126,"Rebel"), fu(-127,"Chaos"), fu(-128,"Havoc"), fu(-129,"Mayhem"), fu(-130,"Carnage"),
-  fu(-131,"Rampage"), fu(-132,"Fury"), fu(-133,"Wrath"), fu(-134,"Rage"), fu(-135,"Storm"),
-  fu(-136,"Thunder"), fu(-137,"Lightning"), fu(-138,"Voltage"), fu(-139,"Surge"), fu(-140,"Pulse"),
-  fu(-141,"Flux"), fu(-142,"Nuke"), fu(-143,"Bomb"), fu(-144,"Rocket"), fu(-145,"Blade"),
-  fu(-146,"Dagger"), fu(-147,"Saber"), fu(-148,"Axe"), fu(-149,"Spear"), fu(-150,"Fang"),
-  fu(-151,"Crypt"), fu(-152,"Ghost"), fu(-153,"Shadow"), fu(-154,"Echo"), fu(-155,"Mirage"),
-  fu(-156,"Glitch"), fu(-157,"Static"), fu(-158,"Cipher","Cipher2"), fu(-159,"Nexus"), fu(-160,"Vertex"),
-  fu(-161,"Apex"), fu(-162,"Zenith"), fu(-163,"Nadir"), fu(-164,"Orbit"), fu(-165,"Vector"),
-  fu(-166,"Matrix"), fu(-167,"Prism"), fu(-168,"Quartz"), fu(-169,"Flint"), fu(-170,"Cobalt"),
-  fu(-171,"Crimson"), fu(-172,"Scarlet"), fu(-173,"Onyx"), fu(-174,"Obsidian"), fu(-175,"Slate"),
+  // ── Street / Detroit one-word nicknames ────────────────────────
+  fu(-101,"Steelo"), fu(-102,"Grimy"), fu(-103,"Hustle"), fu(-104,"Grind"), fu(-105,"Clutch"),
+  fu(-106,"Finesse"), fu(-107,"Drako"), fu(-108,"Menace"), fu(-109,"Reckless"), fu(-110,"Bandit"),
+  fu(-111,"Outlaw"), fu(-112,"Rebel"), fu(-113,"Havoc"), fu(-114,"Fury"), fu(-115,"Sauce"),
+  fu(-116,"Stackz"), fu(-117,"Gucci_J","Gucci J"), fu(-118,"Drizzy_K","Drizzy K"), fu(-119,"Capo"), fu(-120,"Jefe"),
+  fu(-121,"Plug"), fu(-122,"Shooter"), fu(-123,"Loco"), fu(-124,"Papi"), fu(-125,"Ese"),
+  fu(-126,"Sosa"), fu(-127,"Keef"), fu(-128,"Durk_fan","Durk fan"), fu(-129,"Bibby"), fu(-130,"Reese"),
+  fu(-131,"Melly"), fu(-132,"Kodak"), fu(-133,"NBA_fan","NBA fan"), fu(-134,"Polo"), fu(-135,"Uzi_fan","Uzi fan"),
+  fu(-136,"Thug_fan","Thug fan"), fu(-137,"Gunna_fan","Gunna fan"), fu(-138,"Latto_fan","Latto fan"), fu(-139,"Cardi_fan","Cardi fan"), fu(-140,"Meg_fan","Meg fan"),
+  fu(-141,"JID_fan","JID fan"), fu(-142,"Smino_fan","Smino fan"), fu(-143,"Saba_fan","Saba fan"), fu(-144,"Noname_fan","Noname fan"), fu(-145,"Chance_fan","Chance fan"),
+  fu(-146,"Vic_fan","Vic fan"), fu(-147,"Supa"), fu(-148,"Beezy"), fu(-149,"Skully"), fu(-150,"Dolo"),
   // ── Social-media style handles ──────────────────────────────────
   fu(-176,"itsyoboy_k","itsyoboy_k"), fu(-177,"real_dre","real_dre"), fu(-178,"traplife_99","traplife_99"),
   fu(-179,"wavyvibes","wavyvibes"), fu(-180,"drip_szn","drip_szn"), fu(-181,"bars_only","bars_only"),
@@ -654,20 +649,20 @@ const FAKE_USER_ACCOUNTS = [
   fu(-203,"motown_rep","motown_rep"), fu(-204,"d_town_finest","d_town_finest"), fu(-205,"midwest_wave","midwest_wave"),
   fu(-206,"flyboy_z","flyboy_z"), fu(-207,"icyvibes_c","icyvibes_c"), fu(-208,"drillszn_b","drillszn_b"),
   fu(-209,"hiphophead_j","hiphophead_j"), fu(-210,"rapfan_real","rapfan_real"),
-  // ── More rap names with numbers/suffixes ────────────────────────
-  fu(-211,"LilDrip","Lil Drip"), fu(-212,"BigHop","Big Hop"), fu(-213,"YoungFrost","Young Frost"),
-  fu(-214,"LilVibe","Lil Vibe"), fu(-215,"BigSauce","Big Sauce"), fu(-216,"YoungIce","Young Ice"),
-  fu(-217,"LilSmoke","Lil Smoke"), fu(-218,"BigGloss","Big Gloss"), fu(-219,"YoungDrip","Young Drip"),
-  fu(-220,"LilFrost","Lil Frost"), fu(-221,"BigMelo","Big Melo"), fu(-222,"YoungPrince","Young Prince"),
-  fu(-223,"LilKing","Lil King"), fu(-224,"BigGhost","Big Ghost"), fu(-225,"YoungBoss","Young Boss"),
-  fu(-226,"LilRich","Lil Rich"), fu(-227,"BigGang","Big Gang"), fu(-228,"YoungChief","Young Chief"),
-  fu(-229,"LilGang","Lil Gang"), fu(-230,"BigPrince","Big Prince"),
+  // ── More Detroit/Michigan rap names ────────────────────────────
+  fu(-211,"LilDrip","Lil Drip"), fu(-212,"BigMeech_fan","Big Meech fan"), fu(-213,"YoungDro_fan","YoungDro fan"),
+  fu(-214,"LilVibe","Lil Vibe"), fu(-215,"BigSauce","Big Sauce"), fu(-216,"YoungJeezy_fan","Jeezy fan"),
+  fu(-217,"LilSmoke","Lil Smoke"), fu(-218,"BigSean_fan","Big Sean fan"), fu(-219,"YoungDrip","Young Drip"),
+  fu(-220,"BabyFace_fan","Babyface fan"), fu(-221,"BigMelo","Big Melo"), fu(-222,"Sada_fan","Sada fan"),
+  fu(-223,"LilKing","Lil King"), fu(-224,"Peezy_fan","Peezy fan"), fu(-225,"Gmac_fan","Gmac fan"),
+  fu(-226,"LilRich","Lil Rich"), fu(-227,"Icewear_fan","Icewear fan"), fu(-228,"Doughboyz_fan","Doughboyz fan"),
+  fu(-229,"Payroll_fan","Payroll fan"), fu(-230,"Blade_Icewood_fan","Blade fan"),
   fu(-231,"Lil_Racks","Lil Racks"), fu(-232,"Big_Racks","Big Racks"), fu(-233,"Young_Racks","Young Racks"),
-  fu(-234,"Lil_Bands","Lil Bands"), fu(-235,"Big_Bands","Big Bands"), fu(-236,"Young_Bands","Young Bands"),
-  fu(-237,"Lil_Guap","Lil Guap"), fu(-238,"Big_Guap","Big Guap"), fu(-239,"Young_Guap","Young Guap"),
+  fu(-234,"Lil_Bands","Lil Bands"), fu(-235,"BandGang_fan","BandGang fan"), fu(-236,"Young_Bands","Young Bands"),
+  fu(-237,"Lil_Guap","Lil Guap"), fu(-238,"Big_Guap","Big Guap"), fu(-239,"Tee_Grizzley_fan","Tee fan"),
   fu(-240,"Lil_Bag","Lil Bag"), fu(-241,"Big_Bag","Big Bag"), fu(-242,"Young_Bag","Young Bag"),
-  fu(-243,"Lil_Sauce","Lil Sauce"), fu(-244,"Big_Sauce2","Big Sauce"), fu(-245,"Young_Sauce","Young Sauce"),
-  fu(-246,"Lil_Swag","Lil Swag"), fu(-247,"Big_Swag","Big Swag"), fu(-248,"Young_Swag","Young Swag"),
+  fu(-243,"Lil_Sauce","Lil Sauce"), fu(-244,"Danny_Brown_fan","Danny fan"), fu(-245,"Young_Sauce","Young Sauce"),
+  fu(-246,"Lil_Swag","Lil Swag"), fu(-247,"Big_Swag","Big Swag"), fu(-248,"Trick_fan","Trick fan"),
   fu(-249,"Lil_Fetti","Lil Fetti"), fu(-250,"Big_Fetti","Big Fetti"),
   // ── More real names ─────────────────────────────────────────────
   fu(-251,"Keshawn"), fu(-252,"Treyvon"), fu(-253,"Daquan"), fu(-254,"Lebron_fan","Lebron fan"),
@@ -677,19 +672,19 @@ const FAKE_USER_ACCOUNTS = [
   fu(-266,"Shakeem"), fu(-267,"Raekwon"), fu(-268,"Latrell"), fu(-269,"Dontarius"), fu(-270,"Javonte"),
   fu(-271,"Tyquan"), fu(-272,"Deshawn_B","Deshawn B"), fu(-273,"Keon"), fu(-274,"Dontae"), fu(-275,"Javion"),
   fu(-276,"Semaj"), fu(-277,"Amari"), fu(-278,"Zion_T","Zion T"), fu(-279,"Kyrie_fan","Kyrie fan"), fu(-280,"Jayden_R","Jayden R"),
-  // ── Gamer/internet handles ───────────────────────────────────────
-  fu(-281,"xX_drako_Xx","xX_drako_Xx"), fu(-282,"pr0_listener","pr0_listener"), fu(-283,"muzik_head","muzik_head"),
-  fu(-284,"420_vibes","420_vibes"), fu(-285,"808_bass","808_bass"), fu(-286,"trap_808","trap_808"),
+  // ── More real-sounding social handles ────────────────────────────────
+  fu(-281,"drako_313","drako_313"), fu(-282,"muzik_head","muzik_head"), fu(-283,"trap_vibes_k","trap_vibes_k"),
+  fu(-284,"808_bass","808_bass"), fu(-285,"trap_808","trap_808"), fu(-286,"real_rap_only","real_rap_only"),
   fu(-287,"hiphop_4eva","hiphop_4eva"), fu(-288,"rap_god_99","rap_god_99"), fu(-289,"bars_n_beats","bars_n_beats"),
-  fu(-290,"beat_junkie","beat_junkie"), fu(-291,"lyric_lord","lyric_lord"), fu(-292,"flow_master","flow_master"),
-  fu(-293,"verse_king","verse_king"), fu(-294,"hook_queen","hook_queen"), fu(-295,"bridge_god","bridge_god"),
-  fu(-296,"chorus_kid","chorus_kid"), fu(-297,"adlib_bro","adlib_bro"), fu(-298,"feature_fan","feature_fan"),
-  fu(-299,"collab_szn","collab_szn"), fu(-300,"studio_rat","studio_rat"),
-  // ── User-style IDs for realism ──────────────────────────────────
-  fu(-301,"User19273930",null), fu(-302,"User84720193",null), fu(-303,"User30482910",null),
-  fu(-304,"User57391820",null), fu(-305,"User62840193",null), fu(-306,"User48291037",null),
-  fu(-307,"User73920184",null), fu(-308,"User29183746",null), fu(-309,"User91827364",null),
-  fu(-310,"User64738291",null),
+  fu(-290,"beat_junkie","beat_junkie"), fu(-291,"313_finest","313_finest"), fu(-292,"flow_check","flow_check"),
+  fu(-293,"detroit_made_j","detroit_made_j"), fu(-294,"midwest_finest","midwest_finest"), fu(-295,"mitten_music","mitten_music"),
+  fu(-296,"d_town_k","d_town_k"), fu(-297,"bigbro_watching","bigbro_watching"), fu(-298,"from_the_d","from_the_d"),
+  fu(-299,"mmm_supporter","mmm_supporter"), fu(-300,"street_certified","street_certified"),
+  // ── Realistic fan account style handles ────────────────────────────────
+  fu(-301,"jaylen.313",null), fu(-302,"kev_wavyy",null), fu(-303,"dre_from_d",null),
+  fu(-304,"michiganboy_t",null), fu(-305,"realones_only",null), fu(-306,"trapwave_b",null),
+  fu(-307,"youngbul_j",null), fu(-308,"stackin_daily",null), fu(-309,"no_skips_ever",null),
+  fu(-310,"rap_fan_313",null),
 ];
 
 export interface FakeLiveChatConfig {
@@ -710,9 +705,27 @@ export function useFakeLiveChat() {
   const [commentIntervalMs, setCommentIntervalMs] = useState(6000); // default ~6s between msgs
   const [viewerMin, setViewerMin] = useState(50);
   const [viewerMax, setViewerMax] = useState(250);
-  // Ghost vote controls — fake fire/trash votes added on top of real counts
+  // Ghost vote controls — interval in seconds between auto-incremented ghost votes (0 = off)
+  const [ghostFireIntervalSec, setGhostFireIntervalSec] = useState(0);
+  const [ghostTrashIntervalSec, setGhostTrashIntervalSec] = useState(0);
   const [ghostFireCount, setGhostFireCount] = useState(0);
   const [ghostTrashCount, setGhostTrashCount] = useState(0);
+  // Auto-increment ghost fire votes on interval
+  useEffect(() => {
+    if (ghostFireIntervalSec <= 0) return;
+    const id = setInterval(() => {
+      setGhostFireCount(prev => prev + 1);
+    }, ghostFireIntervalSec * 1000);
+    return () => clearInterval(id);
+  }, [ghostFireIntervalSec]);
+  // Auto-increment ghost trash votes on interval
+  useEffect(() => {
+    if (ghostTrashIntervalSec <= 0) return;
+    const id = setInterval(() => {
+      setGhostTrashCount(prev => prev + 1);
+    }, ghostTrashIntervalSec * 1000);
+    return () => clearInterval(id);
+  }, [ghostTrashIntervalSec]);
 
   // Track last comment time per user (userId -> timestamp)
   const lastCommentTime = useRef<Record<string, number>>({});
@@ -833,5 +846,9 @@ export function useFakeLiveChat() {
     setGhostFireCount,
     ghostTrashCount,
     setGhostTrashCount,
+    ghostFireIntervalSec,
+    setGhostFireIntervalSec,
+    ghostTrashIntervalSec,
+    setGhostTrashIntervalSec,
   };
 }
