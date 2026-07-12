@@ -1,3 +1,4 @@
+import { FloatingWindow } from "@/components/FloatingWindow";
 /* ============================================================
    MURDER MITTEN MEDIA — Music Review (V2 Major Redesign)
    Premium "Studio Control Room" aesthetic
@@ -1385,6 +1386,7 @@ export default function MusicReview() {
   });
 
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
+  const [isAdminPanelFloating, setIsAdminPanelFloating] = useState(false);
 
   // Tip artist state
   const [tipAmount, setTipAmount] = useState<string>("");
@@ -1795,8 +1797,16 @@ export default function MusicReview() {
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
         {/* ── ADMIN PANEL (admin/judge only) ─────────────────── */}
-        {isAdmin && (
-          <AdminPanel
+        {isAdmin && !isAdminPanelFloating && (
+          <div className="relative">
+            <button
+              onClick={() => setIsAdminPanelFloating(true)}
+              className="absolute top-2 right-2 z-10 px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+              title="Pop out to floating window"
+            >
+              Pop Out
+            </button>
+            <AdminPanel
             data={data}
             refetch={refetch}
             audioRoom={audioRoom}
@@ -1829,7 +1839,55 @@ export default function MusicReview() {
             setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
             sentimentBias={sentimentBias}
             setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
-          />
+            />
+          </div>
+        )}
+
+        {/* ── FLOATING ADMIN PANEL ─────────────────────── */}
+        {isAdmin && isAdminPanelFloating && (
+          <FloatingWindow
+            title="Admin Control Panel"
+            onClose={() => setIsAdminPanelFloating(false)}
+            defaultWidth={420}
+            defaultHeight={700}
+            defaultX={typeof window !== 'undefined' ? window.innerWidth - 450 : 20}
+            defaultY={60}
+          >
+            <AdminPanel
+              data={data}
+              refetch={refetch}
+              audioRoom={audioRoom}
+              videoRoom={videoRoom}
+              broadcastReviewActive={broadcastReviewActive}
+              broadcastRadioPause={broadcastRadioPause}
+              broadcastRadioResume={broadcastRadioResume}
+              broadcastRadioSeek={broadcastRadioSeek}
+              broadcastReviewPlayback={broadcastReviewPlayback}
+              broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
+              broadcastLastSong={broadcastLastSong}
+              adminMicBroadcast={adminMicBroadcast}
+              playTrack={playTrack}
+              setSelectedYouTube={setSelectedYouTube}
+              reviewedTracks={reviewedTracks}
+              triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
+              commentIntervalMs={commentIntervalMs}
+              setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); }}
+              viewerMin={viewerMin}
+              setViewerMin={setViewerMin}
+              viewerMax={viewerMax}
+              setViewerMax={setViewerMax}
+              ghostFireCount={ghostFireCount}
+              setGhostFireCount={setGhostFireCount}
+              ghostTrashCount={ghostTrashCount}
+              setGhostTrashCount={setGhostTrashCount}
+              ghostFireIntervalSec={ghostFireIntervalSec}
+              setGhostFireIntervalSec={(v) => { setGhostFireIntervalSec(v); emitChatControls({ ghostFireIntervalSec: v }); }}
+              ghostTrashIntervalSec={ghostTrashIntervalSec}
+              setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
+              sentimentBias={sentimentBias}
+              setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
+            />
+          </FloatingWindow>
         )}
 
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
