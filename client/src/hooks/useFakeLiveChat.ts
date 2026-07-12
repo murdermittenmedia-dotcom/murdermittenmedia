@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
-import type { FakeChatMessageData, ChatControlsData, AdminControlSyncData } from "./useChat";
+import type { FakeChatMessageData, ChatControlsData } from "./useChat";
 
 export interface FakeChatMessage {
   id: string;
@@ -704,15 +704,12 @@ interface UseFakeLiveChatOptions {
   emitFakeChatMessage?: (data: FakeChatMessageData) => void;
   /** Socket emit function from useChat — used by admin to broadcast chat control settings */
   emitChatControls?: (data: ChatControlsData) => void;
-  /** Socket emit function from useChat — used by admin to sync settings with other admins */
-  emitAdminControlSync?: (data: AdminControlSyncData) => void;
 }
 
 export function useFakeLiveChat({
   isAdmin = false,
   emitFakeChatMessage,
   emitChatControls,
-  emitAdminControlSync,
 }: UseFakeLiveChatOptions = {}) {
   const [viewerCount, setViewerCount] = useState(50);
   const [fakeMessages, setFakeMessages] = useState<FakeChatMessage[]>([]);
@@ -906,17 +903,6 @@ export function useFakeLiveChat({
     if (data.ghostTrashIntervalSec !== undefined) setGhostTrashIntervalSec(data.ghostTrashIntervalSec);
   }, []);
 
-  // Admin: receive control settings from other admins via socket
-  const receiveAdminControlSync = useCallback((data: AdminControlSyncData) => {
-    if (!isAdminRef.current) return; // only admins receive this
-    if (data.commentIntervalMs !== undefined) setCommentIntervalMs(data.commentIntervalMs);
-    if (data.sentimentBias !== undefined) setSentimentBias(data.sentimentBias);
-    if (data.ghostFireIntervalSec !== undefined) setGhostFireIntervalSec(data.ghostFireIntervalSec);
-    if (data.ghostTrashIntervalSec !== undefined) setGhostTrashIntervalSec(data.ghostTrashIntervalSec);
-    if (data.viewerMin !== undefined) setViewerMin(data.viewerMin);
-    if (data.viewerMax !== undefined) setViewerMax(data.viewerMax);
-  }, []);
-
   // Admin: broadcast chat controls whenever they change
   const emitChatControlsRef = useRef(emitChatControls);
   emitChatControlsRef.current = emitChatControls;
@@ -948,6 +934,5 @@ export function useFakeLiveChat({
     // Socket relay helpers (pass to useChat callbacks)
     receiveFakeMessage,
     receiveChatControls,
-    receiveAdminControlSync,
   };
 }

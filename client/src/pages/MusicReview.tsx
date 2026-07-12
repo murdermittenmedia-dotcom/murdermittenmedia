@@ -1430,12 +1430,10 @@ export default function MusicReview() {
     sentimentBias, setSentimentBias,
     receiveFakeMessage,
     receiveChatControls,
-    receiveAdminControlSync,
   } = useFakeLiveChat({
     isAdmin,
     emitFakeChatMessage: (data) => fakeChatEmitRef.current?.(data),
     emitChatControls: (data) => chatControlsEmitRef.current?.(data),
-    emitAdminControlSync: (data) => { if (isAdmin) emitAdminControlSync?.(data); },
   });
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
@@ -1471,7 +1469,6 @@ export default function MusicReview() {
     emitFakeChatMessage,
     emitChatControls,
     emitTriggerReaction,
-    emitAdminControlSync,
   } = useChat({
     room: "music_review",
     username: chatUsername,
@@ -1480,12 +1477,9 @@ export default function MusicReview() {
     onFakeChatMessage: receiveFakeMessage,
     onChatControlsReceived: receiveChatControls,
     onTriggerReaction: (data) => { if (!isAdmin) triggerReaction(data.reaction as any, data.duration); },
-    onAdminControlSync: (data) => { if (isAdmin) receiveAdminControlSync(data); },
     onReviewActiveChanged: (item) => {
       setActiveSubmissionId(item.submissionId);
       setLiveReviewActive(item);
-      setGhostFireCount(0);
-      setGhostTrashCount(0);
       refetch();
       refetchReactions();
       refetchMyReaction();
@@ -1530,8 +1524,6 @@ export default function MusicReview() {
     if (!liveReviewActive && data?.currentPlaying) {
       const cp = data.currentPlaying;
       setActiveSubmissionId(cp.id);
-      setGhostFireCount(0);
-      setGhostTrashCount(0);
       setLiveReviewActive({
         submissionId: cp.id,
         userId: cp.userId ?? null,
@@ -1822,21 +1814,21 @@ export default function MusicReview() {
             reviewedTracks={reviewedTracks}
             triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
             commentIntervalMs={commentIntervalMs}
-            setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); emitAdminControlSync({ commentIntervalMs: v }); }}
+            setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); }}
             viewerMin={viewerMin}
-            setViewerMin={(v) => { setViewerMin(v); emitAdminControlSync({ viewerMin: v }); }}
+            setViewerMin={setViewerMin}
             viewerMax={viewerMax}
-            setViewerMax={(v) => { setViewerMax(v); emitAdminControlSync({ viewerMax: v }); }}
+            setViewerMax={setViewerMax}
             ghostFireCount={ghostFireCount}
             setGhostFireCount={setGhostFireCount}
             ghostTrashCount={ghostTrashCount}
             setGhostTrashCount={setGhostTrashCount}
             ghostFireIntervalSec={ghostFireIntervalSec}
-            setGhostFireIntervalSec={(v) => { setGhostFireIntervalSec(v); emitChatControls({ ghostFireIntervalSec: v }); emitAdminControlSync({ ghostFireIntervalSec: v }); }}
+            setGhostFireIntervalSec={(v) => { setGhostFireIntervalSec(v); emitChatControls({ ghostFireIntervalSec: v }); }}
             ghostTrashIntervalSec={ghostTrashIntervalSec}
-            setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); emitAdminControlSync({ ghostTrashIntervalSec: v }); }}
+            setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
             sentimentBias={sentimentBias}
-            setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); emitAdminControlSync({ sentimentBias: v }); }}
+            setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
           />
         )}
 

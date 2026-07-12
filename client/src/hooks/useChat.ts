@@ -56,15 +56,6 @@ export interface ChatControlsData {
   ghostTrashIntervalSec?: number;
 }
 
-export interface AdminControlSyncData {
-  commentIntervalMs?: number;
-  sentimentBias?: number;
-  ghostFireIntervalSec?: number;
-  ghostTrashIntervalSec?: number;
-  viewerMin?: number;
-  viewerMax?: number;
-}
-
 interface UseChatOptions {
   room: "music_wars" | "music_review";
   username: string;
@@ -87,8 +78,6 @@ interface UseChatOptions {
   onChatControlsReceived?: (data: ChatControlsData) => void;
   /** Viewer: called when admin triggers a reaction flood */
   onTriggerReaction?: (data: { reaction: string; duration: number }) => void;
-  /** Admin: called when another admin changes control settings */
-  onAdminControlSync?: (data: AdminControlSyncData) => void;
 }
 
 export function useChat({
@@ -136,8 +125,6 @@ export function useChat({
   onChatControlsReceivedRef.current = onChatControlsReceived;
   const onTriggerReactionRef = useRef(onTriggerReaction);
   onTriggerReactionRef.current = onTriggerReaction;
-  const onAdminControlSyncRef = useRef(onAdminControlSync);
-  onAdminControlSyncRef.current = onAdminControlSync;
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isConnected, setIsConnected] = useState(false);
@@ -233,11 +220,6 @@ export function useChat({
       onTriggerReactionRef.current?.(data);
     });
 
-    // Admin control sync — when one admin changes settings, relay to all other admins
-    socket.on("review:admin_control_sync", (data: AdminControlSyncData) => {
-      onAdminControlSyncRef.current?.(data);
-    });
-
     return () => {
       socket.disconnect();
     };
@@ -319,11 +301,6 @@ export function useChat({
     socketRef.current?.emit("review:trigger_reaction", { reaction, duration });
   }, []);
 
-  // Admin: sync control settings to all other admins
-  const emitAdminControlSync = useCallback((data: AdminControlSyncData) => {
-    socketRef.current?.emit("review:admin_control_sync", data);
-  }, []);
-
   return {
     messages,
     isConnected,
@@ -343,7 +320,6 @@ export function useChat({
     emitFakeChatMessage,
     emitChatControls,
     emitTriggerReaction,
-    emitAdminControlSync,
     socket: socketRef.current,
   };
 }
