@@ -1484,6 +1484,8 @@ export default function MusicReview() {
     onReviewActiveChanged: (item) => {
       setActiveSubmissionId(item.submissionId);
       setLiveReviewActive(item);
+      setGhostFireCount(0);
+      setGhostTrashCount(0);
       refetch();
       refetchReactions();
       refetchMyReaction();
@@ -1528,6 +1530,8 @@ export default function MusicReview() {
     if (!liveReviewActive && data?.currentPlaying) {
       const cp = data.currentPlaying;
       setActiveSubmissionId(cp.id);
+      setGhostFireCount(0);
+      setGhostTrashCount(0);
       setLiveReviewActive({
         submissionId: cp.id,
         userId: cp.userId ?? null,
