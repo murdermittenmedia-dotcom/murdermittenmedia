@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `playbackMode` enum('90sec','full','paid_only') DEFAULT '90sec' NOT NULL;\nALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `submitPriceCents` int DEFAULT 0 NOT NULL;\nALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `skipPriceCents` int DEFAULT 1500 NOT NULL;\nALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `fullSongPriceCents` int DEFAULT 500 NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45x8Wz3k6WBARWw.root --database C3bFVoBEaMVXmYZLRysziz --execute ALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `playbackMode` enum('90sec','full','paid_only') DEFAULT '90sec' NOT NULL;\nALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `submitPriceCents` int DEFAULT 0 NOT NULL;\nALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `skipPriceCents` int DEFAULT 1500 NOT NULL;\nALTER TABLE `queue_state` ADD COLUMN IF NOT EXISTS `fullSongPriceCents` int DEFAULT 500 NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1120
+}

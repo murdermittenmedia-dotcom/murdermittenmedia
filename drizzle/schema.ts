@@ -85,6 +85,12 @@ export const queueState = mysqlTable("queue_state", {
   isLive: boolean("isLive").default(false).notNull(),
   liveMessage: varchar("liveMessage", { length: 256 }),
   streamUrl: varchar("streamUrl", { length: 512 }),  // YouTube live URL or direct stream URL set by admin
+  // Playback mode: '90sec' = cap free submissions at 90s, 'full' = play full songs, 'paid_only' = paid submissions only
+  playbackMode: mysqlEnum("playbackMode", ["90sec", "full", "paid_only"]).default("90sec").notNull(),
+  // Pricing (in cents) — 0 means free/disabled
+  submitPriceCents: int("submitPriceCents").default(0).notNull(),       // cost to submit in paid_only mode
+  skipPriceCents: int("skipPriceCents").default(1500).notNull(),        // cost to skip the line ($15 default)
+  fullSongPriceCents: int("fullSongPriceCents").default(500).notNull(), // cost to upgrade free->full song ($5 default)
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

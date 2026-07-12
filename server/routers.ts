@@ -769,6 +769,30 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return getUserSongReaction(input.submissionId, ctx.user.id);
       }),
+    // Set playback mode and pricing — admin only
+    setPlaybackMode: adminProcedure
+      .input(z.object({
+        playbackMode: z.enum(["90sec", "full", "paid_only"]),
+        submitPriceCents: z.number().min(0).max(100000).optional(),
+        skipPriceCents: z.number().min(0).max(100000).optional(),
+        fullSongPriceCents: z.number().min(0).max(100000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { queueState: qs } = await import("../drizzle/schema");
+        const existing = await db.select().from(qs).limit(1);
+        const updateData: Record<string, unknown> = { playbackMode: input.playbackMode };
+        if (input.submitPriceCents !== undefined) updateData.submitPriceCents = input.submitPriceCents;
+        if (input.skipPriceCents !== undefined) updateData.skipPriceCents = input.skipPriceCents;
+        if (input.fullSongPriceCents !== undefined) updateData.fullSongPriceCents = input.fullSongPriceCents;
+        if (existing.length === 0) {
+          await db.insert(qs).values({ isLive: false, ...updateData } as any);
+        } else {
+          await db.update(qs).set(updateData);
+        }
+        return { success: true };
+      }),
   }),
 
   // -- Music Review Judge Broadcasts --------------------------------

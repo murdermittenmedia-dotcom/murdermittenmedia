@@ -176,6 +176,13 @@
       "when": 1783804679575,
       "tag": "0024_blue_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1783817973538,
+      "tag": "0025_cool_luckman",
+      "breakpoints": true
     }
   ]
 }

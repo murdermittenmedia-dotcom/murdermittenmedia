@@ -231,6 +231,13 @@ function AdminPanel({
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
   const updateStatus = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
   const confirmSkip = trpc.queue.confirmSkip.useMutation({ onSuccess: () => refetch() });
+  const setPlaybackMode = trpc.queue.setPlaybackMode.useMutation({
+    onSuccess: () => { refetch(); toast.success("Playback mode updated"); },
+    onError: (e: any) => toast.error("Failed: " + e.message),
+  });
+  const [submitPriceDollars, setSubmitPriceDollars] = useState(String((data?.state?.submitPriceCents ?? 0) / 100));
+  const [skipPriceDollars, setSkipPriceDollars] = useState(String((data?.state?.skipPriceCents ?? 1500) / 100));
+  const [fullSongPriceDollars, setFullSongPriceDollars] = useState(String((data?.state?.fullSongPriceCents ?? 500) / 100));
   const { data: activeBroadcasts } = trpc.review.getActive.useQuery();
   const forceEndBroadcast = trpc.review.forceEnd.useMutation({
     onSuccess: () => { toast.success("Judge broadcast ended"); },
@@ -365,6 +372,58 @@ function AdminPanel({
   advanceToNextRef.current = advanceToNext;
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
+
+  // ── 90-second cap: auto-advance when mode is "90sec" and track is not paid ──
+  const playbackMode = data?.state?.playbackMode ?? "90sec";
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  useEffect(() => {
+    if (playbackMode !== "90sec") return;
+    const cp = dataRef.current?.currentPlaying;
+    if (!cp) return;
+    // If the submission is a paid full-song submission, skip the cap
+    const isPaid = !!(cp as any).isPaidSubmission || (cp as any).paidSubmissionType === "reentry5" || (cp as any).paidSubmissionType === "reentry10";
+    if (isPaid) return;
+    // Only cap audio file tracks (YouTube is capped by the player itself)
+    if (cp.submissionType !== "file") return;
+    const audioEl = audioPlayer.getAudioElement?.();
+    if (!audioEl) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const checkTime = () => {
+      if (audioEl.currentTime >= 90) {
+        // Auto-advance
+        updateStatusRef.current.mutate({ id: cp.id, status: "reviewed" }, {
+          onSuccess: () => {
+            refetchRef.current();
+            advanceToNextRef.current(cp.id);
+          }
+        });
+      } else {
+        const remaining = 90 - audioEl.currentTime;
+        timer = setTimeout(checkTime, remaining * 1000);
+      }
+    };
+    const onPlay = () => {
+      if (timer) clearTimeout(timer);
+      if (audioEl.currentTime < 90) {
+        const remaining = 90 - audioEl.currentTime;
+        timer = setTimeout(checkTime, remaining * 1000);
+      }
+    };
+    const onPause = () => { if (timer) clearTimeout(timer); };
+    audioEl.addEventListener("play", onPlay);
+    audioEl.addEventListener("pause", onPause);
+    // Start immediately if already playing
+    if (!audioEl.paused && audioEl.currentTime < 90) {
+      const remaining = 90 - audioEl.currentTime;
+      timer = setTimeout(checkTime, remaining * 1000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+      audioEl.removeEventListener("play", onPlay);
+      audioEl.removeEventListener("pause", onPause);
+    };
+  }, [playbackMode, data?.currentPlaying?.id, audioPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
@@ -688,6 +747,77 @@ function AdminPanel({
                 className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
               />
               <span className="text-[9px] text-white/30">1s</span>
+            </div>
+          </div>
+        </div>
+        {/* ── Playback Mode ── */}
+        <div className="border border-white/10 bg-white/[0.02] rounded-lg p-3 space-y-3">
+          <div className="text-white/60 text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5">
+            <span>🎵</span> Playback Mode
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              { id: "90sec" as const, label: "90s Cap", desc: "Free=90s, paid=full", color: "orange" },
+              { id: "full" as const, label: "Full Song", desc: "All hear full song", color: "green" },
+              { id: "paid_only" as const, label: "Paid Only", desc: "Requires payment", color: "red" },
+            ]).map(mode => {
+              const active = (data?.state?.playbackMode ?? "90sec") === mode.id;
+              const colorMap: Record<string, string> = {
+                orange: "border-orange-500 bg-orange-500/20 text-orange-300",
+                green: "border-green-500 bg-green-500/20 text-green-300",
+                red: "border-red-500 bg-red-500/20 text-red-300",
+              };
+              return (
+                <button
+                  key={mode.id}
+                  onClick={() => setPlaybackMode.mutate({ playbackMode: mode.id })}
+                  disabled={setPlaybackMode.isPending}
+                  className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all ${
+                    active ? colorMap[mode.color] : "border-white/10 bg-white/[0.03] text-white/40 hover:border-white/30"
+                  }`}
+                >
+                  <span className="text-[11px] font-bold uppercase tracking-wide">{mode.label}</span>
+                  <span className="text-[9px] mt-0.5 opacity-70">{mode.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="space-y-2">
+            <div className="text-white/40 text-[9px] uppercase tracking-wider">Pricing (CashApp)</div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="space-y-1">
+                <label className="text-[9px] text-white/40">Submit fee ($)</label>
+                <div className="flex gap-1">
+                  <input type="number" min={0} step={0.5} value={submitPriceDollars}
+                    onChange={e => setSubmitPriceDollars(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded px-1.5 py-1 text-white text-[11px] focus:outline-none focus:border-white/30" />
+                  <button
+                    onClick={() => setPlaybackMode.mutate({ playbackMode: data?.state?.playbackMode ?? "90sec", submitPriceCents: Math.round(parseFloat(submitPriceDollars || "0") * 100) })}
+                    className="text-[9px] bg-white/10 hover:bg-white/20 px-1.5 rounded text-white/60">✓</button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] text-white/40">Skip fee ($)</label>
+                <div className="flex gap-1">
+                  <input type="number" min={0} step={0.5} value={skipPriceDollars}
+                    onChange={e => setSkipPriceDollars(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded px-1.5 py-1 text-white text-[11px] focus:outline-none focus:border-white/30" />
+                  <button
+                    onClick={() => setPlaybackMode.mutate({ playbackMode: data?.state?.playbackMode ?? "90sec", skipPriceCents: Math.round(parseFloat(skipPriceDollars || "0") * 100) })}
+                    className="text-[9px] bg-white/10 hover:bg-white/20 px-1.5 rounded text-white/60">✓</button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] text-white/40">Full song ($)</label>
+                <div className="flex gap-1">
+                  <input type="number" min={0} step={0.5} value={fullSongPriceDollars}
+                    onChange={e => setFullSongPriceDollars(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded px-1.5 py-1 text-white text-[11px] focus:outline-none focus:border-white/30" />
+                  <button
+                    onClick={() => setPlaybackMode.mutate({ playbackMode: data?.state?.playbackMode ?? "90sec", fullSongPriceCents: Math.round(parseFloat(fullSongPriceDollars || "0") * 100) })}
+                    className="text-[9px] bg-white/10 hover:bg-white/20 px-1.5 rounded text-white/60">✓</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1603,6 +1733,31 @@ export default function MusicReview() {
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   <span className="text-red-400 text-xs font-bold uppercase tracking-widest">Now Being Reviewed</span>
                 </div>
+                {/* Playback mode badge */}
+                {(() => {
+                  const mode = data?.state?.playbackMode ?? "90sec";
+                  const skipPrice = (data?.state?.skipPriceCents ?? 1500) / 100;
+                  const fullSongPrice = (data?.state?.fullSongPriceCents ?? 500) / 100;
+                  const submitPrice = (data?.state?.submitPriceCents ?? 0) / 100;
+                  if (mode === "90sec") return (
+                    <div className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/30 rounded-full px-3 py-1">
+                      <span className="text-orange-400 text-[10px] font-bold uppercase tracking-widest">⏱ 90s Preview</span>
+                      {fullSongPrice > 0 && <span className="text-orange-300/60 text-[10px]">· Full song ${fullSongPrice} via CashApp</span>}
+                    </div>
+                  );
+                  if (mode === "full") return (
+                    <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/30 rounded-full px-3 py-1">
+                      <span className="text-green-400 text-[10px] font-bold uppercase tracking-widest">🎵 Full Song Mode</span>
+                    </div>
+                  );
+                  if (mode === "paid_only") return (
+                    <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 rounded-full px-3 py-1">
+                      <span className="text-red-400 text-[10px] font-bold uppercase tracking-widest">💰 Paid Submissions Only</span>
+                      {submitPrice > 0 && <span className="text-red-300/60 text-[10px]">· ${submitPrice} to submit</span>}
+                    </div>
+                  );
+                  return null;
+                })()}
               </div>
 
               {/* Track info */}
