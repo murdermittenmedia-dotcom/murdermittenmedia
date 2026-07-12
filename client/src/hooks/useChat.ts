@@ -98,6 +98,7 @@ export function useChat({
   onReactionsUpdated,
   onFakeChatMessage,
   onChatControlsReceived,
+  onTriggerReaction,
 }: UseChatOptions) {
   const socketRef = useRef<Socket | null>(null);
   const onSpinStateRef = useRef(onSpinStateChange);
