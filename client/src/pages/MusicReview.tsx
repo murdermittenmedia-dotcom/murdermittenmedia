@@ -1465,6 +1465,23 @@ export default function MusicReview() {
     : null;
   const fire = reactionCounts?.fire ?? activeTrackData?.fireCount ?? 0;
   const trash = reactionCounts?.trash ?? activeTrackData?.trashCount ?? 0;
+  // Unified active track — liveReviewActive (from socket) takes priority,
+  // falls back to currentPlaying from DB so the Now Playing box always shows
+  const activeTrack = liveReviewActive
+    ? liveReviewActive
+    : currentPlaying
+      ? {
+          submissionId: currentPlaying.id,
+          userId: currentPlaying.userId ?? null,
+          artistName: currentPlaying.artistName,
+          songTitle: currentPlaying.songTitle,
+          audioUrl: currentPlaying.fileUrl ?? null,
+          youtubeUrl: currentPlaying.youtubeUrl ?? null,
+          submissionType: currentPlaying.submissionType,
+          fileKey: currentPlaying.fileKey ?? null,
+          fileUrl: currentPlaying.fileUrl ?? null,
+        }
+      : null;
 
   // ── Merged chat messages (real + fake) sorted by timestamp ───
   const allMessages = [...chatMessages, ...fakeMessages].sort((a, b) => {
@@ -1550,7 +1567,7 @@ export default function MusicReview() {
         )}
 
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
-        {liveReviewActive ? (
+        {activeTrack ? (
           <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
             {/* Glow corners */}
             <div className="absolute top-0 left-0 w-32 h-32 bg-red-600/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-2xl pointer-events-none" />
@@ -1572,19 +1589,19 @@ export default function MusicReview() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h2 className="font-['Anton'] text-3xl md:text-4xl uppercase leading-tight truncate">
-                    {liveReviewActive.songTitle}
+                    {activeTrack.songTitle}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
-                    {liveReviewActive.userId ? (
-                      <Link href={`/profile/${liveReviewActive.userId}`} className="text-red-400 text-lg font-semibold hover:text-red-300 transition-colors truncate">
-                        {liveReviewActive.artistName}
+                    {activeTrack.userId ? (
+                      <Link href={`/profile/${activeTrack.userId}`} className="text-red-400 text-lg font-semibold hover:text-red-300 transition-colors truncate">
+                        {activeTrack.artistName}
                       </Link>
                     ) : (
-                      <span className="text-red-400 text-lg font-semibold truncate">{liveReviewActive.artistName}</span>
+                      <span className="text-red-400 text-lg font-semibold truncate">{activeTrack.artistName}</span>
                     )}
                   </div>
-                  {liveReviewActive.submissionType === "youtube" && liveReviewActive.youtubeUrl && (
-                    <a href={liveReviewActive.youtubeUrl} target="_blank" rel="noopener noreferrer"
+                  {activeTrack.submissionType === "youtube" && activeTrack.youtubeUrl && (
+                    <a href={activeTrack.youtubeUrl} target="_blank" rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-white/30 text-xs hover:text-white/60 transition-colors mt-1">
                       <ExternalLink className="w-3 h-3" />
                       YouTube Link
@@ -1594,10 +1611,10 @@ export default function MusicReview() {
               </div>
 
               {/* Audio/YouTube player */}
-              {liveReviewActive.submissionType === "youtube" && liveReviewActive.youtubeUrl ? (
+              {activeTrack.submissionType === "youtube" && activeTrack.youtubeUrl ? (
                 <div className="rounded-xl overflow-hidden mb-5">
                   <SyncedYouTubePlayer
-                    videoUrl={liveReviewActive.youtubeUrl}
+                    videoUrl={activeTrack.youtubeUrl}
                     ytSyncState={ytSyncState}
                     isAdmin={isAdmin}
                     onSeek={isAdmin ? (t) => broadcastRadioSeek(t) : undefined}
@@ -1605,39 +1622,42 @@ export default function MusicReview() {
                     onResume={isAdmin ? (t) => broadcastRadioResume(t) : undefined}
                   />
                 </div>
-              ) : liveReviewActive.submissionType === "file" && liveReviewActive.fileUrl ? (
+              ) : activeTrack.submissionType === "file" && activeTrack.fileUrl ? (
                 <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-xl px-5 py-4 mb-5">
                   <AudioPlayButton
-                    url={liveReviewActive.fileUrl}
-                    songTitle={liveReviewActive.songTitle}
-                    artistName={liveReviewActive.artistName}
+                    url={activeTrack.fileUrl}
+                    songTitle={activeTrack.songTitle}
+                    artistName={activeTrack.artistName}
                     size="lg"
                   />
                   <div>
-                    <div className="text-white/70 text-sm font-medium">{liveReviewActive.songTitle}</div>
-                    <div className="text-white/30 text-xs">{liveReviewActive.artistName}</div>
+                    <div className="text-white/70 text-sm font-medium">{activeTrack.songTitle}</div>
+                    <div className="text-white/30 text-xs">{activeTrack.artistName}</div>
                   </div>
                 </div>
               ) : null}
 
-              {/* Fire/Trash voting */}
-              {currentPlayingId && (
-                <FireTrashPoll
-                  submissionId={currentPlayingId}
-                  songTitle={liveReviewActive?.songTitle ?? currentPlaying?.songTitle ?? ""}
-                  artistName={liveReviewActive?.artistName ?? currentPlaying?.artistName ?? ""}
-                  artistUserId={liveReviewActive?.userId ?? currentPlaying?.userId ?? null}
-                  fireCount={(reactionCounts?.fire ?? currentPlaying?.fireCount ?? 0) + ghostFireCount}
-                  trashCount={(reactionCounts?.trash ?? currentPlaying?.trashCount ?? 0) + ghostTrashCount}
-                  myReaction={myReaction?.reaction ?? null}
-                  onVote={(reaction) => {
-                    if (!user) { toast.error("Login to vote"); return; }
-                    reactMutation.mutate({ submissionId: currentPlayingId, reaction });
-                  }}
-                  isPending={reactMutation.isPending}
-                  user={user}
-                />
-              )}
+              {/* Fire/Trash voting — always show when liveReviewActive is set */}
+              {(() => {
+                const pollId = currentPlayingId ?? activeTrack.submissionId;
+                return (
+                  <FireTrashPoll
+                    submissionId={pollId}
+                    songTitle={activeTrack.songTitle}
+                    artistName={activeTrack.artistName}
+                    artistUserId={activeTrack.userId ?? null}
+                    fireCount={(reactionCounts?.fire ?? currentPlaying?.fireCount ?? 0) + ghostFireCount}
+                    trashCount={(reactionCounts?.trash ?? currentPlaying?.trashCount ?? 0) + ghostTrashCount}
+                    myReaction={myReaction?.reaction ?? null}
+                    onVote={(reaction) => {
+                      if (!user) { toast.error("Login to vote"); return; }
+                      reactMutation.mutate({ submissionId: pollId, reaction });
+                    }}
+                    isPending={reactMutation.isPending}
+                    user={user}
+                  />
+                );
+              })()}
             </div>
           </div>
         ) : (
