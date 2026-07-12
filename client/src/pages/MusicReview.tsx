@@ -1538,7 +1538,13 @@ export default function MusicReview() {
         fileUrl: cp.fileUrl ?? null,
       });
     }
-  }, [data?.currentPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [data?.currentPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset ghost votes when song changes
+  useEffect(() => {
+    setGhostFireCount(0);
+    setGhostTrashCount(0);
+  }, [activeSubmissionId, setGhostFireCount, setGhostTrashCount]);
 
   // Register admin broadcast functions for FloatingPlayer
   useEffect(() => {
