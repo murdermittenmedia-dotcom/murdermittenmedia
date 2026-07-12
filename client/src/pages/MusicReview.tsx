@@ -40,7 +40,92 @@ const CASHAPP = "$MittenMedia";
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
 
-type SubmitTab = "queue" | "history" | "submit" | "skip-info";
+type SubmitTab = "queue" | "history" | "submit" | "skip-info" | "apply-judge";
+
+// ── Apply As Judge Tab ────────────────────────────────────────
+function ApplyAsJudgeTab({ user, getLoginUrl }: { user: any; getLoginUrl: () => string }) {
+  const [reason, setReason] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const myApp = trpc.judgeApps.getMine.useQuery(undefined, { enabled: !!user });
+  const applyMutation = trpc.judgeApps.submitApplication.useMutation({
+    onSuccess: () => { setSubmitted(true); myApp.refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (!user) {
+    return (
+      <div className="text-center py-12 border border-white/10 bg-white/[0.02] rounded-2xl">
+        <div className="text-4xl mb-3">⚖️</div>
+        <div className="font-['Anton'] text-2xl uppercase mb-2">Apply as Judge</div>
+        <p className="text-white/40 text-sm mb-5">Login to apply to become a judge on Murder Mitten Media.</p>
+        <a href={getLoginUrl()} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-xs uppercase tracking-widest transition-all">
+          Login to Apply
+        </a>
+      </div>
+    );
+  }
+
+  if (myApp.data?.status === "pending") {
+    return (
+      <div className="text-center py-12 border border-yellow-500/30 bg-yellow-500/5 rounded-2xl max-w-lg mx-auto">
+        <div className="text-4xl mb-3">⏳</div>
+        <div className="font-['Anton'] text-2xl uppercase mb-2 text-yellow-400">Application Pending</div>
+        <p className="text-white/50 text-sm">Your judge application is under review. We'll notify you when a decision is made.</p>
+      </div>
+    );
+  }
+
+  if (myApp.data?.status === "approved") {
+    return (
+      <div className="text-center py-12 border border-green-500/30 bg-green-500/5 rounded-2xl max-w-lg mx-auto">
+        <div className="text-4xl mb-3">✅</div>
+        <div className="font-['Anton'] text-2xl uppercase mb-2 text-green-400">You're a Judge!</div>
+        <p className="text-white/50 text-sm">Your application was approved. You can now broadcast as a judge during live sessions.</p>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="text-center py-12 border border-green-500/30 bg-green-500/5 rounded-2xl max-w-lg mx-auto">
+        <div className="text-4xl mb-3">🎉</div>
+        <div className="font-['Anton'] text-2xl uppercase mb-2">Application Submitted!</div>
+        <p className="text-white/50 text-sm">We'll review your application and get back to you soon.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-purple-500/30 bg-gradient-to-b from-purple-500/5 to-transparent rounded-2xl p-8 max-w-lg mx-auto">
+      <div className="text-center mb-6">
+        <div className="text-4xl mb-3">⚖️</div>
+        <h2 className="font-['Anton'] text-3xl uppercase mb-2">Apply as <span className="text-purple-400">Judge</span></h2>
+        <p className="text-white/50 text-sm">Think you have what it takes to judge tracks on Murder Mitten Media? Apply below.</p>
+      </div>
+      <div className="space-y-4">
+        <div>
+          <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">Why should you be a judge? (Optional)</label>
+          <textarea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="Tell us about your music background, taste, and why you'd make a great judge..."
+            rows={4}
+            maxLength={512}
+            className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-purple-500/50 placeholder-white/20 resize-none text-sm"
+          />
+          <div className="text-white/20 text-xs text-right mt-1">{reason.length}/512</div>
+        </div>
+        <button
+          onClick={() => applyMutation.mutate({ reason: reason.trim() || undefined })}
+          disabled={applyMutation.isPending}
+          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 text-white py-4 rounded-xl font-semibold uppercase tracking-widest transition-all"
+        >
+          {applyMutation.isPending ? "Submitting..." : "Submit Application →"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── Judge Broadcast Card Component (LiveKit viewer) ───────────
 function JudgeBroadcastCard({ broadcast }: { broadcast: any }) {
@@ -939,6 +1024,7 @@ export default function MusicReview() {
   const [submitted, setSubmitted] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [voiceJoined, setVoiceJoined] = useState(false);
+  const [expandedJudge, setExpandedJudge] = useState<string | null>(null);
   const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [selectedYouTube, setSelectedYouTube] = useState<{ url: string; title: string; artist: string } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -1333,558 +1419,429 @@ export default function MusicReview() {
   const fire = reactionCounts?.fire ?? activeTrackData?.fireCount ?? 0;
   const trash = reactionCounts?.trash ?? activeTrackData?.trashCount ?? 0;
 
+  // ── Merged chat messages (real + fake) sorted by timestamp ───
+  const allMessages = [...chatMessages, ...fakeMessages].sort((a, b) => {
+    const ta = typeof a.timestamp === "number" ? a.timestamp : new Date(a.timestamp).getTime();
+    const tb = typeof b.timestamp === "number" ? b.timestamp : new Date(b.timestamp).getTime();
+    return ta - tb;
+  });
+
+  const activeEntries = activeBroadcasts ?? [];
+
+  // ── Expanded judge state ──────────────────────────────────────
+  const expandedBroadcast = expandedJudge ? activeEntries.find((b: any) => String(b.id) === expandedJudge) : null;
+
   return (
-    <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden pb-24">
+    <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
-      {!isAdmin && !isLive && <LiveRadioBanner filter="review" />}
+      <LiveRadioBanner />
 
-      {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className="relative pt-14 pb-5 border-b border-white/[0.06] overflow-hidden">
-        {/* Subtle gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-red-600/[0.03] via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-600/40 to-transparent" />
-        
-        <div className="container relative">
-          {/* Status + title row */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              {isLive ? (
-                <div className="flex items-center gap-2 bg-red-600/15 border border-red-600/30 rounded-full px-3 py-1">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-red-400 text-[10px] uppercase tracking-[0.3em] font-bold">Live Now</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1">
-                  <span className="w-2 h-2 rounded-full bg-white/20" />
-                  <span className="text-white/30 text-[10px] uppercase tracking-[0.3em]">Offline</span>
-                </div>
-              )}
-              {pendingQueue.length > 0 && (
-                <span className="text-white/20 text-[10px] uppercase tracking-wider hidden md:block">
-                  {pendingQueue.length} track{pendingQueue.length !== 1 ? "s" : ""} in queue
-                </span>
-              )}
+      {/* ── HERO HEADER ─────────────────────────────────────── */}
+      <div className="bg-gradient-to-b from-[#0d0d0d] to-[#080808] border-b border-white/5 pt-20 pb-4 px-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-600/40 flex items-center justify-center">
+              <Music className="w-5 h-5 text-red-400" />
             </div>
-            <p className="text-white/30 text-[10px] uppercase tracking-wider hidden md:block">
-              Submit your track · skip to front for $10
-            </p>
+            <div>
+              <h1 className="font-['Anton'] text-3xl uppercase tracking-wider leading-none">
+                Music <span className="text-red-600">Review</span>
+              </h1>
+              <p className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Live Session</p>
+            </div>
           </div>
+          {/* LIVE VIEWER COUNT — super visible */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/30 rounded-full px-5 py-2.5">
+              <Eye className="w-5 h-5 text-red-400" />
+              <span className="font-['Anton'] text-2xl text-white tabular-nums">{viewerCount.toLocaleString()}</span>
+              <span className="text-red-400 text-xs uppercase tracking-widest font-semibold">Watching</span>
+            </div>
+            {isLive && (
+              <div className="flex items-center gap-2 bg-green-600/10 border border-green-600/30 rounded-full px-4 py-2.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-green-400 text-xs font-bold uppercase tracking-widest">LIVE</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-          {/* Title */}
-          <h1 className="font-['Anton'] text-4xl md:text-5xl uppercase leading-none mb-4">
-            MUSIC <span className="text-red-600">REVIEW</span>
-          </h1>
+      {/* ── MAIN SINGLE-COLUMN CONTENT ──────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-          {/* Judge Broadcast Panel */}
-          {(isJudge || isAdmin) && (
-            <div className="mb-4">
-              {livekitBroadcastData && myBroadcast ? (
-                <JudgeLiveBroadcast
-                  broadcastId={myBroadcast.id}
-                  token={livekitBroadcastData.token}
-                  livekitUrl={livekitBroadcastData.livekitUrl}
-                  onStop={() => {
-                    endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
-                      onSuccess: () => {
-                        setMyBroadcast(null);
-                        setLivekitBroadcastData(null);
-                        toast.success("Broadcast ended");
-                      }
-                    });
-                  }}
-                />
-              ) : (
-                <div className="border border-green-500/30 bg-gradient-to-r from-green-500/5 to-transparent rounded-xl p-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-green-400 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Judge Broadcast</div>
-                    <div className="text-white/60 text-sm">
-                      {myBroadcast ? "Session active — click to resume camera" : "Ready to broadcast"}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => startBroadcast.mutate(undefined, {
-                        onSuccess: (data: any) => {
-                          if (data.success && data.broadcast && data.token) {
-                            setMyBroadcast(data.broadcast);
-                            setLivekitBroadcastData({ token: data.token, roomName: data.broadcast.roomName, livekitUrl: data.livekitUrl });
-                            toast.success("Camera & mic ready!");
-                          }
-                        },
-                        onError: (e: any) => toast.error("Failed to start broadcast: " + e.message),
-                      })}
-                      disabled={startBroadcast.isPending}
-                      className="text-xs border border-green-500/50 bg-green-500/10 text-green-400 px-4 py-2 rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50"
-                    >
-                      {startBroadcast.isPending ? "Starting…" : myBroadcast ? "📷 Resume" : "📷 Go Live"}
-                    </button>
-                    {myBroadcast && (
-                      <button
-                        onClick={() => endBroadcast.mutate({ broadcastId: myBroadcast.id }, {
-                          onSuccess: () => { setMyBroadcast(null); setLivekitBroadcastData(null); toast.success("Broadcast ended"); }
-                        })}
-                        className="text-xs border border-red-500/50 text-red-400 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                      >
-                        Stop
-                      </button>
+        {/* ── ADMIN PANEL (admin/judge only) ─────────────────── */}
+        {isAdmin && (
+          <AdminPanel
+            data={data}
+            refetch={refetch}
+            audioRoom={audioRoom}
+            videoRoom={videoRoom}
+            broadcastReviewActive={broadcastReviewActive}
+            broadcastRadioPause={broadcastRadioPause}
+            broadcastRadioResume={broadcastRadioResume}
+            broadcastRadioSeek={broadcastRadioSeek}
+            broadcastReviewPlayback={broadcastReviewPlayback}
+            broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
+            broadcastLastSong={broadcastLastSong}
+            adminMicBroadcast={adminMicBroadcast}
+            playTrack={playTrack}
+            setSelectedYouTube={setSelectedYouTube}
+            reviewedTracks={reviewedTracks}
+            triggerReaction={triggerReaction}
+            commentIntervalMs={commentIntervalMs}
+            setCommentIntervalMs={setCommentIntervalMs}
+            viewerMin={viewerMin}
+            setViewerMin={setViewerMin}
+            viewerMax={viewerMax}
+            setViewerMax={setViewerMax}
+          />
+        )}
+
+        {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
+        {liveReviewActive ? (
+          <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
+            {/* Glow corners */}
+            <div className="absolute top-0 left-0 w-32 h-32 bg-red-600/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-red-600/10 rounded-full translate-x-1/2 translate-y-1/2 blur-2xl pointer-events-none" />
+
+            <div className="relative p-6">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex items-center gap-2 bg-red-600/20 border border-red-600/40 rounded-full px-4 py-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-red-400 text-xs font-bold uppercase tracking-widest">Now Being Reviewed</span>
+                </div>
+              </div>
+
+              {/* Track info */}
+              <div className="flex items-start gap-5 mb-5">
+                <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-red-900/40 to-red-950/60 border border-red-600/30 flex items-center justify-center flex-shrink-0">
+                  <Music className="w-8 h-8 text-red-400/60" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-['Anton'] text-3xl md:text-4xl uppercase leading-tight truncate">
+                    {liveReviewActive.songTitle}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    {liveReviewActive.userId ? (
+                      <Link href={`/profile/${liveReviewActive.userId}`} className="text-red-400 text-lg font-semibold hover:text-red-300 transition-colors truncate">
+                        {liveReviewActive.artistName}
+                      </Link>
+                    ) : (
+                      <span className="text-red-400 text-lg font-semibold truncate">{liveReviewActive.artistName}</span>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* OBS Setup Modal */}
-          {showOBSSetup && myBroadcast && (
-            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-              <div className="bg-[#111] border border-white/20 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-4 border-b border-white/10">
-                  <h2 className="text-white font-['Anton'] text-lg uppercase">OBS Setup</h2>
-                  <button onClick={() => setShowOBSSetup(false)} className="text-white/40 hover:text-white">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="p-4 space-y-4">
-                  <div>
-                    <div className="text-white/60 text-xs uppercase tracking-widest mb-2">Server URL</div>
-                    <div className="bg-black/40 border border-white/10 p-3 rounded-lg font-mono text-sm text-green-400 break-all">
-                      {myBroadcast.rtmpUrl}
-                    </div>
-                    <button onClick={() => { navigator.clipboard.writeText(myBroadcast.rtmpUrl); toast.success("Copied!"); }}
-                      className="text-xs text-white/50 hover:text-white mt-2">Copy</button>
-                  </div>
-                  <div>
-                    <div className="text-white/60 text-xs uppercase tracking-widest mb-2">Stream Key</div>
-                    <div className="bg-black/40 border border-white/10 p-3 rounded-lg font-mono text-sm text-yellow-400 break-all">
-                      {myBroadcast.rtmpKey}
-                    </div>
-                    <button onClick={() => { navigator.clipboard.writeText(myBroadcast.rtmpKey); toast.success("Copied!"); }}
-                      className="text-xs text-white/50 hover:text-white mt-2">Copy</button>
-                  </div>
+                  {liveReviewActive.submissionType === "youtube" && liveReviewActive.youtubeUrl && (
+                    <a href={liveReviewActive.youtubeUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-white/30 text-xs hover:text-white/60 transition-colors mt-1">
+                      <ExternalLink className="w-3 h-3" />
+                      YouTube Link
+                    </a>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Stream embed / live radio card */}
-          {isLive && streamUrl ? (
-            <div className="mb-2">
-              {(streamUrl.includes("youtube.com") || streamUrl.includes("youtu.be")) ? (
-                <div className="relative w-full aspect-video max-w-3xl bg-black border border-white/10 rounded-xl overflow-hidden">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${
-                      streamUrl.includes("v=")
-                        ? streamUrl.split("v=")[1]?.split("&")[0]
-                        : streamUrl.split("/").pop()
-                    }?autoplay=1`}
-                    className="w-full h-full"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
+              {/* Audio/YouTube player */}
+              {liveReviewActive.submissionType === "youtube" && liveReviewActive.youtubeUrl ? (
+                <div className="rounded-xl overflow-hidden mb-5">
+                  <SyncedYouTubePlayer
+                    videoUrl={liveReviewActive.youtubeUrl}
+                    ytSyncState={ytSyncState}
+                    isAdmin={isAdmin}
+                    onSeek={isAdmin ? (t) => broadcastRadioSeek(t) : undefined}
+                    onPause={isAdmin ? (t) => broadcastRadioPause(t) : undefined}
+                    onResume={isAdmin ? (t) => broadcastRadioResume(t) : undefined}
                   />
                 </div>
-              ) : (
-                <div className="border border-red-600/30 bg-gradient-to-r from-red-600/10 to-transparent rounded-xl p-5 max-w-3xl flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(209,0,0,0.2)]">
-                    <Radio className="w-5 h-5 text-red-500" />
+              ) : liveReviewActive.submissionType === "file" && liveReviewActive.fileUrl ? (
+                <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-xl px-5 py-4 mb-5">
+                  <AudioPlayButton
+                    url={liveReviewActive.fileUrl}
+                    songTitle={liveReviewActive.songTitle}
+                    artistName={liveReviewActive.artistName}
+                    size="lg"
+                  />
+                  <div>
+                    <div className="text-white/70 text-sm font-medium">{liveReviewActive.songTitle}</div>
+                    <div className="text-white/30 text-xs">{liveReviewActive.artistName}</div>
                   </div>
-                  <div className="flex-1">
-                    <div className="font-['Anton'] text-lg uppercase">Murder Mitten Media — LIVE</div>
-                    {liveMessage && <div className="text-white/50 text-sm mt-0.5">{liveMessage}</div>}
-                  </div>
-                  <button
-                    onClick={playStream}
-                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(209,0,0,0.3)]"
-                  >
-                    <Headphones className="w-3.5 h-3.5" /> Listen Live
-                  </button>
                 </div>
-              )}
-            </div>
-          ) : isLive ? (
-            <div className="border border-red-600/30 bg-red-600/5 rounded-xl p-4 max-w-3xl mb-2 flex items-center gap-3">
-              <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-              <div>
-                <div className="text-red-400 text-sm font-semibold">Session is Live</div>
-                {liveMessage && <div className="text-white/40 text-xs mt-0.5">{liveMessage}</div>}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </section>
+              ) : null}
 
-      {/* ── MAIN CONTENT ──────────────────────────────────────── */}
-      <div className="container py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-
-          {/* ── LEFT COLUMN ── */}
-          <div className="min-w-0 space-y-4">
-
-            {/* Admin panel */}
-            {isAdmin && (
-              <AdminPanel
-                data={data}
-                refetch={refetch}
-                audioRoom={audioRoom}
-                videoRoom={videoRoom}
-                broadcastReviewActive={broadcastReviewActive}
-                broadcastRadioPause={broadcastRadioPause}
-                broadcastRadioResume={broadcastRadioResume}
-                broadcastRadioSeek={broadcastRadioSeek}
-                broadcastReviewPlayback={broadcastReviewPlayback}
-                broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
-                broadcastLastSong={broadcastLastSong}
-                adminMicBroadcast={adminMicBroadcast}
-                playTrack={playTrack}
-                setSelectedYouTube={setSelectedYouTube}
-                reviewedTracks={reviewedTracks ?? []}
-                triggerReaction={triggerReaction}
-                commentIntervalMs={commentIntervalMs}
-                setCommentIntervalMs={setCommentIntervalMs}
-                viewerMin={viewerMin}
-                setViewerMin={setViewerMin}
-                viewerMax={viewerMax}
-                setViewerMax={setViewerMax}
-              />
-            )}
-
-            {/* Inline YouTube embed */}
-            {selectedYouTube && (() => {
-              const ytId = extractYouTubeId(selectedYouTube.url);
-              return (
-                <div className="rounded-xl border border-white/15 bg-black/60 p-4 relative">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="font-['Anton'] text-lg uppercase">{selectedYouTube.title}</div>
-                      <div className="text-white/50 text-xs">by {selectedYouTube.artist}</div>
-                    </div>
-                    <button onClick={() => setSelectedYouTube(null)} className="text-white/30 hover:text-white text-xl leading-none px-2" title="Close">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {ytId ? (
-                    <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingTop: '56.25%' }}>
-                      <iframe
-                        src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
-                        className="absolute inset-0 w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={selectedYouTube.title}
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-white/40 text-sm py-4 text-center">
-                      <a href={selectedYouTube.url} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">Open on YouTube →</a>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* ── NOW BEING REVIEWED — Dramatic spotlight card ── */}
-            {liveReviewActive && liveReviewActive.submissionId !== null && (
-              <div className="rounded-xl border border-red-600/40 bg-gradient-to-br from-red-600/10 via-[#0d0000] to-transparent p-5 relative overflow-hidden shadow-[0_0_40px_rgba(209,0,0,0.08)]">
-                {/* Top accent line */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-red-500 to-transparent" />
-                {/* Corner glow */}
-                <div className="absolute -top-20 -right-20 w-40 h-40 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
-                
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(209,0,0,0.6)]" />
-                    <span className="text-red-400 text-[10px] uppercase tracking-[0.3em] font-bold">Now Being Reviewed</span>
-                  </div>
-                  <div className="font-['Anton'] text-3xl md:text-4xl uppercase mb-1 leading-tight">{liveReviewActive.songTitle}</div>
-                  <div className="text-white/60 text-sm mb-4">
-                    by <ArtistLink artistName={liveReviewActive.artistName ?? ''} userId={liveReviewActive.userId ?? null} />
-                  </div>
-                  
-                  {liveReviewActive.audioUrl && !isAdmin && (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center gap-2 text-red-400 text-xs">
-                        <Radio className="w-4 h-4 animate-pulse" />
-                        <span className="font-semibold text-xs uppercase tracking-wider">Playing Live — synced to admin</span>
-                      </div>
-                      {/* Tune In CTA */}
-                      {!audioPlayer.isPlaying ? (
-                        <button
-                          onClick={() => {
-                            const track = {
-                              url: liveReviewActive.audioUrl!,
-                              title: liveReviewActive.songTitle ?? 'Live Track',
-                              artist: liveReviewActive.artistName ?? 'Murder Mitten Media',
-                              artworkUrl: LOGO,
-                              isStream: true,
-                              submissionId: liveReviewActive.submissionId ?? undefined,
-                              sourcePage: 'Music Review',
-                              sourceUrl: '/review',
-                            };
-                            const socket = io(window.location.origin, {
-                              path: "/api/socket.io",
-                              query: { room: "global" },
-                            });
-                            let responded = false;
-                            socket.on("connect", () => socket.emit("radio:get_state"));
-                            socket.on("radio:state", (data: any) => {
-                              if (responded) return;
-                              responded = true;
-                              socket.disconnect();
-                              const seekTo = data?.currentTime ?? 0;
-                              if (seekTo > 1) {
-                                audioPlayer.playWithSeek(track, seekTo);
-                                if (data?.pausedAt !== null && data?.pausedAt !== undefined) {
-                                  setTimeout(() => audioPlayer.pause(), 500);
-                                }
-                              } else {
-                                audioPlayer.play(track);
-                              }
-                            });
-                            setTimeout(() => {
-                              if (!responded) {
-                                responded = true;
-                                socket.disconnect();
-                                audioPlayer.play(track);
-                              }
-                            }, 1500);
-                          }}
-                          className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 active:scale-[0.98] text-white py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-[0_0_25px_rgba(209,0,0,0.3)] hover:shadow-[0_0_35px_rgba(209,0,0,0.5)]"
-                        >
-                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
-                          🎙 Tap to Listen Live
-                        </button>
-                      ) : (
-                        <div className="flex items-center gap-2 text-green-400 text-xs font-semibold uppercase tracking-wider bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-                          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                          You're tuned in
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ── TIP ARTIST PANEL ── */}
-                  {!isAdmin && liveReviewActive.userId && user && liveReviewActive.userId !== user.id && (
-                    <div className="mt-4 border border-yellow-500/20 bg-yellow-500/5 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-yellow-400 text-sm font-semibold">💰 Tip {liveReviewActive.artistName}</span>
-                          <span className="text-white/30 text-[10px]">Balance: {coinBalanceData?.balance ?? 0} coins</span>
-                        </div>
-                        <button
-                          onClick={() => setShowTipPanel(v => !v)}
-                          className="text-[10px] text-yellow-400/70 hover:text-yellow-400 transition-colors"
-                        >
-                          {showTipPanel ? 'Cancel' : 'Send Tip'}
-                        </button>
-                      </div>
-                      {showTipPanel && (
-                        <div className="flex gap-2 items-center">
-                          <div className="flex gap-1">
-                            {[10, 25, 50, 100].map(amt => (
-                              <button
-                                key={amt}
-                                onClick={() => setTipAmount(String(amt))}
-                                className={`px-2 py-1 text-[10px] border rounded transition-all ${
-                                  tipAmount === String(amt)
-                                    ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
-                                    : 'border-white/10 text-white/40 hover:border-yellow-500/50 hover:text-yellow-400'
-                                }`}
-                              >
-                                {amt}
-                              </button>
-                            ))}
-                          </div>
-                          <input
-                            type="number" min="1" max="10000" value={tipAmount}
-                            onChange={e => setTipAmount(e.target.value)} placeholder="Custom"
-                            className="w-16 bg-transparent border border-white/20 rounded text-white text-[10px] px-2 py-1 focus:outline-none focus:border-yellow-500/50"
-                          />
-                          <button
-                            disabled={!tipAmount || parseInt(tipAmount) < 1 || tipMutation.isPending}
-                            onClick={() => {
-                              const coins = parseInt(tipAmount);
-                              if (!coins || coins < 1) return;
-                              tipMutation.mutate({ toUserId: liveReviewActive.userId!, coins });
-                            }}
-                            className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black text-[10px] font-semibold px-3 py-1 rounded transition-all"
-                          >
-                            {tipMutation.isPending ? '...' : 'Tip'}
-                          </button>
-                        </div>
-                      )}
-                      {!showTipPanel && (
-                        <div className="flex gap-1">
-                          {[10, 25, 50, 100].map(amt => (
-                            <button
-                              key={amt}
-                              onClick={() => {
-                                if (!liveReviewActive.userId) return;
-                                tipMutation.mutate({ toUserId: liveReviewActive.userId, coins: amt });
-                              }}
-                              disabled={tipMutation.isPending}
-                              className="px-3 py-1 text-[10px] border border-yellow-500/30 text-yellow-400/70 rounded hover:border-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-40"
-                            >
-                              💰 {amt}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {liveReviewActive.youtubeUrl && !isAdmin && (() => {
-                    const ytId = extractYouTubeId(liveReviewActive.youtubeUrl!);
-                    return ytId ? (
-                      <div className="mt-4">
-                        <div className="flex items-center gap-2 mb-2 text-orange-400 text-[10px] font-semibold uppercase tracking-wider">
-                          <Radio className="w-3.5 h-3.5 animate-pulse" />
-                          Watch synced to admin's position
-                        </div>
-                        <SyncedYouTubePlayer
-                          videoId={ytId}
-                          submissionId={liveReviewActive.submissionId!}
-                          isAdmin={false}
-                          initialCurrentTime={ytSyncState?.currentTime ?? null}
-                          initialUpdatedAt={ytSyncState?.updatedAt ?? null}
-                          className="border border-white/10 rounded-lg overflow-hidden"
-                        />
-                        <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-[10px] text-white/30 hover:text-red-400 transition-colors mt-2">
-                          <ExternalLink className="w-3 h-3" /> Open on YouTube
-                        </a>
-                      </div>
-                    ) : (
-                      <a href={liveReviewActive.youtubeUrl!} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors mt-2">
-                        <ExternalLink className="w-3.5 h-3.5" /> Open on YouTube
-                      </a>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
-
-            {/* ── FIRE / TRASH POLL ── */}
-            {liveReviewActive && liveReviewActive.submissionId !== null && (
-              <FireTrashPoll
-                submissionId={liveReviewActive.submissionId}
-                songTitle={liveReviewActive.songTitle ?? ""}
-                artistName={liveReviewActive.artistName ?? ""}
-                fireCount={fire}
-                trashCount={trash}
-                myReaction={myReaction?.reaction ?? null}
-                onVote={(reaction) => reactMutation.mutate({ submissionId: liveReviewActive.submissionId!, reaction })}
-                isPending={reactMutation.isPending}
-                user={user}
-              />
-            )}
-
-            {/* Fallback poll for currentPlaying when liveReviewActive is not set */}
-            {!liveReviewActive && currentPlaying && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="font-['Anton'] text-lg uppercase">{currentPlaying.songTitle}</span>
-                  <span className="text-white/40 text-xs">by <ArtistLink artistName={currentPlaying.artistName} userId={currentPlaying.userId} /></span>
-                </div>
+              {/* Fire/Trash voting */}
+              {currentPlaying && (
                 <FireTrashPoll
                   submissionId={currentPlaying.id}
-                  songTitle={currentPlaying.songTitle}
-                  artistName={currentPlaying.artistName}
-                  artistUserId={currentPlaying.userId}
-                  fireCount={fire}
-                  trashCount={trash}
-                  myReaction={myReaction?.reaction ?? null}
-                  onVote={(reaction) => reactMutation.mutate({ submissionId: currentPlaying.id, reaction })}
-                  isPending={reactMutation.isPending}
-                  user={user}
+                  fireCount={currentPlaying.fireCount}
+                  trashCount={currentPlaying.trashCount}
+                  isAdmin={isAdmin}
+                  onVote={() => refetch()}
                 />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-10 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
+              <Music className="w-8 h-8 text-white/20" />
+            </div>
+            <p className="font-['Anton'] text-2xl uppercase text-white/20 mb-1">No Track Playing</p>
+            <p className="text-white/20 text-sm">{isLive ? "Waiting for admin to start the next track..." : "Session is offline"}</p>
+          </div>
+        )}
+
+        {/* ── JUDGE CAMERAS ──────────────────────────────────── */}
+        {activeEntries.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Video className="w-4 h-4 text-white/40" />
+              <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Judge Cameras</span>
+              <span className="text-white/20 text-xs">— click to expand</span>
+            </div>
+
+            {/* Expanded judge view */}
+            {expandedBroadcast && (
+              <div className="mb-4 rounded-2xl overflow-hidden border border-green-500/40 bg-black/60 relative">
+                <button
+                  onClick={() => setExpandedJudge(null)}
+                  className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center hover:bg-black/80 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white/70" />
+                </button>
+                <JudgeBroadcastCard broadcast={expandedBroadcast} />
               </div>
             )}
 
-            {/* ── TABS: Queue / History / Submit / Skip Line — Pill style ── */}
-            <div className="flex gap-1 p-1 bg-white/[0.03] border border-white/10 rounded-xl">
-              {(["queue", "history", "submit", "skip-info"] as SubmitTab[]).map(t => (
+            {/* Judge camera thumbnails */}
+            <div className={`grid gap-3 ${activeEntries.length === 1 ? "grid-cols-1 max-w-sm" : activeEntries.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+              {activeEntries.map((broadcast: any) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`flex-1 py-2.5 text-[10px] uppercase tracking-widest font-semibold rounded-lg transition-all ${
-                    tab === t
-                      ? t === "skip-info"
-                        ? "bg-yellow-500/20 text-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.1)]"
-                        : "bg-red-600/20 text-red-400 shadow-[0_0_10px_rgba(209,0,0,0.1)]"
-                      : t === "skip-info"
-                      ? "text-yellow-500/60 hover:text-yellow-400 hover:bg-yellow-500/5"
-                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.03]"
-                  }`}
+                  key={broadcast.id}
+                  onClick={() => setExpandedJudge(expandedJudge === String(broadcast.id) ? null : String(broadcast.id))}
+                  className={`relative rounded-xl overflow-hidden border transition-all duration-200 cursor-pointer group ${expandedJudge === String(broadcast.id) ? "border-green-500/60 ring-1 ring-green-500/30" : "border-green-500/20 hover:border-green-500/50"}`}
                 >
-                  {t === "queue" ? `Queue (${pendingQueue.length})` : t === "history" ? "History" : t === "submit" ? "Submit" : "⚡ Skip ($10)"}
+                  <JudgeBroadcastCard broadcast={broadcast} />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-3 py-1 text-white/80 text-xs font-semibold">
+                      {expandedJudge === String(broadcast.id) ? "Collapse" : "Expand"}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── LIVE CHAT ───────────────────────────────────────── */}
+        <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
+          {/* Chat header */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-white font-semibold text-sm uppercase tracking-wider">Live Chat</span>
+            </div>
+            <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/20 rounded-full px-4 py-1.5">
+              <Eye className="w-4 h-4 text-red-400" />
+              <span className="font-['Anton'] text-lg text-white tabular-nums">{viewerCount.toLocaleString()}</span>
+              <span className="text-red-400 text-[10px] uppercase tracking-widest">watching</span>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="h-72 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-white/10">
+            {allMessages.length === 0 ? (
+              <div className="text-center text-white/20 text-sm py-8">No messages yet — say something!</div>
+            ) : (
+              allMessages.map((msg) => {
+                const isFake = "isFake" in msg && msg.isFake;
+                const hasRealUsername = isFake && msg.username && !msg.username.match(/^User\d+$/);
+                return (
+                  <div key={msg.id} className="flex items-start gap-2 group">
+                    <div className="flex-1 min-w-0">
+                      <span className="inline-flex items-center gap-1.5 mr-2">
+                        {hasRealUsername ? (
+                          <Link href={`/profile/${msg.userId}`} className="text-red-400 text-xs font-semibold hover:text-red-300 transition-colors cursor-pointer">
+                            {msg.username}
+                          </Link>
+                        ) : (
+                          <span className={`text-xs font-semibold ${isFake ? "text-white/50" : "text-red-400"}`}>
+                            {msg.username}
+                          </span>
+                        )}
+                        {!isFake && msg.role && msg.role !== "user" && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase tracking-wider ${msg.role === "admin" ? "bg-red-600/20 text-red-400 border-red-600/30" : msg.role === "judge" ? "bg-purple-600/20 text-purple-400 border-purple-600/30" : "bg-white/10 text-white/40 border-white/20"}`}>
+                            {msg.role}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-white/70 text-sm break-words">{msg.content}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* Chat input */}
+          <div className="px-4 py-3 border-t border-white/10">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSendChat()}
+                  placeholder="Say something..."
+                  maxLength={200}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl text-white px-4 py-2.5 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
+                />
+                <button
+                  onClick={handleSendChat}
+                  disabled={!chatInput.trim()}
+                  className="bg-red-600 hover:bg-red-500 disabled:opacity-30 text-white rounded-xl px-4 py-2.5 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <a href={getLoginUrl()} className="flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors py-1">
+                <LogIn className="w-4 h-4" />
+                Login to chat
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* ── BOTTOM MENU TABS ────────────────────────────────── */}
+        <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
+          {/* Tab navigation */}
+          <div className="flex overflow-x-auto scrollbar-none border-b border-white/10">
+            {([
+              { id: "submit", label: "Submit Now", icon: "🎵" },
+              { id: "queue", label: "Queue", icon: "📋" },
+              { id: "history", label: "History", icon: "📜" },
+              { id: "skip-info", label: "Skip Track", icon: "⏭️" },
+              { id: "apply-judge", label: "Apply as Judge", icon: "⚖️" },
+            ] as const).map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-2 px-5 py-4 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all border-b-2 ${tab === t.id ? "text-white border-red-600 bg-red-600/5" : "text-white/40 border-transparent hover:text-white/70 hover:bg-white/[0.02]"}`}
+              >
+                <span>{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div className="p-5">
+
+            {/* ── SUBMIT TAB ── */}
+            {tab === "submit" && (
+              <div className="max-w-lg mx-auto space-y-4">
+                <div className="text-center mb-6">
+                  <h2 className="font-['Anton'] text-3xl uppercase mb-1">Submit Your <span className="text-red-600">Track</span></h2>
+                  <p className="text-white/40 text-sm">Get your music reviewed live on air</p>
+                </div>
+
+                {!user ? (
+                  <div className="text-center py-8 border border-white/10 rounded-2xl">
+                    <p className="text-white/40 text-sm mb-4">Login to submit your track</p>
+                    <a href={getLoginUrl()} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-xs uppercase tracking-widest transition-all">
+                      <LogIn className="w-4 h-4" />
+                      Login to Submit
+                    </a>
+                  </div>
+                ) : submitted ? (
+                  <div className="text-center py-10 border border-green-500/30 bg-green-500/5 rounded-2xl">
+                    <div className="text-4xl mb-3">🎉</div>
+                    <div className="font-['Anton'] text-2xl uppercase mb-2">Submitted!</div>
+                    <p className="text-white/50 text-sm">Your track is in the queue. Stay tuned!</p>
+                    <button onClick={() => setSubmitted(false)} className="mt-4 text-red-400 text-xs hover:text-red-300 transition-colors">Submit another</button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Submit type toggle */}
+                    <div className="flex rounded-xl overflow-hidden border border-white/10">
+                      <button onClick={() => setSubmitType("file")} className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all ${submitType === "file" ? "bg-red-600 text-white" : "text-white/40 hover:text-white/70"}`}>
+                        🎵 Upload MP3
+                      </button>
+                      <button onClick={() => setSubmitType("youtube")} className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all ${submitType === "youtube" ? "bg-red-600 text-white" : "text-white/40 hover:text-white/70"}`}>
+                        ▶️ YouTube Link
+                      </button>
+                    </div>
+
+                    {/* Form fields */}
+                    <input
+                      value={form.songTitle}
+                      onChange={e => setForm(f => ({ ...f, songTitle: e.target.value }))}
+                      placeholder="Song Title *"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
+                    />
+
+                    {submitType === "youtube" ? (
+                      <input
+                        value={form.youtubeUrl}
+                        onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))}
+                        placeholder="YouTube URL *"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
+                      />
+                    ) : (
+                      <div>
+                        <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full bg-white/5 border border-dashed border-white/20 rounded-xl text-white/50 px-4 py-6 hover:border-white/40 hover:text-white/70 transition-all text-sm text-center"
+                        >
+                          {audioFile ? `✓ ${audioFile.name}` : "Click to upload MP3 / Audio file"}
+                        </button>
+                      </div>
+                    )}
+
+                    <input
+                      value={form.contactInfo}
+                      onChange={e => setForm(f => ({ ...f, contactInfo: e.target.value }))}
+                      placeholder="Contact Info (optional)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
+                    />
+
+                    <button
+                      onClick={(e: any) => handleSubmit(e)}
+                      disabled={submitting || !form.songTitle.trim() || (submitType === "youtube" ? !form.youtubeUrl.trim() : !audioFile)}
+                      className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 text-white py-4 rounded-xl font-semibold uppercase tracking-widest transition-all"
+                    >
+                      {submitting ? "Submitting..." : "Submit Track →"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* ── QUEUE TAB ── */}
             {tab === "queue" && (
               <div>
-                {isLoading ? (
-                  <div className="text-center py-16 text-white/30 text-sm">Loading queue...</div>
-                ) : pendingQueue.length === 0 ? (
-                  <div className="text-center py-12 border border-white/10 bg-white/[0.02] rounded-xl">
-                    <div className="font-['Anton'] text-2xl uppercase mb-2">Queue is Empty</div>
-                    <p className="text-white/40 text-sm mb-5">Be the first to submit your track!</p>
-                    <button
-                      onClick={() => setTab("submit")}
-                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-8 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(209,0,0,0.2)]"
-                    >
-                      Submit Your Track →
-                    </button>
-                  </div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-['Anton'] text-xl uppercase">Queue</h3>
+                  <span className="text-white/30 text-xs">{(data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? []).length} tracks</span>
+                </div>
+                {(data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? []).length === 0 ? (
+                  <div className="text-center py-10 text-white/20 text-sm">Queue is empty</div>
                 ) : (
                   <div className="space-y-2">
-                    {pendingQueue.map((sub, i) => (
-                      <div
-                        key={sub.id}
-                        className={`flex items-center gap-3 p-3 border rounded-xl transition-all hover:translate-x-0.5 ${
-                          sub.status === "playing"
-                            ? "border-red-600/50 bg-gradient-to-r from-red-600/10 to-transparent shadow-[0_0_15px_rgba(209,0,0,0.08)]"
-                            : sub.skipPaymentConfirmed
-                            ? "border-yellow-500/40 bg-yellow-500/5"
-                            : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        {/* Position number */}
-                        <div className={`w-7 h-7 flex items-center justify-center font-['Anton'] text-base flex-shrink-0 rounded-lg ${
-                          sub.status === "playing" ? "text-red-500 bg-red-600/20" : "text-white/20 bg-white/[0.04]"
-                        }`}>
-                          {sub.status === "playing" ? "▶" : i + 1}
+                    {(data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? []).map((sub: ReviewSubmission, idx: number) => (
+                      <div key={sub.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${sub.status === "playing" ? "border-red-600/40 bg-red-600/5" : "border-white/10 bg-white/[0.02] hover:bg-white/[0.04]"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${sub.status === "playing" ? "bg-red-600 text-white" : "bg-white/10 text-white/50"}`}>
+                          {sub.status === "playing" ? "▶" : idx + 1}
                         </div>
-                        {/* Song info */}
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
-                          <div className="text-white/50 text-xs truncate">
-                            <ArtistLink artistName={sub.artistName} userId={sub.userId} />
-                            {sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-400 font-bold">⚡ Skip</span>}
-                            {sub.skippedLine && !sub.skipPaymentConfirmed && <span className="ml-2 text-yellow-600">⚡ Pending</span>}
-                          </div>
+                          <div className="font-semibold text-sm truncate">{sub.songTitle}</div>
+                          <div className="text-white/40 text-xs truncate">{sub.artistName}</div>
                         </div>
-                        {/* Status + reactions */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          {sub.skippedLine && <span className="text-[10px] bg-yellow-600/20 text-yellow-400 border border-yellow-600/30 px-2 py-0.5 rounded-full">Skip</span>}
                           <StatusBadge status={sub.status} />
-                          <span className="flex items-center gap-0.5 text-[10px] text-white/30">
-                            <Flame className="w-3 h-3 text-orange-500/60" />
-                            {sub.fireCount}
-                          </span>
-                          <span className="flex items-center gap-0.5 text-[10px] text-white/30">
-                            <ThumbsDown className="w-3 h-3 text-blue-500/60" />
-                            {sub.trashCount}
-                          </span>
-                          {sub.submissionType === "youtube" && sub.youtubeUrl && (
-                            <button
-                              onClick={() => setSelectedYouTube({ url: sub.youtubeUrl!, title: sub.songTitle, artist: sub.artistName })}
-                              className="text-white/30 hover:text-red-400 transition-colors"
-                              title="Watch on page"
-                            >
-                              <Play className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -1896,63 +1853,24 @@ export default function MusicReview() {
             {/* ── HISTORY TAB ── */}
             {tab === "history" && (
               <div>
-                {!reviewedTracks || reviewedTracks.length === 0 ? (
-                  <div className="text-center py-12 border border-white/10 bg-white/[0.02] rounded-xl">
-                    <div className="font-['Anton'] text-xl uppercase mb-2">No History Yet</div>
-                    <p className="text-white/40 text-sm">Tracks will appear here after they've been reviewed.</p>
-                  </div>
+                <h3 className="font-['Anton'] text-xl uppercase mb-4">Review History</h3>
+                {(reviewedTracks ?? []).length === 0 ? (
+                  <div className="text-center py-10 text-white/20 text-sm">No tracks reviewed yet</div>
                 ) : (
                   <div className="space-y-2">
-                    {reviewedTracks.map((sub: ReviewSubmission) => (
-                      <div
-                        key={sub.id}
-                        className="flex items-center gap-3 p-3 border border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04] rounded-xl transition-all"
-                      >
-                        {sub.fileUrl ? (
-                          <AudioPlayButton
-                            url={sub.fileUrl}
-                            urlSource="queue"
-                            title={sub.songTitle}
-                            artist={sub.artistName}
-                            submissionId={sub.id}
-                            sourcePage="Music Review"
-                            sourceUrl="/review"
-                            size="md"
-                          />
-                        ) : sub.youtubeUrl ? (
-                          <a
-                            href={sub.youtubeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-9 h-9 flex items-center justify-center flex-shrink-0 border border-red-600/50 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-all"
-                            title="Open on YouTube"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        ) : (
-                          <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 border border-white/10 text-white/20 rounded-lg">
-                            <Music className="w-3.5 h-3.5" />
-                          </div>
-                        )}
+                    {(reviewedTracks ?? []).map((sub: ReviewSubmission) => (
+                      <div key={sub.id} className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+                        <div className="w-8 h-8 rounded-full bg-green-600/20 border border-green-600/30 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-white truncate text-sm">{sub.songTitle}</div>
-                          <div className="text-white/40 text-xs truncate">
-                            <ArtistLink artistName={sub.artistName} userId={sub.userId} />
-                          </div>
+                          <div className="font-semibold text-sm truncate">{sub.songTitle}</div>
+                          <div className="text-white/40 text-xs truncate">{sub.artistName}</div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0 text-[10px] text-white/30">
-                          <span>🔥 {sub.fireCount}</span>
-                          <span>🗑️ {sub.trashCount}</span>
+                        <div className="flex items-center gap-3 text-xs text-white/40">
+                          <span className="flex items-center gap-1">🔥 {sub.fireCount}</span>
+                          <span className="flex items-center gap-1">🗑️ {sub.trashCount}</span>
                         </div>
-                        {isAdmin && (
-                          <button
-                            onClick={() => requeueFromHistoryMutation.mutate({ id: sub.id })}
-                            disabled={requeueFromHistoryMutation.isPending}
-                            className="flex items-center gap-1 text-[10px] font-semibold uppercase border border-white/20 text-white/50 hover:border-yellow-500 hover:text-yellow-400 rounded px-2 py-1 transition-colors flex-shrink-0 disabled:opacity-40"
-                          >
-                            <RotateCcw className="w-3 h-3" /> Re-q
-                          </button>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -1960,464 +1878,58 @@ export default function MusicReview() {
               </div>
             )}
 
-            {/* ── SUBMIT FORM ── */}
-            {tab === "submit" && (
-              <div>
-                {submitted ? (
-                  <div className="text-center py-12 border border-green-500/30 bg-green-500/5 rounded-xl">
-                    <div className="text-4xl mb-3">✅</div>
-                    <div className="font-['Anton'] text-3xl uppercase mb-2">You're in the Queue!</div>
-                    <p className="text-white/50 text-sm mb-5">We'll review your track during the next live session.</p>
-                    <div className="flex gap-3 justify-center">
-                      <button
-                        onClick={() => { setSubmitted(false); setForm({ songTitle: "", youtubeUrl: "", contactInfo: "", wantsSkip: false }); setAudioFile(null); }}
-                        className="border border-white/20 text-white/60 hover:text-white px-6 py-2.5 rounded-lg text-xs uppercase tracking-widest transition-colors"
-                      >
-                        Submit Another
-                      </button>
-                      <button
-                        onClick={() => setTab("queue")}
-                        className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-2.5 rounded-lg text-xs uppercase tracking-widest transition-all"
-                      >
-                        View Queue
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* File / YouTube toggle */}
-                    <div className="flex gap-1 p-1 bg-white/[0.03] border border-white/10 rounded-xl">
-                      {(["file", "youtube"] as const).map(t => (
-                        <button key={t} type="button" onClick={() => setSubmitType(t)}
-                          className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold rounded-lg transition-all ${
-                            submitType === t ? "bg-red-600/20 text-red-400" : "text-white/40 hover:text-white/70"
-                          }`}>
-                          {t === "youtube" ? "YouTube Link" : "Upload File"}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Submitting as */}
-                    <div className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 flex items-center justify-between">
-                      <span className="text-white/30 text-[10px] uppercase tracking-wider">Submitting as</span>
-                      <span className="text-white font-semibold text-sm">{user?.artistName || user?.name || "Unknown Artist"}</span>
-                    </div>
-
-                    {/* Song title */}
-                    <div>
-                      <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">Song Title *</label>
-                      <input type="text" value={form.songTitle}
-                        onChange={e => setForm(f => ({ ...f, songTitle: e.target.value }))}
-                        placeholder="Track name" required
-                        className="w-full bg-white/5 border border-white/10 rounded-lg text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
-                    </div>
-
-                    {/* File or YouTube */}
-                    {submitType === "youtube" ? (
-                      <div>
-                        <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">YouTube Link *</label>
-                        <input type="url" value={form.youtubeUrl}
-                          onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))}
-                          placeholder="https://youtube.com/watch?v=..." required
-                          className="w-full bg-white/5 border border-white/10 rounded-lg text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">Audio File * (MP3, WAV, M4A — max 20MB)</label>
-                        <div
-                          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                            audioFile ? "border-green-500/50 bg-green-500/5" : "border-white/20 hover:border-red-600/50"
-                          }`}
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          {audioFile ? (
-                            <div>
-                              <div className="text-green-400 font-semibold text-sm">{audioFile.name}</div>
-                              <div className="text-white/30 text-xs mt-1">{(audioFile.size / 1024 / 1024).toFixed(1)} MB</div>
-                              <button type="button" onClick={e => { e.stopPropagation(); setAudioFile(null); }}
-                                className="text-white/30 hover:text-red-400 text-xs mt-2 transition-colors">Remove</button>
-                            </div>
-                          ) : (
-                            <div>
-                              <Music className="w-8 h-8 text-white/20 mx-auto mb-2" />
-                              <div className="text-white/40 text-sm mb-1">Tap to select audio file</div>
-                              <div className="text-white/20 text-xs">MP3, WAV, M4A — max 20MB</div>
-                            </div>
-                          )}
-                        </div>
-                        <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a" className="hidden"
-                          onChange={e => {
-                            const f = e.target.files?.[0];
-                            if (!f) return;
-                            if (f.size > 20 * 1024 * 1024) { toast.error("File must be under 20MB"); return; }
-                            setAudioFile(f);
-                          }} />
-                      </div>
-                    )}
-
-                    {/* Contact */}
-                    <div>
-                      <label className="text-white/50 text-[10px] uppercase tracking-wider block mb-1.5">Instagram / Contact (Optional)</label>
-                      <input type="text" value={form.contactInfo}
-                        onChange={e => setForm(f => ({ ...f, contactInfo: e.target.value }))}
-                        placeholder="@yourinstagram or phone number"
-                        className="w-full bg-white/5 border border-white/10 rounded-lg text-white px-4 py-3 focus:outline-none focus:border-red-600/50 placeholder-white/20 text-sm" />
-                    </div>
-
-                    {/* Skip the line */}
-                    <div
-                      className={`border rounded-xl p-4 cursor-pointer transition-all ${form.wantsSkip ? "border-yellow-500/50 bg-yellow-500/5" : "border-white/10 hover:border-yellow-500/30"}`}
-                      onClick={() => setForm(f => ({ ...f, wantsSkip: !f.wantsSkip }))}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 border-2 rounded flex items-center justify-center flex-shrink-0 ${form.wantsSkip ? "border-yellow-500 bg-yellow-500" : "border-white/30"}`}>
-                          {form.wantsSkip && <span className="text-black text-xs font-bold">✓</span>}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-sm text-yellow-400">⚡ Skip the Line — $10</div>
-                          <div className="text-white/40 text-[10px] mt-0.5">
-                            Move to the front. Send $10 to {CASHAPP} / PayPal: {PAYPAL} / Apple Pay: {APPLEPAY}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {!user && (
-                      <a href={getLoginUrl()} className="flex items-center justify-center gap-2 w-full border border-white/20 text-white/60 hover:text-white rounded-lg py-3 text-xs uppercase tracking-widest transition-colors">
-                        <LogIn className="w-3.5 h-3.5" /> Login to Submit
-                      </a>
-                    )}
-
-                    {user && (
-                      <button type="submit" disabled={submitting}
-                        className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white py-3.5 rounded-xl text-sm font-semibold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(209,0,0,0.2)]">
-                        {submitting ? "Submitting..." : "Submit to Queue →"}
-                      </button>
-                    )}
-                  </form>
-                )}
-              </div>
-            )}
-
-            {/* ── LIMIT REACHED / PAYWALL MODAL ── */}
-            {limitReachedData && !paidSubmitSuccess && (
-              <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-[#111] border border-red-600/60 rounded-xl p-8 max-w-lg w-full my-4">
-                  <div className="text-center mb-6">
-                    <div className="text-5xl mb-3">🔒</div>
-                    <h2 className="font-['Anton'] text-3xl text-red-600 mb-2 uppercase">2 Free Submissions Used</h2>
-                    <p className="text-white/60 text-sm">You've hit your daily limit. Submit additional songs for a fee.</p>
-                  </div>
-
-                  <div className="space-y-3 mb-6">
-                    <button onClick={() => handlePaidSubmit('reentry5')} disabled={submitting}
-                      className="w-full bg-red-600/20 border border-red-600 hover:bg-red-600/40 text-white py-4 px-4 rounded-xl transition-all">
-                      <div className="font-['Anton'] text-xl text-red-400 mb-1">$5 REENTRY</div>
-                      <div className="text-white/60 text-xs">Submit 1 more song — enters queue in normal position</div>
-                    </button>
-                    <button onClick={() => handlePaidSubmit('reentry10')} disabled={submitting}
-                      className="w-full bg-orange-600/20 border border-orange-500 hover:bg-orange-600/40 text-white py-4 px-4 rounded-xl transition-all">
-                      <div className="font-['Anton'] text-xl text-orange-400 mb-1">$10 REENTRY</div>
-                      <div className="text-white/60 text-xs">Submit 1 more song — enters queue in normal position</div>
-                    </button>
-                    <button onClick={() => handlePaidSubmit('skip')} disabled={submitting}
-                      className="w-full bg-yellow-600/20 border border-yellow-500 hover:bg-yellow-600/40 text-white py-4 px-4 rounded-xl transition-all">
-                      <div className="font-['Anton'] text-xl text-yellow-400 mb-1">$15 REENTRY + SKIP THE LINE</div>
-                      <div className="text-white/60 text-xs">Submit 1 more song — jumps to front of queue</div>
-                    </button>
-                  </div>
-
-                  <div className="border border-white/10 bg-white/5 rounded-xl p-4 mb-6">
-                    <p className="text-white/50 text-[10px] uppercase tracking-widest mb-3">Send payment to:</p>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-black/30 rounded-lg p-3">
-                        <div className="text-lg mb-1">💸</div>
-                        <div className="text-green-400 text-[10px] font-bold">CashApp</div>
-                        <div className="text-white text-[10px] mt-1 font-mono">{CASHAPP}</div>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-3">
-                        <div className="text-lg mb-1">🅿</div>
-                        <div className="text-blue-400 text-[10px] font-bold">PayPal</div>
-                        <div className="text-white text-[10px] mt-1 font-mono">{PAYPAL}</div>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-3">
-                        <div className="text-lg mb-1">🍎</div>
-                        <div className="text-white/80 text-[10px] font-bold">Apple Pay</div>
-                        <div className="text-white text-[10px] mt-1 font-mono">{APPLEPAY}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button onClick={() => { setLimitReachedData(null); setPendingFormData(null); }}
-                    className="w-full border border-white/20 text-white/60 hover:text-white py-3 rounded-xl text-xs uppercase tracking-widest transition-colors">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── PAID SUBMISSION SUCCESS ── */}
-            {paidSubmitSuccess && (
-              <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-                <div className="bg-[#111] border border-green-600/60 rounded-xl p-8 max-w-md w-full text-center">
-                  <div className="text-5xl mb-4">✅</div>
-                  <h2 className="font-['Anton'] text-3xl text-green-400 mb-3 uppercase">Submission Received!</h2>
-                  <p className="text-white/70 mb-2">Your song is <span className="text-yellow-400 font-semibold">pending payment confirmation</span>.</p>
-                  <p className="text-white/50 text-sm mb-6">Once verified, your track will be activated in the queue.</p>
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 text-left">
-                    <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">Payment details:</p>
-                    <div className="text-white text-sm space-y-1">
-                      <div>💸 CashApp: <span className="font-mono text-green-400">{CASHAPP}</span></div>
-                      <div>🅿 PayPal: <span className="font-mono text-blue-400">{PAYPAL}</span></div>
-                      <div>🍎 Apple Pay: <span className="font-mono text-white/80">{APPLEPAY}</span></div>
-                    </div>
-                    <p className="text-white/30 text-xs mt-3">Include your artist name in the note.</p>
-                  </div>
-                  <button
-                    onClick={() => { setPaidSubmitSuccess(null); setLimitReachedData(null); refetch(); }}
-                    className="w-full bg-green-600 hover:bg-green-500 text-white py-3 px-4 rounded-xl transition-all font-semibold">
-                    Got it!
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── SKIP INFO ── */}
+            {/* ── SKIP TRACK TAB ── */}
             {tab === "skip-info" && (
-              <div className="border border-yellow-500/30 bg-gradient-to-b from-yellow-500/5 to-transparent rounded-xl p-8">
-                <div className="text-center mb-7">
-                  <div className="text-4xl mb-3">⚡</div>
-                  <h2 className="font-['Anton'] text-4xl uppercase mb-2">Skip the <span className="text-yellow-400">Line</span></h2>
-                  <p className="text-white/50 text-sm">Move your submission to the front for just $10.</p>
+              <div className="max-w-lg mx-auto">
+                <div className="text-center mb-6">
+                  <div className="text-4xl mb-3">⏭️</div>
+                  <h2 className="font-['Anton'] text-3xl uppercase mb-2">Skip the <span className="text-red-600">Line</span></h2>
+                  <p className="text-white/40 text-sm">Pay to jump ahead in the queue and get your track reviewed sooner</p>
                 </div>
-                <div className="grid md:grid-cols-3 gap-3 mb-7">
+                <div className="space-y-3">
                   {[
-                    { label: "CashApp", value: CASHAPP, icon: "💸" },
-                    { label: "PayPal", value: PAYPAL, icon: "🅿" },
-                    { label: "Apple Pay", value: APPLEPAY, icon: "🍎" },
-                  ].map(p => (
-                    <div key={p.label} className="border border-yellow-500/20 bg-black/30 rounded-xl p-4 text-center">
-                      <div className="text-2xl mb-2">{p.icon}</div>
-                      <div className="text-yellow-400 text-[10px] uppercase tracking-widest mb-1">{p.label}</div>
-                      <div className="font-['Anton'] text-lg text-white">{p.value}</div>
+                    { label: "5 Spots Up", price: "$5", type: "reentry5" as const },
+                    { label: "10 Spots Up", price: "$10", type: "reentry10" as const },
+                    { label: "Skip to Front", price: "$20", type: "skip" as const },
+                  ].map(opt => (
+                    <div key={opt.type} className="flex items-center justify-between p-5 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all">
+                      <div>
+                        <div className="font-semibold text-sm">{opt.label}</div>
+                        <div className="text-white/40 text-xs mt-0.5">CashApp: {CASHAPP} · PayPal: {PAYPAL}</div>
+                      </div>
+                      <div className="font-['Anton'] text-2xl text-red-500">{opt.price}</div>
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={() => { setTab("submit"); setForm(f => ({ ...f, wantsSkip: true })); }}
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all"
-                >
-                  Submit & Skip the Line →
-                </button>
+                <p className="text-white/20 text-xs text-center mt-4">After payment, contact us with your submission ID to confirm your skip.</p>
               </div>
             )}
+
+            {/* ── APPLY AS JUDGE TAB ── */}
+            {tab === "apply-judge" && (
+              <ApplyAsJudgeTab user={user} getLoginUrl={getLoginUrl} />
+            )}
+
           </div>
-
-          {/* ── RIGHT COLUMN ── */}
-          <div className="space-y-4">
-
-            {/* Judge Broadcast Viewers */}
-            {activeBroadcasts.filter((b: any) => b.userId !== user?.id).length > 0 && (
-              <div className="space-y-2">
-                <div className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-semibold flex items-center gap-1.5">
-                  <Video className="w-3 h-3" />
-                  Live Judges
-                </div>
-                {activeBroadcasts.filter((b: any) => b.userId !== user?.id).map((b: any) => (
-                  <JudgeBroadcastCard key={b.id} broadcast={b} />
-                ))}
-              </div>
-            )}
-
-            {/* Live Chat */}
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden flex flex-col" style={{ height: '380px' }}>
-              {/* Chat header */}
-              <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10 bg-white/[0.03]">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${chatConnected ? "bg-green-500" : "bg-red-500"}`} />
-                  <span className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-semibold">Live Chat</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-white/40 text-[10px]">
-                    <Eye className="w-3 h-3" />
-                    {viewerCount.toLocaleString()}
-                  </span>
-                  <span className="text-white/20 text-[10px]">{(chatMessages.length + fakeMessages.length)} msg{(chatMessages.length + fakeMessages.length) !== 1 ? "s" : ""}</span>
-                </div>
-              </div>
-
-              {/* Messages — real and fake merged by timestamp */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {chatMessages.length === 0 && fakeMessages.length === 0 && (
-                  <div className="text-center text-white/20 text-xs py-8">No messages yet — say something!</div>
-                )}
-                {[
-                  ...chatMessages.map(m => ({ _type: 'real' as const, _ts: new Date(m.createdAt).getTime(), real: m })),
-                  ...fakeMessages.map(m => ({ _type: 'fake' as const, _ts: m.timestamp, fake: m })),
-                ]
-                  .sort((a, b) => a._ts - b._ts)
-                  .map((entry, i) => {
-                    if (entry._type === 'real') {
-                      const msg = entry.real;
-                      return (
-                        <div key={`real-${i}`} className="text-xs">
-                          {(msg as any).type === "system" ? (
-                            <div className="text-white/20 text-center text-[10px] py-1">{(msg as any).text ?? msg.message}</div>
-                          ) : (
-                            <div>
-                              <span className={`font-semibold ${
-                                (msg as any).role === "admin" || msg.isAdmin ? "text-red-400" : (msg as any).role === "judge" ? "text-yellow-400" : "text-white/70"
-                              }`}>
-                                {msg.username}
-                                {(msg.isAdmin || (msg as any).role === "admin") && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
-                                {(msg as any).role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
-                              </span>
-                              <span className="text-white/50 ml-1.5">{(msg as any).text ?? msg.message}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    } else {
-                      const msg = entry.fake;
-                      const isRealAccount = msg.userId > 0 && !msg.username.match(/^User\d+$/);
-                      const nameClass = `font-semibold ${
-                        msg.role === "admin" ? "text-red-400" : msg.role === "judge" ? "text-yellow-400" : "text-white/70"
-                      }`;
-                      return (
-                        <div key={msg.id} className="text-xs">
-                          {isRealAccount ? (
-                            <a
-                              href={`/profile/${msg.userId}`}
-                              className={`${nameClass} hover:underline hover:opacity-80 transition-opacity cursor-pointer`}
-                            >
-                              {msg.username}
-                              {msg.role === "admin" && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
-                              {msg.role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
-                            </a>
-                          ) : (
-                            <span className={nameClass}>
-                              {msg.username}
-                              {msg.role === "admin" && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
-                              {msg.role === "judge" && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
-                            </span>
-                          )}
-                          <span className="text-white/50 ml-1.5">{msg.text}</span>
-                        </div>
-                      );
-                    }
-                  })
-                }
-                <div ref={chatBottomRef} />
-              </div>
-
-              {/* Chat input */}
-              <div className="border-t border-white/10 p-2">
-                {user ? (
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && handleSendChat()}
-                      placeholder="Type a message..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded-lg text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/40 placeholder-white/20"
-                    />
-                    <button
-                      onClick={handleSendChat}
-                      disabled={!chatInput.trim()}
-                      className="bg-red-600/20 border border-red-600/40 text-red-400 hover:bg-red-600/30 disabled:opacity-30 rounded-lg px-3 transition-all"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <a href={getLoginUrl()} className="flex items-center justify-center gap-2 w-full border border-white/15 text-white/40 hover:text-white rounded-lg py-2 text-[10px] uppercase tracking-widest transition-colors">
-                    <LogIn className="w-3 h-3" /> Login to Chat
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {/* Voice Room Panel */}
-            {user && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10 bg-white/[0.03]">
-                  <div className="flex items-center gap-2">
-                    <Mic className="w-3 h-3 text-white/40" />
-                    <span className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-semibold">Voice Room</span>
-                  </div>
-                  {voiceJoined && (
-                    <span className="flex items-center gap-1 text-green-400 text-[10px]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> Connected
-                    </span>
-                  )}
-                </div>
-                <div className="p-3">
-                  {!voiceJoined ? (
-                    <button
-                      onClick={() => setVoiceJoined(true)}
-                      className="w-full border border-white/15 text-white/50 hover:text-white hover:border-white/30 rounded-lg py-2.5 text-[10px] uppercase tracking-widest transition-all"
-                    >
-                      🎤 Join Voice Room
-                    </button>
-                  ) : (
-                    <div className="space-y-2">
-                      <button
-                        onClick={audioRoom.toggleMic}
-                        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest font-semibold border transition-all ${
-                          audioRoom.isMuted
-                            ? "border-white/15 text-white/40 hover:border-white/30"
-                            : "border-green-500/50 bg-green-500/10 text-green-400"
-                        }`}
-                      >
-                        {audioRoom.isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-                        {audioRoom.isMuted ? "Unmute" : "Muted"}
-                      </button>
-                      <button
-                        onClick={() => { setVoiceJoined(false); }}
-                        className="w-full border border-red-500/30 text-red-400/60 hover:text-red-400 hover:border-red-500/50 rounded-lg py-2 text-[10px] uppercase tracking-widest transition-all"
-                      >
-                        Leave Voice
-                      </button>
-                      {/* Participants */}
-                      {audioRoom.participants.filter(p => p.role !== "viewer").length > 0 && (
-                        <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
-                          {audioRoom.participants.filter(p => p.role !== "viewer").map(p => (
-                            <div key={p.socketId} className="flex items-center gap-2 text-[10px]">
-                              <span className={`w-1.5 h-1.5 rounded-full ${p.micActive ? "bg-green-400" : "bg-white/20"}`} />
-                              <span className="text-white/60">{p.username}</span>
-                              <span className={`ml-auto uppercase font-bold ${
-                                p.role === "admin" ? "text-red-400" : p.role === "judge" ? "text-yellow-400" : "text-white/30"
-                              }`}>{p.role}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Line Skip Credits */}
-            {user && lineSkipCreditsData && lineSkipCreditsData.credits > 0 && (
-              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-yellow-400 text-[10px] uppercase tracking-wider font-bold">⚡ Line Skip Credits</span>
-                  <span className="text-yellow-400 font-['Anton'] text-lg">{lineSkipCreditsData.credits}</span>
-                </div>
-                <button
-                  onClick={() => useLineSkipMutation.mutate()}
-                  disabled={useLineSkipMutation.isPending || pendingQueue.filter(s => s.userId === user.id && s.status === "pending").length === 0}
-                  className="w-full border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 rounded-lg py-2 text-[10px] uppercase tracking-widest font-semibold transition-all disabled:opacity-30"
-                >
-                  Use Credit — Skip to Front
-                </button>
-              </div>
-            )}
-          </div>
-
         </div>
+
+        {/* ── VOICE ROOM (if joined) ──────────────────────────── */}
+        {showVoicePanel && (
+          <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Headphones className="w-4 h-4 text-purple-400" />
+                <span className="text-white font-semibold text-sm uppercase tracking-wider">Voice Room</span>
+              </div>
+              <button onClick={() => setShowVoicePanel(false)} className="text-white/30 hover:text-white/60 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Voice room content handled by audioRoom hooks */}
+            <p className="text-white/40 text-sm text-center py-4">Voice room active — use the controls above to manage your audio.</p>
+          </div>
+        )}
+
       </div>
     </div>
   );
