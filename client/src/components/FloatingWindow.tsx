@@ -24,7 +24,9 @@ export function FloatingWindow({
   const [size, setSize] = useState({ width: defaultWidth, height: defaultHeight });
   const [isMinimized, setIsMinimized] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -33,6 +35,17 @@ export function FloatingWindow({
     setDragOffset({
       x: e.clientX - position.x,
       y: e.clientY - position.y,
+    });
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: size.width,
+      height: size.height,
     });
   };
 
@@ -52,6 +65,25 @@ export function FloatingWindow({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging, dragOffset]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizeStart.x;
+      const deltaY = e.clientY - resizeStart.y;
+      setSize({
+        width: Math.max(300, resizeStart.width + deltaX),
+        height: Math.max(200, resizeStart.height + deltaY),
+      });
+    };
+    const handleMouseUp = () => setIsResizing(false);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, resizeStart]);
 
   return (
     <div
@@ -95,6 +127,15 @@ export function FloatingWindow({
         <div className="flex-1 overflow-y-auto p-4 text-white text-sm">
           {children}
         </div>
+      )}
+
+      {!isMinimized && (
+        <div
+          onMouseDown={handleResizeMouseDown}
+          className="absolute bottom-0 right-0 w-4 h-4 bg-red-600/50 hover:bg-red-500 cursor-se-resize rounded-bl"
+          title="Drag to resize"
+          style={{ cursor: "nwse-resize" }}
+        />
       )}
     </div>
   );
