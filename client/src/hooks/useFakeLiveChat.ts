@@ -538,13 +538,53 @@ const COMMENT_VARIANTS: string[] = [
 
 export type ReactionType = "hype" | "trash" | "knife" | "bars" | "weak" | "next";
 
-const REACTION_MAP: Record<ReactionType, string[]> = {
-  hype: ["🔥","fire","FIRE","this hard","THIS HARD","go off","GO OFF","bars","BARS","heat","HEAT","🔥🔥🔥","slaps","banger","BANGER","flames","crazy","insane","absolute heat","🔥🔥","💯","💯💯","🔥💯","💯🔥","LETS GO","AYEEE","YOOOOO","WOAH","YESSSS","🤯","🤯🤯","⚡","⚡⚡","💥","💥💥","this slaps","THIS SLAPS","this banger","THIS BANGER","this heat","THIS HEAT","this bars","THIS BARS","this clean","THIS CLEAN","this dope","THIS DOPE","this sick","THIS SICK","this tight","THIS TIGHT","this fresh","THIS FRESH","this nice","THIS NICE","this smooth","THIS SMOOTH","this bumping","THIS BUMPING","this a vibe","THIS A VIBE","this locked in","THIS LOCKED IN","this hitting","THIS HITTING","this go hard","THIS GO HARD","this go crazy","THIS GO CRAZY","this different","THIS DIFFERENT","this real","THIS REAL","this it","THIS IT","bro cooked","BRO COOKED","they cooked","THEY COOKED","bro snapped","BRO SNAPPED","they snapped","THEY SNAPPED","bro bodied this","BRO BODIED THIS","they bodied this","THEY BODIED THIS","bro went off","BRO WENT OFF","they went off","THEY WENT OFF","bro killed it","BRO KILLED IT","they killed it","THEY KILLED IT","bro ate","BRO ATE","they ate","THEY ATE","no crumbs left","NO CRUMBS LEFT","not a crumb in sight","NOT A CRUMB IN SIGHT","built different","BUILT DIFFERENT","certified banger","CERTIFIED BANGER","certified hit","CERTIFIED HIT","certified slapper","CERTIFIED SLAPPER","certified bop","CERTIFIED BOP","certified jam","CERTIFIED JAM","certified vibe","CERTIFIED VIBE"],
-  trash: ["🗑️","trash","TRASH","weak","WEAK","mid","MID","skip","SKIP","next","NEXT","🗑️🗑️🗑️","garbage","corny","lame","not it","pass","hard pass","delete this","not feeling it","this not it","nah bro","skip skip skip","mid at best","production weak","flow off","hook not catching","beat selection off","mixing bad","this not ready","nah","nope","boring","yawn","👎","👎👎","❌","❌❌","🚫","🚫🚫","⛔","⛔⛔","🛑","🛑🛑","💩","💩💩","🤢","🤢🤢","🤮","🤮🤮","😴","😴😴","💤","💤💤","😒","😒😒","🙄","🙄🙄","😑","😑😑","😐","😐😐","🤦","🤦🤦","🤷","🤷🤷","NAH","NOPE","BORING","YAWN","DELETE THIS","NOT FEELING IT","THIS NOT IT","NAH BRO","SKIP SKIP SKIP","MID AT BEST","PRODUCTION WEAK","FLOW OFF","HOOK NOT CATCHING","BEAT SELECTION OFF","MIXING BAD","THIS NOT READY","GARBAGE","CORNY","LAME","HARD PASS"],
+// Subsets of COMMENT_VARIANTS filtered by tone — used for triggered reactions
+// These are computed lazily so they reference the full 1000+ pool
+const getFireVariants = () => COMMENT_VARIANTS.filter(c =>
+  !c.includes("trash") && !c.includes("TRASH") &&
+  !c.includes("weak") && !c.includes("WEAK") &&
+  !c.includes("mid") && !c.includes("MID") &&
+  !c.includes("skip") && !c.includes("SKIP") &&
+  !c.includes("next") && !c.includes("NEXT") &&
+  !c.includes("garbage") && !c.includes("GARBAGE") &&
+  !c.includes("corny") && !c.includes("CORNY") &&
+  !c.includes("lame") && !c.includes("LAME") &&
+  !c.includes("nah") && !c.includes("NAH") &&
+  !c.includes("boring") && !c.includes("BORING")
+);
+
+const getTrashVariants = () => COMMENT_VARIANTS.filter(c =>
+  c.includes("trash") || c.includes("TRASH") ||
+  c.includes("weak") || c.includes("WEAK") ||
+  c.includes("mid") || c.includes("MID") ||
+  c.includes("skip") || c.includes("SKIP") ||
+  c.includes("next") || c.includes("NEXT") ||
+  c.includes("garbage") || c.includes("GARBAGE") ||
+  c.includes("corny") || c.includes("CORNY") ||
+  c.includes("lame") || c.includes("LAME") ||
+  c.includes("nah") || c.includes("NAH") ||
+  c.includes("boring") || c.includes("BORING") ||
+  c.includes("🗑️") || c.includes("👎") || c.includes("❌") ||
+  c.includes("🚫") || c.includes("⛔") || c.includes("🛑") ||
+  c.includes("💩") || c.includes("🤢") || c.includes("🤮") ||
+  c.includes("😴") || c.includes("💤") || c.includes("😒") ||
+  c.includes("🙄") || c.includes("😑") || c.includes("😐") ||
+  c.includes("🤦") || c.includes("🤷")
+);
+
+const REACTION_MAP: Record<ReactionType, string[] | (() => string[])> = {
+  // 🔥 Hype — full fire/positive pool from COMMENT_VARIANTS
+  hype: getFireVariants,
+  // 🗑️ Trash — full trash/negative pool from COMMENT_VARIANTS
+  trash: getTrashVariants,
+  // 🔪 Knife — ONLY knife emojis, no text
   knife: ["🔪","🔪🔪","🔪🔪🔪","🔪🔪🔪🔪","🔪🔪🔪🔪🔪"],
-  bars: ["🔥","bars","BARS","fire","FIRE","this hard","slaps","🔥🔥🔥","banger","flow nasty","bars crazy","verse hard","💯","💯💯","🔥💯","💯🔥","🎤","🎤🔥","🔥🎤","this bars","THIS BARS","this fire","THIS FIRE","this slaps","THIS SLAPS","this banger","THIS BANGER","this heat","THIS HEAT","this clean","THIS CLEAN","this dope","THIS DOPE","this sick","THIS SICK","this tight","THIS TIGHT","this fresh","THIS FRESH","this nice","THIS NICE","this smooth","THIS SMOOTH","this bumping","THIS BUMPING","this a vibe","THIS A VIBE","this locked in","THIS LOCKED IN","this hitting","THIS HITTING","this go hard","THIS GO HARD","this go crazy","THIS GO CRAZY","this different","THIS DIFFERENT","this real","THIS REAL","this it","THIS IT","bro cooked","BRO COOKED","they cooked","THEY COOKED","bro snapped","BRO SNAPPED","they snapped","THEY SNAPPED","bro bodied this","BRO BODIED THIS","they bodied this","THEY BODIED THIS","bro went off","BRO WENT OFF","they went off","THEY WENT OFF","bro killed it","BRO KILLED IT","they killed it","THEY KILLED IT","bro ate","BRO ATE","they ate","THEY ATE","no crumbs left","NO CRUMBS LEFT","not a crumb in sight","NOT A CRUMB IN SIGHT","built different","BUILT DIFFERENT","certified banger","CERTIFIED BANGER","certified hit","CERTIFIED HIT","certified slapper","CERTIFIED SLAPPER","certified bop","CERTIFIED BOP","certified jam","CERTIFIED JAM","certified vibe","CERTIFIED VIBE"],
-  weak: ["🗑️","weak","WEAK","trash","TRASH","mid","MID","garbage","lame","not it","👎","👎👎","❌","❌❌","😒","😒😒","🙄","🙄🙄","😑","😑😑","🤦","🤦🤦","🤷","🤷🤷","NAH","NOPE","BORING","YAWN","DELETE THIS","NOT FEELING IT","THIS NOT IT","NAH BRO","MID AT BEST","PRODUCTION WEAK","FLOW OFF","HOOK NOT CATCHING","BEAT SELECTION OFF","MIXING BAD","THIS NOT READY","GARBAGE","CORNY","LAME","HARD PASS"],
-  next: ["next","NEXT","skip","SKIP","lets go","drop it","need this","send link","LETS GO","DROP IT","NEED THIS","SEND LINK","next please","NEXT PLEASE","skip please","SKIP PLEASE","next fr","NEXT FR","skip fr","SKIP FR","next no cap","NEXT NO CAP","skip no cap","SKIP NO CAP","next on god","NEXT ON GOD","skip on god","SKIP ON GOD","next asf","NEXT ASF","skip asf","SKIP ASF","next ngl","NEXT NGL","skip ngl","SKIP NGL"],
+  // 🎵 Bars — fire/positive pool (same as hype)
+  bars: getFireVariants,
+  // 😴 Weak — trash/negative pool (same as trash)
+  weak: getTrashVariants,
+  // ⏭️ Next — full pool (any reaction, skip-leaning)
+  next: () => COMMENT_VARIANTS,
 };
 
 // Fake user accounts — rap names, real-sounding names, one-word nicknames
@@ -714,7 +754,8 @@ export function useFakeLiveChat() {
       // During triggered reaction, skip cooldown
       if (triggeredReaction) {
         const randomUser = chatPool[Math.floor(Math.random() * chatPool.length)];
-        const pool = REACTION_MAP[triggeredReaction];
+        const poolOrFn = REACTION_MAP[triggeredReaction];
+        const pool = typeof poolOrFn === "function" ? poolOrFn() : poolOrFn;
         const text = pool[Math.floor(Math.random() * pool.length)];
         const key = String(randomUser.id);
         lastCommentTime.current[key] = now;
