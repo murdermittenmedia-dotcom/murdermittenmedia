@@ -170,10 +170,60 @@ export async function updateSubmissionStatus(id: number, status: "pending" | "pl
   return db.update(reviewSubmissions).set({ status }).where(eq(reviewSubmissions.id, id));
 }
 
-export async function confirmSkipPayment(id: number) {
+/**
+ * Confirm a skip payment and reposition the submission in the queue.
+ * skipType:
+ *   "reentry5"  → move 5 spots up (lower position number)
+ *   "reentry10" → move 10 spots up
+ *   "skip"      → move to front (position = 0, before all pending)
+ */
+export async function confirmSkipPayment(id: number, skipType: "reentry5" | "reentry10" | "skip" = "skip") {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  return db.update(reviewSubmissions).set({ skipPaymentConfirmed: true }).where(eq(reviewSubmissions.id, id));
+
+  // Get all pending/playing submissions ordered by current position
+  const allPending = await db
+    .select({ id: reviewSubmissions.id, position: reviewSubmissions.position })
+    .from(reviewSubmissions)
+    .where(and(
+      ne(reviewSubmissions.status, "removed"),
+      ne(reviewSubmissions.status, "reviewed")
+    ))
+    .orderBy(asc(reviewSubmissions.position));
+
+  const currentIdx = allPending.findIndex(s => s.id === id);
+  if (currentIdx === -1) {
+    // Submission not found in active queue — just confirm payment
+    return db.update(reviewSubmissions).set({ skipPaymentConfirmed: true, skippedLine: true }).where(eq(reviewSubmissions.id, id));
+  }
+
+  let targetIdx: number;
+  if (skipType === "skip") {
+    targetIdx = 0; // front of queue
+  } else if (skipType === "reentry10") {
+    targetIdx = Math.max(0, currentIdx - 10);
+  } else {
+    targetIdx = Math.max(0, currentIdx - 5); // reentry5
+  }
+
+  // Rebuild position values: insert the submission at targetIdx
+  const reordered = [...allPending];
+  const [moved] = reordered.splice(currentIdx, 1);
+  reordered.splice(targetIdx, 0, moved);
+
+  // Update positions for all affected submissions
+  await Promise.all(
+    reordered.map((s, idx) =>
+      db.update(reviewSubmissions)
+        .set({ position: idx + 1 })
+        .where(eq(reviewSubmissions.id, s.id))
+    )
+  );
+
+  // Mark payment confirmed
+  return db.update(reviewSubmissions)
+    .set({ skipPaymentConfirmed: true, skippedLine: true })
+    .where(eq(reviewSubmissions.id, id));
 }
 /** Confirm a paid submission (3rd+ song) — marks it as confirmed so it enters the active queue */
 export async function confirmPaidSubmission(id: number) {

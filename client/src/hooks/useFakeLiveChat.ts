@@ -727,6 +727,9 @@ export function useFakeLiveChat() {
     return () => clearInterval(id);
   }, [ghostTrashIntervalSec]);
 
+  // Comment sentiment bias: 0 = pure trash, 50 = mixed, 100 = pure fire
+  const [sentimentBias, setSentimentBias] = useState(50);
+
   // Track last comment time per user (userId -> timestamp)
   const lastCommentTime = useRef<Record<string, number>>({});
 
@@ -806,7 +809,22 @@ export function useFakeLiveChat() {
       if (eligible.length === 0) return;
 
       const randomUser = eligible[Math.floor(Math.random() * eligible.length)];
-      const text = COMMENT_VARIANTS[Math.floor(Math.random() * COMMENT_VARIANTS.length)];
+      // Apply sentiment bias: 0=trash, 50=mixed, 100=fire
+      const roll = Math.random() * 100;
+      let commentPool: string[];
+      if (sentimentBias >= 80) {
+        // Mostly fire
+        commentPool = roll < sentimentBias ? getFireVariants() : COMMENT_VARIANTS;
+      } else if (sentimentBias <= 20) {
+        // Mostly trash
+        commentPool = roll < (100 - sentimentBias) ? getTrashVariants() : COMMENT_VARIANTS;
+      } else {
+        // Mixed — weighted blend
+        const fireChance = sentimentBias / 100;
+        commentPool = roll < fireChance * 100 ? getFireVariants() : getTrashVariants();
+      }
+      if (!commentPool || commentPool.length === 0) commentPool = COMMENT_VARIANTS;
+      const text = commentPool[Math.floor(Math.random() * commentPool.length)];
       const key = String(randomUser.id);
       lastCommentTime.current[key] = now;
 
@@ -822,7 +840,7 @@ export function useFakeLiveChat() {
     }, triggeredReaction ? 300 : commentIntervalMs * (0.7 + Math.random() * 0.6));
 
     return () => clearInterval(interval);
-  }, [chatPool, triggeredReaction, commentIntervalMs]);
+  }, [chatPool, triggeredReaction, commentIntervalMs, sentimentBias]);
 
   const triggerReaction = (reaction: ReactionType, duration = 3000) => {
     setTriggeredReaction(reaction);
@@ -850,5 +868,8 @@ export function useFakeLiveChat() {
     setGhostFireIntervalSec,
     ghostTrashIntervalSec,
     setGhostTrashIntervalSec,
+    // Comment sentiment bias (0=trash, 50=mixed, 100=fire)
+    sentimentBias,
+    setSentimentBias,
   };
 }

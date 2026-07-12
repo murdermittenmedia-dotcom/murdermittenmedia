@@ -24,7 +24,7 @@ import { JudgeLiveBroadcast, JudgeBroadcastViewer } from "@/components/JudgeLive
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 
 // Types inferred from tRPC query
-type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date };
+type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string | null; paidSubmissionType?: "reentry5" | "reentry10" | "skip" | null };
 type QueueState = { id: number; isLive: boolean; liveMessage: string | null; streamUrl: string | null; currentPlayingId: number | null; updatedAt: Date };
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
 
@@ -187,6 +187,7 @@ function AdminPanel({
   commentIntervalMs, setCommentIntervalMs, viewerMin, setViewerMin, viewerMax, setViewerMax,
   ghostFireCount, setGhostFireCount, ghostTrashCount, setGhostTrashCount,
   ghostFireIntervalSec, setGhostFireIntervalSec, ghostTrashIntervalSec, setGhostTrashIntervalSec,
+  sentimentBias, setSentimentBias,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -218,6 +219,8 @@ function AdminPanel({
   setGhostFireIntervalSec: (v: number) => void;
   ghostTrashIntervalSec: number;
   setGhostTrashIntervalSec: (v: number) => void;
+  sentimentBias: number;
+  setSentimentBias: (v: number) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -750,6 +753,37 @@ function AdminPanel({
             </div>
           </div>
         </div>
+
+        {/* ── Comment Sentiment ── */}
+        <div className="border border-white/10 bg-white/[0.02] rounded-lg p-3 space-y-2">
+          <div className="text-white/60 text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5">
+            <span>💬</span> Comment Vibe
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-white/50 text-[10px] uppercase tracking-wider">Sentiment Bias</span>
+            <span className={`text-[10px] font-bold font-mono ${
+              sentimentBias >= 70 ? "text-orange-400" : sentimentBias <= 30 ? "text-blue-400" : "text-white/60"
+            }`}>
+              {sentimentBias >= 80 ? "🔥 Super Fire" : sentimentBias >= 60 ? "🔥 Mostly Fire" : sentimentBias >= 45 ? "⚖️ Mixed" : sentimentBias >= 25 ? "🗑️ Mostly Trash" : "🗑️ Super Trash"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] text-blue-400">🗑️</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={sentimentBias}
+              onChange={e => setSentimentBias(Number(e.target.value))}
+              className="flex-1 h-1.5 rounded-full cursor-pointer"
+              style={{ accentColor: sentimentBias >= 50 ? "#f97316" : "#60a5fa" }}
+            />
+            <span className="text-[9px] text-orange-400">🔥</span>
+          </div>
+          <p className="text-white/20 text-[9px]">Controls the ratio of fire vs trash auto-comments. Middle = even mix.</p>
+        </div>
+
         {/* ── Playback Mode ── */}
         <div className="border border-white/10 bg-white/[0.02] rounded-lg p-3 space-y-3">
           <div className="text-white/60 text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5">
@@ -828,20 +862,32 @@ function AdminPanel({
               <AlertCircle className="w-3.5 h-3.5" />
               {pendingSkips.length} Unconfirmed Skip{pendingSkips.length > 1 ? "s" : ""}
             </div>
-            {pendingSkips.map(s => (
-              <div key={s.id} className="flex items-center justify-between gap-2 py-1.5 border-t border-yellow-500/10 first:border-0">
-                <div>
-                  <span className="text-white text-xs font-semibold">{s.artistName}</span>
-                  <span className="text-white/40 text-[10px] ml-2">— {s.songTitle}</span>
+            {pendingSkips.map(s => {
+              const skipLabel = s.paidSubmissionType === "reentry5" ? "5 Spots Up ($5)" : s.paidSubmissionType === "reentry10" ? "10 Spots Up ($10)" : "Skip to Front ($20)";
+              return (
+                <div key={s.id} className="py-2 border-t border-yellow-500/10 first:border-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div>
+                      <span className="text-white text-xs font-semibold">{s.artistName}</span>
+                      <span className="text-white/40 text-[10px] ml-2">— {s.songTitle}</span>
+                      <span className="text-yellow-400 text-[10px] ml-2 font-bold">{skipLabel}</span>
+                    </div>
+                    <button
+                      onClick={() => { confirmSkip.mutate({ id: s.id, skipType: s.paidSubmissionType ?? "skip" }); toast.success("Skip confirmed — queue updated"); }}
+                      className="text-[10px] bg-yellow-500 text-black px-2 py-1 rounded font-bold uppercase hover:bg-yellow-400 transition-colors flex-shrink-0"
+                    >
+                      ✓ Confirm
+                    </button>
+                  </div>
+                  {s.cashappPaymentReceiptUrl && (
+                    <a href={s.cashappPaymentReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline break-all">
+                      📄 View Receipt
+                    </a>
+                  )}
+                  {s.contactInfo && <div className="text-white/30 text-[10px] mt-0.5">Contact: {s.contactInfo}</div>}
                 </div>
-                <button
-                  onClick={() => { confirmSkip.mutate({ id: s.id }); toast.success("Skip payment confirmed"); }}
-                  className="text-[10px] bg-yellow-500 text-black px-2 py-1 rounded font-bold uppercase hover:bg-yellow-400 transition-colors flex-shrink-0"
-                >
-                  Confirm $10
-                </button>
-              </div>
-            ))}
+              );
+            })}  
           </div>
         )}
 
@@ -1219,7 +1265,14 @@ export default function MusicReview() {
   const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [selectedYouTube, setSelectedYouTube] = useState<{ url: string; title: string; artist: string } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Skip-the-line payment flow state
+  const [skipStep, setSkipStep] = useState<"select" | "pay" | "confirm" | "done">("select");
+  const [selectedSkipType, setSelectedSkipType] = useState<"reentry5" | "reentry10" | "skip" | null>(null);
+  const [skipReceiptUrl, setSkipReceiptUrl] = useState("");
+  const [skipPaymentMethod, setSkipPaymentMethod] = useState("");
+  const [skipSubmitting, setSkipSubmitting] = useState(false);
 
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -1370,6 +1423,7 @@ export default function MusicReview() {
     ghostTrashCount, setGhostTrashCount,
     ghostFireIntervalSec, setGhostFireIntervalSec,
     ghostTrashIntervalSec, setGhostTrashIntervalSec,
+    sentimentBias, setSentimentBias,
   } = useFakeLiveChat();
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
@@ -1485,9 +1539,10 @@ export default function MusicReview() {
     getAudioElement: audioPlayer.getAudioElement,
   });
 
+  // Auto-scroll chat to newest message whenever real or fake messages update
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
+  }, [chatMessages, fakeMessages]);
 
   const handleSendChat = () => {
     if (!chatInput.trim() || !user) return;
@@ -1567,6 +1622,37 @@ export default function MusicReview() {
         paidSubmissionType: paidType,
       });
     }
+  };
+
+  // Standalone skip-the-line purchase (user already has a submission in queue)
+  const handleSkipPurchase = () => {
+    if (!selectedSkipType || !user) return;
+    const mySubmission = data?.submissions?.find(s => s.userId === user.id && (s.status === "pending" || s.status === "playing"));
+    if (!mySubmission) {
+      toast.error("You need to have a track in the queue first to purchase a skip.");
+      return;
+    }
+    setSkipSubmitting(true);
+    submitMutation.mutate({
+      songTitle: mySubmission.songTitle,
+      submissionType: mySubmission.submissionType,
+      youtubeUrl: mySubmission.youtubeUrl ?? undefined,
+      contactInfo: mySubmission.contactInfo ?? undefined,
+      wantsSkip: true,
+      paidSubmissionType: selectedSkipType,
+      receiptUrl: skipReceiptUrl || undefined,
+      paymentMethod: skipPaymentMethod || undefined,
+    }, {
+      onSuccess: () => {
+        setSkipSubmitting(false);
+        setSkipStep("done");
+        refetch();
+      },
+      onError: (err) => {
+        setSkipSubmitting(false);
+        toast.error("Skip purchase failed: " + err.message);
+      },
+    });
   };
 
   const pendingQueue = data?.submissions?.filter(s => s.status === "pending" || s.status === "playing") ?? [];
@@ -1716,6 +1802,8 @@ export default function MusicReview() {
             setGhostFireIntervalSec={setGhostFireIntervalSec}
             ghostTrashIntervalSec={ghostTrashIntervalSec}
             setGhostTrashIntervalSec={setGhostTrashIntervalSec}
+            sentimentBias={sentimentBias}
+            setSentimentBias={setSentimentBias}
           />
         )}
 
@@ -1757,7 +1845,7 @@ export default function MusicReview() {
                     </div>
                   );
                   return null;
-                })()}
+                })}
               </div>
 
               {/* Track info */}
@@ -2165,27 +2253,152 @@ export default function MusicReview() {
             {/* ── SKIP TRACK TAB ── */}
             {tab === "skip-info" && (
               <div className="max-w-lg mx-auto">
-                <div className="text-center mb-6">
-                  <div className="text-4xl mb-3">⏭️</div>
-                  <h2 className="font-['Anton'] text-3xl uppercase mb-2">Skip the <span className="text-red-600">Line</span></h2>
-                  <p className="text-white/40 text-sm">Pay to jump ahead in the queue and get your track reviewed sooner</p>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { label: "5 Spots Up", price: "$5", type: "reentry5" as const },
-                    { label: "10 Spots Up", price: "$10", type: "reentry10" as const },
-                    { label: "Skip to Front", price: "$20", type: "skip" as const },
-                  ].map(opt => (
-                    <div key={opt.type} className="flex items-center justify-between p-5 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all">
-                      <div>
-                        <div className="font-semibold text-sm">{opt.label}</div>
-                        <div className="text-white/40 text-xs mt-0.5">CashApp: {CASHAPP} · PayPal: {PAYPAL}</div>
-                      </div>
-                      <div className="font-['Anton'] text-2xl text-red-500">{opt.price}</div>
+                {/* ── STEP 1: Select skip option ── */}
+                {skipStep === "select" && (
+                  <div>
+                    <div className="text-center mb-6">
+                      <div className="text-4xl mb-3">⏭️</div>
+                      <h2 className="font-['Anton'] text-3xl uppercase mb-2">Skip the <span className="text-red-600">Line</span></h2>
+                      <p className="text-white/40 text-sm">Jump ahead in the queue — all skips require admin approval after payment</p>
                     </div>
-                  ))}
-                </div>
-                <p className="text-white/20 text-xs text-center mt-4">After payment, contact us with your submission ID to confirm your skip.</p>
+                    <div className="space-y-3">
+                      {([
+                        { label: "5 Spots Up", price: "$5", type: "reentry5" as const, desc: "Move 5 positions forward in the queue" },
+                        { label: "10 Spots Up", price: "$10", type: "reentry10" as const, desc: "Move 10 positions forward in the queue" },
+                        { label: "Skip to Front", price: "$20", type: "skip" as const, desc: "Jump straight to the front of the queue" },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.type}
+                          onClick={() => { setSelectedSkipType(opt.type); setSkipStep("pay"); }}
+                          className={`w-full flex items-center justify-between p-5 rounded-xl border transition-all text-left ${
+                            selectedSkipType === opt.type
+                              ? "border-red-500 bg-red-500/10"
+                              : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold text-sm">{opt.label}</div>
+                            <div className="text-white/40 text-xs mt-0.5">{opt.desc}</div>
+                          </div>
+                          <div className="font-['Anton'] text-2xl text-red-500">{opt.price}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-white/20 text-xs text-center mt-4">You must already have a track in the queue to purchase a skip.</p>
+                  </div>
+                )}
+
+                {/* ── STEP 2: Choose payment method & pay ── */}
+                {skipStep === "pay" && selectedSkipType && (
+                  <div>
+                    <button onClick={() => setSkipStep("select")} className="flex items-center gap-1 text-white/40 hover:text-white text-xs mb-4 transition-colors">
+                      ← Back
+                    </button>
+                    <div className="text-center mb-5">
+                      <div className="text-2xl font-['Anton'] text-red-500 mb-1">
+                        {selectedSkipType === "reentry5" ? "$5 — 5 Spots Up" : selectedSkipType === "reentry10" ? "$10 — 10 Spots Up" : "$20 — Skip to Front"}
+                      </div>
+                      <p className="text-white/40 text-xs">Choose a payment method and send the exact amount</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-5">
+                      {[
+                        { name: "CashApp", handle: "$MittenMedia", link: "https://cash.app/$MittenMedia", icon: "💸", color: "border-[#00D632]/40 bg-[#00D632]/5", textColor: "text-[#00D632]" },
+                        { name: "PayPal", handle: "@MurderMittenPromo", link: "https://paypal.me/MurderMittenPromo", icon: "🈿️", color: "border-[#009cde]/40 bg-[#003087]/5", textColor: "text-[#009cde]" },
+                        { name: "Apple Pay", handle: "(313) 420-9004", link: "tel:3134209004", icon: "🍎", color: "border-white/20 bg-white/5", textColor: "text-white" },
+                        { name: "Chime", handle: "DM on Instagram", link: "https://www.instagram.com/murdermittenmedia/", icon: "🏦", color: "border-[#00D632]/20 bg-[#00D632]/5", textColor: "text-[#00D632]" },
+                      ].map(pm => (
+                        <a
+                          key={pm.name}
+                          href={pm.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setSkipPaymentMethod(pm.name)}
+                          className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all hover:scale-105 ${
+                            skipPaymentMethod === pm.name ? "ring-2 ring-red-500 " + pm.color : pm.color
+                          }`}
+                        >
+                          <span className="text-2xl">{pm.icon}</span>
+                          <span className={`text-xs font-bold ${pm.textColor}`}>{pm.name}</span>
+                          <span className="text-white/40 text-[10px] text-center">{pm.handle}</span>
+                        </a>
+                      ))}
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-white/60 text-xs uppercase tracking-wider block mb-1">Payment Receipt / Confirmation URL <span className="text-white/30">(optional but speeds up approval)</span></label>
+                        <input
+                          type="url"
+                          value={skipReceiptUrl}
+                          onChange={e => setSkipReceiptUrl(e.target.value)}
+                          placeholder="https://cash.app/receipt/..."
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-red-500/50"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setSkipStep("confirm")}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors"
+                      >
+                        I’ve Sent Payment — Submit Request
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 3: Confirm submission ── */}
+                {skipStep === "confirm" && (
+                  <div className="text-center">
+                    <button onClick={() => setSkipStep("pay")} className="flex items-center gap-1 text-white/40 hover:text-white text-xs mb-4 transition-colors">
+                      ← Back
+                    </button>
+                    <div className="text-4xl mb-4">✅</div>
+                    <h3 className="font-['Anton'] text-2xl uppercase mb-2">Confirm Your Skip</h3>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-5 text-left space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/40">Skip Type</span>
+                        <span className="text-white font-semibold">{selectedSkipType === "reentry5" ? "5 Spots Up" : selectedSkipType === "reentry10" ? "10 Spots Up" : "Skip to Front"}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/40">Amount</span>
+                        <span className="text-red-400 font-bold">{selectedSkipType === "reentry5" ? "$5" : selectedSkipType === "reentry10" ? "$10" : "$20"}</span>
+                      </div>
+                      {skipPaymentMethod && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-white/40">Paid via</span>
+                          <span className="text-white">{skipPaymentMethod}</span>
+                        </div>
+                      )}
+                      {skipReceiptUrl && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-white/40">Receipt</span>
+                          <a href={skipReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline text-xs truncate max-w-[180px]">View</a>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-white/30 text-xs mb-5">Your skip request will be pending until the admin verifies your payment. You’ll move up in the queue once confirmed.</p>
+                    <button
+                      onClick={handleSkipPurchase}
+                      disabled={skipSubmitting}
+                      className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors"
+                    >
+                      {skipSubmitting ? "Submitting..." : "Submit Skip Request"}
+                    </button>
+                  </div>
+                )}
+
+                {/* ── STEP 4: Done ── */}
+                {skipStep === "done" && (
+                  <div className="text-center py-8">
+                    <div className="text-5xl mb-4">🚀</div>
+                    <h3 className="font-['Anton'] text-2xl uppercase mb-2">Request Submitted!</h3>
+                    <p className="text-white/40 text-sm mb-6">Your skip request is pending admin approval. Once confirmed, you’ll move up in the queue automatically.</p>
+                    <button
+                      onClick={() => { setSkipStep("select"); setSelectedSkipType(null); setSkipReceiptUrl(""); setSkipPaymentMethod(""); }}
+                      className="text-red-500 hover:text-red-400 text-sm underline transition-colors"
+                    >
+                      Submit Another Skip
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

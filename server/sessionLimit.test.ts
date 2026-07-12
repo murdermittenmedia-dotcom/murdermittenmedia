@@ -134,7 +134,7 @@ describe("Music Review Session Limit", () => {
       skippedLine: false,
       skipPaymentConfirmed: false,
       isPaidSubmission: true,
-      paidSubmissionType: "basic",
+      paidSubmissionType: "reentry5",
       paidSubmissionConfirmed: false,
       status: "pending",
       position: 0,

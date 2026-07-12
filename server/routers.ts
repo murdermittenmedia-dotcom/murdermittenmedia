@@ -417,6 +417,9 @@ export const appRouter = router({
         wantsSkip: z.boolean().default(false),
         // Paid submission type — if provided, this is a 3rd+ paid submission
         paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
+        // Payment proof for skip/paid submissions
+        receiptUrl: z.string().max(512).optional(),
+        paymentMethod: z.string().max(64).optional(),
       }))
       .output(z.union([
         z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
@@ -468,6 +471,7 @@ export const appRouter = router({
           isPaidSubmission: isPaid,
           paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
           paidSubmissionConfirmed: false,
+          cashappPaymentReceiptUrl: input.receiptUrl ?? null,
           // Paid submissions are held as 'pending' until admin confirms payment
           status: "pending",
           position: 0,
@@ -509,9 +513,9 @@ export const appRouter = router({
       }),
 
     confirmSkip: adminProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), skipType: z.enum(["reentry5", "reentry10", "skip"]).optional() }))
       .mutation(async ({ input }) => {
-        await confirmSkipPayment(input.id);
+        await confirmSkipPayment(input.id, input.skipType ?? "skip");
         return { success: true };
       }),
 
@@ -652,6 +656,8 @@ export const appRouter = router({
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
         paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
+        receiptUrl: z.string().max(512).optional(),
+        paymentMethod: z.string().max(64).optional(),
       }))
       .output(z.union([
         z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
@@ -704,6 +710,7 @@ export const appRouter = router({
           isPaidSubmission: isPaid,
           paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
           paidSubmissionConfirmed: false,
+          cashappPaymentReceiptUrl: input.receiptUrl ?? null,
           status: "pending",
           position: 0,
         });
