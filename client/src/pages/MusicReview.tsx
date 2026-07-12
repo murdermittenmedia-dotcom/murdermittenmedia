@@ -1539,9 +1539,12 @@ export default function MusicReview() {
     getAudioElement: audioPlayer.getAudioElement,
   });
 
-  // Auto-scroll chat to newest message whenever real or fake messages update
+  // Auto-scroll chat to newest message — scroll the container directly to avoid scrolling the whole page
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
   }, [chatMessages, fakeMessages]);
 
   const handleSendChat = () => {
@@ -1994,7 +1997,7 @@ export default function MusicReview() {
           </div>
 
           {/* Messages — real and fake merged by timestamp */}
-          <div className="h-72 overflow-y-auto p-4 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10">
+          <div ref={chatScrollRef} className="h-72 overflow-y-auto p-4 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10">
             {chatMessages.length === 0 && fakeMessages.length === 0 ? (
               <div className="text-center text-white/20 text-sm py-8">No messages yet — say something!</div>
             ) : (
