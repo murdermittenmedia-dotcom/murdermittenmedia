@@ -870,7 +870,7 @@ export function useFakeLiveChat({
           userId: randomUser.id,
         });
 
-    }, triggeredReaction ? 300 : commentIntervalMs * (0.7 + Math.random() * 0.6));
+    }, triggeredReaction ? commentIntervalMs : commentIntervalMs * (0.7 + Math.random() * 0.6));
 
     return () => clearInterval(interval);
   }, [chatPool, triggeredReaction, commentIntervalMs, sentimentBias, addFakeMessage]);
