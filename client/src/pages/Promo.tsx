@@ -7,54 +7,65 @@ import { SiteNav } from "@/components/SiteNav";
 
 const PACKAGES = [
   {
-    id: "story",
-    name: "Story Post",
-    price: 10,
+    id: "repost",
+    name: "Repost",
+    price: 5,
     tag: "Starter",
     color: "border-white/20",
-    features: ["1 Instagram Story Post", "24-hour visibility", "Link in story available", "Quick turnaround"],
+    features: ["We press the repost button on your existing post"],
     popular: false,
   },
   {
-    id: "day-post",
-    name: "24 Hr Page Post + Story",
-    price: 35,
+    id: "story",
+    name: "Story Post",
+    price: 20,
     tag: "Popular",
     color: "border-red-600",
-    features: ["1 Feed Post (24 hours)", "1 Story Post", "Reaches 45K+ followers", "Caption + hashtags included"],
+    features: ["24-hour Instagram Story feature"],
     popular: true,
   },
   {
-    id: "perm-post",
-    name: "Permanent Post + 3x Stories",
+    id: "day-post",
+    name: "24 Hour Page Post",
     price: 50,
     tag: "Best Value",
     color: "border-red-600/60",
-    features: ["1 Permanent Feed Post", "3 Story Posts", "Stays on page forever", "Maximum exposure"],
+    features: ["Featured on our page for 24 hours"],
+    popular: false,
+  },
+  {
+    id: "perm-post",
+    name: "Permanent Page Post",
+    price: 100,
+    tag: "Premium",
+    color: "border-white/20",
+    features: ["Posted permanently to our page"],
+    popular: false,
+  },
+  {
+    id: "dual-perm",
+    name: "2 Permanent Page Posts",
+    price: 150,
+    tag: "Value Pack",
+    color: "border-white/20",
+    features: ["2 permanent posts to our page"],
     popular: false,
   },
 ];
 
 const BUNDLES = [
   {
-    id: "bundle-2",
-    name: "2 for $75",
-    price: 75,
-    description: "2 Permanent Posts + Stories",
-    savings: "Save $25",
-  },
-  {
-    id: "bundle-4",
-    name: "4 for $100",
-    price: 100,
-    description: "4 Permanent Posts + Stories",
-    savings: "Save $100",
+    id: "bundle-7day",
+    name: "7 Day Pinned Post",
+    price: 300,
+    description: "Your post is pinned at the top of our profile for 7 days",
+    savings: "Maximum Visibility",
   },
   {
     id: "monthly",
-    name: "1-Month Unlimited",
-    price: 313,
-    description: "Unlimited Page Promo for 30 days",
+    name: "Monthly Unlimited Promo Pass",
+    price: 500,
+    description: "Unlimited reposts • Unlimited story posts • Unlimited 24-hour page posts • Priority scheduling",
     savings: "Best for Artists",
   },
 ];
@@ -142,7 +153,7 @@ export default function Promo() {
             <h2 className="font-['Anton'] text-4xl md:text-5xl uppercase">PROMO <span className="text-red-600">RATES</span></h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-6">
             {PACKAGES.map((pkg) => (
               <div
                 key={pkg.id}
@@ -163,8 +174,8 @@ export default function Promo() {
                 <div className="text-white/70 font-semibold mb-6 text-sm">{pkg.name}</div>
                 <ul className="space-y-2">
                   {pkg.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-white/60">
-                      <span className="text-red-500 text-xs">✓</span> {f}
+                    <li key={f} className="flex items-start gap-2 text-sm text-white/60">
+                      <span className="text-red-500 text-xs mt-0.5">✓</span> <span>{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -179,11 +190,11 @@ export default function Promo() {
 
           {/* -- BUNDLES --------------------------------------- */}
           <div className="text-center mb-8 mt-16">
-            <p className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">Save More</p>
-            <h2 className="font-['Anton'] text-4xl md:text-5xl uppercase">BUNDLE <span className="text-red-600">DEALS</span></h2>
+            <p className="text-red-500 text-xs uppercase tracking-[0.3em] mb-3 font-semibold">Premium Offers</p>
+            <h2 className="font-['Anton'] text-4xl md:text-5xl uppercase">SPECIAL <span className="text-red-600">DEALS</span></h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {BUNDLES.map((bundle) => (
               <div
                 key={bundle.id}
@@ -201,7 +212,7 @@ export default function Promo() {
                 </div>
                 <div className="font-['Anton'] text-5xl text-red-500 mb-1">${bundle.price}</div>
                 <div className="text-white font-semibold mb-2">{bundle.name}</div>
-                <div className="text-white/50 text-sm">{bundle.description}</div>
+                <div className="text-white/50 text-sm leading-relaxed">{bundle.description}</div>
               </div>
             ))}
           </div>
