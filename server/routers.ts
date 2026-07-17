@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -4219,7 +4220,7 @@ export const appRouter = router({
         return { packageId: obj.packageId };
       })
       .mutation(async ({ ctx, input }) => {
-        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
         const { packageId } = input;
         const user = ctx.user;
 
@@ -4240,11 +4241,11 @@ export const appRouter = router({
         const session = await stripe.checkout.sessions.create({
           payment_method_types: ["card"],
           mode: "payment",
-          customer_email: user.email,
+          customer_email: user.email ?? undefined,
           client_reference_id: user.id.toString(),
           metadata: {
             user_id: user.id.toString(),
-            customer_email: user.email,
+            customer_email: user.email ?? "",
             customer_name: user.artistName || user.name || "Unknown",
             package_id: packageId,
           },
@@ -4343,25 +4344,25 @@ export const appRouter = router({
           };
         })
         .mutation(async ({ ctx, input }) => {
-          const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
           const user = ctx.user;
 
           // Calculate totals
           const subtotalCents = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-          const shippingCents = subtotalCents > 10000 ? 0 : 1000; // Free shipping over $100
+          const shippingCents = subtotalCents >= 10000 ? 0 : 399; // Free shipping over $100, else $3.99
           const totalCents = subtotalCents + shippingCents;
 
           // Create Stripe session
           const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "payment",
-            customer_email: user.email,
-            client_reference_id: user.id.toString(),
-            metadata: {
-              user_id: user.id.toString(),
-              customer_email: user.email,
-              customer_name: user.artistName || user.name || "Unknown",
-            },
+          customer_email: user.email ?? undefined,
+          client_reference_id: user.id.toString(),
+          metadata: {
+            user_id: user.id.toString(),
+            customer_email: user.email ?? "",
+            customer_name: user.artistName || user.name || "Unknown",
+          },
             line_items: input.items.map((item) => ({
               price_data: {
                 currency: "usd",

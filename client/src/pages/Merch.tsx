@@ -82,7 +82,7 @@ function ImageCarousel({ images, productName }: { images: string[]; productName:
   return (
     <div className="flex flex-col gap-3">
       {/* Main image */}
-      <div className="relative bg-[#111] aspect-[3/4] rounded-lg overflow-hidden group">
+      <div className="relative bg-[#111] aspect-[3/4] max-h-[70vw] md:max-h-none rounded-lg overflow-hidden group">
         <img
           src={images[activeIdx]}
           alt={`${productName} - view ${activeIdx + 1}`}
@@ -171,7 +171,7 @@ export default function Merch() {
     }, 0);
   }, [cartItems]);
 
-  const shippingCost = cartTotal >= 10000 ? 0 : 1000;
+  const shippingCost = cartTotal >= 10000 ? 0 : 399; // $3.99 flat, free over $100
   const orderTotal = cartTotal + shippingCost;
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -272,15 +272,15 @@ export default function Merch() {
       <SiteNav />
 
       {/* ── HERO PRODUCT ──────────────────────────────────────────────────── */}
-      <section className="relative pt-24 pb-16">
-        <div className="container grid md:grid-cols-2 gap-12 items-start">
+      <section className="relative pt-20 pb-10 md:pt-24 md:pb-16">
+        <div className="container grid md:grid-cols-2 gap-6 md:gap-12 items-start">
           {/* Left: Image Carousel */}
           <div>
             <ImageCarousel images={heroImages} productName={heroProduct.name} />
           </div>
 
           {/* Right: Product Info */}
-          <div className="flex flex-col gap-8 md:sticky md:top-28">
+          <div className="flex flex-col gap-5 md:gap-8 md:sticky md:top-28">
             {/* Badges */}
             <div className="flex flex-wrap gap-2">
               {heroProduct.isLimitedRelease && (
@@ -294,10 +294,10 @@ export default function Merch() {
             </div>
 
             <div>
-              <h1 className="font-['Anton'] text-5xl md:text-6xl mb-4 uppercase leading-none">
+              <h1 className="font-['Anton'] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 uppercase leading-none break-words">
                 {heroProduct.name}
               </h1>
-              <p className="text-4xl font-bold text-red-600 mb-6">
+              <p className="text-3xl md:text-4xl font-bold text-red-600 mb-4 md:mb-6">
                 ${(heroProduct.price / 100).toFixed(2)}
               </p>
               <p className="text-white/70 text-base leading-relaxed mb-4">
@@ -405,7 +405,7 @@ export default function Merch() {
 
             {/* Shipping note */}
             <p className="text-xs text-white/40 text-center">
-              Free shipping on orders over $100 · Estimated 5–7 business days
+              $3.99 shipping · Free on orders over $100 · Estimated 5–7 business days
             </p>
           </div>
         </div>
@@ -413,9 +413,9 @@ export default function Merch() {
 
       {/* ── OTHER PRODUCTS ────────────────────────────────────────────────── */}
       {otherProducts.length > 0 && (
-        <section className="py-20 border-t border-white/10">
+        <section className="py-12 md:py-20 border-t border-white/10">
           <div className="container">
-            <h2 className="font-['Anton'] text-4xl mb-12 uppercase">The Collection</h2>
+            <h2 className="font-['Anton'] text-3xl md:text-4xl mb-8 md:mb-12 uppercase">The Collection</h2>
             <div className="grid md:grid-cols-2 gap-12">
               {otherProducts.map((product) => (
                 <div key={product.id} className="group">
@@ -571,7 +571,7 @@ export default function Merch() {
                   </div>
 
                   <p className="text-xs text-white/40 text-center">
-                    Free shipping on orders over $100
+                    $3.99 shipping · Free on orders over $100
                   </p>
                 </div>
               </div>
@@ -713,9 +713,12 @@ export default function Merch() {
                     </span>
                   </div>
                   {shippingCost > 0 && (
-                    <p className="text-xs text-white/40">
-                      Add ${((10000 - cartTotal) / 100).toFixed(2)} more for free shipping
-                    </p>
+                    <>
+                      <p className="text-xs text-white/40">
+                        Add ${((10000 - cartTotal) / 100).toFixed(2)} more for free shipping
+                      </p>
+                      <p className="text-xs text-white/40">$3.99 standard shipping</p>
+                    </>
                   )}
                   <div className="flex justify-between text-lg font-bold border-t border-white/20 pt-2">
                     <span>Total:</span>
