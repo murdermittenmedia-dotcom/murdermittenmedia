@@ -40,6 +40,7 @@ import Notifications from "./pages/Notifications";
 import FireVoteWallet from "./pages/FireVoteWallet";
 import CreatorWallet from "./pages/CreatorWallet";
 import StreamHistory from "./pages/StreamHistory";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 function Router() {
   return (
@@ -98,6 +99,10 @@ function Router() {
 
       {/* Ban appeal */}
       <Route path={"/banned"} component={Banned} />
+
+      {/* Legal */}
+      <Route path={"/privacy-policy"} component={PrivacyPolicy} />
+      <Route path={"/privacy"} component={PrivacyPolicy} />
 
       {/* Fallback */}
       <Route path={"/404"} component={NotFound} />
