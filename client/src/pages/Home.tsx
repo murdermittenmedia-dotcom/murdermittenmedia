@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { ShoppingBag } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { useLiveStatus } from "@/hooks/useLiveStatus";
@@ -403,6 +404,61 @@ export default function Home() {
                 <Stat value={s.value} label={s.label} delay={s.delay} started={statsInView} />
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          MERCH DROP CALLOUT -- First Collection Banner
+      ══════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden border-b border-white/10">
+        {/* Background: Spirit Tee hero image */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(/manus-storage/spirit-white-new-front_d5abb7f7.jpg)`,
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+          }}
+        />
+        {/* Dark overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#080808] via-[#080808]/85 to-[#080808]/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/80 via-transparent to-transparent" />
+
+        <div className="container relative z-10 py-20 md:py-28">
+          <div className="max-w-xl">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 border border-red-600/50 bg-red-600/10 px-3 py-1.5 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-red-400 text-[10px] font-black uppercase tracking-[0.3em]">First Drop — Limited Release</span>
+            </div>
+
+            <h2 className="font-['Anton'] text-5xl md:text-7xl uppercase leading-none mb-4">
+              SHOP THE<br />
+              <span className="text-red-600">DROP</span>
+            </h2>
+
+            <p className="text-white/60 text-base leading-relaxed mb-8 border-l-2 border-red-600 pl-4">
+              The Spirit of The Mitten Tee is here. Premium heavyweight cotton,
+              oversized fit, tour graphic on the back. Black &amp; White.
+              <span className="block text-white/30 text-sm mt-1">Starting at $34.99 · Free shipping on orders $100+</span>
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/merch"
+                className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-500 text-white px-8 py-4 text-sm font-black uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(209,0,0,0.5)] active:scale-95"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Shop the Drop
+              </Link>
+              <Link
+                href="/merch"
+                className="inline-flex items-center gap-3 border border-white/20 text-white/70 hover:border-white hover:text-white px-8 py-4 text-sm font-semibold uppercase tracking-widest transition-all"
+              >
+                View Collection →
+              </Link>
+            </div>
           </div>
         </div>
       </section>

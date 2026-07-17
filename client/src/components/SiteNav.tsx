@@ -13,6 +13,7 @@ import {
   User, Star, Mic2, Podcast, Music, Swords, MessageSquare,
   Search, Trophy, Tag, LogOut, LogIn, ChevronDown, X, Menu,
   Shield, Zap, Radio, Coins, Bell, Newspaper, Wallet, Flame,
+  ShoppingBag,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -30,7 +31,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "SHOWS",
+    label: "CONTENT",
     items: [
       { href: "/artist-of-the-week", label: "Artist of the Month",      desc: "Michigan's featured artist",        icon: Star    },
       { href: "/mic",                label: "Murder Mitten Mic",         desc: "Raw one-mic performances",          icon: Mic2    },
@@ -48,10 +49,9 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "REWARDS",
+    label: "EARN & WIN",
     items: [
       { href: "/daily-wheel",  label: "Daily Wheel",     desc: "Spin for free promo daily",     icon: Zap    },
-      { href: "/promo",        label: "Get Promoted",    desc: "Put your music on blast",        icon: Tag    },
       { href: "/coins",        label: "Buy Coins",       desc: "Support artists & unlock perks", icon: Coins  },
       { href: "/how-it-works", label: "XP & Tiers",      desc: "Level up your account",          icon: Shield },
     ],
@@ -218,6 +218,14 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 
           {/* ── RIGHT ACTIONS ── */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* MERCH — prominent badge button */}
+            <a
+              href="/merch"
+              className="hidden md:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest border border-white/20 text-white/70 hover:border-white hover:text-white px-3 py-2 transition-all"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Merch</span>
+            </a>
             <a
               href="/promo"
               className="hidden lg:block text-[10px] font-black uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white px-4 py-2 transition-all"
@@ -412,6 +420,25 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 
         {/* Drawer footer */}
         <div className="border-t border-white/10 px-5 py-4 flex flex-col gap-2.5">
+          {/* Merch & Promo quick links */}
+          <div className="flex gap-2 mb-1">
+            <a
+              href="/merch"
+              onClick={() => setMenuOpen(false)}
+              className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest border border-white/20 text-white/70 hover:border-white hover:text-white px-3 py-2.5 transition-all"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              Merch
+            </a>
+            <a
+              href="/promo"
+              onClick={() => setMenuOpen(false)}
+              className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white px-3 py-2.5 transition-all"
+            >
+              <Tag className="w-3.5 h-3.5" />
+              Get Promo
+            </a>
+          </div>
           <a href="/wallet" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-xs text-white/40 hover:text-yellow-400 transition-colors py-1 uppercase tracking-widest font-semibold">
             <Wallet className="w-3.5 h-3.5" />
             My Wallet
