@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 // ─── Color-specific image galleries ─────────────────────────────────────────
 const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
@@ -134,9 +134,7 @@ function ImageCarousel({ images, productName }: { images: string[]; productName:
 export default function Merch() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-
-  // Product modal state
+  // tRPCroduct modal state
   const [selectedProduct, setSelectedProduct] = useState<typeof PRODUCTS[0] | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>("");
@@ -186,11 +184,11 @@ export default function Merch() {
         return;
       }
       if (!color) {
-        toast({ title: "Please select a color", variant: "destructive" });
+        toast.error("Please select a color");
         return;
       }
       if (!size) {
-        toast({ title: "Please select a size", variant: "destructive" });
+        toast.error("Please select a size");
         return;
       }
 
@@ -201,10 +199,7 @@ export default function Merch() {
           size,
           quantity: qty,
         });
-        toast({
-          title: "Added to cart!",
-          description: `${product.name} — ${color} / ${size}`,
-        });
+        toast.success(`Added to cart! ${product.name} — ${color} / ${size}`);
         // Close modal if open
         setSelectedProduct(null);
         setSelectedColor("");
@@ -212,11 +207,7 @@ export default function Merch() {
         setQuantity(1);
       } catch (err: any) {
         console.error("Add to cart error:", err);
-        toast({
-          title: "Failed to add to cart",
-          description: err?.message || "Please try again",
-          variant: "destructive",
-        });
+        toast.error(err?.message || "Failed to add to cart. Please try again.");
       }
     },
     [user, addToCartMutation, toast]
@@ -229,7 +220,7 @@ export default function Merch() {
       return;
     }
     if (cartItems.length === 0) {
-      toast({ title: "Your cart is empty", variant: "destructive" });
+      toast.error("Your cart is empty");
       return;
     }
 
@@ -263,11 +254,7 @@ export default function Merch() {
       }
     } catch (err: any) {
       console.error("Checkout failed:", err);
-      toast({
-        title: "Checkout failed",
-        description: err?.message || "Please try again",
-        variant: "destructive",
-      });
+        toast.error(err?.message || "Checkout failed. Please try again.");
     }
   };
 
@@ -393,7 +380,7 @@ export default function Merch() {
                   if (!selectedProduct || selectedProduct.id !== heroProduct.id) {
                     // Auto-select this product with current hero color
                     if (!selectedSize) {
-                      toast({ title: "Please select a size", variant: "destructive" });
+                      toast.error("Please select a size");
                       return;
                     }
                     handleAddToCart(heroProduct, heroColor, selectedSize, quantity);
