@@ -1311,8 +1311,8 @@
 - [x] Cart persistence: save cart to database per user
 - [x] Order confirmation page showing order details and tracking
 - [ ] Order confirmation email sent to customer
-- [ ] Admin dashboard: Product CRUD (add/edit/hide products)
-- [ ] Admin dashboard: Order management (view orders, update status)
-- [ ] Admin dashboard: Sales analytics (revenue, top products, orders by date)
+- [x] Admin dashboard: Product CRUD (add/edit/hide products)
+- [x] Admin dashboard: Order management (view orders, update status)
+- [x] Admin dashboard: Sales analytics (revenue, top products, orders by date)
 - [ ] Product inventory tracking (optional: low stock warnings)
 - [ ] Product reviews/ratings system (optional)
