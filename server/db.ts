@@ -35,6 +35,9 @@ import {
   merchProducts, InsertMerchProduct, MerchProduct,
   cartItems, InsertCartItem, CartItem,
   orders, InsertOrder, Order,
+  shopProducts, InsertShopProduct, ShopProduct,
+  shopProductImages, InsertShopProductImage, ShopProductImage,
+  shopVariants, InsertShopVariant, ShopVariant,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2027,4 +2030,126 @@ export async function updateOrderStatus(id: number, status: Order["status"], str
   const updateData: Record<string, unknown> = { status };
   if (stripePaymentIntentId) updateData.stripePaymentIntentId = stripePaymentIntentId;
   return db.update(orders).set(updateData).where(eq(orders.id, id));
+}
+
+// ─── Admin Shop Product Helpers ───────────────────────────────────────────────
+
+export async function getShopProducts(includeHidden = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [sql`${shopProducts.deletedAt} IS NULL`];
+  if (!includeHidden) {
+    conditions.push(eq(shopProducts.status, "active"));
+  }
+  return db.select().from(shopProducts)
+    .where(and(...conditions))
+    .orderBy(asc(shopProducts.sortOrder), desc(shopProducts.createdAt));
+}
+
+export async function getShopProductById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(shopProducts)
+    .where(and(eq(shopProducts.id, id), sql`${shopProducts.deletedAt} IS NULL`))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getShopProductBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(shopProducts)
+    .where(and(eq(shopProducts.slug, slug), sql`${shopProducts.deletedAt} IS NULL`))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createShopProduct(data: InsertShopProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(shopProducts).values(data);
+}
+
+export async function updateShopProduct(id: number, data: Partial<InsertShopProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(shopProducts).set(data).where(eq(shopProducts.id, id));
+}
+
+export async function softDeleteShopProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(shopProducts).set({ deletedAt: new Date() }).where(eq(shopProducts.id, id));
+}
+
+export async function getShopProductImages(productId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(shopProductImages)
+    .where(eq(shopProductImages.productId, productId))
+    .orderBy(asc(shopProductImages.sortOrder), asc(shopProductImages.createdAt));
+}
+
+export async function addShopProductImage(data: InsertShopProductImage) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(shopProductImages).values(data);
+}
+
+export async function deleteShopProductImage(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(shopProductImages).where(eq(shopProductImages.id, id));
+}
+
+export async function updateShopProductImageOrder(id: number, sortOrder: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(shopProductImages).set({ sortOrder }).where(eq(shopProductImages.id, id));
+}
+
+export async function getShopVariants(productId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(shopVariants)
+    .where(eq(shopVariants.productId, productId))
+    .orderBy(asc(shopVariants.color), asc(shopVariants.size));
+}
+
+export async function upsertShopVariant(data: InsertShopVariant) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Check if variant exists
+  const existing = await db.select().from(shopVariants)
+    .where(and(
+      eq(shopVariants.productId, data.productId),
+      eq(shopVariants.color, data.color),
+      eq(shopVariants.size, data.size)
+    ))
+    .limit(1);
+  if (existing.length > 0) {
+    return db.update(shopVariants)
+      .set({ inventoryQty: data.inventoryQty ?? 0, sku: data.sku ?? null })
+      .where(eq(shopVariants.id, existing[0].id));
+  }
+  return db.insert(shopVariants).values(data);
+}
+
+export async function deleteShopVariantsByProduct(productId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(shopVariants).where(eq(shopVariants.productId, productId));
+}
+
+export async function getShopVariantInventory(productId: number, color: string, size: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(shopVariants)
+    .where(and(
+      eq(shopVariants.productId, productId),
+      eq(shopVariants.color, color),
+      eq(shopVariants.size, size)
+    ))
+    .limit(1);
+  return rows[0] ?? null;
 }

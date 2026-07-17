@@ -190,6 +190,13 @@
       "when": 1784329326009,
       "tag": "0026_eminent_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1784331703130,
+      "tag": "0027_puzzling_titanium_man",
+      "breakpoints": true
     }
   ]
 }

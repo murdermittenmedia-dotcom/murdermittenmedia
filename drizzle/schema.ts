@@ -913,3 +913,62 @@ export const orders = mysqlTable("orders", {
 
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;
+
+// ─── Admin Shop System ────────────────────────────────────
+// Full-featured product catalog managed by admin
+export const shopProducts = mysqlTable("shop_products", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  subtitle: varchar("subtitle", { length: 256 }),
+  slug: varchar("slug", { length: 256 }).notNull().unique(),
+  description: text("description"),
+  price: int("price").notNull(),           // in cents
+  compareAtPrice: int("compareAtPrice"),   // original price for sale display, in cents
+  category: varchar("category", { length: 128 }),
+  status: mysqlEnum("status", ["draft", "active", "sold_out", "hidden"]).default("draft").notNull(),
+  featured: boolean("featured").default(false).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  // Stripe IDs
+  stripeProductId: varchar("stripeProductId", { length: 256 }),
+  stripePriceId: varchar("stripePriceId", { length: 256 }),
+  // Display
+  badge: varchar("badge", { length: 128 }),   // e.g. "Limited Release", "New Drop", "Best Seller"
+  shippingEstimate: varchar("shippingEstimate", { length: 128 }),  // e.g. "5–7 business days"
+  // SEO
+  seoTitle: varchar("seoTitle", { length: 256 }),
+  seoDescription: text("seoDescription"),
+  // Stats
+  salesCount: int("salesCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deletedAt"),  // soft delete
+});
+export type ShopProduct = typeof shopProducts.$inferSelect;
+export type InsertShopProduct = typeof shopProducts.$inferInsert;
+
+// Product images (multiple per product, typed by role)
+export const shopProductImages = mysqlTable("shop_product_images", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull(),
+  url: varchar("url", { length: 512 }).notNull(),
+  storageKey: varchar("storageKey", { length: 512 }),
+  imageType: mysqlEnum("imageType", ["thumbnail", "front", "back", "size_chart", "gallery"]).default("gallery").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ShopProductImage = typeof shopProductImages.$inferSelect;
+export type InsertShopProductImage = typeof shopProductImages.$inferInsert;
+
+// Product variants: each color+size combination with its own inventory
+export const shopVariants = mysqlTable("shop_variants", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull(),
+  color: varchar("color", { length: 64 }).notNull(),
+  size: varchar("size", { length: 32 }).notNull(),
+  inventoryQty: int("inventoryQty").default(0).notNull(),
+  sku: varchar("sku", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ShopVariant = typeof shopVariants.$inferSelect;
+export type InsertShopVariant = typeof shopVariants.$inferInsert;

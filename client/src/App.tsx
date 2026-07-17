@@ -44,6 +44,9 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Merch from "./pages/Merch";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import AdminMerch from "./pages/AdminMerch";
+import AdminShop from "./pages/AdminShop";
+import AdminShopForm from "./pages/AdminShopForm";
+import ShopProduct from "./pages/ShopProduct";
 
 function Router() {
   return (
@@ -55,6 +58,10 @@ function Router() {
       <Route path={"/shop"} component={Merch} />
       <Route path={"/order-confirmation"} component={OrderConfirmation} />
       <Route path={"/admin/merch"} component={AdminMerch} />
+      <Route path={"/admin/shop"} component={AdminShop} />
+      <Route path={"/admin/shop/new"} component={AdminShopForm} />
+      <Route path={"/admin/shop/edit/:id"} component={AdminShopForm} />
+      <Route path={"/shop/:slug"} component={ShopProduct} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/review"} component={MusicReview} />

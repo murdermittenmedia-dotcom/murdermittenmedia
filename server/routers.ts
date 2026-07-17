@@ -56,6 +56,10 @@ import {
   getAllMerchProducts, getMerchProductById, addMerchProduct, updateMerchProduct,
   getUserCartItems, addCartItem, updateCartItem, removeCartItem, clearUserCart,
   createOrder, getOrderById, getOrderByStripeSessionId, getUserOrders, updateOrderStatus,
+  getShopProducts, getShopProductById, getShopProductBySlug,
+  createShopProduct, updateShopProduct, softDeleteShopProduct,
+  getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder,
+  getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
 import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams } from "../drizzle/schema";
 import {
@@ -4419,6 +4423,330 @@ export const appRouter = router({
         return getUserOrders(ctx.user.id);
       }),
     }),
+  }),
+
+  // ─── Admin Shop ───────────────────────────────────────────────
+  shop: router({
+    // Public: list active products
+    getProducts: publicProcedure.query(async () => {
+      const products = await getShopProducts(false);
+      const withImages = await Promise.all(products.map(async (p) => ({
+        ...p,
+        images: await getShopProductImages(p.id),
+        variants: await getShopVariants(p.id),
+      })));
+      return withImages;
+    }),
+
+    // Public: get single product by slug
+    getBySlug: publicProcedure
+      .input(z.object({ slug: z.string() }))
+      .query(async ({ input }) => {
+        const product = await getShopProductBySlug(input.slug);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+        const images = await getShopProductImages(product.id);
+        const variants = await getShopVariants(product.id);
+        return { ...product, images, variants };
+      }),
+
+    // Admin: list ALL products (including hidden/draft)
+    adminGetProducts: adminProcedure.query(async () => {
+      const products = await getShopProducts(true);
+      const withData = await Promise.all(products.map(async (p) => ({
+        ...p,
+        images: await getShopProductImages(p.id),
+        variants: await getShopVariants(p.id),
+      })));
+      return withData;
+    }),
+
+    // Admin: create product + Stripe sync
+    createProduct: adminProcedure
+      .input(z.object({
+        name: z.string().min(1).max(256),
+        subtitle: z.string().max(256).optional(),
+        slug: z.string().min(1).max(256),
+        description: z.string().optional(),
+        price: z.number().int().positive(),  // in cents
+        compareAtPrice: z.number().int().positive().optional(),
+        category: z.string().max(128).optional(),
+        status: z.enum(["draft", "active", "sold_out", "hidden"]).default("draft"),
+        featured: z.boolean().default(false),
+        sortOrder: z.number().int().default(0),
+        badge: z.string().max(128).optional(),
+        shippingEstimate: z.string().max(128).optional(),
+        seoTitle: z.string().max(256).optional(),
+        seoDescription: z.string().optional(),
+        variants: z.array(z.object({
+          color: z.string(),
+          size: z.string(),
+          inventoryQty: z.number().int().min(0),
+          sku: z.string().optional(),
+        })).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const stripeKey = process.env.STRIPE_SECRET_KEY;
+        let stripeProductId: string | undefined;
+        let stripePriceId: string | undefined;
+
+        if (stripeKey) {
+          const stripe = new Stripe(stripeKey);
+          const stripeProduct = await stripe.products.create({
+            name: input.name,
+            description: input.description ?? undefined,
+          });
+          stripeProductId = stripeProduct.id;
+
+          const stripePrice = await stripe.prices.create({
+            product: stripeProduct.id,
+            unit_amount: input.price,
+            currency: "usd",
+          });
+          stripePriceId = stripePrice.id;
+        }
+
+        const result = await createShopProduct({
+          name: input.name,
+          subtitle: input.subtitle ?? null,
+          slug: input.slug,
+          description: input.description ?? null,
+          price: input.price,
+          compareAtPrice: input.compareAtPrice ?? null,
+          category: input.category ?? null,
+          status: input.status,
+          featured: input.featured,
+          sortOrder: input.sortOrder,
+          badge: input.badge ?? null,
+          shippingEstimate: input.shippingEstimate ?? null,
+          seoTitle: input.seoTitle ?? null,
+          seoDescription: input.seoDescription ?? null,
+          stripeProductId: stripeProductId ?? null,
+          stripePriceId: stripePriceId ?? null,
+        });
+
+        const productId = (result as any).insertId as number;
+
+        // Create variants
+        if (input.variants?.length) {
+          await Promise.all(input.variants.map(v =>
+            upsertShopVariant({ productId, color: v.color, size: v.size, inventoryQty: v.inventoryQty, sku: v.sku ?? null })
+          ));
+        }
+
+        return { success: true, productId };
+      }),
+
+    // Admin: update product (archives old Stripe price if price changed)
+    updateProduct: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).max(256).optional(),
+        subtitle: z.string().max(256).optional(),
+        slug: z.string().min(1).max(256).optional(),
+        description: z.string().optional(),
+        price: z.number().int().positive().optional(),
+        compareAtPrice: z.number().int().positive().nullable().optional(),
+        category: z.string().max(128).optional(),
+        status: z.enum(["draft", "active", "sold_out", "hidden"]).optional(),
+        featured: z.boolean().optional(),
+        sortOrder: z.number().int().optional(),
+        badge: z.string().max(128).nullable().optional(),
+        shippingEstimate: z.string().max(128).optional(),
+        seoTitle: z.string().max(256).optional(),
+        seoDescription: z.string().optional(),
+        variants: z.array(z.object({
+          color: z.string(),
+          size: z.string(),
+          inventoryQty: z.number().int().min(0),
+          sku: z.string().optional(),
+        })).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const existing = await getShopProductById(input.id);
+        if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const stripeKey = process.env.STRIPE_SECRET_KEY;
+        let newStripePriceId: string | undefined;
+
+        // If price changed, archive old Stripe price and create new one
+        if (stripeKey && input.price !== undefined && input.price !== existing.price && existing.stripeProductId) {
+          const stripe = new Stripe(stripeKey);
+          // Archive old price
+          if (existing.stripePriceId) {
+            await stripe.prices.update(existing.stripePriceId, { active: false }).catch(() => {});
+          }
+          // Create new price
+          const newPrice = await stripe.prices.create({
+            product: existing.stripeProductId,
+            unit_amount: input.price,
+            currency: "usd",
+          });
+          newStripePriceId = newPrice.id;
+          // Also update the Stripe product name if it changed
+          if (input.name && input.name !== existing.name) {
+            await stripe.products.update(existing.stripeProductId, { name: input.name }).catch(() => {});
+          }
+        }
+
+        const updateData: Record<string, unknown> = {};
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.subtitle !== undefined) updateData.subtitle = input.subtitle;
+        if (input.slug !== undefined) updateData.slug = input.slug;
+        if (input.description !== undefined) updateData.description = input.description;
+        if (input.price !== undefined) updateData.price = input.price;
+        if (input.compareAtPrice !== undefined) updateData.compareAtPrice = input.compareAtPrice;
+        if (input.category !== undefined) updateData.category = input.category;
+        if (input.status !== undefined) updateData.status = input.status;
+        if (input.featured !== undefined) updateData.featured = input.featured;
+        if (input.sortOrder !== undefined) updateData.sortOrder = input.sortOrder;
+        if (input.badge !== undefined) updateData.badge = input.badge;
+        if (input.shippingEstimate !== undefined) updateData.shippingEstimate = input.shippingEstimate;
+        if (input.seoTitle !== undefined) updateData.seoTitle = input.seoTitle;
+        if (input.seoDescription !== undefined) updateData.seoDescription = input.seoDescription;
+        if (newStripePriceId) updateData.stripePriceId = newStripePriceId;
+
+        await updateShopProduct(input.id, updateData);
+
+        // Replace variants if provided
+        if (input.variants !== undefined) {
+          await deleteShopVariantsByProduct(input.id);
+          if (input.variants.length > 0) {
+            await Promise.all(input.variants.map(v =>
+              upsertShopVariant({ productId: input.id, color: v.color, size: v.size, inventoryQty: v.inventoryQty, sku: v.sku ?? null })
+            ));
+          }
+        }
+
+        return { success: true };
+      }),
+
+    // Admin: soft delete product
+    deleteProduct: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await softDeleteShopProduct(input.id);
+        return { success: true };
+      }),
+
+    // Admin: update product status only
+    updateStatus: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["draft", "active", "sold_out", "hidden"]),
+      }))
+      .mutation(async ({ input }) => {
+        await updateShopProduct(input.id, { status: input.status });
+        return { success: true };
+      }),
+
+    // Admin: reorder products
+    reorderProducts: adminProcedure
+      .input(z.array(z.object({ id: z.number(), sortOrder: z.number() })))
+      .mutation(async ({ input }) => {
+        await Promise.all(input.map(item => updateShopProduct(item.id, { sortOrder: item.sortOrder })));
+        return { success: true };
+      }),
+
+    // Admin: duplicate product
+    duplicateProduct: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const original = await getShopProductById(input.id);
+        if (!original) throw new TRPCError({ code: "NOT_FOUND" });
+        const originalImages = await getShopProductImages(input.id);
+        const originalVariants = await getShopVariants(input.id);
+
+        const newSlug = `${original.slug}-copy-${Date.now()}`;
+        const result = await createShopProduct({
+          ...original,
+          id: undefined as any,
+          slug: newSlug,
+          name: `${original.name} (Copy)`,
+          status: "draft",
+          stripeProductId: null,
+          stripePriceId: null,
+          salesCount: 0,
+          deletedAt: null,
+          createdAt: undefined as any,
+          updatedAt: undefined as any,
+        });
+        const newProductId = (result as any).insertId as number;
+
+        // Copy images
+        await Promise.all(originalImages.map(img =>
+          addShopProductImage({
+            productId: newProductId,
+            url: img.url,
+            storageKey: img.storageKey ?? null,
+            imageType: img.imageType,
+            sortOrder: img.sortOrder,
+          })
+        ));
+
+        // Copy variants
+        await Promise.all(originalVariants.map(v =>
+          upsertShopVariant({
+            productId: newProductId,
+            color: v.color,
+            size: v.size,
+            inventoryQty: v.inventoryQty,
+            sku: v.sku ?? null,
+          })
+        ));
+
+        return { success: true, productId: newProductId };
+      }),
+
+    // Admin: upload product image (base64)
+    uploadImage: adminProcedure
+      .input(z.object({
+        productId: z.number(),
+        base64: z.string().max(8_000_000),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        imageType: z.enum(["thumbnail", "front", "back", "size_chart", "gallery"]).default("gallery"),
+        sortOrder: z.number().int().default(0),
+      }))
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.base64, "base64");
+        if (buffer.length > 6 * 1024 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Image must be under 6MB" });
+        }
+        const ext = input.mimeType.split("/")[1];
+        const key = `shop/products/${input.productId}/${input.imageType}-${Date.now()}.${ext}`;
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        await addShopProductImage({
+          productId: input.productId,
+          url,
+          storageKey: key,
+          imageType: input.imageType,
+          sortOrder: input.sortOrder,
+        });
+        return { url, key };
+      }),
+
+    // Admin: delete product image
+    deleteImage: adminProcedure
+      .input(z.object({ imageId: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteShopProductImage(input.imageId);
+        return { success: true };
+      }),
+
+    // Admin: reorder images
+    reorderImages: adminProcedure
+      .input(z.array(z.object({ id: z.number(), sortOrder: z.number() })))
+      .mutation(async ({ input }) => {
+        await Promise.all(input.map(item => updateShopProductImageOrder(item.id, item.sortOrder)));
+        return { success: true };
+      }),
+
+    // Public: check variant inventory
+    checkInventory: publicProcedure
+      .input(z.object({ productId: z.number(), color: z.string(), size: z.string() }))
+      .query(async ({ input }) => {
+        const variant = await getShopVariantInventory(input.productId, input.color, input.size);
+        return { inStock: (variant?.inventoryQty ?? 0) > 0, qty: variant?.inventoryQty ?? 0 };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

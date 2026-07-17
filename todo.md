@@ -1316,3 +1316,29 @@
 - [x] Admin dashboard: Sales analytics (revenue, top products, orders by date)
 - [ ] Product inventory tracking (optional: low stock warnings)
 - [ ] Product reviews/ratings system (optional)
+
+## Admin Shop System (Full)
+- [ ] DB schema: shopProducts table (name, subtitle, slug, description, price, compareAtPrice, category, status, featured, sortOrder, stripeProductId, stripePriceId, badge, shippingEstimate, seoTitle, seoDescription, salesCount)
+- [ ] DB schema: shopProductImages table (productId, url, storageKey, imageType: thumbnail/front/back/sizeChart/gallery, sortOrder)
+- [ ] DB schema: shopVariants table (productId, color, size, inventoryQty, sku)
+- [ ] Run pnpm db:push to apply new schema migrations
+- [ ] tRPC: admin.shop.getProducts — list all products with variants/images (admin only)
+- [ ] tRPC: admin.shop.createProduct — create product + Stripe product/price sync (admin only)
+- [ ] tRPC: admin.shop.updateProduct — update product + archive old Stripe price if price changed (admin only)
+- [ ] tRPC: admin.shop.deleteProduct — soft delete product (admin only)
+- [ ] tRPC: admin.shop.updateStatus — set status: Draft/Active/SoldOut/Hidden (admin only)
+- [ ] tRPC: admin.shop.reorderProducts — update sortOrder (admin only)
+- [ ] tRPC: admin.shop.duplicateProduct — clone product with variants/images (admin only)
+- [ ] tRPC: admin.shop.uploadImage — upload product image to S3 (admin only)
+- [ ] tRPC: admin.shop.deleteImage — remove image from S3 and DB (admin only)
+- [ ] tRPC: shop.getProducts — list all active products (public)
+- [ ] tRPC: shop.getProductBySlug — get single product by slug (public)
+- [ ] Protected route /admin/shop — admin-only, redirect non-admins
+- [ ] Admin product table: image, name, price, status, inventory, sales, date, edit/duplicate/hide/delete
+- [ ] Admin ADD NEW PRODUCT button at top
+- [ ] Admin product form: all fields (name, subtitle, description, price, compareAtPrice, category, status, featured, badge, sizes, colors, shippingEstimate, seoTitle, seoDescription)
+- [ ] Admin image manager: upload multiple images, set type, reorder, delete
+- [ ] Admin variant builder: color+size combinations with individual inventory qty
+- [ ] Confirmation dialogs before delete/archive
+- [ ] Dynamic product page /shop/:slug — auto-generated from DB
+- [ ] Dynamic product page: image carousel, color/size selector, variant inventory check, add to cart
