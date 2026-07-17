@@ -4,6 +4,9 @@
 
 import { useState } from "react";
 import { SiteNav } from "@/components/SiteNav";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
 const PACKAGES = [
   {
@@ -112,6 +115,24 @@ const PAYMENTS = [
 export default function Promo() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [activeQR, setActiveQR] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
+  const stripeCheckout = trpc.stripe.createCheckoutSession.useMutation();
+
+  const handleCheckout = async (packageId: string) => {
+    if (!isAuthenticated) {
+      window.location.href = `/login?returnTo=/promo?package=${packageId}`;
+      return;
+    }
+
+    try {
+      const { checkoutUrl } = await stripeCheckout.mutateAsync({ packageId });
+      if (checkoutUrl) {
+        window.open(checkoutUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
@@ -180,8 +201,22 @@ export default function Promo() {
                   ))}
                 </ul>
                 {selectedPackage === pkg.id && (
-                  <div className="mt-6 text-center">
-                    <span className="text-xs text-red-400 uppercase tracking-widest">Selected -- Pay below ↓</span>
+                  <div className="mt-6 flex flex-col gap-2">
+                    <button
+                      onClick={() => handleCheckout(pkg.id)}
+                      disabled={stripeCheckout.isPending}
+                      className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white py-2 text-xs font-semibold uppercase tracking-widest transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      {stripeCheckout.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Pay with Stripe"
+                      )}
+                    </button>
+                    <span className="text-xs text-red-400 uppercase tracking-widest text-center">Or pay below ↓</span>
                   </div>
                 )}
               </div>

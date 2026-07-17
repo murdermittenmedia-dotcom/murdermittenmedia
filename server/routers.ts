@@ -4206,5 +4206,65 @@ export const appRouter = router({
       }));
     }),
   }),
+
+  // Stripe payment integration
+  stripe: router({
+    createCheckoutSession: protectedProcedure
+      .input((val: unknown) => {
+        const obj = val as any;
+        if (typeof obj?.packageId !== "string") throw new Error("packageId required");
+        return { packageId: obj.packageId };
+      })
+      .mutation(async ({ ctx, input }) => {
+        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+        const { packageId } = input;
+        const user = ctx.user;
+
+        // Map package IDs to prices (in cents)
+        const priceMap: Record<string, number> = {
+          repost: 500,
+          story: 2000,
+          "day-post": 5000,
+          "perm-post": 10000,
+          "dual-perm": 15000,
+          "7day-pinned": 30000,
+          "monthly-pass": 50000,
+        };
+
+        const amount = priceMap[packageId];
+        if (!amount) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid package" });
+
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          mode: "payment",
+          customer_email: user.email,
+          client_reference_id: user.id.toString(),
+          metadata: {
+            user_id: user.id.toString(),
+            customer_email: user.email,
+            customer_name: user.artistName || user.name || "Unknown",
+            package_id: packageId,
+          },
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `Murder Mitten Media Promo - ${packageId}`,
+                  description: `Promo package: ${packageId}`,
+                },
+                unit_amount: amount,
+              },
+              quantity: 1,
+            },
+          ],
+          success_url: `${ctx.req.headers.origin}/promo?success=true`,
+          cancel_url: `${ctx.req.headers.origin}/promo?canceled=true`,
+          allow_promotion_codes: true,
+        });
+
+        return { checkoutUrl: session.url };
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;
