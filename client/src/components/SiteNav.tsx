@@ -312,7 +312,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
       )}
 
       {/* ── MOBILE DRAWER ── */}
-      <div className={`md:hidden fixed top-0 right-0 bottom-0 z-50 w-[320px] max-w-[92vw] bg-[#090909] border-l border-white/10 flex flex-col transition-transform duration-300 ease-in-out ${menuOpen ? "translate-x-0" : "translate-x-full"}`}>
+      <div className={`md:hidden fixed top-0 right-0 bottom-0 z-50 w-[320px] max-w-[92vw] bg-[#090909] border-l border-white/10 flex flex-col transition-transform duration-300 ease-in-out overflow-hidden ${menuOpen ? "translate-x-0" : "translate-x-full"}`}>
 
         {/* Drawer header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
@@ -328,7 +328,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
 
           {/* Profile row */}
           {user ? (
@@ -419,43 +419,43 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
         </div>
 
         {/* Drawer footer */}
-        <div className="border-t border-white/10 px-5 py-4 flex flex-col gap-2.5">
+        <div className="border-t border-white/10 px-4 py-3 flex flex-col gap-2 flex-shrink-0">
           {/* Merch & Promo quick links */}
-          <div className="flex gap-2 mb-1">
+          <div className="flex gap-1.5">
             <a
               href="/merch"
               onClick={() => setMenuOpen(false)}
-              className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest border border-white/20 text-white/70 hover:border-white hover:text-white px-3 py-2.5 transition-all"
+              className="flex-1 flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-widest border border-white/20 text-white/70 hover:border-white hover:text-white px-2 py-2 transition-all"
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              Merch
+              <ShoppingBag className="w-3 h-3" />
+              <span>Merch</span>
             </a>
             <a
               href="/promo"
               onClick={() => setMenuOpen(false)}
-              className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white px-3 py-2.5 transition-all"
+              className="flex-1 flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white px-2 py-2 transition-all"
             >
-              <Tag className="w-3.5 h-3.5" />
-              Get Promo
+              <Tag className="w-3 h-3" />
+              <span>Promo</span>
             </a>
           </div>
-          <a href="/wallet" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-xs text-white/40 hover:text-yellow-400 transition-colors py-1 uppercase tracking-widest font-semibold">
-            <Wallet className="w-3.5 h-3.5" />
-            My Wallet
+          <a href="/wallet" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-[10px] text-white/40 hover:text-yellow-400 transition-colors py-1.5 uppercase tracking-widest font-semibold">
+            <Wallet className="w-3 h-3" />
+            Wallet
           </a>
           {user?.role === "admin" && (
-            <a href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-xs text-white/40 hover:text-white transition-colors py-1 uppercase tracking-widest font-semibold">
-              <Shield className="w-3.5 h-3.5" />
-              Admin Panel
+            <a href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-[10px] text-white/40 hover:text-white transition-colors py-1.5 uppercase tracking-widest font-semibold">
+              <Shield className="w-3 h-3" />
+              Admin
             </a>
           )}
           {user && (
-            <button onClick={() => { logout(); setMenuOpen(false); }} className="flex items-center gap-2 text-xs text-white/30 hover:text-red-400 transition-colors py-1 text-left uppercase tracking-widest font-semibold">
-              <LogOut className="w-3.5 h-3.5" />
+            <button onClick={() => { logout(); setMenuOpen(false); }} className="flex items-center gap-2 text-[10px] text-white/30 hover:text-red-400 transition-colors py-1.5 text-left uppercase tracking-widest font-semibold">
+              <LogOut className="w-3 h-3" />
               Logout
             </button>
           )}
-          <div className="text-[10px] text-white/15 mt-1 uppercase tracking-widest">© 2024 Murder Mitten Media</div>
+          <div className="text-[9px] text-white/15 mt-1 uppercase tracking-widest">© 2024 MMM</div>
         </div>
       </div>
     </>
