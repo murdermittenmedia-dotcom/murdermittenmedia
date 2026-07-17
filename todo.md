@@ -1309,7 +1309,7 @@
 - [x] Stripe checkout integration: free shipping on orders >$100
 - [x] Cart UI: show cart items in floating panel with real-time updates
 - [x] Cart persistence: save cart to database per user
-- [ ] Order confirmation page showing order details and tracking
+- [x] Order confirmation page showing order details and tracking
 - [ ] Order confirmation email sent to customer
 - [ ] Admin dashboard: Product CRUD (add/edit/hide products)
 - [ ] Admin dashboard: Order management (view orders, update status)

@@ -4381,13 +4381,13 @@ export const appRouter = router({
                 },
               },
             ],
-            success_url: `${ctx.req.headers.origin}/merch?success=true`,
+            success_url: `${ctx.req.headers.origin}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${ctx.req.headers.origin}/merch?canceled=true`,
             allow_promotion_codes: true,
           });
 
           // Create order record
-          const order = await createOrder({
+          const orderResult = await createOrder({
             userId: user.id,
             stripeCheckoutSessionId: session.id,
             status: "pending",
@@ -4400,7 +4400,7 @@ export const appRouter = router({
             confirmationEmailSent: false,
           });
 
-          return { checkoutUrl: session.url, orderId: (order as any).insertId };
+          return { checkoutUrl: session.url, orderId: (orderResult as any).insertId };
         }),
       getStatus: publicProcedure
         .input((val: unknown) => {

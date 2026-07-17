@@ -155,11 +155,21 @@ export default function Merch() {
       });
 
       if (result.checkoutUrl) {
+        // Redirect to Stripe checkout
         window.location.href = result.checkoutUrl;
       }
     } catch (error) {
       console.error("Checkout failed:", error);
       alert("Checkout failed. Please try again.");
+    }
+  }
+
+  const handleStripeReturn = async () => {
+    // This handles the return from Stripe after successful payment
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (sessionId) {
+      setLocation(`/order-confirmation?session_id=${sessionId}`);
     }
   };
 

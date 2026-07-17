@@ -42,6 +42,7 @@ import CreatorWallet from "./pages/CreatorWallet";
 import StreamHistory from "./pages/StreamHistory";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Merch from "./pages/Merch";
+import OrderConfirmation from "./pages/OrderConfirmation";
 
 function Router() {
   return (
@@ -51,6 +52,7 @@ function Router() {
       <Route path={"/promo"} component={Promo} />
       <Route path={"/merch"} component={Merch} />
       <Route path={"/shop"} component={Merch} />
+      <Route path={"/order-confirmation"} component={OrderConfirmation} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/review"} component={MusicReview} />
