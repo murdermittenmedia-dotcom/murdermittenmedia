@@ -855,3 +855,61 @@ export const judgeStreams = mysqlTable("judge_streams", {
 
 export type JudgeStream = typeof judgeStreams.$inferSelect;
 export type InsertJudgeStream = typeof judgeStreams.$inferInsert;
+
+
+// ─── Merch Store ─────────────────────────────────────────
+// Products in the merch store
+export const merchProducts = mysqlTable("merch_products", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description"),
+  price: int("price").notNull(),  // in cents
+  imageUrl: varchar("imageUrl", { length: 512 }).notNull(),
+  frontImageUrl: varchar("frontImageUrl", { length: 512 }),
+  backImageUrl: varchar("backImageUrl", { length: 512 }),
+  colors: text("colors").notNull(),  // JSON array: ["Black", "White"]
+  sizes: text("sizes").notNull(),    // JSON array: ["S", "M", "L", "XL", "2XL", "3XL"]
+  isActive: boolean("isActive").default(true).notNull(),
+  isLimitedRelease: boolean("isLimitedRelease").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MerchProduct = typeof merchProducts.$inferSelect;
+export type InsertMerchProduct = typeof merchProducts.$inferInsert;
+
+// Shopping cart items
+export const cartItems = mysqlTable("cart_items", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  productId: int("productId").notNull(),
+  color: varchar("color", { length: 64 }).notNull(),
+  size: varchar("size", { length: 16 }).notNull(),
+  quantity: int("quantity").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CartItem = typeof cartItems.$inferSelect;
+export type InsertCartItem = typeof cartItems.$inferInsert;
+
+// Orders
+export const orders = mysqlTable("orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 256 }),
+  status: mysqlEnum("status", ["pending", "completed", "failed", "cancelled"]).default("pending").notNull(),
+  subtotalCents: int("subtotalCents").notNull(),
+  shippingCents: int("shippingCents").notNull(),
+  taxCents: int("taxCents").default(0).notNull(),
+  totalCents: int("totalCents").notNull(),
+  shippingAddress: text("shippingAddress"),  // JSON: {name, email, address, city, state, zip, country}
+  items: text("items").notNull(),  // JSON: [{productId, productName, color, size, quantity, price}]
+  confirmationEmailSent: boolean("confirmationEmailSent").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;

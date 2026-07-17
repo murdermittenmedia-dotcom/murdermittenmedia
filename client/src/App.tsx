@@ -41,6 +41,7 @@ import FireVoteWallet from "./pages/FireVoteWallet";
 import CreatorWallet from "./pages/CreatorWallet";
 import StreamHistory from "./pages/StreamHistory";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Merch from "./pages/Merch";
 
 function Router() {
   return (
@@ -48,6 +49,8 @@ function Router() {
       {/* Core pages */}
       <Route path={"/"} component={Home} />
       <Route path={"/promo"} component={Promo} />
+      <Route path={"/merch"} component={Merch} />
+      <Route path={"/shop"} component={Merch} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/review"} component={MusicReview} />
