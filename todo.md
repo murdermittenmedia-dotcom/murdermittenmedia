@@ -1296,23 +1296,23 @@
 - [x] Created Merch.tsx page with hero product display and product grid
 - [x] Product modal with color/size selection and quantity controls
 - [x] Added /merch and /shop routes to App.tsx
-- [ ] tRPC: products.getAll — fetch all merch products (public)
-- [ ] tRPC: products.getById — fetch single product (public)
-- [ ] tRPC: cart.addItem — add product to cart (protected)
-- [ ] tRPC: cart.getCart — fetch user's cart items (protected)
-- [ ] tRPC: cart.updateQuantity — update cart item quantity (protected)
-- [ ] tRPC: cart.removeItem — remove item from cart (protected)
-- [ ] tRPC: cart.clearCart — clear entire cart (protected)
-- [ ] tRPC: checkout.createSession — create Stripe checkout session (protected)
-- [ ] tRPC: checkout.getStatus — check order status by sessionId (public)
-- [ ] tRPC: orders.getMyOrders — fetch user's order history (protected)
-- [ ] Stripe checkout integration: free shipping on orders >$100
+- [x] tRPC: products.getAll — fetch all merch products (public)
+- [x] tRPC: products.getById — fetch single product (public)
+- [x] tRPC: cart.addItem — add product to cart (protected)
+- [x] tRPC: cart.getCart — fetch user's cart items (protected)
+- [x] tRPC: cart.updateQuantity — update cart item quantity (protected)
+- [x] tRPC: cart.removeItem — remove item from cart (protected)
+- [x] tRPC: cart.clearCart — clear entire cart (protected)
+- [x] tRPC: checkout.createSession — create Stripe checkout session (protected)
+- [x] tRPC: checkout.getStatus — check order status by sessionId (public)
+- [x] tRPC: orders.getMyOrders — fetch user's order history (protected)
+- [x] Stripe checkout integration: free shipping on orders >$100
+- [x] Cart UI: show cart items in floating panel with real-time updates
+- [x] Cart persistence: save cart to database per user
 - [ ] Order confirmation page showing order details and tracking
 - [ ] Order confirmation email sent to customer
 - [ ] Admin dashboard: Product CRUD (add/edit/hide products)
 - [ ] Admin dashboard: Order management (view orders, update status)
 - [ ] Admin dashboard: Sales analytics (revenue, top products, orders by date)
-- [ ] Cart UI: show cart items in floating panel or dedicated page
-- [ ] Cart persistence: save cart to localStorage or DB
 - [ ] Product inventory tracking (optional: low stock warnings)
 - [ ] Product reviews/ratings system (optional)

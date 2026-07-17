@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { SiteNav } from "@/components/SiteNav";
-import { ShoppingCart, X } from "lucide-react";
-import { Link } from "wouter";
+import { ShoppingCart, X, Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 const PRODUCTS = [
   {
@@ -35,19 +38,129 @@ const PRODUCTS = [
 ];
 
 export default function Merch() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedProduct, setSelectedProduct] = useState<typeof PRODUCTS[0] | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
+  const [showCart, setShowCart] = useState(false);
 
-  const handleAddToCart = () => {
+  // tRPC queries and mutations
+  const cartQuery = trpc.merch.cart.getCart.useQuery(undefined, { enabled: !!user });
+  const addToCartMutation = trpc.merch.cart.addItem.useMutation();
+  const updateCartMutation = trpc.merch.cart.updateQuantity.useMutation();
+  const removeCartMutation = trpc.merch.cart.removeItem.useMutation();
+  const checkoutMutation = trpc.merch.checkout.createSession.useMutation();
+
+  const cartItems = cartQuery.data || [];
+
+  const cartTotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const product = PRODUCTS.find(p => p.id === item.productId);
+      return sum + (product?.price || 0) * item.quantity;
+    }, 0);
+  }, [cartItems]);
+
+  const shippingCost = cartTotal > 10000 ? 0 : 1000; // Free shipping over $100
+  const orderTotal = cartTotal + shippingCost;
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      window.location.href = getLoginUrl();
+      return;
+    }
     if (!selectedColor || !selectedSize) {
       alert("Please select color and size");
       return;
     }
-    // TODO: Add to cart logic
-    alert(`Added ${quantity}x ${selectedProduct?.name} (${selectedColor}, ${selectedSize}) to cart`);
-    setSelectedProduct(null);
+    if (!selectedProduct) return;
+
+    try {
+      await addToCartMutation.mutateAsync({
+        productId: selectedProduct.id,
+        color: selectedColor,
+        size: selectedSize,
+        quantity,
+      });
+      await cartQuery.refetch();
+      setSelectedProduct(null);
+      setSelectedColor("");
+      setSelectedSize("");
+      setQuantity(1);
+      alert("Added to cart!");
+    } catch (error) {
+      console.error("Failed to add to cart:", error);
+      alert("Failed to add to cart");
+    }
+  };
+
+  const handleUpdateQuantity = async (cartItemId: number, newQuantity: number) => {
+    try {
+      await updateCartMutation.mutateAsync({
+        cartItemId,
+        quantity: newQuantity,
+      });
+      await cartQuery.refetch();
+    } catch (error) {
+      console.error("Failed to update quantity:", error);
+    }
+  };
+
+  const handleRemoveItem = async (cartItemId: number) => {
+    try {
+      await removeCartMutation.mutateAsync({ cartItemId });
+      await cartQuery.refetch();
+    } catch (error) {
+      console.error("Failed to remove item:", error);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!user) {
+      window.location.href = getLoginUrl();
+      return;
+    }
+    if (cartItems.length === 0) {
+      alert("Cart is empty");
+      return;
+    }
+
+    try {
+      const items = cartItems.map((item) => {
+        const product = PRODUCTS.find(p => p.id === item.productId);
+        return {
+          productId: item.productId,
+          productName: product?.name || "Unknown",
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          price: product?.price || 0,
+        };
+      });
+
+      const shippingAddress = {
+        name: user.name || user.artistName || "Customer",
+        email: user.email,
+        address: "To be filled during checkout",
+        city: "",
+        state: "",
+        zip: "",
+        country: "US",
+      };
+
+      const result = await checkoutMutation.mutateAsync({
+        items,
+        shippingAddress,
+      });
+
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+      }
+    } catch (error) {
+      console.error("Checkout failed:", error);
+      alert("Checkout failed. Please try again.");
+    }
   };
 
   const heroProduct = PRODUCTS.find(p => p.isHero);
@@ -150,14 +263,14 @@ export default function Merch() {
                   <span className="px-6 py-2 text-white font-semibold">{quantity}</span>
                   <button onClick={() => setQuantity(quantity + 1)} className="px-4 py-2 text-white/60 hover:text-white">+</button>
                 </div>
-                <button
-                  onClick={handleAddToCart}
-                  disabled={!selectedColor || !selectedSize}
-                  className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white py-3 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  Add to Cart
-                </button>
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={!selectedColor || !selectedSize || addToCartMutation.isPending}
+                      className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white py-3 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                    >
+                      {addToCartMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
+                      Add to Cart
+                    </button>
               </div>
             </div>
           </div>
@@ -272,15 +385,108 @@ export default function Merch() {
                     </div>
                     <button
                       onClick={handleAddToCart}
-                      disabled={!selectedColor || !selectedSize}
+                      disabled={!selectedColor || !selectedSize || addToCartMutation.isPending}
                       className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white py-2 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                     >
-                      <ShoppingCart className="w-4 h-4" />
+                      {addToCartMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
                       Add to Cart
                     </button>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Button */}
+      <button
+        onClick={() => setShowCart(!showCart)}
+        className="fixed bottom-8 right-8 bg-red-600 hover:bg-red-700 text-white p-4 rounded-full flex items-center gap-2 font-bold uppercase tracking-widest transition-all shadow-lg"
+      >
+        <ShoppingCart className="w-5 h-5" />
+        {cartItems.length > 0 && <span className="bg-white text-red-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">{cartItems.length}</span>}
+      </button>
+
+      {/* Cart Sidebar */}
+      {showCart && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-end md:items-center justify-end md:justify-center">
+          <div className="bg-[#0a0a0a] border border-white/20 rounded-lg w-full md:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[#0a0a0a] border-b border-white/20 flex items-center justify-between p-6">
+              <h3 className="font-bold text-lg uppercase">Shopping Cart</h3>
+              <button onClick={() => setShowCart(false)} className="text-white/60 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {cartItems.length === 0 ? (
+                <p className="text-white/60 text-center py-8">Your cart is empty</p>
+              ) : (
+                <>
+                  {cartItems.map((item) => {
+                    const product = PRODUCTS.find(p => p.id === item.productId);
+                    if (!product) return null;
+                    return (
+                      <div key={item.id} className="border border-white/20 p-4 rounded">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="font-bold text-sm">{product.name}</p>
+                            <p className="text-xs text-white/60">{item.color} / {item.size}</p>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="text-white/60 hover:text-white"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                              className="px-2 py-1 border border-white/30 text-white/60 hover:text-white text-xs"
+                            >
+                              −
+                            </button>
+                            <span className="px-3 text-sm font-semibold">{item.quantity}</span>
+                            <button
+                              onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                              className="px-2 py-1 border border-white/30 text-white/60 hover:text-white text-xs"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <p className="font-bold text-sm">${((product.price * item.quantity) / 100).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <div className="border-t border-white/20 pt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/60">Subtotal:</span>
+                      <span>${(cartTotal / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/60">Shipping:</span>
+                      <span className={shippingCost === 0 ? "text-green-500 font-bold" : ""}>{shippingCost === 0 ? "FREE" : `$${(shippingCost / 100).toFixed(2)}`}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold border-t border-white/20 pt-2 mt-2">
+                      <span>Total:</span>
+                      <span className="text-red-600">${(orderTotal / 100).toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleCheckout}
+                    disabled={checkoutMutation.isPending}
+                    className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white py-3 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-4"
+                  >
+                    {checkoutMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Proceed to Checkout"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
