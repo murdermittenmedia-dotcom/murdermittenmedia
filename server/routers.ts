@@ -52,6 +52,9 @@ import {
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
   confirmPaidSubmission,
   getOrCreateActiveMusicReviewSession, endActiveMusicReviewSession, countUserSubmissionsInActiveSession,
+  getAllMerchProducts, getMerchProductById, addMerchProduct, updateMerchProduct,
+  getUserCartItems, addCartItem, updateCartItem, removeCartItem, clearUserCart,
+  createOrder, getOrderById, getOrderByStripeSessionId, getUserOrders, updateOrderStatus,
 } from "./db";
 import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams } from "../drizzle/schema";
 import {
@@ -4265,6 +4268,156 @@ export const appRouter = router({
 
         return { checkoutUrl: session.url };
       }),
+  }),
+
+  // Merch Store
+  merch: router({
+    products: router({
+      getAll: publicProcedure.query(async () => {
+        return getAllMerchProducts();
+      }),
+      getById: publicProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (typeof obj?.id !== "number") throw new Error("id required");
+          return { id: obj.id };
+        })
+        .query(async ({ input }) => {
+          return getMerchProductById(input.id);
+        }),
+    }),
+    cart: router({
+      getCart: protectedProcedure.query(async ({ ctx }) => {
+        return getUserCartItems(ctx.user.id);
+      }),
+      addItem: protectedProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (typeof obj?.productId !== "number") throw new Error("productId required");
+          if (typeof obj?.color !== "string") throw new Error("color required");
+          if (typeof obj?.size !== "string") throw new Error("size required");
+          if (typeof obj?.quantity !== "number") throw new Error("quantity required");
+          return { productId: obj.productId, color: obj.color, size: obj.size, quantity: obj.quantity };
+        })
+        .mutation(async ({ ctx, input }) => {
+          return addCartItem({
+            userId: ctx.user.id,
+            productId: input.productId,
+            color: input.color,
+            size: input.size,
+            quantity: input.quantity,
+          });
+        }),
+      updateQuantity: protectedProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (typeof obj?.cartItemId !== "number") throw new Error("cartItemId required");
+          if (typeof obj?.quantity !== "number") throw new Error("quantity required");
+          return { cartItemId: obj.cartItemId, quantity: obj.quantity };
+        })
+        .mutation(async ({ input }) => {
+          return updateCartItem(input.cartItemId, input.quantity);
+        }),
+      removeItem: protectedProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (typeof obj?.cartItemId !== "number") throw new Error("cartItemId required");
+          return { cartItemId: obj.cartItemId };
+        })
+        .mutation(async ({ input }) => {
+          return removeCartItem(input.cartItemId);
+        }),
+      clearCart: protectedProcedure.mutation(async ({ ctx }) => {
+        return clearUserCart(ctx.user.id);
+      }),
+    }),
+    checkout: router({
+      createSession: protectedProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (!Array.isArray(obj?.items)) throw new Error("items required");
+          if (typeof obj?.shippingAddress !== "object") throw new Error("shippingAddress required");
+          return {
+            items: obj.items as Array<{ productId: number; productName: string; color: string; size: string; quantity: number; price: number }>,
+            shippingAddress: obj.shippingAddress as Record<string, any>,
+          };
+        })
+        .mutation(async ({ ctx, input }) => {
+          const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+          const user = ctx.user;
+
+          // Calculate totals
+          const subtotalCents = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const shippingCents = subtotalCents > 10000 ? 0 : 1000; // Free shipping over $100
+          const totalCents = subtotalCents + shippingCents;
+
+          // Create Stripe session
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            mode: "payment",
+            customer_email: user.email,
+            client_reference_id: user.id.toString(),
+            metadata: {
+              user_id: user.id.toString(),
+              customer_email: user.email,
+              customer_name: user.artistName || user.name || "Unknown",
+            },
+            line_items: input.items.map((item) => ({
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `${item.productName} - ${item.color} / ${item.size}`,
+                },
+                unit_amount: item.price,
+              },
+              quantity: item.quantity,
+            })),
+            shipping_options: [
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  fixed_amount: { amount: shippingCents, currency: "usd" },
+                  display_name: shippingCents === 0 ? "Free Shipping" : "Standard Shipping",
+                },
+              },
+            ],
+            success_url: `${ctx.req.headers.origin}/merch?success=true`,
+            cancel_url: `${ctx.req.headers.origin}/merch?canceled=true`,
+            allow_promotion_codes: true,
+          });
+
+          // Create order record
+          const order = await createOrder({
+            userId: user.id,
+            stripeCheckoutSessionId: session.id,
+            status: "pending",
+            subtotalCents,
+            shippingCents,
+            taxCents: 0,
+            totalCents,
+            shippingAddress: JSON.stringify(input.shippingAddress),
+            items: JSON.stringify(input.items),
+            confirmationEmailSent: false,
+          });
+
+          return { checkoutUrl: session.url, orderId: (order as any).insertId };
+        }),
+      getStatus: publicProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (typeof obj?.sessionId !== "string") throw new Error("sessionId required");
+          return { sessionId: obj.sessionId };
+        })
+        .query(async ({ input }) => {
+          const order = await getOrderByStripeSessionId(input.sessionId);
+          return order ?? null;
+        }),
+    }),
+    orders: router({
+      getMyOrders: protectedProcedure.query(async ({ ctx }) => {
+        return getUserOrders(ctx.user.id);
+      }),
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;

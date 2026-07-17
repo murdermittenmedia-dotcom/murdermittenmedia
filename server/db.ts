@@ -32,6 +32,9 @@ import {
   lineSkipCredits,
   musicReviewSessions,
   judgeStreams, InsertJudgeStream, JudgeStream,
+  merchProducts, InsertMerchProduct, MerchProduct,
+  cartItems, InsertCartItem, CartItem,
+  orders, InsertOrder, Order,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1918,4 +1921,110 @@ export async function endJudgeBroadcast(judgeStreamId: number) {
   await db.update(judgeStreams)
     .set({ status: "ended", endedAt: new Date() })
     .where(eq(judgeStreams.id, judgeStreamId));
+}
+
+// -- Merch Store --------------------------------------------------
+
+export async function getAllMerchProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(merchProducts)
+    .where(eq(merchProducts.isActive, true))
+    .orderBy(desc(merchProducts.createdAt));
+}
+
+export async function getMerchProductById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(merchProducts)
+    .where(and(eq(merchProducts.id, id), eq(merchProducts.isActive, true)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function addMerchProduct(data: InsertMerchProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(merchProducts).values(data);
+}
+
+export async function updateMerchProduct(id: number, data: Partial<InsertMerchProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(merchProducts).set(data).where(eq(merchProducts.id, id));
+}
+
+export async function getUserCartItems(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cartItems)
+    .where(eq(cartItems.userId, userId))
+    .orderBy(desc(cartItems.createdAt));
+}
+
+export async function addCartItem(data: InsertCartItem) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(cartItems).values(data);
+}
+
+export async function updateCartItem(id: number, quantity: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  if (quantity <= 0) {
+    return db.delete(cartItems).where(eq(cartItems.id, id));
+  }
+  return db.update(cartItems).set({ quantity }).where(eq(cartItems.id, id));
+}
+
+export async function removeCartItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(cartItems).where(eq(cartItems.id, id));
+}
+
+export async function clearUserCart(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(cartItems).where(eq(cartItems.userId, userId));
+}
+
+export async function createOrder(data: InsertOrder) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(orders).values(data);
+}
+
+export async function getOrderById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(orders)
+    .where(eq(orders.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getOrderByStripeSessionId(sessionId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(orders)
+    .where(eq(orders.stripeCheckoutSessionId, sessionId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getUserOrders(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(orders)
+    .where(eq(orders.userId, userId))
+    .orderBy(desc(orders.createdAt));
+}
+
+export async function updateOrderStatus(id: number, status: Order["status"], stripePaymentIntentId?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const updateData: Record<string, unknown> = { status };
+  if (stripePaymentIntentId) updateData.stripePaymentIntentId = stripePaymentIntentId;
+  return db.update(orders).set(updateData).where(eq(orders.id, id));
 }
