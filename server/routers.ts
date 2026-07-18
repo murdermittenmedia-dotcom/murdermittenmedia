@@ -61,7 +61,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -4505,7 +4505,10 @@ export const appRouter = router({
           stripePriceId = stripePrice.id;
         }
 
-        const result = await createShopProduct({
+        const db = await getDb();
+        if (!db) throw new Error("DB not available");
+        
+        const insertResult = await db.insert(shopProducts).values({
           name: input.name,
           subtitle: input.subtitle ?? null,
           slug: input.slug,
@@ -4524,7 +4527,8 @@ export const appRouter = router({
           stripePriceId: stripePriceId ?? null,
         });
 
-        const productId = (result as any).insertId as number;
+        const productId = (insertResult as any)[0]?.insertId ?? (insertResult as any).insertId ?? 0;
+        if (!productId) throw new Error("Failed to create product");
 
         // Create variants
         if (input.variants?.length) {

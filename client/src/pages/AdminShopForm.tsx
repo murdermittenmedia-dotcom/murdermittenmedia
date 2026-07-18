@@ -254,8 +254,17 @@ export default function AdminShopForm() {
   };
 
   // ─── Variant helpers ───────────────────────────────────────
+  const generateSKU = (color: string, size: string) => {
+    const colorCode = color.slice(0, 2).toUpperCase();
+    const sizeCode = size.toUpperCase();
+    const timestamp = Date.now().toString().slice(-6);
+    return `${colorCode}-${sizeCode}-${timestamp}`;
+  };
+
   const addVariant = () => {
-    setVariants(prev => [...prev, { color: "Black", size: "M", inventoryQty: 0, sku: "" }]);
+    const newVariant = { color: "Black", size: "M", inventoryQty: 50, sku: "" };
+    newVariant.sku = generateSKU(newVariant.color, newVariant.size);
+    setVariants(prev => [...prev, newVariant]);
   };
 
   const removeVariant = (index: number) => {
@@ -263,7 +272,15 @@ export default function AdminShopForm() {
   };
 
   const updateVariant = (index: number, field: keyof VariantRow, value: string | number) => {
-    setVariants(prev => prev.map((v, i) => i === index ? { ...v, [field]: value } : v));
+    setVariants(prev => prev.map((v, i) => {
+      if (i !== index) return v;
+      const updated = { ...v, [field]: value };
+      // Auto-generate SKU if color or size changes
+      if ((field === "color" || field === "size") && !updated.sku) {
+        updated.sku = generateSKU(updated.color, updated.size);
+      }
+      return updated;
+    }));
   };
 
   const generateAllVariants = () => {
@@ -272,7 +289,8 @@ export default function AdminShopForm() {
     const rows: VariantRow[] = [];
     for (const color of colorsToUse) {
       for (const size of SIZES) {
-        rows.push({ color, size, inventoryQty: 0, sku: "" });
+        const sku = generateSKU(color, size);
+        rows.push({ color, size, inventoryQty: 50, sku });
       }
     }
     setVariants(rows);
