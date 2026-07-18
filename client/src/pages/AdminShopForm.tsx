@@ -44,6 +44,7 @@ interface ImageRow {
   file?: File;
   uploading?: boolean;
   storageKey?: string | null;
+  color?: string; // Color/variation for this image (e.g., "Black", "White")
 }
 
 // ─── Slug generator ───────────────────────────────────────────
@@ -169,6 +170,8 @@ export default function AdminShopForm() {
   const [images, setImages] = useState<ImageRow[]>([]);
   const [variants, setVariants] = useState<VariantRow[]>([]);
   const [saving, setSaving] = useState(false);
+  const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
+  const editingImage = editingImageIndex !== null ? images[editingImageIndex] : null;
 
   // Populate form when editing
   useEffect(() => {
@@ -465,15 +468,20 @@ export default function AdminShopForm() {
                 {images.length > 0 && (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {images.map((img, index) => (
-                      <div key={index} className="relative group aspect-square bg-zinc-900 border border-white/10 rounded overflow-hidden">
+                      <div
+                        key={index}
+                        onClick={() => setEditingImageIndex(index)}
+                        className="relative group aspect-square bg-zinc-900 border border-white/10 rounded overflow-hidden cursor-pointer hover:border-red-600/50 transition-colors"
+                      >
                         <img src={img.url} alt="" className="w-full h-full object-cover" />
 
-                        {/* Always-visible delete button in top-right corner */}
+                        {/* Delete button */}
                         <button
-                          onClick={async () => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (!confirm("Delete this image?")) return;
                             if (img.id) {
-                              await deleteImageMutation.mutateAsync({ imageId: img.id });
+                              deleteImageMutation.mutateAsync({ imageId: img.id });
                               utils.shop.adminGetProducts.invalidate();
                             }
                             setImages(prev => prev.filter((_, i) => i !== index));
@@ -489,23 +497,15 @@ export default function AdminShopForm() {
                           )}
                         </button>
 
-                        {/* Hover overlay: image type selector only */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end justify-end p-2 pointer-events-none group-hover:pointer-events-auto">
-                          <select
-                            value={img.imageType}
-                            onChange={e => setImages(prev => prev.map((im, i) => i === index ? { ...im, imageType: e.target.value as ImageType } : im))}
-                            className="w-full text-xs bg-black/90 text-white border border-white/30 rounded px-1 py-0.5"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            {(["thumbnail", "front", "back", "size_chart", "gallery"] as ImageType[]).map(t => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
-                          </select>
+                        {/* Type + Color badges */}
+                        <div className="absolute bottom-1 left-1 bg-black/70 text-white/60 text-[9px] px-1 rounded pointer-events-none flex flex-col gap-0.5">
+                          <div>{img.imageType}</div>
+                          {img.color && <div className="text-white/40 text-[8px]">{img.color}</div>}
                         </div>
 
-                        {/* Image type badge bottom-left */}
-                        <div className="absolute bottom-1 left-1 bg-black/70 text-white/60 text-[9px] px-1 rounded pointer-events-none">
-                          {img.imageType}
+                        {/* Click hint */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <p className="text-white text-xs font-semibold">Edit</p>
                         </div>
                       </div>
                     ))}
@@ -530,7 +530,7 @@ export default function AdminShopForm() {
                   onChange={e => handleImageFiles(e.target.files)}
                 />
                 <p className="text-white/30 text-xs">
-                  Hover over an image to change its type (thumbnail, front, back, size chart, gallery). The thumbnail is shown in the product grid.
+                  Click an image to open the editor. Set the type (thumbnail, front, back, size chart, gallery), assign it to a color/variation, and adjust sort order. The thumbnail is shown in the product grid.
                 </p>
               </div>
             </Section>
@@ -745,6 +745,95 @@ export default function AdminShopForm() {
             )}
           </div>
         </div>
+      {/* ── IMAGE EDITOR MODAL ────────────────────────────────────────────── */}
+      {editingImage && editingImageIndex !== null && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d0d0d] border border-white/10 rounded-lg max-w-md w-full space-y-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="font-['Anton'] text-lg uppercase">Edit Image</h3>
+              <button
+                onClick={() => setEditingImageIndex(null)}
+                className="text-white/60 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Image preview */}
+            <div className="aspect-square bg-zinc-900 border border-white/10 rounded overflow-hidden">
+              <img src={editingImage.url} alt="" className="w-full h-full object-cover" />
+            </div>
+
+            {/* Image Type */}
+            <div>
+              <label className="block text-xs text-white/50 uppercase tracking-widest mb-1.5">Image Type</label>
+              <select
+                value={editingImage.imageType}
+                onChange={e => setImages(prev => prev.map((im, i) => i === editingImageIndex ? { ...im, imageType: e.target.value as ImageType } : im))}
+                className="w-full bg-[#111] border border-white/10 text-white text-sm px-3 py-2.5 rounded focus:outline-none focus:border-red-600/60"
+              >
+                {(["thumbnail", "front", "back", "size_chart", "gallery"] as ImageType[]).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <p className="text-white/30 text-xs mt-1">thumbnail: product grid, front: hero product, back: detail, size_chart: sizing guide, gallery: carousel</p>
+            </div>
+
+            {/* Color/Variation */}
+            <div>
+              <label className="block text-xs text-white/50 uppercase tracking-widest mb-1.5">Color/Variation</label>
+              <select
+                value={editingImage.color || ""}
+                onChange={e => setImages(prev => prev.map((im, i) => i === editingImageIndex ? { ...im, color: e.target.value || undefined } : im))}
+                className="w-full bg-[#111] border border-white/10 text-white text-sm px-3 py-2.5 rounded focus:outline-none focus:border-red-600/60"
+              >
+                <option value="">— Select (optional) —</option>
+                {Array.from(new Set(variants.map(v => v.color))).map(color => (
+                  <option key={color} value={color}>{color}</option>
+                ))}
+              </select>
+              <p className="text-white/30 text-xs mt-1">Assign this image to a specific color (e.g., Black, White)</p>
+            </div>
+
+            {/* Sort Order */}
+            <div>
+              <label className="block text-xs text-white/50 uppercase tracking-widest mb-1.5">Sort Order</label>
+              <input
+                type="number"
+                value={editingImage.sortOrder}
+                onChange={e => setImages(prev => prev.map((im, i) => i === editingImageIndex ? { ...im, sortOrder: parseInt(e.target.value) || 0 } : im))}
+                className="w-full bg-[#111] border border-white/10 text-white text-sm px-3 py-2.5 rounded focus:outline-none focus:border-red-600/60"
+              />
+              <p className="text-white/30 text-xs mt-1">Lower numbers appear first in the gallery</p>
+            </div>
+
+            {/* Delete button */}
+            <button
+              onClick={async () => {
+                if (!confirm("Delete this image?")) return;
+                if (editingImage.id) {
+                  await deleteImageMutation.mutateAsync({ imageId: editingImage.id });
+                  utils.shop.adminGetProducts.invalidate();
+                }
+                setImages(prev => prev.filter((_, i) => i !== editingImageIndex));
+                setEditingImageIndex(null);
+              }}
+              disabled={deleteImageMutation.isPending}
+              className="w-full bg-red-600/20 hover:bg-red-600/30 disabled:opacity-50 text-red-500 py-2 font-semibold uppercase tracking-widest transition-colors rounded"
+            >
+              {deleteImageMutation.isPending ? "Deleting..." : "Delete Image"}
+            </button>
+
+            {/* Close button */}
+            <button
+              onClick={() => setEditingImageIndex(null)}
+              className="w-full bg-white/10 hover:bg-white/20 text-white py-2 font-semibold uppercase tracking-widest transition-colors rounded"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
