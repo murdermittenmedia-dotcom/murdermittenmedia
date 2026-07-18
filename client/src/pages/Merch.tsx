@@ -1,4 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+/* ============================================================
+   MURDER MITTEN MEDIA — Merch Page
+   Dynamic product catalog from DB, hero product, cart integration
+   ============================================================ */
+
+import { useState, useMemo } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { ShoppingCart, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocation } from "wouter";
@@ -99,50 +104,38 @@ function getProductColors(product: ShopProduct): string[] {
   return colors.length > 0 ? colors : ["Black", "White"];
 }
 
-// ─── Helper: get unique sizes from variants ───────────────────────────────────
-function getProductSizes(product: ShopProduct): string[] {
-  const sizeOrder = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
-  const sizes = Array.from(new Set(product.variants.map((v) => v.size)));
-  return sizes.sort((a, b) => {
-    const ai = sizeOrder.indexOf(a);
-    const bi = sizeOrder.indexOf(b);
-    if (ai === -1 && bi === -1) return a.localeCompare(b);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
+// ─── Helper: get unique sizes for a color ────────────────────────────────────
+function getProductSizes(product: ShopProduct, color?: string): string[] {
+  const variants = color
+    ? product.variants.filter((v) => v.color === color)
+    : product.variants;
+  const sizes = Array.from(new Set(variants.map((v) => v.size)));
+  return sizes.length > 0 ? sizes : [];
 }
 
-// ─── Image Carousel ───────────────────────────────────────────────────────────
+// ─── Image Carousel Component ─────────────────────────────────────────────────
 function ImageCarousel({ images, productName }: { images: string[]; productName: string }) {
   const [activeIdx, setActiveIdx] = useState(0);
 
-  // Reset to first image when images array changes (color switch)
-  useEffect(() => {
-    setActiveIdx(0);
-  }, [images]);
-
-  const prev = () => setActiveIdx((i) => (i === 0 ? images.length - 1 : i - 1));
-  const next = () => setActiveIdx((i) => (i === images.length - 1 ? 0 : i + 1));
-
-  if (images.length === 0) {
+  if (!images || images.length === 0) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="relative bg-[#111] aspect-[3/4] max-h-[70vw] md:max-h-none rounded-lg overflow-hidden flex items-center justify-center">
-          <span className="text-white/20 text-sm uppercase tracking-widest">No Image</span>
-        </div>
+      <div className="aspect-square bg-zinc-900 border border-white/10 rounded flex items-center justify-center">
+        <p className="text-white/40 text-sm">No images available</p>
       </div>
     );
   }
 
+  const prev = () => setActiveIdx((i) => (i - 1 + images.length) % images.length);
+  const next = () => setActiveIdx((i) => (i + 1) % images.length);
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="space-y-3">
       {/* Main image */}
-      <div className="relative bg-[#111] aspect-[3/4] max-h-[70vw] md:max-h-none rounded-lg overflow-hidden group">
+      <div className="relative group aspect-square bg-zinc-900 border border-white/10 rounded overflow-hidden">
         <img
           src={images[activeIdx]}
-          alt={`${productName} - view ${activeIdx + 1}`}
-          className="w-full h-full object-cover transition-opacity duration-300"
+          alt={productName}
+          className="w-full h-full object-cover"
         />
         {images.length > 1 && (
           <>
@@ -173,11 +166,13 @@ function ImageCarousel({ images, productName }: { images: string[]; productName:
             <button
               key={idx}
               onClick={() => setActiveIdx(idx)}
-              className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
-                idx === activeIdx ? "border-red-600" : "border-white/20 hover:border-white/40"
+              className={`flex-shrink-0 w-16 h-16 rounded border transition-all ${
+                activeIdx === idx
+                  ? "border-red-600 ring-1 ring-red-600"
+                  : "border-white/20 hover:border-white/40"
               }`}
             >
-              <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+              <img src={img} alt="" className="w-full h-full object-cover rounded" />
             </button>
           ))}
         </div>
@@ -186,22 +181,15 @@ function ImageCarousel({ images, productName }: { images: string[]; productName:
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Merch Page ──────────────────────────────────────────────────────────
 export default function Merch() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
 
-  // Product modal state
-  const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string>("");
-  const [selectedSize, setSelectedSize] = useState<string>("");
-  const [quantity, setQuantity] = useState(1);
-  const [showCart, setShowCart] = useState(false);
-
-  // Hero product color selection (separate from modal)
+  // ─── State ────────────────────────────────────────────────────────────────
   const [heroColor, setHeroColor] = useState<string>("Black");
-  // Hero product size selection (inline, not in modal)
   const [heroSize, setHeroSize] = useState<string>("");
+  const [quantity, setQuantity] = useState(1);
 
   // ─── tRPC: fetch products from DB ─────────────────────────────────────────
   const productsQuery = trpc.shop.getProducts.useQuery(undefined, {
@@ -216,153 +204,56 @@ export default function Merch() {
     enabled: !!user,
     refetchOnWindowFocus: false,
   });
-  const addToCartMutation = trpc.merch.cart.addItem.useMutation({
-    onSuccess: () => {
-      cartQuery.refetch();
-    },
-  });
-  const updateCartMutation = trpc.merch.cart.updateQuantity.useMutation({
-    onSuccess: () => cartQuery.refetch(),
-  });
-  const removeCartMutation = trpc.merch.cart.removeItem.useMutation({
-    onSuccess: () => cartQuery.refetch(),
-  });
-  const checkoutMutation = trpc.merch.checkout.createSession.useMutation();
+  const addToCartMutation = trpc.merch.cart.addItem.useMutation();
+  const utils = trpc.useUtils();
 
-  const cartItems = cartQuery.data || [];
-
-  // ─── Derived product data ──────────────────────────────────────────────────
-  // Hero product: featured=true or first product
-  const heroProduct = useMemo(() => {
-    return products.find((p) => p.featured) || products[0] || null;
-  }, [products]);
-
+  // ─── Derived state ────────────────────────────────────────────────────────
+  const heroProduct = useMemo(
+    () => products.find((p) => p.featured),
+    [products]
+  );
   const otherProducts = useMemo(() => {
     if (!heroProduct) return products;
     return products.filter((p) => p.id !== heroProduct.id);
   }, [products, heroProduct]);
 
   const heroColors = useMemo(() => heroProduct ? getProductColors(heroProduct) : [], [heroProduct]);
-  const heroSizes = useMemo(() => heroProduct ? getProductSizes(heroProduct) : [], [heroProduct]);
+  const heroSizes = useMemo(() => heroProduct ? getProductSizes(heroProduct, heroColor) : [], [heroProduct, heroColor]);
   const heroImages = useMemo(
     () => heroProduct ? getProductImages(heroProduct, heroColor) : [],
     [heroProduct, heroColor]
   );
 
-  // Modal images
-  const modalImages = useMemo(
-    () => selectedProduct ? getProductImages(selectedProduct, selectedColor || getProductColors(selectedProduct)[0]) : [],
-    [selectedProduct, selectedColor]
-  );
-
-  // ─── Cart totals ───────────────────────────────────────────────────────────
-  const cartTotal = useMemo(() => {
-    return cartItems.reduce((sum, item) => {
-      const product = products.find((p) => p.id === item.productId);
-      return sum + (product?.price || 0) * item.quantity;
-    }, 0);
-  }, [cartItems, products]);
-
-  const shippingCost = cartTotal >= 10000 ? 0 : 399; // $3.99 flat, free over $100
-  const orderTotal = cartTotal + shippingCost;
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
-  // ─── Add to cart ──────────────────────────────────────────────────────────
-  const handleAddToCart = useCallback(
-    async (product: ShopProduct, color: string, size: string, qty: number) => {
-      if (!user) {
-        window.location.href = getLoginUrl();
-        return;
-      }
-      if (!color) {
-        toast.error("Please select a color");
-        return;
-      }
-      if (!size) {
-        toast.error("Please select a size");
-        return;
-      }
-
-      try {
-        await addToCartMutation.mutateAsync({
-          productId: product.id,
-          color,
-          size,
-          quantity: qty,
-        });
-        toast.success(`Added to cart! ${product.name} — ${color} / ${size}`);
-        // Close modal if open
-        setSelectedProduct(null);
-        setSelectedColor("");
-        setSelectedSize("");
-        setQuantity(1);
-      } catch (err: any) {
-        console.error("Add to cart error:", err);
-        toast.error(err?.message || "Failed to add to cart. Please try again.");
-      }
-    },
-    [user, addToCartMutation]
-  );
-
-  // ─── Checkout ─────────────────────────────────────────────────────────────
-  const handleCheckout = async () => {
+  // ─── Handlers ─────────────────────────────────────────────────────────────
+  const handleAddToCart = async (
+    product: ShopProduct,
+    color: string,
+    size: string,
+    qty: number
+  ) => {
     if (!user) {
-      window.location.href = getLoginUrl();
-      return;
-    }
-    if (cartItems.length === 0) {
-      toast.error("Your cart is empty");
+      window.location.href = getLoginUrl("/merch");
       return;
     }
 
     try {
-      const items = cartItems.map((item) => {
-        const product = products.find((p) => p.id === item.productId);
-        return {
-          productId: item.productId,
-          productName: product?.name || "Unknown",
-          color: item.color,
-          size: item.size,
-          quantity: item.quantity,
-          price: product?.price || 0,
-        };
+      await addToCartMutation.mutateAsync({
+        productId: product.id,
+        color,
+        size,
+        quantity: qty,
       });
-
-      const shippingAddress = {
-        name: (user as any).name || (user as any).artistName || "Customer",
-        email: (user as any).email,
-        address: "To be filled during checkout",
-        city: "",
-        state: "",
-        zip: "",
-        country: "US",
-      };
-
-      const result = await checkoutMutation.mutateAsync({ items, shippingAddress });
-
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
-      }
+      toast.success(`Added ${qty} to cart!`);
+      utils.merch.cart.getCart.invalidate();
+      setQuantity(1);
+      setHeroSize("");
     } catch (err: any) {
-      console.error("Checkout failed:", err);
-      toast.error(err?.message || "Checkout failed. Please try again.");
+      toast.error(err.message || "Failed to add to cart");
     }
   };
 
-  // ─── Loading state ─────────────────────────────────────────────────────────
-  if (productsQuery.isLoading) {
-    return (
-      <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
-        <SiteNav />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-10 h-10 animate-spin text-red-600" />
-        </div>
-      </div>
-    );
-  }
-
-  // ─── Empty state ───────────────────────────────────────────────────────────
-  if (!heroProduct) {
+  // ─── Render ───────────────────────────────────────────────────────────────
+  if (!productsQuery.isLoading && !heroProduct) {
     return (
       <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
         <SiteNav />
@@ -384,14 +275,14 @@ export default function Merch() {
         <div className="container grid md:grid-cols-2 gap-6 md:gap-12 items-start">
           {/* Left: Image Carousel */}
           <div>
-            <ImageCarousel images={heroImages} productName={heroProduct.name} />
+            {heroProduct && <ImageCarousel images={heroImages} productName={heroProduct.name} />}
           </div>
 
           {/* Right: Product Info */}
           <div className="flex flex-col gap-5 md:gap-8 md:sticky md:top-28">
             {/* Badges */}
             <div className="flex flex-wrap gap-2">
-              {heroProduct.badge && (
+              {heroProduct?.badge && (
                 <span className="bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
                   {heroProduct.badge}
                 </span>
@@ -403,21 +294,21 @@ export default function Merch() {
 
             <div>
               <h1 className="font-['Anton'] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 uppercase leading-none break-words">
-                {heroProduct.name}
+                {heroProduct?.name}
               </h1>
-              {heroProduct.subtitle && (
+              {heroProduct?.subtitle && (
                 <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{heroProduct.subtitle}</p>
               )}
               <p className="text-3xl md:text-4xl font-bold text-red-600 mb-4 md:mb-6">
-                ${(heroProduct.price / 100).toFixed(2)}
+                ${heroProduct ? (heroProduct.price / 100).toFixed(2) : "0.00"}
               </p>
-              {heroProduct.compareAtPrice && (
+              {heroProduct?.compareAtPrice && (
                 <p className="text-white/40 line-through text-lg mb-2">
                   ${(heroProduct.compareAtPrice / 100).toFixed(2)}
                 </p>
               )}
               <p className="text-white/70 text-base leading-relaxed mb-4">
-                {heroProduct.description}
+                {heroProduct?.description}
               </p>
             </div>
 
@@ -426,12 +317,12 @@ export default function Merch() {
               <p className="text-xs uppercase tracking-widest text-white/50 mb-3">
                 Color: <span className="text-white">{heroColor}</span>
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 {heroColors.map((color) => (
                   <button
                     key={color}
                     onClick={() => setHeroColor(color)}
-                    className={`px-5 py-2 text-sm font-semibold uppercase tracking-widest transition-all border ${
+                    className={`flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-semibold uppercase tracking-widest transition-all border min-w-[80px] ${
                       heroColor === color
                         ? "bg-red-600 text-white border-red-600"
                         : "border-white/30 text-white/70 hover:border-white/60"
@@ -446,12 +337,12 @@ export default function Merch() {
             {/* Size Selection */}
             <div>
               <p className="text-xs uppercase tracking-widest text-white/50 mb-3">Size</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-2">
                 {heroSizes.map((size) => (
                   <button
                     key={size}
                     onClick={() => setHeroSize(size)}
-                    className={`py-2 text-sm font-semibold uppercase tracking-widest transition-all border ${
+                    className={`py-2 sm:py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-widest transition-all border ${
                       heroSize === size
                         ? "bg-red-600 text-white border-red-600"
                         : "border-white/30 text-white/70 hover:border-white/60"
@@ -464,18 +355,18 @@ export default function Merch() {
             </div>
 
             {/* Quantity + CTA */}
-            <div className="flex gap-4 items-center">
-              <div className="flex items-center border border-white/30">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+              <div className="flex items-center border border-white/30 bg-black/40 shrink-0">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 py-3 text-white/60 hover:text-white"
+                  className="px-3 sm:px-4 py-2 sm:py-3 text-white/60 hover:text-white text-sm sm:text-base"
                 >
                   −
                 </button>
-                <span className="px-6 py-3 text-white font-semibold">{quantity}</span>
+                <span className="px-4 sm:px-6 py-2 sm:py-3 text-white font-semibold text-sm sm:text-base">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="px-4 py-3 text-white/60 hover:text-white"
+                  className="px-3 sm:px-4 py-2 sm:py-3 text-white/60 hover:text-white text-sm sm:text-base"
                 >
                   +
                 </button>
@@ -486,386 +377,74 @@ export default function Merch() {
                     toast.error("Please select a size");
                     return;
                   }
-                  handleAddToCart(heroProduct, heroColor, heroSize, quantity);
+                  if (heroProduct) {
+                    handleAddToCart(heroProduct, heroColor, heroSize, quantity);
+                  }
                 }}
                 disabled={!heroSize || addToCartMutation.isPending}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/40 text-white py-3 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/40 text-white py-2.5 sm:py-3 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
               >
                 {addToCartMutation.isPending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                 ) : (
-                  <ShoppingCart className="w-5 h-5" />
+                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
                 )}
-                {heroSize ? "Add to Cart" : "Select a Size"}
+                <span className="hidden sm:inline">{heroSize ? "Add to Cart" : "Select a Size"}</span>
+                <span className="sm:hidden">{heroSize ? "Add" : "Select"}</span>
               </button>
             </div>
 
-            {/* Shipping note */}
-            <p className="text-xs text-white/40 text-center">
-              $3.99 shipping · Free on orders over $100
-              {heroProduct.shippingEstimate && ` · Estimated ${heroProduct.shippingEstimate}`}
+            {/* Shipping info */}
+            <p className="text-white/40 text-xs">
+              {heroProduct?.shippingEstimate || "3–7 business days"} · Free on orders over $100 · Estimated arrival
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── OTHER PRODUCTS ────────────────────────────────────────────────── */}
+      {/* ── COLLECTION ────────────────────────────────────────────────────── */}
       {otherProducts.length > 0 && (
-        <section className="py-12 md:py-20 border-t border-white/10">
+        <section className="py-16 md:py-24 border-t border-white/10">
           <div className="container">
-            <h2 className="font-['Anton'] text-3xl md:text-4xl mb-8 md:mb-12 uppercase">The Collection</h2>
-            <div className="grid md:grid-cols-2 gap-12">
+            <h2 className="font-['Anton'] text-4xl md:text-5xl uppercase mb-12">The Collection</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {otherProducts.map((product) => {
                 const colors = getProductColors(product);
-                const defaultImg = getProductImages(product, colors[0])[0];
+                const firstColor = colors[0] || "Black";
+                const images = getProductImages(product, firstColor);
+                const firstImage = images[0];
+
                 return (
-                  <div key={product.id} className="group">
-                    <div className="relative bg-[#111] aspect-[3/4] rounded-lg overflow-hidden mb-6">
-                      {defaultImg ? (
+                  <button
+                    key={product.id}
+                    onClick={() => navigate(`/merch/${product.slug}`)}
+                    className="group text-left"
+                  >
+                    <div className="relative aspect-square bg-zinc-900 border border-white/10 rounded overflow-hidden mb-4 group-hover:border-red-600/50 transition-colors">
+                      {firstImage && (
                         <img
-                          src={defaultImg}
+                          src={firstImage}
                           alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-white/20 text-sm uppercase tracking-widest">Coming Soon</span>
-                        </div>
                       )}
                       {product.badge && (
-                        <div className="absolute top-4 left-4">
-                          <span className="bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
-                            {product.badge}
-                          </span>
-                        </div>
+                        <span className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 text-xs font-bold uppercase tracking-widest">
+                          {product.badge}
+                        </span>
                       )}
                     </div>
-                    <h3 className="font-['Anton'] text-2xl mb-2 uppercase">{product.name}</h3>
-                    <p className="text-2xl font-bold text-red-600 mb-3">
-                      ${(product.price / 100).toFixed(2)}
-                    </p>
-                    <p className="text-white/60 text-sm mb-6 line-clamp-2">{product.description}</p>
-                    <button
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setSelectedColor(getProductColors(product)[0]);
-                        setSelectedSize("");
-                        setQuantity(1);
-                      }}
-                      className="w-full border border-white/30 hover:border-white/60 text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
-                    >
-                      Shop The Drop
-                    </button>
-                  </div>
+                    <h3 className="font-['Anton'] text-lg uppercase mb-1 group-hover:text-red-600 transition-colors">
+                      {product.name}
+                    </h3>
+                    <p className="text-white/60 text-sm mb-2">{product.subtitle}</p>
+                    <p className="text-red-600 font-bold">${(product.price / 100).toFixed(2)}</p>
+                  </button>
                 );
               })}
             </div>
           </div>
         </section>
-      )}
-
-      {/* ── PRODUCT MODAL ─────────────────────────────────────────────────── */}
-      {selectedProduct && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedProduct(null);
-          }}
-        >
-          <div className="bg-[#0a0a0a] border border-white/20 rounded-lg w-full max-w-3xl my-8">
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-[#0a0a0a] border-b border-white/20 flex items-center justify-between p-6 rounded-t-lg z-10">
-              <h3 className="font-bold text-lg uppercase tracking-wide">{selectedProduct.name}</h3>
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="text-white/60 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6">
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* Image Carousel */}
-                <ImageCarousel images={modalImages} productName={selectedProduct.name} />
-
-                {/* Product Details */}
-                <div className="space-y-6">
-                  {selectedProduct.badge && (
-                    <span className="inline-block bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
-                      {selectedProduct.badge}
-                    </span>
-                  )}
-
-                  <div>
-                    <p className="text-3xl font-bold text-red-600 mb-3">
-                      ${(selectedProduct.price / 100).toFixed(2)}
-                    </p>
-                    <p className="text-white/70 text-sm leading-relaxed">
-                      {selectedProduct.description}
-                    </p>
-                  </div>
-
-                  {/* Color */}
-                  <div>
-                    <p className="text-xs uppercase tracking-widest text-white/50 mb-3">
-                      Color: <span className="text-white">{selectedColor}</span>
-                    </p>
-                    <div className="flex gap-2">
-                      {getProductColors(selectedProduct).map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setSelectedColor(color)}
-                          className={`px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-all border ${
-                            selectedColor === color
-                              ? "bg-red-600 text-white border-red-600"
-                              : "border-white/30 text-white/70 hover:border-white/60"
-                          }`}
-                        >
-                          {color}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Size */}
-                  <div>
-                    <p className="text-xs uppercase tracking-widest text-white/50 mb-3">Size</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {getProductSizes(selectedProduct).map((size) => (
-                        <button
-                          key={size}
-                          onClick={() => setSelectedSize(size)}
-                          className={`py-2 text-xs font-semibold uppercase tracking-widest transition-all border ${
-                            selectedSize === size
-                              ? "bg-red-600 text-white border-red-600"
-                              : "border-white/30 text-white/70 hover:border-white/60"
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Quantity + CTA */}
-                  <div className="flex gap-3 items-center">
-                    <div className="flex items-center border border-white/30">
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="px-3 py-2 text-white/60 hover:text-white"
-                      >
-                        −
-                      </button>
-                      <span className="px-4 py-2 text-white font-semibold">{quantity}</span>
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className="px-3 py-2 text-white/60 hover:text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleAddToCart(selectedProduct, selectedColor, selectedSize, quantity)
-                      }
-                      disabled={!selectedColor || !selectedSize || addToCartMutation.isPending}
-                      className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/40 text-white py-2 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                    >
-                      {addToCartMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <ShoppingCart className="w-4 h-4" />
-                      )}
-                      {!selectedColor
-                        ? "Select Color"
-                        : !selectedSize
-                        ? "Select Size"
-                        : "Add to Cart"}
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-white/40 text-center">
-                    $3.99 shipping · Free on orders over $100
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── CART BUTTON ───────────────────────────────────────────────────── */}
-      <button
-        onClick={() => setShowCart(true)}
-        className="fixed bottom-8 right-8 bg-red-600 hover:bg-red-700 text-white p-4 rounded-full flex items-center gap-2 font-bold uppercase tracking-widest transition-all shadow-lg z-40"
-      >
-        <ShoppingCart className="w-5 h-5" />
-        {cartCount > 0 && (
-          <span className="bg-white text-red-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-            {cartCount}
-          </span>
-        )}
-      </button>
-
-      {/* ── CART SIDEBAR ──────────────────────────────────────────────────── */}
-      {showCart && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex justify-end"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowCart(false);
-          }}
-        >
-          <div className="bg-[#0a0a0a] border-l border-white/20 w-full max-w-md flex flex-col max-h-screen">
-            {/* Header */}
-            <div className="border-b border-white/20 flex items-center justify-between p-6">
-              <h3 className="font-bold text-lg uppercase">
-                Shopping Cart{" "}
-                {cartCount > 0 && (
-                  <span className="text-red-600 text-sm">({cartCount})</span>
-                )}
-              </h3>
-              <button onClick={() => setShowCart(false)} className="text-white/60 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Items */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {cartQuery.isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin text-red-600" />
-                </div>
-              ) : cartItems.length === 0 ? (
-                <div className="text-center py-12">
-                  <ShoppingCart className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                  <p className="text-white/60">Your cart is empty</p>
-                  <button
-                    onClick={() => setShowCart(false)}
-                    className="mt-4 text-red-600 hover:text-red-500 text-sm font-semibold uppercase tracking-widest"
-                  >
-                    Continue Shopping
-                  </button>
-                </div>
-              ) : (
-                cartItems.map((item) => {
-                  const product = products.find((p) => p.id === item.productId);
-                  if (!product) return null;
-                  const thumb = getProductImages(product, item.color)[0] || "";
-                  return (
-                    <div key={item.id} className="border border-white/20 rounded-lg p-4">
-                      <div className="flex gap-4">
-                        {thumb ? (
-                          <img
-                            src={thumb}
-                            alt={product.name}
-                            className="w-16 h-20 object-cover rounded flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-16 h-20 bg-[#111] rounded flex-shrink-0 flex items-center justify-center">
-                            <ShoppingCart className="w-5 h-5 text-white/20" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-bold text-sm leading-tight">{product.name}</p>
-                              <p className="text-xs text-white/60 mt-1">
-                                {item.color} / {item.size}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => removeCartMutation.mutateAsync({ cartItemId: item.id })}
-                              className="text-white/40 hover:text-white flex-shrink-0"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-between mt-3">
-                            <div className="flex items-center gap-1 border border-white/30 rounded">
-                              <button
-                                onClick={() =>
-                                  updateCartMutation.mutateAsync({
-                                    cartItemId: item.id,
-                                    quantity: item.quantity - 1,
-                                  })
-                                }
-                                className="px-2 py-1 text-white/60 hover:text-white text-sm"
-                              >
-                                −
-                              </button>
-                              <span className="px-3 text-sm font-semibold">{item.quantity}</span>
-                              <button
-                                onClick={() =>
-                                  updateCartMutation.mutateAsync({
-                                    cartItemId: item.id,
-                                    quantity: item.quantity + 1,
-                                  })
-                                }
-                                className="px-2 py-1 text-white/60 hover:text-white text-sm"
-                              >
-                                +
-                              </button>
-                            </div>
-                            <p className="font-bold text-sm">
-                              ${((product.price * item.quantity) / 100).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Footer */}
-            {cartItems.length > 0 && (
-              <div className="border-t border-white/20 p-6 space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Subtotal:</span>
-                    <span>${(cartTotal / 100).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Shipping:</span>
-                    <span className={shippingCost === 0 ? "text-green-500 font-bold" : ""}>
-                      {shippingCost === 0 ? "FREE" : `$${(shippingCost / 100).toFixed(2)}`}
-                    </span>
-                  </div>
-                  {shippingCost > 0 && (
-                    <>
-                      <p className="text-xs text-white/40">
-                        Add ${((10000 - cartTotal) / 100).toFixed(2)} more for free shipping
-                      </p>
-                      <p className="text-xs text-white/40">$3.99 standard shipping</p>
-                    </>
-                  )}
-                  <div className="flex justify-between text-lg font-bold border-t border-white/20 pt-2">
-                    <span>Total:</span>
-                    <span className="text-red-600">${(orderTotal / 100).toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleCheckout}
-                  disabled={checkoutMutation.isPending}
-                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-600/40 text-white py-4 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                >
-                  {checkoutMutation.isPending ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    "Proceed to Checkout"
-                  )}
-                </button>
-
-                <p className="text-xs text-white/40 text-center">
-                  Secure checkout via Stripe · Apple Pay & Google Pay accepted
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
       )}
     </div>
   );
