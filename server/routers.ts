@@ -8,6 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
+import { validateFreeShippingPromoCode } from "./promo-codes";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
@@ -4345,6 +4346,7 @@ export const appRouter = router({
           return {
             items: obj.items as Array<{ productId: number; productName: string; color: string; size: string; quantity: number; price: number }>,
             shippingAddress: obj.shippingAddress as Record<string, any>,
+            promoCode: (obj?.promoCode as string) || null,
           };
         })
         .mutation(async ({ ctx, input }) => {
@@ -4353,7 +4355,12 @@ export const appRouter = router({
 
           // Calculate totals
           const subtotalCents = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-          const shippingCents = subtotalCents >= 10000 ? 0 : 399; // Free shipping over $100, else $3.99
+          
+          // Validate promo code server-side
+          const promoValidation = await validateFreeShippingPromoCode(input.promoCode, subtotalCents, user.id);
+          const freeShippingIsValid = promoValidation.isValid;
+          
+          const shippingCents = freeShippingIsValid ? 0 : (subtotalCents >= 10000 ? 0 : 399); // Free shipping over $100, else $3.99
           const totalCents = subtotalCents + shippingCents;
 
           // Create Stripe session
@@ -4366,6 +4373,7 @@ export const appRouter = router({
             user_id: user.id.toString(),
             customer_email: user.email ?? "",
             customer_name: user.artistName || user.name || "Unknown",
+            promo_code: freeShippingIsValid ? (input.promoCode?.toUpperCase() || "") : "",
           },
             line_items: input.items.map((item) => ({
               price_data: {

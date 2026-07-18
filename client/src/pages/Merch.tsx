@@ -348,13 +348,15 @@ function CartDrawer({
   });
 
   const items = cartItems as CartItem[];
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
 
   // Compute subtotal
   const subtotal = items.reduce((sum, item) => {
     const prod = products.find((p) => p.id === item.productId);
     return sum + (prod ? prod.price * item.quantity : 0);
   }, 0);
-  const shipping = subtotal >= 10000 ? 0 : 399;
+  const shipping = promoApplied ? 0 : (subtotal >= 10000 ? 0 : 399);
   const total = subtotal + shipping;
   const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -375,6 +377,7 @@ function CartDrawer({
       const result = await createSession.mutateAsync({
         items: checkoutItems,
         shippingAddress: {},
+        promoCode: promoApplied ? promoCode : null,
       });
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank");
@@ -482,6 +485,35 @@ function CartDrawer({
         {/* Footer */}
         {items.length > 0 && (
           <div className="border-t border-white/10 px-4 py-4 space-y-3 flex-shrink-0">
+            {/* Promo Code Input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Promo code"
+                value={promoCode}
+                onChange={(e) => {
+                  setPromoCode(e.target.value.toUpperCase());
+                  setPromoApplied(false);
+                }}
+                disabled={promoApplied}
+                className="flex-1 bg-white/5 border border-white/20 rounded px-3 py-2 text-white text-xs placeholder-white/30 focus:outline-none focus:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <button
+                onClick={() => {
+                  if (promoCode.trim()) {
+                    setPromoApplied(true);
+                    toast.success("Promo code applied!");
+                  }
+                }}
+                disabled={promoApplied || !promoCode.trim()}
+                className="bg-red-600 hover:bg-red-700 disabled:bg-red-600/40 text-white px-3 py-2 rounded text-xs font-bold uppercase tracking-widest transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
+              >
+                {promoApplied ? "✓" : "Apply"}
+              </button>
+            </div>
+            {promoApplied && (
+              <p className="text-green-400 text-xs uppercase tracking-widest">Free shipping applied</p>
+            )}
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between text-white/60">
                 <span>Subtotal</span>
