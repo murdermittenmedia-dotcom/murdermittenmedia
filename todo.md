@@ -1362,3 +1362,16 @@
 - [x] Cart badge: red count badge, hidden when empty, updates instantly
 - [x] Cart drawer auto-opens after adding item to cart
 - [x] Cart icon only on /merch route — not in global SiteNav
+
+
+## Free-Shipping Promo Code (FREESHIP)
+- [ ] Add promo_codes table to schema.ts with enabled, code, expiration_date, minimum_subtotal, maximum_uses, usage_count, first_time_only fields
+- [ ] Run db:push to migrate promo_codes table
+- [ ] Seed FREESHIP promo code into DB with default settings (enabled, no expiration, $0 minimum, 999 max uses, not first-time-only)
+- [ ] Add promo code input field to Merch.tsx cart section
+- [ ] Create tRPC procedure merch.validatePromoCode to validate code server-side
+- [ ] Update merch.checkout.createSession to accept promoCode input, validate it, and set shipping to $0 if valid
+- [ ] Store promoCode in Stripe Checkout Session metadata
+- [ ] Update Stripe webhook to increment usage_count after payment confirmed
+- [ ] Add admin controls to AdminPanel for promo code management (enable/disable, edit code, set expiration, minimum subtotal, max uses, first-time-only flag)
+- [ ] Test FREESHIP code in dev mode with test Stripe card

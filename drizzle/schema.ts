@@ -1050,3 +1050,21 @@ export const processedStripeEvents = mysqlTable("processed_stripe_events", {
   processedAt: timestamp("processedAt").defaultNow().notNull(),
 });
 export type ProcessedStripeEvent = typeof processedStripeEvents.$inferSelect;
+
+// Promo Codes (Free Shipping, Discounts, etc.)
+export const promoCodes = mysqlTable("promo_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  type: varchar("type", { length: 50 }).notNull(), // "free_shipping", "discount_percent", "discount_fixed"
+  enabled: boolean("enabled").notNull().default(true),
+  expirationDate: timestamp("expirationDate"),
+  minimumSubtotal: int("minimumSubtotal"), // in cents; null = no minimum
+  maximumUses: int("maximumUses").notNull().default(999),
+  usageCount: int("usageCount").notNull().default(0),
+  firstTimeOnly: boolean("firstTimeOnly").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type InsertPromoCode = typeof promoCodes.$inferInsert;
