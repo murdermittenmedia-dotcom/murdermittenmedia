@@ -1355,3 +1355,10 @@
 - [x] Hero product auto-selected by featured=true field from DB
 - [x] Hero size selection fixed (separate heroSize state, no longer tied to modal)
 - [ ] Stripe live key: user must verify STRIPE_SECRET_KEY in Settings -> Secrets in Manus Management UI
+
+## Merch Cart Drawer (Session Jul 18 2026)
+- [x] Merch-only cart icon button (top-right of merch page header, beside page title)
+- [x] Cart drawer: slide-out panel with items, qty controls, remove, clear, checkout CTA
+- [x] Cart badge: red count badge, hidden when empty, updates instantly
+- [x] Cart drawer auto-opens after adding item to cart
+- [x] Cart icon only on /merch route — not in global SiteNav
