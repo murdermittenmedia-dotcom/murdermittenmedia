@@ -197,6 +197,13 @@
       "when": 1784331703130,
       "tag": "0027_puzzling_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1784340678385,
+      "tag": "0028_small_mandroid",
+      "breakpoints": true
     }
   ]
 }

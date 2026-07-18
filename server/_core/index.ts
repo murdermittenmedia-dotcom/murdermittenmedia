@@ -13,6 +13,7 @@ import { getDb } from "../db";
 import { chatMessages } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
 import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, setCurrentPlaying } from "../db";
+import { registerStripeWebhook } from "../stripe-webhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -863,6 +864,8 @@ async function startServer() {
     socket.on("disconnect", handleLeave);
   });
 
+  // MUST register Stripe webhook BEFORE express.json() for raw body signature verification
+  registerStripeWebhook(app);
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);

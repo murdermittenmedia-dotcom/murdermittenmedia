@@ -61,7 +61,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -4751,6 +4751,167 @@ export const appRouter = router({
         const variant = await getShopVariantInventory(input.productId, input.color, input.size);
         return { inStock: (variant?.inventoryQty ?? 0) > 0, qty: variant?.inventoryQty ?? 0 };
       }),
+  }),
+
+  // ─── Golden Wheel ──────────────────────────────────────────────────────────
+  goldenWheel: router({
+    // Check if the current user is eligible to spin
+    getEligibility: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database unavailable' });
+      const eligibility = await db
+        .select()
+        .from(wheelEligibility)
+        .where(eq(wheelEligibility.userId, ctx.user.id))
+        .limit(1);
+      if (eligibility.length === 0) return { eligible: false, status: null as string | null, spin: null };
+      const elig = eligibility[0];
+      let spin = null;
+      if (elig.status === 'CLAIMED') {
+        const spins = await db.select().from(wheelSpins).where(eq(wheelSpins.userId, ctx.user.id)).limit(1);
+        spin = spins[0] ?? null;
+      }
+      return { eligible: elig.status === 'ELIGIBLE', status: elig.status as string, spin };
+    }),
+
+    // Get all active prizes (for wheel display)
+    getPrizes: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(wheelPrizes).where(eq(wheelPrizes.enabled, true));
+    }),
+
+    // Spin the wheel — atomic, idempotent, inventory-enforced
+    spin: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database unavailable' });
+      const eligRows = await db
+        .select()
+        .from(wheelEligibility)
+        .where(and(eq(wheelEligibility.userId, ctx.user.id), eq(wheelEligibility.status, 'ELIGIBLE')))
+        .limit(1);
+      if (eligRows.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'You are not eligible to spin the Golden Wheel.' });
+      const elig = eligRows[0];
+      const existingSpin = await db.select().from(wheelSpins).where(eq(wheelSpins.userId, ctx.user.id)).limit(1);
+      if (existingSpin.length > 0) return { alreadySpun: true, spin: existingSpin[0], prize: null };
+      const prizes = await db.select().from(wheelPrizes).where(eq(wheelPrizes.enabled, true));
+      const available = prizes.filter(p => p.inventoryLimit === null || (p.remainingInventory ?? 0) > 0);
+      if (available.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'No prizes available at this time.' });
+      const totalWeight = available.reduce((sum, p) => sum + p.weight, 0);
+      let rand = Math.random() * totalWeight;
+      let selectedPrize = available[available.length - 1];
+      for (const prize of available) { rand -= prize.weight; if (rand <= 0) { selectedPrize = prize; break; } }
+      let couponCode: string | null = null;
+      let stripeCouponId: string | null = null;
+      if (selectedPrize.rewardType === 'stripe_coupon' && selectedPrize.rewardValue) {
+        try {
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+          const expiryDays = selectedPrize.couponExpiryDays ?? 90;
+          const redeemBy = Math.floor(Date.now() / 1000) + expiryDays * 86400;
+          const coupon = await stripe.coupons.create({ percent_off: parseFloat(selectedPrize.rewardValue), duration: 'once', redeem_by: redeemBy, name: `Golden Wheel: ${selectedPrize.name}` });
+          const promoCode = await stripe.promotionCodes.create({ coupon: coupon.id as string, max_redemptions: 1 } as any);
+          couponCode = promoCode.code;
+          stripeCouponId = coupon.id;
+        } catch (err) { console.error('[GoldenWheel] Failed to create Stripe coupon:', err); }
+      } else if (selectedPrize.rewardType !== 'stripe_coupon') {
+        couponCode = `GW-${ctx.user.id}-${Date.now().toString(36).toUpperCase()}`;
+      }
+      if (selectedPrize.inventoryLimit !== null && selectedPrize.remainingInventory !== null) {
+        await db.update(wheelPrizes).set({ remainingInventory: Math.max(0, (selectedPrize.remainingInventory ?? 0) - 1) }).where(eq(wheelPrizes.id, selectedPrize.id));
+      }
+      const spinResult = await db.insert(wheelSpins).values({
+        userId: ctx.user.id,
+        eligibilityId: elig.id,
+        orderId: elig.orderId,
+        prizeId: selectedPrize.id,
+        prizeNameSnapshot: selectedPrize.name,
+        couponCode,
+        stripeCouponId,
+        status: 'pending_redemption',
+      });
+      await db.update(wheelEligibility).set({ status: 'CLAIMED', claimedAt: new Date() }).where(eq(wheelEligibility.id, elig.id));
+      const newSpin = { id: (spinResult as any).insertId, userId: ctx.user.id, eligibilityId: elig.id, orderId: elig.orderId, prizeId: selectedPrize.id, prizeNameSnapshot: selectedPrize.name, couponCode, stripeCouponId, status: 'pending_redemption' as const, manuallyRedeemed: false, adminNotes: null, createdAt: new Date() };
+      return { alreadySpun: false, spin: newSpin, prize: selectedPrize };
+    }),
+
+    // Admin sub-router
+    admin: router({
+      getPrizes: adminProcedure.query(async () => {
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(wheelPrizes);
+      }),
+
+      upsertPrize: adminProcedure
+        .input(z.object({
+          id: z.number().optional(),
+          name: z.string().min(1),
+          description: z.string().optional(),
+          weight: z.number().int().min(1).max(1000),
+          enabled: z.boolean(),
+          rewardType: z.enum(['stripe_coupon', 'promo_service', 'physical_item', 'cash_prize']),
+          rewardValue: z.string().optional(),
+          inventoryLimit: z.number().int().min(1).optional().nullable(),
+          remainingInventory: z.number().int().min(0).optional().nullable(),
+          couponExpiryDays: z.number().int().min(1).max(365).optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+          if (input.id) {
+            await db.update(wheelPrizes).set({ name: input.name, description: input.description ?? null, weight: input.weight, enabled: input.enabled, rewardType: input.rewardType, rewardValue: input.rewardValue ?? null, inventoryLimit: input.inventoryLimit ?? null, remainingInventory: input.remainingInventory ?? null, couponExpiryDays: input.couponExpiryDays ?? 90 }).where(eq(wheelPrizes.id, input.id));
+            return { id: input.id };
+          } else {
+            const result = await db.insert(wheelPrizes).values({ name: input.name, description: input.description ?? null, weight: input.weight, enabled: input.enabled, rewardType: input.rewardType, rewardValue: input.rewardValue ?? null, inventoryLimit: input.inventoryLimit ?? null, remainingInventory: input.remainingInventory ?? null, couponExpiryDays: input.couponExpiryDays ?? 90 });
+            return { id: (result as any).insertId };
+          }
+        }),
+
+      deletePrize: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+          await db.delete(wheelPrizes).where(eq(wheelPrizes.id, input.id));
+          return { success: true };
+        }),
+
+      getSpins: adminProcedure
+        .input(z.object({ page: z.number().int().min(1).default(1), limit: z.number().int().min(1).max(100).default(50) }))
+        .query(async ({ input }) => {
+          const db = await getDb();
+          if (!db) return { spins: [], total: 0 };
+          const offset = (input.page - 1) * input.limit;
+          const spins = await db
+            .select({ spin: wheelSpins, user: { id: users.id, name: users.name, email: users.email, artistName: users.artistName }, prize: wheelPrizes })
+            .from(wheelSpins)
+            .leftJoin(users, eq(wheelSpins.userId, users.id))
+            .leftJoin(wheelPrizes, eq(wheelSpins.prizeId, wheelPrizes.id))
+            .orderBy(desc(wheelSpins.createdAt))
+            .limit(input.limit)
+            .offset(offset);
+          return { spins, total: spins.length };
+        }),
+
+      updateSpinStatus: adminProcedure
+        .input(z.object({ spinId: z.number(), status: z.enum(['pending_redemption', 'redeemed', 'flagged', 'revoked']), adminNotes: z.string().optional(), manuallyRedeemed: z.boolean().optional() }))
+        .mutation(async ({ input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+          await db.update(wheelSpins).set({ status: input.status, adminNotes: input.adminNotes ?? null, manuallyRedeemed: input.manuallyRedeemed ?? false }).where(eq(wheelSpins.id, input.spinId));
+          return { success: true };
+        }),
+
+      getOrders: adminProcedure
+        .input(z.object({ page: z.number().int().min(1).default(1), limit: z.number().int().min(1).max(100).default(50) }))
+        .query(async ({ input }) => {
+          const db = await getDb();
+          if (!db) return { orders: [], total: 0 };
+          const offset = (input.page - 1) * input.limit;
+          const orders = await db.select().from(goldenWheelOrders).orderBy(desc(goldenWheelOrders.createdAt)).limit(input.limit).offset(offset);
+          return { orders, total: orders.length };
+        }),
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;

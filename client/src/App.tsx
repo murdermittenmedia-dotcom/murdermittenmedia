@@ -47,6 +47,8 @@ import AdminMerch from "./pages/AdminMerch";
 import AdminShop from "./pages/AdminShop";
 import AdminShopForm from "./pages/AdminShopForm";
 import ShopProduct from "./pages/ShopProduct";
+import GoldenWheel from "./pages/GoldenWheel";
+import AdminGoldenWheel from "./pages/AdminGoldenWheel";
 
 function Router() {
   return (
@@ -57,6 +59,7 @@ function Router() {
       <Route path={"/merch"} component={Merch} />
       <Route path={"/shop"} component={Merch} />
       <Route path={"/order-confirmation"} component={OrderConfirmation} />
+      <Route path={"/golden-wheel"} component={GoldenWheel} />
       <Route path={"/admin/merch"} component={AdminMerch} />
       <Route path={"/admin/shop"} component={AdminShop} />
       <Route path={"/admin/shop/new"} component={AdminShopForm} />
@@ -110,6 +113,7 @@ function Router() {
       <Route path={"/admin"} component={AdminPanel} />
       <Route path={"/admin/moderation"} component={AdminModeration} />
       <Route path={"/admin/stats"} component={AdminSiteStats} />
+      <Route path={"/admin/golden-wheel"} component={AdminGoldenWheel} />
 
       {/* Ban appeal */}
       <Route path={"/banned"} component={Banned} />

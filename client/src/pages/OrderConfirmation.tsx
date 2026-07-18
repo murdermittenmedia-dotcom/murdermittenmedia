@@ -152,6 +152,25 @@ export default function OrderConfirmation() {
                 </ul>
               </div>
 
+              {/* Golden Wheel CTA */}
+              <div
+                className="border-2 border-yellow-500/60 bg-gradient-to-r from-yellow-950/60 to-black/60 rounded-xl p-6 text-center space-y-3"
+                style={{ boxShadow: "0 0 30px rgba(255,215,0,0.15)" }}
+              >
+                <div className="text-3xl">🎡</div>
+                <h3 className="font-['Anton'] text-xl uppercase text-yellow-400">Spin the Golden Wheel</h3>
+                <p className="text-white/60 text-sm">
+                  As a first-time buyer, you've unlocked an exclusive spin for prizes — discount codes, free merch, and more.
+                </p>
+                <button
+                  onClick={() => setLocation("/golden-wheel")}
+                  className="bg-gradient-to-r from-yellow-600 to-yellow-400 text-black font-bold uppercase tracking-widest px-8 py-3 hover:from-yellow-500 hover:to-yellow-300 transition-all"
+                  style={{ boxShadow: "0 0 20px rgba(255,215,0,0.3)" }}
+                >
+                  Claim Your Spin →
+                </button>
+              </div>
+
               {/* CTA */}
               <div className="flex gap-4">
                 <button

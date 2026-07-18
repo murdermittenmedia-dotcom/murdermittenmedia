@@ -1478,11 +1478,17 @@ export default function AdminPanel() {
             <h1 className="font-['Anton'] text-4xl uppercase">Admin Panel</h1>
           </div>
           <p className="text-white/40 text-sm">Manage users, orders, analytics, and site settings.</p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/admin/stats">
               <button className="flex items-center gap-2 text-xs border border-green-500/40 text-green-400 bg-green-500/10 px-4 py-2 hover:bg-green-500/20 transition-all uppercase tracking-widest font-semibold">
                 <Activity className="w-3.5 h-3.5" />
                 Live Site Stats
+              </button>
+            </Link>
+            <Link href="/admin/golden-wheel">
+              <button className="flex items-center gap-2 text-xs border border-yellow-500/40 text-yellow-400 bg-yellow-500/10 px-4 py-2 hover:bg-yellow-500/20 transition-all uppercase tracking-widest font-semibold">
+                <Trophy className="w-3.5 h-3.5" />
+                Golden Wheel
               </button>
             </Link>
           </div>

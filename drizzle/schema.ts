@@ -972,3 +972,81 @@ export const shopVariants = mysqlTable("shop_variants", {
 });
 export type ShopVariant = typeof shopVariants.$inferSelect;
 export type InsertShopVariant = typeof shopVariants.$inferInsert;
+
+// ─── Golden Wheel System ──────────────────────────────────────────────────────
+// Tracks Stripe-verified merch orders for wheel eligibility
+export const goldenWheelOrders = mysqlTable("golden_wheel_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  customerEmail: varchar("customerEmail", { length: 256 }).notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 256 }),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }).unique().notNull(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 256 }),
+  paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "failed", "refunded", "disputed"]).default("pending").notNull(),
+  livemode: boolean("livemode").default(false).notNull(),
+  totalCents: int("totalCents").default(0).notNull(),
+  currency: varchar("currency", { length: 8 }).default("usd").notNull(),
+  paidAt: timestamp("paidAt"),
+  refundedAt: timestamp("refundedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GoldenWheelOrder = typeof goldenWheelOrders.$inferSelect;
+export type InsertGoldenWheelOrder = typeof goldenWheelOrders.$inferInsert;
+
+// Eligibility: one per first-time customer, granted by webhook
+export const wheelEligibility = mysqlTable("wheel_eligibility", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").unique().notNull(),
+  orderId: int("orderId").unique().notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }).unique().notNull(),
+  status: mysqlEnum("status", ["ELIGIBLE", "CLAIMED", "REVOKED"]).default("ELIGIBLE").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  claimedAt: timestamp("claimedAt"),
+});
+export type WheelEligibility = typeof wheelEligibility.$inferSelect;
+export type InsertWheelEligibility = typeof wheelEligibility.$inferInsert;
+
+// Prizes: configurable by admin
+export const wheelPrizes = mysqlTable("wheel_prizes", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description"),
+  weight: int("weight").default(10).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  rewardType: mysqlEnum("rewardType", ["stripe_coupon", "promo_service", "physical_item", "cash_prize"]).notNull(),
+  rewardValue: varchar("rewardValue", { length: 256 }),
+  inventoryLimit: int("inventoryLimit"),
+  remainingInventory: int("remainingInventory"),
+  couponExpiryDays: int("couponExpiryDays").default(90),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WheelPrize = typeof wheelPrizes.$inferSelect;
+export type InsertWheelPrize = typeof wheelPrizes.$inferInsert;
+
+// Spin results: one per eligible customer, immutable after creation
+export const wheelSpins = mysqlTable("wheel_spins", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").unique().notNull(),
+  eligibilityId: int("eligibilityId").unique().notNull(),
+  orderId: int("orderId").unique().notNull(),
+  prizeId: int("prizeId").notNull(),
+  prizeNameSnapshot: varchar("prizeNameSnapshot", { length: 256 }).notNull(),
+  couponCode: varchar("couponCode", { length: 128 }),
+  stripeCouponId: varchar("stripeCouponId", { length: 256 }),
+  status: mysqlEnum("status", ["pending_redemption", "redeemed", "flagged", "revoked"]).default("pending_redemption").notNull(),
+  manuallyRedeemed: boolean("manuallyRedeemed").default(false).notNull(),
+  adminNotes: text("adminNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type WheelSpin = typeof wheelSpins.$inferSelect;
+export type InsertWheelSpin = typeof wheelSpins.$inferInsert;
+
+// Idempotency: prevent duplicate webhook processing
+export const processedStripeEvents = mysqlTable("processed_stripe_events", {
+  stripeEventId: varchar("stripeEventId", { length: 256 }).primaryKey(),
+  eventType: varchar("eventType", { length: 128 }).notNull(),
+  processedAt: timestamp("processedAt").defaultNow().notNull(),
+});
+export type ProcessedStripeEvent = typeof processedStripeEvents.$inferSelect;
