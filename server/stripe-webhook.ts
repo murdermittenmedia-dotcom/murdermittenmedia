@@ -23,8 +23,9 @@ import {
   processedStripeEvents,
   wheelSpins,
   users,
+  promoCodes,
 } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -186,6 +187,50 @@ async function grantEligibilityForSession(session: Stripe.Checkout.Session) {
   if (alreadyHasPaidOrder || alreadyHasEligibility) {
     console.log(`[GoldenWheel] User ${userId} (${customerEmail}) already has a paid order or eligibility — skipping wheel grant`);
     return;
+  }
+
+  // Also update the orders table (merch orders) if it exists
+  try {
+    const { orders } = await import("../drizzle/schema");
+    const existingMerchOrder = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.stripeCheckoutSessionId, session.id))
+      .limit(1);
+
+    if (existingMerchOrder.length > 0) {
+      await db
+        .update(orders)
+        .set({
+          status: "completed",
+          stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+        })
+        .where(eq(orders.id, existingMerchOrder[0].id));
+      console.log(`[Orders] ✅ Updated merch order ${existingMerchOrder[0].id} to completed`);
+    }
+  } catch (err: any) {
+    console.warn(`[Orders] Failed to update merch order:`, err);
+  }
+
+  // Increment promo code usage if one was used
+  const promoCodeUsed = session.metadata?.promo_code;
+  if (promoCodeUsed) {
+    try {
+      await db
+        .update(promoCodes)
+        .set({
+          usageCount: sql`${promoCodes.usageCount} + 1`,
+        })
+        .where(
+          and(
+            eq(promoCodes.code, promoCodeUsed),
+            eq(promoCodes.enabled, true)
+          )
+        );
+      console.log(`[PromoCode] ✅ Incremented usage count for code: ${promoCodeUsed}`);
+    } catch (err) {
+      console.warn(`[PromoCode] Failed to increment usage for ${promoCodeUsed}:`, err);
+    }
   }
 
   // Grant eligibility

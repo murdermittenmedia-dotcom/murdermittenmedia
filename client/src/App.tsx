@@ -49,6 +49,8 @@ import AdminShopForm from "./pages/AdminShopForm";
 import ShopProduct from "./pages/ShopProduct";
 import GoldenWheel from "./pages/GoldenWheel";
 import AdminGoldenWheel from "./pages/AdminGoldenWheel";
+import OrderHistory from "./pages/OrderHistory";
+import OrderDetail from "./pages/OrderDetail";
 
 function Router() {
   return (
@@ -95,6 +97,10 @@ function Router() {
       {/* User profile */}
       <Route path={"/profile"} component={UserProfile} />
       <Route path={"/profile/:id"} component={UserProfile} />
+
+      {/* Account & Orders */}
+      <Route path={"/account/orders"} component={OrderHistory} />
+      <Route path={"/account/orders/:orderId"} component={OrderDetail} />
 
       {/* Community */}
       <Route path={"/forum"} component={Forum} />

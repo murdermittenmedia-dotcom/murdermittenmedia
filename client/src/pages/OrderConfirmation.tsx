@@ -20,10 +20,10 @@ export default function OrderConfirmation() {
     }
   }, []);
 
-  // Fetch order status
-  const orderQuery = trpc.merch.checkout.getStatus.useQuery(
+  // Fetch order by session ID with polling
+  const orderQuery = trpc.merch.orders.getBySessionId.useQuery(
     { sessionId: sessionId || "" },
-    { enabled: !!sessionId, refetchInterval: 2000 }
+    { enabled: !!sessionId, refetchInterval: 2000, retry: false }
   );
 
   useEffect(() => {
@@ -34,7 +34,10 @@ export default function OrderConfirmation() {
         setStatus("error");
       }
     }
-  }, [orderQuery.data]);
+    if (orderQuery.error) {
+      setStatus("error");
+    }
+  }, [orderQuery.data, orderQuery.error]);
 
   const order = orderQuery.data;
   const items = order?.items ? JSON.parse(order.items as string) : [];
@@ -168,6 +171,16 @@ export default function OrderConfirmation() {
                   style={{ boxShadow: "0 0 20px rgba(255,215,0,0.3)" }}
                 >
                   Claim Your Spin →
+                </button>
+              </div>
+
+              {/* View Orders Link */}
+              <div className="text-center">
+                <button
+                  onClick={() => setLocation("/account/orders")}
+                  className="text-red-600 hover:text-red-400 font-semibold underline"
+                >
+                  View All My Orders →
                 </button>
               </div>
 

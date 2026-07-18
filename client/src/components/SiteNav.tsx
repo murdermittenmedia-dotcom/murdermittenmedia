@@ -246,24 +246,33 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                   <span className="hidden lg:inline">Wallet</span>
                 </a>
 
-                <a
-                  href="/profile"
-                  className="hidden sm:flex items-center gap-2 text-[10px] border border-white/15 text-white/70 px-3 py-2 hover:border-red-600/60 hover:text-white transition-all"
-                >
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover ring-1 ring-red-600/50" />
-                  ) : (
-                    <span className="w-5 h-5 rounded-full bg-red-600/30 border border-red-600/50 flex items-center justify-center text-red-400 font-bold text-[10px]">
-                      {initials}
-                    </span>
-                  )}
-                  <span className="max-w-[80px] truncate font-semibold uppercase tracking-widest">{displayName}</span>
-                  {(() => {
-                    const raw = (user as any)?.accountLabels;
-                    const lbls = raw ? (() => { try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })() : [];
-                    return lbls.length > 0 ? <LabelBadge labels={lbls} size="xs" /> : null;
-                  })()}
-                </a>
+                <div className="hidden sm:flex items-center gap-2">
+                  <a
+                    href="/profile"
+                    className="flex items-center gap-2 text-[10px] border border-white/15 text-white/70 px-3 py-2 hover:border-red-600/60 hover:text-white transition-all"
+                  >
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover ring-1 ring-red-600/50" />
+                    ) : (
+                      <span className="w-5 h-5 rounded-full bg-red-600/30 border border-red-600/50 flex items-center justify-center text-red-400 font-bold text-[10px]">
+                        {initials}
+                      </span>
+                    )}
+                    <span className="max-w-[80px] truncate font-semibold uppercase tracking-widest">{displayName}</span>
+                    {(() => {
+                      const raw = (user as any)?.accountLabels;
+                      const lbls = raw ? (() => { try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })() : [];
+                      return lbls.length > 0 ? <LabelBadge labels={lbls} size="xs" /> : null;
+                    })()}
+                  </a>
+                  <a
+                    href="/account/orders"
+                    className="flex items-center gap-1.5 text-[10px] border border-white/15 text-white/40 px-3 py-2 hover:border-white/40 hover:text-white transition-all uppercase tracking-widest font-semibold"
+                    title="My Orders"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                  </a>
+                </div>
 
                 {user?.role === "admin" && (
                   <a href="/admin" className="hidden sm:flex items-center gap-1.5 text-[10px] border border-white/15 text-white/40 px-3 py-2 hover:border-white/40 hover:text-white transition-all uppercase tracking-widest font-semibold">
@@ -443,6 +452,12 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
             <Wallet className="w-3 h-3" />
             Wallet
           </a>
+          {user && (
+            <a href="/account/orders" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-[10px] text-white/40 hover:text-white transition-colors py-1.5 uppercase tracking-widest font-semibold">
+              <ShoppingBag className="w-3 h-3" />
+              My Orders
+            </a>
+          )}
           {user?.role === "admin" && (
             <a href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-[10px] text-white/40 hover:text-white transition-colors py-1.5 uppercase tracking-widest font-semibold">
               <Shield className="w-3 h-3" />

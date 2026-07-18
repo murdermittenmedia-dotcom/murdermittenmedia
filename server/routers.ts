@@ -4427,6 +4427,37 @@ export const appRouter = router({
         }),
     }),
     orders: router({
+      // Get order by Stripe session ID (for order confirmation page)
+      getBySessionId: publicProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (typeof obj?.sessionId !== "string") throw new Error("sessionId required");
+          return { sessionId: obj.sessionId };
+        })
+        .query(async ({ input }) => {
+          const order = await getOrderByStripeSessionId(input.sessionId);
+          if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+          return order;
+        }),
+
+      // Get order by ID (with auth check)
+      getById: protectedProcedure
+        .input((val: unknown) => {
+          const obj = val as any;
+          if (typeof obj?.orderId !== "number") throw new Error("orderId required");
+          return { orderId: obj.orderId };
+        })
+        .query(async ({ ctx, input }) => {
+          const order = await getOrderById(input.orderId);
+          if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+          // Verify ownership
+          if (order.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this order" });
+          }
+          return order;
+        }),
+
+      // Get all orders for current user
       getMyOrders: protectedProcedure.query(async ({ ctx }) => {
         return getUserOrders(ctx.user.id);
       }),
