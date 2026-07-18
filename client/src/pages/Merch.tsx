@@ -88,10 +88,22 @@ function getProductImages(product: ShopProduct, color: string): string[] {
   });
 
   if (colorImages.length > 0) {
-    return colorImages.map((img) => img.url);
+    return colorImages
+      .sort((a, b) => {
+        if (a.imageType === "thumbnail" && b.imageType !== "thumbnail") return -1;
+        if (a.imageType !== "thumbnail" && b.imageType === "thumbnail") return 1;
+        return a.sortOrder - b.sortOrder;
+      })
+      .map((img) => img.url);
   }
 
-  return product.images.map((img) => img.url);
+  return product.images
+    .sort((a, b) => {
+      if (a.imageType === "thumbnail" && b.imageType !== "thumbnail") return -1;
+      if (a.imageType !== "thumbnail" && b.imageType === "thumbnail") return 1;
+      return a.sortOrder - b.sortOrder;
+    })
+    .map((img) => img.url);
 }
 
 // ─── Helper: get unique colors from variants ──────────────────────────────────
@@ -418,7 +430,9 @@ export default function Merch() {
                 return (
                   <button
                     key={product.id}
-                    onClick={() => navigate(`/merch/${product.slug}`)}
+                    onClick={() => {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                     className="w-full max-w-full text-left min-w-0 overflow-x-hidden"
                   >
                     <div className="w-full max-w-full relative aspect-square bg-zinc-900 border border-white/10 rounded overflow-hidden mb-4 group hover:border-red-600/50 transition-colors min-w-0">
