@@ -1342,3 +1342,16 @@
 - [ ] Confirmation dialogs before delete/archive
 - [ ] Dynamic product page /shop/:slug — auto-generated from DB
 - [ ] Dynamic product page: image carousel, color/size selector, variant inventory check, add to cart
+
+## Merch Page Dynamic Rewrite (Session Jul 18 2026)
+- [x] Rewrite Merch.tsx to use trpc.shop.getProducts.useQuery() instead of hardcoded PRODUCTS array
+- [x] Seed Spirit of The Mitten Tee (ID 1, featured, $49.99, badge "Limited First Release") into shopProducts DB
+- [x] Seed Murder Mitten Classic Logo Tee (ID 2, $34.99, badge "New Drop") into shopProducts DB
+- [x] Insert all 18 Spirit Tee S3 images (9 White + 9 Black) into shop_product_images
+- [x] Insert 2 Classic Logo Tee images into shop_product_images
+- [x] Insert 12 variants (Black+White x S/M/L/XL/2XL/3XL) for each product into shop_variants
+- [x] Color-specific image filtering via storageKey keyword match (white/black in filename)
+- [x] Loading/empty state for Merch page
+- [x] Hero product auto-selected by featured=true field from DB
+- [x] Hero size selection fixed (separate heroSize state, no longer tied to modal)
+- [ ] Stripe live key: user must verify STRIPE_SECRET_KEY in Settings -> Secrets in Manus Management UI

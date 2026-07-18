@@ -7,7 +7,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 
-// ─── Color-specific image galleries ─────────────────────────────────────────
+// ─── Color-specific image galleries (fallback for Spirit of The Mitten Tee) ──
+// These are used when the DB images aren't yet loaded or as a reference map.
+// The DB images are keyed by storageKey prefix: "spirit-white-*" and "spirit-black-*"
 const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
   White: [
     "/manus-storage/spirit-white-new-front_d5abb7f7.jpg",
@@ -33,39 +35,83 @@ const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
   ],
 };
 
-// ─── Product data ─────────────────────────────────────────────────────────────
-const PRODUCTS = [
-  {
-    id: 1,
-    name: "Spirit of The Mitten Tee",
-    price: 4999,
-    colors: ["Black", "White"],
-    sizes: ["S", "M", "L", "XL", "2XL", "3XL"],
-    description:
-      "Premium heavyweight 100% cotton t-shirt with a structured oversized fit, thick ribbed collar, durable construction, and ultra-soft feel designed for everyday wear.",
-    features: ["Large front graphic", "Large back tour graphic"],
-    getImages: (color: string) => SPIRIT_TEE_IMAGES[color] || SPIRIT_TEE_IMAGES.Black,
-    isHero: true,
-    isLimitedRelease: true,
-  },
-  {
-    id: 2,
-    name: "Murder Mitten Classic Logo Tee",
-    price: 3499,
-    colors: ["Black", "White"],
-    sizes: ["S", "M", "L", "XL", "2XL", "3XL"],
-    description:
-      "Premium heavyweight 100% cotton t-shirt with a structured oversized fit, thick ribbed collar, durable construction, and ultra-soft feel designed for everyday wear.",
-    features: ["Large front logo graphic"],
-    getImages: (color: string) => [
-      color === "White"
-        ? "/manus-storage/spirit-white-new-front_d5abb7f7.jpg"
-        : "/manus-storage/spirit-black-new-front_8f102326.jpg",
-    ],
-    isHero: false,
-    isLimitedRelease: false,
-  },
-];
+// ─── Type definitions ─────────────────────────────────────────────────────────
+type ShopImage = {
+  id: number;
+  url: string;
+  storageKey: string | null;
+  imageType: string;
+  sortOrder: number;
+};
+
+type ShopVariant = {
+  id: number;
+  color: string;
+  size: string;
+  inventoryQty: number;
+};
+
+type ShopProduct = {
+  id: number;
+  name: string;
+  subtitle: string | null;
+  slug: string;
+  description: string | null;
+  price: number;
+  compareAtPrice: number | null;
+  badge: string | null;
+  featured: boolean;
+  status: string;
+  sortOrder: number;
+  shippingEstimate: string | null;
+  images: ShopImage[];
+  variants: ShopVariant[];
+};
+
+// ─── Helper: get color-specific images for a product ─────────────────────────
+function getProductImages(product: ShopProduct, color: string): string[] {
+  if (!product.images || product.images.length === 0) {
+    // Fallback to hardcoded Spirit Tee images if this is the Spirit Tee
+    if (product.slug === "spirit-of-the-mitten-tee") {
+      return SPIRIT_TEE_IMAGES[color] || SPIRIT_TEE_IMAGES.Black;
+    }
+    return [];
+  }
+
+  // Filter images by color keyword in storageKey or url
+  const colorLower = color.toLowerCase();
+  const colorImages = product.images.filter((img) => {
+    const key = (img.storageKey || img.url || "").toLowerCase();
+    return key.includes(colorLower);
+  });
+
+  if (colorImages.length > 0) {
+    return colorImages.map((img) => img.url);
+  }
+
+  // If no color-specific images found, return all images
+  return product.images.map((img) => img.url);
+}
+
+// ─── Helper: get unique colors from variants ──────────────────────────────────
+function getProductColors(product: ShopProduct): string[] {
+  const colors = Array.from(new Set(product.variants.map((v) => v.color)));
+  return colors.length > 0 ? colors : ["Black", "White"];
+}
+
+// ─── Helper: get unique sizes from variants ───────────────────────────────────
+function getProductSizes(product: ShopProduct): string[] {
+  const sizeOrder = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
+  const sizes = Array.from(new Set(product.variants.map((v) => v.size)));
+  return sizes.sort((a, b) => {
+    const ai = sizeOrder.indexOf(a);
+    const bi = sizeOrder.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+}
 
 // ─── Image Carousel ───────────────────────────────────────────────────────────
 function ImageCarousel({ images, productName }: { images: string[]; productName: string }) {
@@ -78,6 +124,16 @@ function ImageCarousel({ images, productName }: { images: string[]; productName:
 
   const prev = () => setActiveIdx((i) => (i === 0 ? images.length - 1 : i - 1));
   const next = () => setActiveIdx((i) => (i === images.length - 1 ? 0 : i + 1));
+
+  if (images.length === 0) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="relative bg-[#111] aspect-[3/4] max-h-[70vw] md:max-h-none rounded-lg overflow-hidden flex items-center justify-center">
+          <span className="text-white/20 text-sm uppercase tracking-widest">No Image</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -134,8 +190,9 @@ function ImageCarousel({ images, productName }: { images: string[]; productName:
 export default function Merch() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  // tRPCroduct modal state
-  const [selectedProduct, setSelectedProduct] = useState<typeof PRODUCTS[0] | null>(null);
+
+  // Product modal state
+  const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -143,8 +200,17 @@ export default function Merch() {
 
   // Hero product color selection (separate from modal)
   const [heroColor, setHeroColor] = useState<string>("Black");
+  // Hero product size selection (inline, not in modal)
+  const [heroSize, setHeroSize] = useState<string>("");
 
-  // tRPC queries and mutations
+  // ─── tRPC: fetch products from DB ─────────────────────────────────────────
+  const productsQuery = trpc.shop.getProducts.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  });
+  const products = productsQuery.data || [];
+
+  // ─── tRPC: cart operations ─────────────────────────────────────────────────
   const cartQuery = trpc.merch.cart.getCart.useQuery(undefined, {
     enabled: !!user,
     refetchOnWindowFocus: false,
@@ -164,21 +230,45 @@ export default function Merch() {
 
   const cartItems = cartQuery.data || [];
 
+  // ─── Derived product data ──────────────────────────────────────────────────
+  // Hero product: featured=true or first product
+  const heroProduct = useMemo(() => {
+    return products.find((p) => p.featured) || products[0] || null;
+  }, [products]);
+
+  const otherProducts = useMemo(() => {
+    if (!heroProduct) return products;
+    return products.filter((p) => p.id !== heroProduct.id);
+  }, [products, heroProduct]);
+
+  const heroColors = useMemo(() => heroProduct ? getProductColors(heroProduct) : [], [heroProduct]);
+  const heroSizes = useMemo(() => heroProduct ? getProductSizes(heroProduct) : [], [heroProduct]);
+  const heroImages = useMemo(
+    () => heroProduct ? getProductImages(heroProduct, heroColor) : [],
+    [heroProduct, heroColor]
+  );
+
+  // Modal images
+  const modalImages = useMemo(
+    () => selectedProduct ? getProductImages(selectedProduct, selectedColor || getProductColors(selectedProduct)[0]) : [],
+    [selectedProduct, selectedColor]
+  );
+
+  // ─── Cart totals ───────────────────────────────────────────────────────────
   const cartTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => {
-      const product = PRODUCTS.find((p) => p.id === item.productId);
+      const product = products.find((p) => p.id === item.productId);
       return sum + (product?.price || 0) * item.quantity;
     }, 0);
-  }, [cartItems]);
+  }, [cartItems, products]);
 
   const shippingCost = cartTotal >= 10000 ? 0 : 399; // $3.99 flat, free over $100
   const orderTotal = cartTotal + shippingCost;
-
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   // ─── Add to cart ──────────────────────────────────────────────────────────
   const handleAddToCart = useCallback(
-    async (product: typeof PRODUCTS[0], color: string, size: string, qty: number) => {
+    async (product: ShopProduct, color: string, size: string, qty: number) => {
       if (!user) {
         window.location.href = getLoginUrl();
         return;
@@ -210,7 +300,7 @@ export default function Merch() {
         toast.error(err?.message || "Failed to add to cart. Please try again.");
       }
     },
-    [user, addToCartMutation, toast]
+    [user, addToCartMutation]
   );
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -226,7 +316,7 @@ export default function Merch() {
 
     try {
       const items = cartItems.map((item) => {
-        const product = PRODUCTS.find((p) => p.id === item.productId);
+        const product = products.find((p) => p.id === item.productId);
         return {
           productId: item.productId,
           productName: product?.name || "Unknown",
@@ -238,8 +328,8 @@ export default function Merch() {
       });
 
       const shippingAddress = {
-        name: user.name || user.artistName || "Customer",
-        email: user.email,
+        name: (user as any).name || (user as any).artistName || "Customer",
+        email: (user as any).email,
         address: "To be filled during checkout",
         city: "",
         state: "",
@@ -254,18 +344,35 @@ export default function Merch() {
       }
     } catch (err: any) {
       console.error("Checkout failed:", err);
-        toast.error(err?.message || "Checkout failed. Please try again.");
+      toast.error(err?.message || "Checkout failed. Please try again.");
     }
   };
 
-  const heroProduct = PRODUCTS.find((p) => p.isHero)!;
-  const heroImages = heroProduct.getImages(heroColor);
-  const otherProducts = PRODUCTS.filter((p) => !p.isHero);
+  // ─── Loading state ─────────────────────────────────────────────────────────
+  if (productsQuery.isLoading) {
+    return (
+      <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
+        <SiteNav />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-10 h-10 animate-spin text-red-600" />
+        </div>
+      </div>
+    );
+  }
 
-  // Modal images
-  const modalImages = selectedProduct
-    ? selectedProduct.getImages(selectedColor || selectedProduct.colors[0])
-    : [];
+  // ─── Empty state ───────────────────────────────────────────────────────────
+  if (!heroProduct) {
+    return (
+      <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
+        <SiteNav />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <ShoppingCart className="w-16 h-16 text-white/20" />
+          <p className="font-['Anton'] text-3xl uppercase text-white/40">Drop Coming Soon</p>
+          <p className="text-white/40 text-sm">Check back for new merch drops.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
@@ -283,9 +390,9 @@ export default function Merch() {
           <div className="flex flex-col gap-5 md:gap-8 md:sticky md:top-28">
             {/* Badges */}
             <div className="flex flex-wrap gap-2">
-              {heroProduct.isLimitedRelease && (
+              {heroProduct.badge && (
                 <span className="bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
-                  Limited First Release
+                  {heroProduct.badge}
                 </span>
               )}
               <span className="border border-white/30 text-white/60 px-3 py-1 text-xs uppercase tracking-widest">
@@ -297,19 +404,20 @@ export default function Merch() {
               <h1 className="font-['Anton'] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 uppercase leading-none break-words">
                 {heroProduct.name}
               </h1>
+              {heroProduct.subtitle && (
+                <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{heroProduct.subtitle}</p>
+              )}
               <p className="text-3xl md:text-4xl font-bold text-red-600 mb-4 md:mb-6">
                 ${(heroProduct.price / 100).toFixed(2)}
               </p>
+              {heroProduct.compareAtPrice && (
+                <p className="text-white/40 line-through text-lg mb-2">
+                  ${(heroProduct.compareAtPrice / 100).toFixed(2)}
+                </p>
+              )}
               <p className="text-white/70 text-base leading-relaxed mb-4">
                 {heroProduct.description}
               </p>
-              <ul className="space-y-1 text-white/50 text-sm">
-                {heroProduct.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <span className="text-red-600">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
             </div>
 
             {/* Color Selection */}
@@ -318,7 +426,7 @@ export default function Merch() {
                 Color: <span className="text-white">{heroColor}</span>
               </p>
               <div className="flex gap-3">
-                {heroProduct.colors.map((color) => (
+                {heroColors.map((color) => (
                   <button
                     key={color}
                     onClick={() => setHeroColor(color)}
@@ -338,16 +446,12 @@ export default function Merch() {
             <div>
               <p className="text-xs uppercase tracking-widest text-white/50 mb-3">Size</p>
               <div className="grid grid-cols-3 gap-2">
-                {heroProduct.sizes.map((size) => (
+                {heroSizes.map((size) => (
                   <button
                     key={size}
-                    onClick={() => {
-                      setSelectedProduct(heroProduct);
-                      setSelectedColor(heroColor);
-                      setSelectedSize(size);
-                    }}
+                    onClick={() => setHeroSize(size)}
                     className={`py-2 text-sm font-semibold uppercase tracking-widest transition-all border ${
-                      selectedProduct?.id === heroProduct.id && selectedSize === size
+                      heroSize === size
                         ? "bg-red-600 text-white border-red-600"
                         : "border-white/30 text-white/70 hover:border-white/60"
                     }`}
@@ -377,21 +481,13 @@ export default function Merch() {
               </div>
               <button
                 onClick={() => {
-                  if (!selectedProduct || selectedProduct.id !== heroProduct.id) {
-                    // Auto-select this product with current hero color
-                    if (!selectedSize) {
-                      toast.error("Please select a size");
-                      return;
-                    }
-                    handleAddToCart(heroProduct, heroColor, selectedSize, quantity);
-                  } else {
-                    handleAddToCart(heroProduct, heroColor, selectedSize, quantity);
+                  if (!heroSize) {
+                    toast.error("Please select a size");
+                    return;
                   }
+                  handleAddToCart(heroProduct, heroColor, heroSize, quantity);
                 }}
-                disabled={
-                  !selectedSize ||
-                  (selectedProduct?.id === heroProduct.id && addToCartMutation.isPending)
-                }
+                disabled={!heroSize || addToCartMutation.isPending}
                 className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/40 text-white py-3 font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
               >
                 {addToCartMutation.isPending ? (
@@ -399,13 +495,14 @@ export default function Merch() {
                 ) : (
                   <ShoppingCart className="w-5 h-5" />
                 )}
-                {selectedSize ? "Add to Cart" : "Select a Size"}
+                {heroSize ? "Add to Cart" : "Select a Size"}
               </button>
             </div>
 
             {/* Shipping note */}
             <p className="text-xs text-white/40 text-center">
-              $3.99 shipping · Free on orders over $100 · Estimated 5–7 business days
+              $3.99 shipping · Free on orders over $100
+              {heroProduct.shippingEstimate && ` · Estimated ${heroProduct.shippingEstimate}`}
             </p>
           </div>
         </div>
@@ -417,33 +514,50 @@ export default function Merch() {
           <div className="container">
             <h2 className="font-['Anton'] text-3xl md:text-4xl mb-8 md:mb-12 uppercase">The Collection</h2>
             <div className="grid md:grid-cols-2 gap-12">
-              {otherProducts.map((product) => (
-                <div key={product.id} className="group">
-                  <div className="relative bg-[#111] aspect-[3/4] rounded-lg overflow-hidden mb-6">
-                    <img
-                      src={product.getImages("Black")[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+              {otherProducts.map((product) => {
+                const colors = getProductColors(product);
+                const defaultImg = getProductImages(product, colors[0])[0];
+                return (
+                  <div key={product.id} className="group">
+                    <div className="relative bg-[#111] aspect-[3/4] rounded-lg overflow-hidden mb-6">
+                      {defaultImg ? (
+                        <img
+                          src={defaultImg}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-white/20 text-sm uppercase tracking-widest">Coming Soon</span>
+                        </div>
+                      )}
+                      {product.badge && (
+                        <div className="absolute top-4 left-4">
+                          <span className="bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
+                            {product.badge}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-['Anton'] text-2xl mb-2 uppercase">{product.name}</h3>
+                    <p className="text-2xl font-bold text-red-600 mb-3">
+                      ${(product.price / 100).toFixed(2)}
+                    </p>
+                    <p className="text-white/60 text-sm mb-6 line-clamp-2">{product.description}</p>
+                    <button
+                      onClick={() => {
+                        setSelectedProduct(product);
+                        setSelectedColor(getProductColors(product)[0]);
+                        setSelectedSize("");
+                        setQuantity(1);
+                      }}
+                      className="w-full border border-white/30 hover:border-white/60 text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
+                    >
+                      Shop The Drop
+                    </button>
                   </div>
-                  <h3 className="font-['Anton'] text-2xl mb-2 uppercase">{product.name}</h3>
-                  <p className="text-2xl font-bold text-red-600 mb-3">
-                    ${(product.price / 100).toFixed(2)}
-                  </p>
-                  <p className="text-white/60 text-sm mb-6">{product.description}</p>
-                  <button
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      setSelectedColor(product.colors[0]);
-                      setSelectedSize("");
-                      setQuantity(1);
-                    }}
-                    className="w-full border border-white/30 hover:border-white/60 text-white py-3 text-sm font-bold uppercase tracking-widest transition-all"
-                  >
-                    Shop The Drop
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -476,9 +590,9 @@ export default function Merch() {
 
                 {/* Product Details */}
                 <div className="space-y-6">
-                  {selectedProduct.isLimitedRelease && (
+                  {selectedProduct.badge && (
                     <span className="inline-block bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
-                      Limited First Release
+                      {selectedProduct.badge}
                     </span>
                   )}
 
@@ -497,7 +611,7 @@ export default function Merch() {
                       Color: <span className="text-white">{selectedColor}</span>
                     </p>
                     <div className="flex gap-2">
-                      {selectedProduct.colors.map((color) => (
+                      {getProductColors(selectedProduct).map((color) => (
                         <button
                           key={color}
                           onClick={() => setSelectedColor(color)}
@@ -517,7 +631,7 @@ export default function Merch() {
                   <div>
                     <p className="text-xs uppercase tracking-widest text-white/50 mb-3">Size</p>
                     <div className="grid grid-cols-3 gap-2">
-                      {selectedProduct.sizes.map((size) => (
+                      {getProductSizes(selectedProduct).map((size) => (
                         <button
                           key={size}
                           onClick={() => setSelectedSize(size)}
@@ -634,17 +748,23 @@ export default function Merch() {
                 </div>
               ) : (
                 cartItems.map((item) => {
-                  const product = PRODUCTS.find((p) => p.id === item.productId);
+                  const product = products.find((p) => p.id === item.productId);
                   if (!product) return null;
-                  const thumb = product.getImages(item.color)[0];
+                  const thumb = getProductImages(product, item.color)[0] || "";
                   return (
                     <div key={item.id} className="border border-white/20 rounded-lg p-4">
                       <div className="flex gap-4">
-                        <img
-                          src={thumb}
-                          alt={product.name}
-                          className="w-16 h-20 object-cover rounded flex-shrink-0"
-                        />
+                        {thumb ? (
+                          <img
+                            src={thumb}
+                            alt={product.name}
+                            className="w-16 h-20 object-cover rounded flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-16 h-20 bg-[#111] rounded flex-shrink-0 flex items-center justify-center">
+                            <ShoppingCart className="w-5 h-5 text-white/20" />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
