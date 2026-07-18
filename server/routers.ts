@@ -4385,6 +4385,9 @@ export const appRouter = router({
               },
               quantity: item.quantity,
             })),
+            shipping_address_collection: {
+              allowed_countries: ["US"],
+            },
             shipping_options: [
               {
                 shipping_rate_data: {

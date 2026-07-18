@@ -199,14 +199,31 @@ async function grantEligibilityForSession(session: Stripe.Checkout.Session) {
       .limit(1);
 
     if (existingMerchOrder.length > 0) {
+      // Extract shipping address from Stripe session
+      let shippingAddress = existingMerchOrder[0].shippingAddress;
+      const sessionAny = session as any;
+      if (sessionAny.shipping_details) {
+        const addr = sessionAny.shipping_details.address;
+        shippingAddress = JSON.stringify({
+          name: sessionAny.shipping_details.name || "",
+          email: customerEmail,
+          address: addr?.line1 || "",
+          city: addr?.city || "",
+          state: addr?.state || "",
+          zip: addr?.postal_code || "",
+          country: addr?.country || "US",
+        });
+      }
+
       await db
         .update(orders)
         .set({
           status: "completed",
           stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+          shippingAddress: shippingAddress,
         })
         .where(eq(orders.id, existingMerchOrder[0].id));
-      console.log(`[Orders] ✅ Updated merch order ${existingMerchOrder[0].id} to completed`);
+      console.log(`[Orders] ✅ Updated merch order ${existingMerchOrder[0].id} to completed with shipping address`);
     }
   } catch (err: any) {
     console.warn(`[Orders] Failed to update merch order:`, err);
