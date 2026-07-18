@@ -271,8 +271,8 @@ export default function Merch() {
       <SiteNav />
 
       {/* ── HERO PRODUCT ──────────────────────────────────────────────────── */}
-      <section className="relative pt-20 pb-10 md:pt-24 md:pb-16">
-        <div className="container grid md:grid-cols-2 gap-6 md:gap-12 items-start">
+      <section className="relative pt-12 pb-6 md:pt-16 md:pb-10">
+        <div className="container grid md:grid-cols-2 gap-4 md:gap-8 items-start">
           {/* Left: Image Carousel */}
           <div>
             {heroProduct && <ImageCarousel images={heroImages} productName={heroProduct.name} />}
@@ -281,7 +281,7 @@ export default function Merch() {
           {/* Right: Product Info */}
           <div className="flex flex-col gap-5 md:gap-8 md:sticky md:top-28">
             {/* Badges */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {heroProduct?.badge && (
                 <span className="bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
                   {heroProduct.badge}
@@ -293,13 +293,13 @@ export default function Merch() {
             </div>
 
             <div>
-              <h1 className="font-['Anton'] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 uppercase leading-none break-words">
+              <h1 className="font-['Anton'] text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 uppercase leading-none break-words">
                 {heroProduct?.name}
               </h1>
               {heroProduct?.subtitle && (
                 <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{heroProduct.subtitle}</p>
               )}
-              <p className="text-3xl md:text-4xl font-bold text-red-600 mb-4 md:mb-6">
+              <p className="text-2xl md:text-3xl font-bold text-red-600 mb-2 md:mb-3">
                 ${heroProduct ? (heroProduct.price / 100).toFixed(2) : "0.00"}
               </p>
               {heroProduct?.compareAtPrice && (
@@ -307,17 +307,17 @@ export default function Merch() {
                   ${(heroProduct.compareAtPrice / 100).toFixed(2)}
                 </p>
               )}
-              <p className="text-white/70 text-base leading-relaxed mb-4">
+              <p className="text-white/70 text-sm leading-relaxed mb-3">
                 {heroProduct?.description}
               </p>
             </div>
 
             {/* Color Selection */}
             <div>
-              <p className="text-xs uppercase tracking-widest text-white/50 mb-3">
+              <p className="text-xs uppercase tracking-widest text-white/50 mb-2">
                 Color: <span className="text-white">{heroColor}</span>
               </p>
-              <div className="flex flex-wrap gap-2 sm:gap-3">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {heroColors.map((color) => (
                   <button
                     key={color}
@@ -336,8 +336,8 @@ export default function Merch() {
 
             {/* Size Selection */}
             <div>
-              <p className="text-xs uppercase tracking-widest text-white/50 mb-3">Size</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-2">
+              <p className="text-xs uppercase tracking-widest text-white/50 mb-2">Size</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-1.5">
                 {heroSizes.map((size) => (
                   <button
                     key={size}
@@ -355,7 +355,7 @@ export default function Merch() {
             </div>
 
             {/* Quantity + CTA */}
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
               <div className="flex items-center border border-white/30 bg-black/40 shrink-0">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -395,7 +395,7 @@ export default function Merch() {
             </div>
 
             {/* Shipping info */}
-            <p className="text-white/40 text-xs">
+            <p className="text-white/40 text-xs mt-2">
               {heroProduct?.shippingEstimate || "3–7 business days"} · Free on orders over $100 · Estimated arrival
             </p>
           </div>
@@ -404,9 +404,9 @@ export default function Merch() {
 
       {/* ── COLLECTION ────────────────────────────────────────────────────── */}
       {otherProducts.length > 0 && (
-        <section className="py-16 md:py-24 border-t border-white/10">
+        <section className="py-10 md:py-16 border-t border-white/10">
           <div className="container">
-            <h2 className="font-['Anton'] text-4xl md:text-5xl uppercase mb-12">The Collection</h2>
+            <h2 className="font-['Anton'] text-3xl md:text-4xl uppercase mb-6">The Collection</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {otherProducts.map((product) => {
                 const colors = getProductColors(product);
