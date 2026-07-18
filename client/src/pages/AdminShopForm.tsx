@@ -467,30 +467,44 @@ export default function AdminShopForm() {
                     {images.map((img, index) => (
                       <div key={index} className="relative group aspect-square bg-zinc-900 border border-white/10 rounded overflow-hidden">
                         <img src={img.url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+
+                        {/* Always-visible delete button in top-right corner */}
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Delete this image?")) return;
+                            if (img.id) {
+                              await deleteImageMutation.mutateAsync({ imageId: img.id });
+                              utils.shop.adminGetProducts.invalidate();
+                            }
+                            setImages(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          disabled={deleteImageMutation.isPending}
+                          className="absolute top-1 right-1 z-10 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg transition-colors"
+                          title="Delete image"
+                        >
+                          {deleteImageMutation.isPending ? (
+                            <Loader2 size={10} className="animate-spin" />
+                          ) : (
+                            <X size={12} />
+                          )}
+                        </button>
+
+                        {/* Hover overlay: image type selector only */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end justify-end p-2 pointer-events-none group-hover:pointer-events-auto">
                           <select
                             value={img.imageType}
                             onChange={e => setImages(prev => prev.map((im, i) => i === index ? { ...im, imageType: e.target.value as ImageType } : im))}
-                            className="w-full text-xs bg-black/80 text-white border border-white/30 rounded px-1 py-0.5"
+                            className="w-full text-xs bg-black/90 text-white border border-white/30 rounded px-1 py-0.5"
+                            onClick={e => e.stopPropagation()}
                           >
                             {(["thumbnail", "front", "back", "size_chart", "gallery"] as ImageType[]).map(t => (
                               <option key={t} value={t}>{t}</option>
                             ))}
                           </select>
-                          <button
-                            onClick={async () => {
-                              if (img.id) {
-                                await deleteImageMutation.mutateAsync({ imageId: img.id });
-                                utils.shop.adminGetProducts.invalidate();
-                              }
-                              setImages(prev => prev.filter((_, i) => i !== index));
-                            }}
-                            className="p-1.5 bg-red-600/80 hover:bg-red-600 rounded text-white transition-colors"
-                          >
-                            <Trash2 size={12} />
-                          </button>
                         </div>
-                        <div className="absolute top-1 left-1 bg-black/70 text-white/60 text-[9px] px-1 rounded">
+
+                        {/* Image type badge bottom-left */}
+                        <div className="absolute bottom-1 left-1 bg-black/70 text-white/60 text-[9px] px-1 rounded pointer-events-none">
                           {img.imageType}
                         </div>
                       </div>

@@ -206,7 +206,8 @@ export default function Merch() {
   // ─── tRPC: fetch products from DB ─────────────────────────────────────────
   const productsQuery = trpc.shop.getProducts.useQuery(undefined, {
     refetchOnWindowFocus: false,
-    staleTime: 60_000,
+    staleTime: 5_000, // Refetch every 5 seconds to pick up admin changes
+    refetchInterval: 5_000, // Poll every 5 seconds
   });
   const products = productsQuery.data || [];
 
