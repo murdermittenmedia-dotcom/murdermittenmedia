@@ -161,7 +161,7 @@ export default function Promo() {
             <span>📍 The Mitten</span>
             <span>🎤 Michigan Rap & Culture</span>
             <span>📈 4.5M Monthly Views</span>
-            <span>👥 45.8K Followers</span>
+            <span>👥 46.5K Followers</span>
           </div>
         </div>
       </section>

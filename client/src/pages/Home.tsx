@@ -711,7 +711,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { platform: "Instagram", handle: "@murdermittenmedia", stat: "45.8K followers", url: "https://www.instagram.com/murdermittenmedia/", icon: "📸" },
+              { platform: "Instagram", handle: "@murdermittenmedia", stat: "46.5K followers", url: "https://www.instagram.com/murdermittenmedia/", icon: "📸" },
               { platform: "YouTube", handle: "@MurderMittenMedia", stat: "Videos & Live Streams", url: "https://youtube.com/@MurderMittenMedia", icon: "▶" },
               { platform: "Threads", handle: "@murdermittenmedia", stat: "Real-time updates & commentary", url: "https://www.threads.net/@murdermittenmedia", icon: "🧵" },
             ].map(s => (
