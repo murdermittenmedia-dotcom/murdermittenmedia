@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Music, Star, MessageSquare, Plus, Edit2, Trash2 } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Music, Star, MessageSquare, Plus, Edit2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +12,9 @@ export default function FindStudio() {
   const [selectedStudio, setSelectedStudio] = useState<number | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [showAdminForm, setShowAdminForm] = useState(false);
+  const [showEngineersForm, setShowEngineersForm] = useState(false);
   const [editingStudio, setEditingStudio] = useState<number | null>(null);
+  const [newEngineer, setNewEngineer] = useState("");
   const [adminFormData, setAdminFormData] = useState({
     studioName: "",
     location: "",
@@ -101,8 +103,8 @@ export default function FindStudio() {
   const currentStudio = studios.find((s) => s.id === selectedStudio);
 
   const handleAdminFormSubmit = () => {
-    if (!adminFormData.studioName.trim() || !adminFormData.location.trim() || !adminFormData.contactInfo.trim()) {
-      alert("Please fill in studio name, location, and contact info");
+    if (!adminFormData.studioName.trim()) {
+      alert("Please enter a studio name");
       return;
     }
     createStudioMutation.mutate(adminFormData as any);
@@ -111,11 +113,11 @@ export default function FindStudio() {
   const handleEditStudio = (studio: any) => {
     setAdminFormData({
       studioName: studio.studioName,
-      location: studio.location,
-      latitude: studio.latitude,
-      longitude: studio.longitude,
+      location: studio.location || "",
+      latitude: studio.latitude || "",
+      longitude: studio.longitude || "",
       engineers: studio.engineers || "",
-      contactInfo: studio.contactInfo,
+      contactInfo: studio.contactInfo || "",
       instagramHandle: studio.instagramHandle || "",
       twitterHandle: studio.twitterHandle || "",
       facebookUrl: studio.facebookUrl || "",
@@ -126,6 +128,39 @@ export default function FindStudio() {
     });
     setEditingStudio(studio.id);
     setShowAdminForm(true);
+  };
+
+  const handleAddEngineer = () => {
+    if (!newEngineer.trim() || !currentStudio) return;
+    const engineers = currentStudio.engineers ? currentStudio.engineers.split(", ") : [];
+    if (!engineers.includes(newEngineer.trim())) {
+      engineers.push(newEngineer.trim());
+      const updatedEngineers = engineers.join(", ");
+      setAdminFormData({
+        ...adminFormData,
+        engineers: updatedEngineers,
+      });
+      createStudioMutation.mutate({
+        ...adminFormData,
+        engineers: updatedEngineers,
+      } as any);
+      setNewEngineer("");
+    }
+  };
+
+  const handleRemoveEngineer = (engineerName: string) => {
+    if (!currentStudio) return;
+    const engineers = currentStudio.engineers ? currentStudio.engineers.split(", ") : [];
+    const filtered = engineers.filter((e) => e !== engineerName);
+    const updatedEngineers = filtered.join(", ");
+    setAdminFormData({
+      ...adminFormData,
+      engineers: updatedEngineers,
+    });
+    createStudioMutation.mutate({
+      ...adminFormData,
+      engineers: updatedEngineers,
+    } as any);
   };
 
   const handleSubmitReview = () => {
@@ -187,7 +222,7 @@ export default function FindStudio() {
           )}
         </div>
 
-        {/* Admin Form */}
+        {/* Admin Form - Simplified */}
         {user?.role === "admin" && showAdminForm && (
           <Card className="bg-white/5 border-white/10 p-6 mb-8">
             <h2 className="text-2xl font-bold mb-4">{editingStudio ? "Edit Studio" : "Add New Studio"}</h2>
@@ -214,12 +249,6 @@ export default function FindStudio() {
                 placeholder="Longitude"
                 value={adminFormData.longitude}
                 onChange={(e) => setAdminFormData({ ...adminFormData, longitude: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Engineers (comma-separated)"
-                value={adminFormData.engineers}
-                onChange={(e) => setAdminFormData({ ...adminFormData, engineers: e.target.value })}
                 className="bg-white/5 border-white/10 text-white"
               />
               <Input
@@ -316,6 +345,7 @@ export default function FindStudio() {
                     onClick={() => {
                       setSelectedStudio(studio.id);
                       setShowReviewForm(false);
+                      setShowEngineersForm(false);
                     }}
                     className={`w-full text-left p-4 rounded-lg border transition-all ${
                       selectedStudio === studio.id
@@ -326,7 +356,7 @@ export default function FindStudio() {
                     <div className="font-semibold text-sm">{studio.studioName}</div>
                     <div className="text-xs text-white/60 mt-1 flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
-                      {studio.location}
+                      {studio.location || "No location"}
                     </div>
                     {studio.reviewCount > 0 && (
                       <div className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
@@ -372,41 +402,29 @@ export default function FindStudio() {
                     )}
                   </div>
 
-                  {currentStudio.imageUrl && (
-                    <img
-                      src={currentStudio.imageUrl}
-                      alt={currentStudio.studioName}
-                      className="w-full h-48 object-cover rounded-lg mb-4"
-                    />
-                  )}
-
                   {currentStudio.description && (
                     <p className="text-white/80 mb-4">{currentStudio.description}</p>
                   )}
 
                   {/* Location */}
-                  <div className="flex items-start gap-3 mb-4">
-                    <MapPin className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <div className="text-sm font-semibold">Location</div>
-                      <div className="text-white/60">{currentStudio.location}</div>
+                  {currentStudio.location && (
+                    <div className="flex items-start gap-3 mb-4">
+                      <MapPin className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-sm font-semibold">Location</div>
+                        <div className="text-white/60">{currentStudio.location}</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Contact */}
-                  <div className="flex items-start gap-3 mb-4">
-                    <Phone className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <div className="text-sm font-semibold">Contact</div>
-                      <div className="text-white/60">{currentStudio.contactInfo}</div>
-                    </div>
-                  </div>
-
-                  {/* Engineers */}
-                  {currentStudio.engineers && (
-                    <div className="mb-4">
-                      <div className="text-sm font-semibold mb-2">Engineers to Book</div>
-                      <div className="text-white/60">{currentStudio.engineers}</div>
+                  {currentStudio.contactInfo && (
+                    <div className="flex items-start gap-3 mb-4">
+                      <Phone className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-sm font-semibold">Contact</div>
+                        <div className="text-white/60">{currentStudio.contactInfo}</div>
+                      </div>
                     </div>
                   )}
 
@@ -469,6 +487,59 @@ export default function FindStudio() {
                     )}
                   </div>
                 </Card>
+
+                {/* Engineers Management */}
+                {user?.role === "admin" && (
+                  <Card className="bg-white/5 border-white/10 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold">Engineers</h3>
+                      <Button
+                        onClick={() => setShowEngineersForm(!showEngineersForm)}
+                        className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                        size="sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Engineer
+                      </Button>
+                    </div>
+
+                    {showEngineersForm && (
+                      <div className="flex gap-2 mb-4">
+                        <Input
+                          placeholder="Engineer name"
+                          value={newEngineer}
+                          onChange={(e) => setNewEngineer(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white"
+                        />
+                        <Button
+                          onClick={handleAddEngineer}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      {currentStudio.engineers
+                        ? currentStudio.engineers.split(", ").map((engineer) => (
+                            <div
+                              key={engineer}
+                              className="bg-red-600/20 border border-red-600/50 rounded-full px-3 py-1 flex items-center gap-2 text-sm"
+                            >
+                              {engineer}
+                              <button
+                                onClick={() => handleRemoveEngineer(engineer)}
+                                className="hover:text-red-400 transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))
+                        : <div className="text-white/40 text-sm">No engineers added yet</div>}
+                    </div>
+                  </Card>
+                )}
 
                 {/* Rating */}
                 {currentStudio.reviewCount > 0 && (
