@@ -51,6 +51,7 @@ import GoldenWheel from "./pages/GoldenWheel";
 import AdminGoldenWheel from "./pages/AdminGoldenWheel";
 import OrderHistory from "./pages/OrderHistory";
 import OrderDetail from "./pages/OrderDetail";
+import FindStudio from "./pages/FindStudio";
 
 function Router() {
   return (
@@ -67,6 +68,7 @@ function Router() {
       <Route path={"/admin/shop/new"} component={AdminShopForm} />
       <Route path={"/admin/shop/edit/:id"} component={AdminShopForm} />
       <Route path={"/shop/:slug"} component={ShopProduct} />
+      <Route path={"/find-studio"} component={FindStudio} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/review"} component={MusicReview} />
@@ -102,7 +104,7 @@ function Router() {
       <Route path={"/account/orders"} component={OrderHistory} />
       <Route path={"/account/orders/:orderId"} component={OrderDetail} />
 
-      {/* Community */}
+      {/* Explore */}
       <Route path={"/forum"} component={Forum} />
       <Route path={"/forum/:id"}>
         {(params) => <ForumPost params={params} />}

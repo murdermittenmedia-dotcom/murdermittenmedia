@@ -151,26 +151,26 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-1.5 px-4 py-5 text-xs font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors"
               >
-                All Pages
+                MENU
                 <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {/* Mega Dropdown */}
+              {/* Dropdown Menu */}
               {dropdownOpen && (
                 <div
                   onMouseLeave={() => setDropdownOpen(false)}
-                  className="absolute top-full left-0 mt-0 w-screen max-w-4xl bg-[#0c0c0c] border border-white/10 shadow-2xl z-50"
+                  className="absolute top-full left-0 mt-1 w-80 bg-[#0c0c0c] border border-white/10 shadow-2xl z-50 rounded-lg overflow-hidden"
                 >
-                  <div className="grid grid-cols-2 gap-0">
+                  <div className="space-y-0">
                     {ALL_PAGES.map((section) => (
-                      <div key={section.category} className={`border-r border-white/5 last:border-r-0 ${
+                      <div key={section.category} className={`border-b border-white/5 last:border-0 ${
                         section.accent ? "bg-red-950/10" : ""
                       }`}>
                         {/* Category header */}
-                        <div className={`px-4 py-2 border-b text-[9px] font-black uppercase tracking-[0.3em] ${
+                        <div className={`px-4 py-2 text-[9px] font-black uppercase tracking-[0.3em] ${
                           section.accent
-                            ? "border-red-600/20 text-red-500"
-                            : "border-white/8 text-white/30"
+                            ? "text-red-500 bg-red-950/20"
+                            : "text-white/30 bg-white/[0.02]"
                         }`}>
                           {section.category}
                         </div>
@@ -184,20 +184,15 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                               key={item.href}
                               href={item.href}
                               onClick={() => setDropdownOpen(false)}
-                              className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors group border-b border-white/[0.04] last:border-0"
+                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/8 transition-colors group border-b border-white/[0.04] last:border-0"
                             >
-                              <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${
-                                live ? "bg-red-600/20 border border-red-600/40"
-                                     : "bg-white/5 border border-white/10 group-hover:border-white/20"
-                              }`}>
-                                <Icon className={`w-3 h-3 ${live ? "text-red-400" : "text-white/50 group-hover:text-white/80"}`} />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors">
+                              <Icon className={`w-4 h-4 flex-shrink-0 ${live ? "text-red-400" : "text-white/50 group-hover:text-white/80"}`} />
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-sm text-white/80 group-hover:text-white transition-colors">
                                   {item.label}
                                 </span>
                                 {live && (
-                                  <span className="text-[8px] font-black uppercase tracking-widest text-red-500 animate-pulse">LIVE</span>
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-red-500 animate-pulse ml-auto">LIVE</span>
                                 )}
                               </div>
                             </a>
