@@ -4241,38 +4241,52 @@ export const appRouter = router({
         };
 
         const amount = priceMap[packageId];
-        if (!amount) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid package" });
+        if (!amount) {
+          console.error("[Stripe] Invalid package ID", { packageId, availablePackages: Object.keys(priceMap) });
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid package: ${packageId}` });
+        }
 
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ["card"],
-          mode: "payment",
-          customer_email: user.email ?? undefined,
-          client_reference_id: user.id.toString(),
-          metadata: {
-            user_id: user.id.toString(),
-            customer_email: user.email ?? "",
-            customer_name: user.artistName || user.name || "Unknown",
-            package_id: packageId,
-          },
-          line_items: [
-            {
-              price_data: {
-                currency: "usd",
-                product_data: {
-                  name: `Murder Mitten Media Promo - ${packageId}`,
-                  description: `Promo package: ${packageId}`,
-                },
-                unit_amount: amount,
-              },
-              quantity: 1,
+        try {
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            mode: "payment",
+            customer_email: user.email ?? undefined,
+            client_reference_id: user.id.toString(),
+            metadata: {
+              user_id: user.id.toString(),
+              customer_email: user.email ?? "",
+              customer_name: user.artistName || user.name || "Unknown",
+              package_id: packageId,
             },
-          ],
-          success_url: `${ctx.req.headers.origin}/promo?success=true`,
-          cancel_url: `${ctx.req.headers.origin}/promo?canceled=true`,
-          allow_promotion_codes: true,
-        });
+            line_items: [
+              {
+                price_data: {
+                  currency: "usd",
+                  product_data: {
+                    name: `Murder Mitten Media Promo - ${packageId}`,
+                    description: `Promo package: ${packageId}`,
+                  },
+                  unit_amount: amount,
+                },
+                quantity: 1,
+              },
+            ],
+            success_url: `${ctx.req.headers.origin}/promo?success=true`,
+            cancel_url: `${ctx.req.headers.origin}/promo?canceled=true`,
+            allow_promotion_codes: true,
+          });
 
-        return { checkoutUrl: session.url };
+          if (!session.url) {
+            console.error("[Stripe] Session created but no URL returned", { sessionId: session.id, packageId });
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate checkout URL" });
+          }
+
+          console.log("[Stripe] Checkout session created successfully", { sessionId: session.id, packageId });
+          return { checkoutUrl: session.url };
+        } catch (error: any) {
+          console.error("[Stripe] Checkout session creation failed", { error: error.message, packageId, stack: error.stack });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message || "Stripe checkout failed" });
+        }
       }),
   }),
 
