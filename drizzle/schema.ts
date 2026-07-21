@@ -1068,3 +1068,49 @@ export const promoCodes = mysqlTable("promo_codes", {
 
 export type PromoCode = typeof promoCodes.$inferSelect;
 export type InsertPromoCode = typeof promoCodes.$inferInsert;
+
+
+// Studios Directory
+export const studios = mysqlTable("studios", {
+  id: int("id").autoincrement().primaryKey(),
+  studioName: varchar("studioName", { length: 256 }).notNull(),
+  location: varchar("location", { length: 512 }).notNull(), // Full address
+  latitude: varchar("latitude", { length: 32 }).notNull(), // Stored as string for precision
+  longitude: varchar("longitude", { length: 32 }).notNull(), // Stored as string for precision
+  engineers: text("engineers"), // JSON array of engineer names
+  contactInfo: varchar("contactInfo", { length: 512 }).notNull(), // Phone, email, etc.
+  instagramHandle: varchar("instagramHandle", { length: 128 }),
+  twitterHandle: varchar("twitterHandle", { length: 128 }),
+  facebookUrl: varchar("facebookUrl", { length: 512 }),
+  websiteUrl: varchar("websiteUrl", { length: 512 }),
+  youtubeChannel: varchar("youtubeChannel", { length: 512 }),
+  tiktokHandle: varchar("tiktokHandle", { length: 128 }),
+  description: text("description"), // Studio description/bio
+  imageUrl: varchar("imageUrl", { length: 512 }), // Studio photo
+  averageRating: varchar("averageRating", { length: 10 }).default("0"), // Stored as string (e.g., "4.5")
+  reviewCount: int("reviewCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Studio = typeof studios.$inferSelect;
+export type InsertStudio = typeof studios.$inferInsert;
+
+// Studio Reviews
+export const studioReviews = mysqlTable("studio_reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  studioId: int("studioId").notNull(),
+  userId: int("userId"), // null for guest reviews
+  guestName: varchar("guestName", { length: 128 }), // For guest reviews
+  guestEmail: varchar("guestEmail", { length: 320 }), // For guest reviews
+  rating: int("rating").notNull(), // 1-5 stars
+  title: varchar("title", { length: 256 }).notNull(),
+  reviewText: text("reviewText").notNull(),
+  isVerified: boolean("isVerified").default(false).notNull(), // Verified visitor
+  isApproved: boolean("isApproved").default(true).notNull(), // Admin approval flag
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StudioReview = typeof studioReviews.$inferSelect;
+export type InsertStudioReview = typeof studioReviews.$inferInsert;

@@ -1,4 +1,4 @@
-import { eq, asc, desc, ne, and, or, sql, isNotNull, inArray, count, sum, gte, lte } from "drizzle-orm";
+import { eq, asc, desc, ne, and, or, sql, isNotNull, inArray, count, sum, gte, lte, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, User, users,
@@ -38,6 +38,8 @@ import {
   shopProducts, InsertShopProduct, ShopProduct,
   shopProductImages, InsertShopProductImage, ShopProductImage,
   shopVariants, InsertShopVariant, ShopVariant,
+  studios, InsertStudio, Studio,
+  studioReviews, InsertStudioReview, StudioReview,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2152,4 +2154,112 @@ export async function getShopVariantInventory(productId: number, color: string, 
     ))
     .limit(1);
   return rows[0] ?? null;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STUDIO MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function createStudio(data: InsertStudio): Promise<Studio> {
+  const db = await getDb();
+  const result = await db.insert(studios).values(data);
+  const id = result[0].insertId;
+  const studio = await db.query.studios.findFirst({ where: eq(studios.id, Number(id)) });
+  if (!studio) throw new Error("Failed to create studio");
+  return studio;
+}
+
+export async function updateStudio(id: number, data: Partial<InsertStudio>): Promise<Studio> {
+  const db = await getDb();
+  await db.update(studios).set(data).where(eq(studios.id, id));
+  const studio = await db.query.studios.findFirst({ where: eq(studios.id, id) });
+  if (!studio) throw new Error("Studio not found");
+  return studio;
+}
+
+export async function deleteStudio(id: number): Promise<void> {
+  const db = await getDb();
+  // Delete reviews first
+  await db.delete(studioReviews).where(eq(studioReviews.studioId, id));
+  // Delete studio
+  await db.delete(studios).where(eq(studios.id, id));
+}
+
+export async function getStudioById(id: number): Promise<Studio | null> {
+  const db = await getDb();
+  return db.query.studios.findFirst({ where: eq(studios.id, id) });
+}
+
+export async function getAllStudios(): Promise<Studio[]> {
+  const db = await getDb();
+  return db.query.studios.findMany({ orderBy: (studios, { asc }) => asc(studios.studioName) });
+}
+
+export async function getStudiosByLocation(location: string): Promise<Studio[]> {
+  const db = await getDb();
+  return db.query.studios.findMany({
+    where: like(studios.location, `%${location}%`),
+    orderBy: (studios, { asc }) => asc(studios.studioName),
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STUDIO REVIEWS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function createStudioReview(data: InsertStudioReview): Promise<StudioReview> {
+  const db = await getDb();
+  const result = await db.insert(studioReviews).values(data);
+  const id = result[0].insertId;
+  const review = await db.query.studioReviews.findFirst({ where: eq(studioReviews.id, Number(id)) });
+  if (!review) throw new Error("Failed to create review");
+  
+  // Update studio rating
+  await updateStudioRating(data.studioId);
+  
+  return review;
+}
+
+export async function getStudioReviews(studioId: number): Promise<StudioReview[]> {
+  const db = await getDb();
+  return db.query.studioReviews.findMany({
+    where: and(eq(studioReviews.studioId, studioId), eq(studioReviews.isApproved, true)),
+    orderBy: (reviews, { desc }) => desc(reviews.createdAt),
+  });
+}
+
+export async function deleteStudioReview(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const review = await db.query.studioReviews.findFirst({ where: eq(studioReviews.id, id) });
+  if (review) {
+    await db.delete(studioReviews).where(eq(studioReviews.id, id));
+    await updateStudioRating(review.studioId);
+  }
+}
+
+export async function approveStudioReview(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const review = await db.query.studioReviews.findFirst({ where: eq(studioReviews.id, id) });
+  if (review) {
+    await db.update(studioReviews).set({ isApproved: true }).where(eq(studioReviews.id, id));
+    await updateStudioRating(review.studioId);
+  }
+}
+
+async function updateStudioRating(studioId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const reviews = await db.query.studioReviews.findMany({
+    where: and(eq(studioReviews.studioId, studioId), eq(studioReviews.isApproved, true)),
+  });
+  
+  if (reviews.length === 0) {
+    await db.update(studios).set({ averageRating: "0", reviewCount: 0 }).where(eq(studios.id, studioId));
+  } else {
+    const avgRating = (reviews.reduce((sum: number, r: StudioReview) => sum + r.rating, 0) / reviews.length).toFixed(1);
+    await db.update(studios).set({ averageRating: avgRating, reviewCount: reviews.length }).where(eq(studios.id, studioId));
+  }
 }
