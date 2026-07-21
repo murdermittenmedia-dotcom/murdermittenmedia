@@ -58,14 +58,14 @@ const PACKAGES = [
 
 const BUNDLES = [
   {
-    id: "bundle-7day",
+    id: "7day-pinned",
     name: "7 Day Pinned Post",
     price: 300,
     description: "Your post is pinned at the top of our profile for 7 days",
     savings: "Maximum Visibility",
   },
   {
-    id: "monthly",
+    id: "monthly-pass",
     name: "Monthly Unlimited Promo Pass",
     price: 500,
     description: "Unlimited reposts • Unlimited story posts • Unlimited 24-hour page posts • Priority scheduling",
@@ -247,7 +247,26 @@ export default function Promo() {
                 </div>
                 <div className="font-['Anton'] text-5xl text-red-500 mb-1">${bundle.price}</div>
                 <div className="text-white font-semibold mb-2">{bundle.name}</div>
-                <div className="text-white/50 text-sm leading-relaxed">{bundle.description}</div>
+                <div className="text-white/50 text-sm leading-relaxed mb-6">{bundle.description}</div>
+                {selectedPackage === bundle.id && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCheckout(bundle.id);
+                    }}
+                    disabled={stripeCheckout.isPending}
+                    className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white py-2 text-xs font-semibold uppercase tracking-widest transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    {stripeCheckout.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Pay with Stripe"
+                    )}
+                  </button>
+                )}
               </div>
             ))}
           </div>
