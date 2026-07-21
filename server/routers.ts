@@ -126,6 +126,135 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STUDIOS ROUTER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import {
+  createStudio, updateStudio, deleteStudio, getStudioById, getAllStudios, getStudiosByLocation,
+  createStudioReview, getStudioReviews, deleteStudioReview, approveStudioReview,
+} from "./db";
+
+const studiosRouter = router({
+  // Public procedures
+  getAll: publicProcedure
+    .query(async () => {
+      return getAllStudios();
+    }),
+
+  getById: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return getStudioById(input.id);
+    }),
+
+  search: publicProcedure
+    .input(z.object({ query: z.string() }))
+    .query(async ({ input }) => {
+      if (!input.query.trim()) return getAllStudios();
+      return getStudiosByLocation(input.query);
+    }),
+
+  getReviews: publicProcedure
+    .input(z.object({ studioId: z.number() }))
+    .query(async ({ input }) => {
+      return getStudioReviews(input.studioId);
+    }),
+
+  createReview: publicProcedure
+    .input(z.object({
+      studioId: z.number(),
+      rating: z.number().min(1).max(5),
+      title: z.string().min(1),
+      reviewText: z.string().min(1),
+      guestName: z.string().optional(),
+      guestEmail: z.string().email().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      return createStudioReview({
+        studioId: input.studioId,
+        userId: ctx.user?.id,
+        rating: input.rating,
+        title: input.title,
+        reviewText: input.reviewText,
+        guestName: input.guestName,
+        guestEmail: input.guestEmail,
+        isApproved: !input.guestName, // Auto-approve logged-in users
+      });
+    }),
+
+  // Admin procedures
+  create: protectedProcedure
+    .input(z.object({
+      studioName: z.string().min(1),
+      location: z.string().min(1),
+      latitude: z.string(),
+      longitude: z.string(),
+      engineers: z.string().optional(),
+      contactInfo: z.string().min(1),
+      instagramHandle: z.string().optional(),
+      twitterHandle: z.string().optional(),
+      facebookUrl: z.string().optional(),
+      websiteUrl: z.string().optional(),
+      youtubeChannel: z.string().optional(),
+      tiktokHandle: z.string().optional(),
+      description: z.string().optional(),
+      imageUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      return createStudio(input);
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      studioName: z.string().optional(),
+      location: z.string().optional(),
+      latitude: z.string().optional(),
+      longitude: z.string().optional(),
+      engineers: z.string().optional(),
+      contactInfo: z.string().optional(),
+      instagramHandle: z.string().optional(),
+      twitterHandle: z.string().optional(),
+      facebookUrl: z.string().optional(),
+      websiteUrl: z.string().optional(),
+      youtubeChannel: z.string().optional(),
+      tiktokHandle: z.string().optional(),
+      description: z.string().optional(),
+      imageUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const { id, ...data } = input;
+      return updateStudio(id, data);
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      await deleteStudio(input.id);
+      return { success: true };
+    }),
+
+  approveReview: protectedProcedure
+    .input(z.object({ reviewId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      await approveStudioReview(input.reviewId);
+      return { success: true };
+    }),
+
+  deleteReview: protectedProcedure
+    .input(z.object({ reviewId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      await deleteStudioReview(input.reviewId);
+      return { success: true };
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -4481,6 +4610,9 @@ export const appRouter = router({
     }),
   }),
 
+  // Studios & Locations
+  studios: studiosRouter,
+
   // ─── Admin Shop ───────────────────────────────────────────────
   shop: router({
     // Public: list active products
@@ -4971,3 +5103,8 @@ export const appRouter = router({
   }),
 });
 export type AppRouter = typeof appRouter;
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STUDIOS ROUTER
+// ═══════════════════════════════════════════════════════════════════════════════

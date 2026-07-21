@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, TikTok, Star, MessageSquare } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Music, Star, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -222,7 +222,7 @@ export default function FindStudio() {
                         className="text-white/60 hover:text-red-600 transition-colors"
                         title="TikTok"
                       >
-                        <TikTok className="w-5 h-5" />
+                        <Music className="w-5 h-5" />
                       </a>
                     )}
                   </div>
