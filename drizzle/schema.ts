@@ -1114,3 +1114,31 @@ export const studioReviews = mysqlTable("studio_reviews", {
 
 export type StudioReview = typeof studioReviews.$inferSelect;
 export type InsertStudioReview = typeof studioReviews.$inferInsert;
+
+
+// News & Articles (from Instagram posts)
+export const articles = mysqlTable("articles", {
+  id: int("id").autoincrement().primaryKey(),
+  instagramPostId: varchar("instagramPostId", { length: 128 }).notNull().unique(), // Instagram post ID
+  title: varchar("title", { length: 512 }).notNull(), // Generated from caption
+  slug: varchar("slug", { length: 512 }).notNull().unique(), // URL-friendly slug
+  caption: text("caption").notNull(), // Original Instagram caption
+  content: text("content"), // Expanded article content
+  thumbnailUrl: varchar("thumbnailUrl", { length: 512 }), // AI-generated or Instagram image
+  instagramImageUrl: varchar("instagramImageUrl", { length: 512 }), // Original Instagram image
+  mediaType: varchar("mediaType", { length: 32 }), // IMAGE, VIDEO, CAROUSEL_ALBUM
+  mediaUrl: varchar("mediaUrl", { length: 512 }), // Instagram media URL
+  likeCount: int("likeCount").default(0).notNull(),
+  commentCount: int("commentCount").default(0).notNull(),
+  permalink: varchar("permalink", { length: 512 }), // Link to Instagram post
+  publishedAt: timestamp("publishedAt"), // When posted on Instagram
+  isPublished: boolean("isPublished").default(true).notNull(),
+  seoTitle: varchar("seoTitle", { length: 160 }), // Meta title for SEO
+  seoDescription: varchar("seoDescription", { length: 160 }), // Meta description for SEO
+  keywords: text("keywords"), // Comma-separated keywords for SEO
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Article = typeof articles.$inferSelect;
+export type InsertArticle = typeof articles.$inferInsert;

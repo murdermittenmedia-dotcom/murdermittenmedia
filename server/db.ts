@@ -40,6 +40,7 @@ import {
   shopVariants, InsertShopVariant, ShopVariant,
   studios, InsertStudio, Studio,
   studioReviews, InsertStudioReview, StudioReview,
+  articles, InsertArticle, Article,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2262,4 +2263,100 @@ async function updateStudioRating(studioId: number): Promise<void> {
     const avgRating = (reviews.reduce((sum: number, r: StudioReview) => sum + r.rating, 0) / reviews.length).toFixed(1);
     await db.update(studios).set({ averageRating: avgRating, reviewCount: reviews.length }).where(eq(studios.id, studioId));
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARTICLES (News/Blog from Instagram)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function getAllArticles() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(articles).where(eq(articles.isPublished, true)).orderBy(desc(articles.publishedAt));
+}
+
+export async function getArticleBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(articles).where(eq(articles.slug, slug)).limit(1);
+  return result[0] || null;
+}
+
+export async function getArticleById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(articles).where(eq(articles.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function getArticlesByKeyword(keyword: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const searchTerm = `%${keyword}%`;
+  return db.select().from(articles)
+    .where(
+      and(
+        eq(articles.isPublished, true),
+        or(
+          like(articles.title, searchTerm),
+          like(articles.caption, searchTerm),
+          like(articles.keywords, searchTerm)
+        )
+      )
+    )
+    .orderBy(desc(articles.publishedAt));
+}
+
+export async function createOrUpdateArticle(data: InsertArticle) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(articles)
+    .where(eq(articles.instagramPostId, data.instagramPostId!))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.update(articles)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(articles.instagramPostId, data.instagramPostId!));
+    return existing[0];
+  } else {
+    const result = await db.insert(articles).values(data);
+    return { id: result.insertId, ...data };
+  }
+}
+
+export async function updateArticleThumbnail(articleId: number, thumbnailUrl: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(articles)
+    .set({ thumbnailUrl, updatedAt: new Date() })
+    .where(eq(articles.id, articleId));
+}
+
+export async function deleteArticle(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(articles).where(eq(articles.id, id));
+}
+
+export async function generateSlug(title: string): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  let slug = title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .substring(0, 100);
+
+  const existing = await db.select().from(articles).where(eq(articles.slug, slug)).limit(1);
+  if (existing.length > 0) {
+    slug = `${slug}-${Date.now()}`;
+  }
+
+  return slug;
 }
