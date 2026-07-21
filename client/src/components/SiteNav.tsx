@@ -54,6 +54,8 @@ const ALL_PAGES = [
       { href: "/daily-wheel",  label: "Daily Wheel",     icon: Zap    },
       { href: "/coins",        label: "Buy Coins",       icon: Coins  },
       { href: "/how-it-works", label: "XP & Tiers",      icon: Shield },
+      { href: "/promo",        label: "Buy Promo",       icon: Flame  },
+      { href: "/merch",        label: "Merch Shop",      icon: ShoppingBag },
     ],
   },
   {
