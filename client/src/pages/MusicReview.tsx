@@ -668,91 +668,95 @@ function AdminPanel({
             </div>
           </div>
 
-          {/* Viewer count range slider */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-white/50 text-[10px] uppercase tracking-wider">Viewer Range</span>
-              <span className="text-white/70 text-[10px] font-mono">{viewerMin}–{viewerMax}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] text-white/30">Min</span>
-              <input
-                type="range"
-                min={10}
-                max={viewerMax - 10}
-                step={10}
-                value={viewerMin}
-                onChange={e => setViewerMin(Number(e.target.value))}
-                className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
-              />
-              <span className="text-[9px] text-white/30">{viewerMin}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] text-white/30">Max</span>
-              <input
-                type="range"
-                min={viewerMin + 10}
-                max={5000}
-                step={10}
-                value={viewerMax}
-                onChange={e => setViewerMax(Number(e.target.value))}
-                className="flex-1 h-1.5 rounded-full accent-green-500 cursor-pointer"
-              />
-               <span className="text-[9px] text-white/30">{viewerMax}</span>
-            </div>
-          </div>
-          {/* Ghost Fire votes — speed slider */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🔥 Fire Speed</span>
-              <div className="flex items-center gap-2">
-                <span className="text-orange-400 text-[10px] font-mono font-bold">
-                  {ghostFireIntervalSec === 0 ? "OFF" : `every ${ghostFireIntervalSec}s`}
-                </span>
-                <span className="text-orange-300/60 text-[10px]">({ghostFireCount} added)</span>
-                <button onClick={() => setGhostFireCount(0)} className="text-[9px] text-white/30 hover:text-white/60 border border-white/10 px-1 rounded">reset</button>
+          {/* Viewer count range slider + Ghost votes — only show when LIVE */}
+          {queueState?.isLive && (
+            <>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/50 text-[10px] uppercase tracking-wider">Viewer Range</span>
+                  <span className="text-white/70 text-[10px] font-mono">{viewerMin}–{viewerMax}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-white/30">Min</span>
+                  <input
+                    type="range"
+                    min={10}
+                    max={viewerMax - 10}
+                    step={10}
+                    value={viewerMin}
+                    onChange={e => setViewerMin(Number(e.target.value))}
+                    className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
+                  />
+                  <span className="text-[9px] text-white/30">{viewerMin}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-white/30">Max</span>
+                  <input
+                    type="range"
+                    min={viewerMin + 10}
+                    max={5000}
+                    step={10}
+                    value={viewerMax}
+                    onChange={e => setViewerMax(Number(e.target.value))}
+                    className="flex-1 h-1.5 rounded-full accent-green-500 cursor-pointer"
+                  />
+                   <span className="text-[9px] text-white/30">{viewerMax}</span>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] text-white/30">off</span>
-              <input
-                type="range"
-                min={0}
-                max={30}
-                step={1}
-                value={ghostFireIntervalSec}
-                onChange={e => setGhostFireIntervalSec(Number(e.target.value))}
-                className="flex-1 h-1.5 rounded-full accent-orange-500 cursor-pointer"
-              />
-              <span className="text-[9px] text-white/30">1s</span>
-            </div>
-          </div>
-          {/* Ghost Trash votes — speed slider */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🗑️ Trash Speed</span>
-              <div className="flex items-center gap-2">
-                <span className="text-blue-400 text-[10px] font-mono font-bold">
-                  {ghostTrashIntervalSec === 0 ? "OFF" : `every ${ghostTrashIntervalSec}s`}
-                </span>
-                <span className="text-blue-300/60 text-[10px]">({ghostTrashCount} added)</span>
-                <button onClick={() => setGhostTrashCount(0)} className="text-[9px] text-white/30 hover:text-white/60 border border-white/10 px-1 rounded">reset</button>
+              {/* Ghost Fire votes — speed slider */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🔥 Fire Speed</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-orange-400 text-[10px] font-mono font-bold">
+                      {ghostFireIntervalSec === 0 ? "OFF" : `every ${ghostFireIntervalSec}s`}
+                    </span>
+                    <span className="text-orange-300/60 text-[10px]">({ghostFireCount} added)</span>
+                    <button onClick={() => setGhostFireCount(0)} className="text-[9px] text-white/30 hover:text-white/60 border border-white/10 px-1 rounded">reset</button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-white/30">off</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={30}
+                    step={1}
+                    value={ghostFireIntervalSec}
+                    onChange={e => setGhostFireIntervalSec(Number(e.target.value))}
+                    className="flex-1 h-1.5 rounded-full accent-orange-500 cursor-pointer"
+                  />
+                  <span className="text-[9px] text-white/30">1s</span>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] text-white/30">off</span>
-              <input
-                type="range"
-                min={0}
-                max={30}
-                step={1}
-                value={ghostTrashIntervalSec}
-                onChange={e => setGhostTrashIntervalSec(Number(e.target.value))}
-                className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
-              />
-              <span className="text-[9px] text-white/30">1s</span>
-            </div>
-          </div>
+              {/* Ghost Trash votes — speed slider */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/50 text-[10px] uppercase tracking-wider">Ghost 🗑️ Trash Speed</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-400 text-[10px] font-mono font-bold">
+                      {ghostTrashIntervalSec === 0 ? "OFF" : `every ${ghostTrashIntervalSec}s`}
+                    </span>
+                    <span className="text-blue-300/60 text-[10px]">({ghostTrashCount} added)</span>
+                    <button onClick={() => setGhostTrashCount(0)} className="text-[9px] text-white/30 hover:text-white/60 border border-white/10 px-1 rounded">reset</button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-white/30">off</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={30}
+                    step={1}
+                    value={ghostTrashIntervalSec}
+                    onChange={e => setGhostTrashIntervalSec(Number(e.target.value))}
+                    className="flex-1 h-1.5 rounded-full accent-blue-500 cursor-pointer"
+                  />
+                  <span className="text-[9px] text-white/30">1s</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* ── Comment Sentiment ── */}
