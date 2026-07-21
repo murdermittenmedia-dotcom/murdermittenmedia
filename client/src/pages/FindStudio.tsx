@@ -94,19 +94,6 @@ export default function FindStudio() {
     },
   });
 
-  const studioListingCheckoutMutation = trpc.stripe.createCheckoutSession.useMutation({
-    onSuccess: (data) => {
-      if (data.url) {
-        window.open(data.url, "_blank");
-      } else {
-        alert("Error: No checkout URL returned");
-      }
-    },
-    onError: (error) => {
-      alert(`Error: ${error.message}`);
-    },
-  });
-
   const filteredStudios = studios.filter(
     (studio) =>
       studio.studioName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -206,7 +193,7 @@ export default function FindStudio() {
             <h1 className="text-4xl md:text-5xl font-['Anton'] mb-2">Find A Studio</h1>
             <p className="text-white/60">Discover recording studios and book engineers in Michigan</p>
           </div>
-          {user?.role === "admin" ? (
+          {user?.role === "admin" && (
             <Button
               onClick={() => {
                 setShowAdminForm(!showAdminForm);
@@ -232,39 +219,8 @@ export default function FindStudio() {
               <Plus className="w-4 h-4" />
               Add Studio
             </Button>
-          ) : user ? (
-            <Button
-              onClick={() => {
-                studioListingCheckoutMutation.mutate({
-                  packageId: "studio-listing",
-                });
-              }}
-              disabled={studioListingCheckoutMutation.isPending}
-              className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
-            >
-              {studioListingCheckoutMutation.isPending ? "Loading..." : "Get Your Studio Listed"}
-            </Button>
-          ) : null}
+          )}
         </div>
-
-        {/* Non-Admin CTA */}
-        {!user?.role && user && (
-          <Card className="bg-red-600/10 border border-red-600/50 p-8 mb-8 text-center">
-            <h2 className="text-3xl font-bold mb-3">Get Your Studio Listed</h2>
-            <p className="text-white/80 mb-6">Reach more artists and engineers. Only $19.99/month</p>
-            <Button
-              onClick={() => {
-                studioListingCheckoutMutation.mutate({
-                  packageId: "studio-listing",
-                });
-              }}
-              disabled={studioListingCheckoutMutation.isPending}
-              className="bg-red-600 hover:bg-red-700 text-white text-lg px-8 py-3"
-            >
-              {studioListingCheckoutMutation.isPending ? "Loading..." : "Subscribe Now - $19.99/month"}
-            </Button>
-          </Card>
-        )}
 
         {/* Admin Form - Simplified */}
         {user?.role === "admin" && showAdminForm && (

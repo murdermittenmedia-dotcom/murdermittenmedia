@@ -4367,11 +4367,7 @@ export const appRouter = router({
           "dual-perm": 15000,
           "7day-pinned": 30000,
           "monthly-pass": 50000,
-          "studio-listing": 1999, // $19.99/month
         };
-
-        // Recurring products (monthly subscriptions)
-        const recurringProducts = ["studio-listing"];
 
         const amount = priceMap[packageId];
         if (!amount) {
@@ -4380,10 +4376,9 @@ export const appRouter = router({
         }
 
         try {
-          const isRecurring = recurringProducts.includes(packageId);
-          const sessionConfig: any = {
+          const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
-            mode: isRecurring ? "subscription" : "payment",
+            mode: "payment",
             customer_email: user.email ?? undefined,
             client_reference_id: user.id.toString(),
             metadata: {
@@ -4394,18 +4389,7 @@ export const appRouter = router({
             },
             line_items: [
               {
-                price_data: isRecurring ? {
-                  currency: "usd",
-                  product_data: {
-                    name: `Murder Mitten Media Studio Listing - ${packageId}`,
-                    description: `Studio listing subscription: ${packageId}`,
-                  },
-                  unit_amount: amount,
-                  recurring: {
-                    interval: "month",
-                    interval_count: 1,
-                  },
-                } : {
+                price_data: {
                   currency: "usd",
                   product_data: {
                     name: `Murder Mitten Media Promo - ${packageId}`,
@@ -4525,7 +4509,7 @@ export const appRouter = router({
           // Create Stripe session
           const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
-            mode: isRecurring ? "subscription" : "payment",
+            mode: "payment",
           customer_email: user.email ?? undefined,
           client_reference_id: user.id.toString(),
           metadata: {
@@ -5120,3 +5104,7 @@ export const appRouter = router({
 });
 export type AppRouter = typeof appRouter;
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STUDIOS ROUTER
+// ═══════════════════════════════════════════════════════════════════════════════
