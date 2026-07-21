@@ -101,6 +101,7 @@ function Router() {
       <Route path={"/profile/:id"} component={UserProfile} />
 
       {/* Account & Orders */}
+      <Route path={"/account"} component={UserProfile} />
       <Route path={"/account/orders"} component={OrderHistory} />
       <Route path={"/account/orders/:orderId"} component={OrderDetail} />
 

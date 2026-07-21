@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Music, Star, MessageSquare } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Music, Star, MessageSquare, Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,23 @@ export default function FindStudio() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudio, setSelectedStudio] = useState<number | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [editingStudio, setEditingStudio] = useState<number | null>(null);
+  const [adminFormData, setAdminFormData] = useState({
+    studioName: "",
+    location: "",
+    latitude: "",
+    longitude: "",
+    engineers: "",
+    contactInfo: "",
+    instagramHandle: "",
+    twitterHandle: "",
+    facebookUrl: "",
+    websiteUrl: "",
+    youtubeChannel: "",
+    tiktokHandle: "",
+    description: "",
+  });
   const [reviewData, setReviewData] = useState({
     rating: 5,
     title: "",
@@ -20,11 +37,49 @@ export default function FindStudio() {
   });
 
   const { user } = useAuth();
-  const { data: studios = [] } = trpc.studios.getAll.useQuery();
+  const { data: studios = [], refetch: refetchStudios } = trpc.studios.getAll.useQuery();
   const { data: reviews = [] } = trpc.studios.getReviews.useQuery(
     { studioId: selectedStudio || 0 },
     { enabled: !!selectedStudio }
   );
+
+  const createStudioMutation = trpc.studios.create.useMutation({
+    onSuccess: () => {
+      setAdminFormData({
+        studioName: "",
+        location: "",
+        latitude: "",
+        longitude: "",
+        engineers: "",
+        contactInfo: "",
+        instagramHandle: "",
+        twitterHandle: "",
+        facebookUrl: "",
+        websiteUrl: "",
+        youtubeChannel: "",
+        tiktokHandle: "",
+        description: "",
+      });
+      setShowAdminForm(false);
+      setEditingStudio(null);
+      refetchStudios();
+      alert("Studio saved successfully!");
+    },
+    onError: (error) => {
+      alert(`Error: ${error.message}`);
+    },
+  });
+
+  const deleteStudioMutation = trpc.studios.delete.useMutation({
+    onSuccess: () => {
+      setSelectedStudio(null);
+      refetchStudios();
+      alert("Studio deleted successfully!");
+    },
+    onError: (error) => {
+      alert(`Error: ${error.message}`);
+    },
+  });
 
   const createReviewMutation = trpc.studios.createReview.useMutation({
     onSuccess: () => {
@@ -44,6 +99,34 @@ export default function FindStudio() {
   );
 
   const currentStudio = studios.find((s) => s.id === selectedStudio);
+
+  const handleAdminFormSubmit = () => {
+    if (!adminFormData.studioName.trim() || !adminFormData.location.trim() || !adminFormData.contactInfo.trim()) {
+      alert("Please fill in studio name, location, and contact info");
+      return;
+    }
+    createStudioMutation.mutate(adminFormData as any);
+  };
+
+  const handleEditStudio = (studio: any) => {
+    setAdminFormData({
+      studioName: studio.studioName,
+      location: studio.location,
+      latitude: studio.latitude,
+      longitude: studio.longitude,
+      engineers: studio.engineers || "",
+      contactInfo: studio.contactInfo,
+      instagramHandle: studio.instagramHandle || "",
+      twitterHandle: studio.twitterHandle || "",
+      facebookUrl: studio.facebookUrl || "",
+      websiteUrl: studio.websiteUrl || "",
+      youtubeChannel: studio.youtubeChannel || "",
+      tiktokHandle: studio.tiktokHandle || "",
+      description: studio.description || "",
+    });
+    setEditingStudio(studio.id);
+    setShowAdminForm(true);
+  };
 
   const handleSubmitReview = () => {
     if (!selectedStudio) return;
@@ -70,10 +153,145 @@ export default function FindStudio() {
     <div className="min-h-screen bg-[#080808] text-white pt-24 pb-12">
       <div className="container max-w-6xl">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-['Anton'] mb-2">Find A Studio</h1>
-          <p className="text-white/60">Discover recording studios and book engineers in Michigan</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-['Anton'] mb-2">Find A Studio</h1>
+            <p className="text-white/60">Discover recording studios and book engineers in Michigan</p>
+          </div>
+          {user?.role === "admin" && (
+            <Button
+              onClick={() => {
+                setShowAdminForm(!showAdminForm);
+                setEditingStudio(null);
+                setAdminFormData({
+                  studioName: "",
+                  location: "",
+                  latitude: "",
+                  longitude: "",
+                  engineers: "",
+                  contactInfo: "",
+                  instagramHandle: "",
+                  twitterHandle: "",
+                  facebookUrl: "",
+                  websiteUrl: "",
+                  youtubeChannel: "",
+                  tiktokHandle: "",
+                  description: "",
+                });
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Studio
+            </Button>
+          )}
         </div>
+
+        {/* Admin Form */}
+        {user?.role === "admin" && showAdminForm && (
+          <Card className="bg-white/5 border-white/10 p-6 mb-8">
+            <h2 className="text-2xl font-bold mb-4">{editingStudio ? "Edit Studio" : "Add New Studio"}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                placeholder="Studio Name"
+                value={adminFormData.studioName}
+                onChange={(e) => setAdminFormData({ ...adminFormData, studioName: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Location (Address)"
+                value={adminFormData.location}
+                onChange={(e) => setAdminFormData({ ...adminFormData, location: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Latitude"
+                value={adminFormData.latitude}
+                onChange={(e) => setAdminFormData({ ...adminFormData, latitude: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Longitude"
+                value={adminFormData.longitude}
+                onChange={(e) => setAdminFormData({ ...adminFormData, longitude: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Engineers (comma-separated)"
+                value={adminFormData.engineers}
+                onChange={(e) => setAdminFormData({ ...adminFormData, engineers: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Contact Info (Phone/Email)"
+                value={adminFormData.contactInfo}
+                onChange={(e) => setAdminFormData({ ...adminFormData, contactInfo: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Instagram Handle"
+                value={adminFormData.instagramHandle}
+                onChange={(e) => setAdminFormData({ ...adminFormData, instagramHandle: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Twitter Handle"
+                value={adminFormData.twitterHandle}
+                onChange={(e) => setAdminFormData({ ...adminFormData, twitterHandle: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Facebook URL"
+                value={adminFormData.facebookUrl}
+                onChange={(e) => setAdminFormData({ ...adminFormData, facebookUrl: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="Website URL"
+                value={adminFormData.websiteUrl}
+                onChange={(e) => setAdminFormData({ ...adminFormData, websiteUrl: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="YouTube Channel"
+                value={adminFormData.youtubeChannel}
+                onChange={(e) => setAdminFormData({ ...adminFormData, youtubeChannel: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                placeholder="TikTok Handle"
+                value={adminFormData.tiktokHandle}
+                onChange={(e) => setAdminFormData({ ...adminFormData, tiktokHandle: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Textarea
+                placeholder="Studio Description"
+                value={adminFormData.description}
+                onChange={(e) => setAdminFormData({ ...adminFormData, description: e.target.value })}
+                className="bg-white/5 border-white/10 text-white col-span-full"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button
+                onClick={handleAdminFormSubmit}
+                disabled={createStudioMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {createStudioMutation.isPending ? "Saving..." : "Save Studio"}
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowAdminForm(false);
+                  setEditingStudio(null);
+                }}
+                className="bg-white/10 hover:bg-white/20 text-white"
+              >
+                Cancel
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {/* Search */}
         <div className="mb-8">
@@ -128,7 +346,31 @@ export default function FindStudio() {
               <div className="space-y-6">
                 {/* Studio Info */}
                 <Card className="bg-white/5 border-white/10 p-6">
-                  <h2 className="text-2xl font-bold mb-4">{currentStudio.studioName}</h2>
+                  <div className="flex items-start justify-between mb-4">
+                    <h2 className="text-2xl font-bold">{currentStudio.studioName}</h2>
+                    {user?.role === "admin" && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleEditStudio(currentStudio)}
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            if (confirm("Are you sure you want to delete this studio?")) {
+                              deleteStudioMutation.mutate({ id: currentStudio.id });
+                            }
+                          }}
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
 
                   {currentStudio.imageUrl && (
                     <img
