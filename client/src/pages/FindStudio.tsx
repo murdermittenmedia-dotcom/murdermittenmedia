@@ -1,20 +1,18 @@
 import { useState } from "react";
-import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Music, Star, MessageSquare, Plus, Edit2, Trash2, X } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, Twitter, Facebook, Youtube, Music, Star, MessageSquare, Plus, Edit2, Trash2, X, Search, MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function FindStudio() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudio, setSelectedStudio] = useState<number | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [showEngineersForm, setShowEngineersForm] = useState(false);
-  const [editingStudio, setEditingStudio] = useState<number | null>(null);
-  const [newEngineer, setNewEngineer] = useState("");
   const [adminFormData, setAdminFormData] = useState({
     studioName: "",
     location: "",
@@ -47,6 +45,7 @@ export default function FindStudio() {
 
   const createStudioMutation = trpc.studios.create.useMutation({
     onSuccess: () => {
+      toast.success("Studio created successfully!");
       setAdminFormData({
         studioName: "",
         location: "",
@@ -63,609 +62,480 @@ export default function FindStudio() {
         description: "",
       });
       setShowAdminForm(false);
-      setEditingStudio(null);
       refetchStudios();
-      alert("Studio saved successfully!");
     },
     onError: (error) => {
-      alert(`Error: ${error.message}`);
-    },
-  });
-
-  const deleteStudioMutation = trpc.studios.delete.useMutation({
-    onSuccess: () => {
-      setSelectedStudio(null);
-      refetchStudios();
-      alert("Studio deleted successfully!");
-    },
-    onError: (error) => {
-      alert(`Error: ${error.message}`);
+      toast.error(error.message || "Failed to create studio");
     },
   });
 
   const createReviewMutation = trpc.studios.createReview.useMutation({
     onSuccess: () => {
-      setReviewData({ rating: 5, title: "", reviewText: "", guestName: "", guestEmail: "" });
+      toast.success("Review submitted successfully!");
+      setReviewData({
+        rating: 5,
+        title: "",
+        reviewText: "",
+        guestName: "",
+        guestEmail: "",
+      });
       setShowReviewForm(false);
-      alert("Review submitted! Thank you.");
+      refetchStudios();
     },
     onError: (error) => {
-      alert(`Error: ${error.message}`);
+      toast.error(error.message || "Failed to submit review");
     },
   });
 
-  const filteredStudios = studios.filter(
-    (studio) =>
-      studio.studioName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      studio.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const currentStudio = studios.find((s) => s.id === selectedStudio);
-
-  const handleAdminFormSubmit = () => {
+  const handleCreateStudio = () => {
     if (!adminFormData.studioName.trim()) {
-      alert("Please enter a studio name");
+      toast.error("Studio name is required");
       return;
     }
-    createStudioMutation.mutate(adminFormData as any);
-  };
 
-  const handleEditStudio = (studio: any) => {
-    setAdminFormData({
-      studioName: studio.studioName,
-      location: studio.location || "",
-      latitude: studio.latitude || "",
-      longitude: studio.longitude || "",
-      engineers: studio.engineers || "",
-      contactInfo: studio.contactInfo || "",
-      instagramHandle: studio.instagramHandle || "",
-      twitterHandle: studio.twitterHandle || "",
-      facebookUrl: studio.facebookUrl || "",
-      websiteUrl: studio.websiteUrl || "",
-      youtubeChannel: studio.youtubeChannel || "",
-      tiktokHandle: studio.tiktokHandle || "",
-      description: studio.description || "",
-    });
-    setEditingStudio(studio.id);
-    setShowAdminForm(true);
-  };
-
-  const handleAddEngineer = () => {
-    if (!newEngineer.trim() || !currentStudio) return;
-    const engineers = currentStudio.engineers ? currentStudio.engineers.split(", ") : [];
-    if (!engineers.includes(newEngineer.trim())) {
-      engineers.push(newEngineer.trim());
-      const updatedEngineers = engineers.join(", ");
-      setAdminFormData({
-        ...adminFormData,
-        engineers: updatedEngineers,
-      });
-      createStudioMutation.mutate({
-        ...adminFormData,
-        engineers: updatedEngineers,
-      } as any);
-      setNewEngineer("");
-    }
-  };
-
-  const handleRemoveEngineer = (engineerName: string) => {
-    if (!currentStudio) return;
-    const engineers = currentStudio.engineers ? currentStudio.engineers.split(", ") : [];
-    const filtered = engineers.filter((e) => e !== engineerName);
-    const updatedEngineers = filtered.join(", ");
-    setAdminFormData({
-      ...adminFormData,
-      engineers: updatedEngineers,
-    });
     createStudioMutation.mutate({
-      ...adminFormData,
-      engineers: updatedEngineers,
-    } as any);
+      studioName: adminFormData.studioName,
+      location: adminFormData.location || null,
+      latitude: adminFormData.latitude ? parseFloat(adminFormData.latitude) : null,
+      longitude: adminFormData.longitude ? parseFloat(adminFormData.longitude) : null,
+      engineers: adminFormData.engineers || null,
+      contactInfo: adminFormData.contactInfo || null,
+      instagramHandle: adminFormData.instagramHandle || null,
+      twitterHandle: adminFormData.twitterHandle || null,
+      facebookUrl: adminFormData.facebookUrl || null,
+      websiteUrl: adminFormData.websiteUrl || null,
+      youtubeChannel: adminFormData.youtubeChannel || null,
+      tiktokHandle: adminFormData.tiktokHandle || null,
+      description: adminFormData.description || null,
+    });
   };
 
   const handleSubmitReview = () => {
-    if (!selectedStudio) return;
-    if (!reviewData.title.trim() || !reviewData.reviewText.trim()) {
-      alert("Please fill in title and review");
-      return;
-    }
-    if (!user && (!reviewData.guestName.trim() || !reviewData.guestEmail.trim())) {
-      alert("Please provide your name and email");
+    if (!reviewData.reviewText.trim()) {
+      toast.error("Review text is required");
       return;
     }
 
     createReviewMutation.mutate({
-      studioId: selectedStudio,
+      studioId: selectedStudio || 0,
       rating: reviewData.rating,
-      title: reviewData.title,
+      title: reviewData.title || "Review",
       reviewText: reviewData.reviewText,
-      guestName: reviewData.guestName,
-      guestEmail: reviewData.guestEmail,
+      guestName: reviewData.guestName || "Anonymous",
+      guestEmail: reviewData.guestEmail || null,
+      isApproved: !!user,
     });
   };
 
+  const selectedStudioData = studios.find((s) => s.id === selectedStudio);
+  const filteredStudios = studios.filter((s) =>
+    s.studioName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.location && s.location.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const isAdmin = user?.role === "admin";
+
   return (
-    <div className="min-h-screen bg-[#080808] text-white pt-24 pb-12">
-      <div className="container max-w-6xl">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-['Anton'] mb-2">Find A Studio</h1>
-            <p className="text-white/60">Discover recording studios and book engineers in Michigan</p>
+    <div className="min-h-screen bg-gradient-to-b from-[#080808] via-[#0a0a0a] to-[#080808] text-white">
+      {/* Header */}
+      <div className="border-b border-white/10 bg-black/40 backdrop-blur-sm sticky top-0 z-40">
+        <div className="container py-8">
+          <div className="flex items-center gap-3 mb-6">
+            <MapIcon className="w-8 h-8 text-red-600" />
+            <h1 className="text-4xl font-bold">FIND A STUDIO</h1>
           </div>
-          {user?.role === "admin" && (
-            <Button
-              onClick={() => {
-                setShowAdminForm(!showAdminForm);
-                setEditingStudio(null);
-                setAdminFormData({
-                  studioName: "",
-                  location: "",
-                  latitude: "",
-                  longitude: "",
-                  engineers: "",
-                  contactInfo: "",
-                  instagramHandle: "",
-                  twitterHandle: "",
-                  facebookUrl: "",
-                  websiteUrl: "",
-                  youtubeChannel: "",
-                  tiktokHandle: "",
-                  description: "",
-                });
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Studio
-            </Button>
-          )}
+          <p className="text-white/60 max-w-2xl">Discover top-tier recording studios and connect with professional engineers in your area.</p>
         </div>
+      </div>
 
-        {/* Admin Form - Simplified */}
-        {user?.role === "admin" && showAdminForm && (
-          <Card className="bg-white/5 border-white/10 p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4">{editingStudio ? "Edit Studio" : "Add New Studio"}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                placeholder="Studio Name"
-                value={adminFormData.studioName}
-                onChange={(e) => setAdminFormData({ ...adminFormData, studioName: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Location (Address)"
-                value={adminFormData.location}
-                onChange={(e) => setAdminFormData({ ...adminFormData, location: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Latitude"
-                value={adminFormData.latitude}
-                onChange={(e) => setAdminFormData({ ...adminFormData, latitude: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Longitude"
-                value={adminFormData.longitude}
-                onChange={(e) => setAdminFormData({ ...adminFormData, longitude: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Contact Info (Phone/Email)"
-                value={adminFormData.contactInfo}
-                onChange={(e) => setAdminFormData({ ...adminFormData, contactInfo: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Instagram Handle"
-                value={adminFormData.instagramHandle}
-                onChange={(e) => setAdminFormData({ ...adminFormData, instagramHandle: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Twitter Handle"
-                value={adminFormData.twitterHandle}
-                onChange={(e) => setAdminFormData({ ...adminFormData, twitterHandle: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Facebook URL"
-                value={adminFormData.facebookUrl}
-                onChange={(e) => setAdminFormData({ ...adminFormData, facebookUrl: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="Website URL"
-                value={adminFormData.websiteUrl}
-                onChange={(e) => setAdminFormData({ ...adminFormData, websiteUrl: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="YouTube Channel"
-                value={adminFormData.youtubeChannel}
-                onChange={(e) => setAdminFormData({ ...adminFormData, youtubeChannel: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Input
-                placeholder="TikTok Handle"
-                value={adminFormData.tiktokHandle}
-                onChange={(e) => setAdminFormData({ ...adminFormData, tiktokHandle: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
-              />
-              <Textarea
-                placeholder="Studio Description"
-                value={adminFormData.description}
-                onChange={(e) => setAdminFormData({ ...adminFormData, description: e.target.value })}
-                className="bg-white/5 border-white/10 text-white col-span-full"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 mt-4">
-              <Button
-                onClick={handleAdminFormSubmit}
-                disabled={createStudioMutation.isPending}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                {createStudioMutation.isPending ? "Saving..." : "Save Studio"}
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowAdminForm(false);
-                  setEditingStudio(null);
-                }}
-                className="bg-white/10 hover:bg-white/20 text-white"
-              >
-                Cancel
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {/* Search */}
-        <div className="mb-8">
-          <Input
-            placeholder="Search by studio name or location..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Studios List */}
+      <div className="container py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Panel - Studio List */}
           <div className="lg:col-span-1">
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
-              {filteredStudios.length === 0 ? (
-                <div className="text-white/40 text-center py-8">No studios found</div>
-              ) : (
-                filteredStudios.map((studio) => (
-                  <button
-                    key={studio.id}
-                    onClick={() => {
-                      setSelectedStudio(studio.id);
-                      setShowReviewForm(false);
-                      setShowEngineersForm(false);
-                    }}
-                    className={`w-full text-left p-4 rounded-lg border transition-all ${
-                      selectedStudio === studio.id
-                        ? "bg-red-600/20 border-red-600/50"
-                        : "bg-white/5 border-white/10 hover:bg-white/10"
-                    }`}
-                  >
-                    <div className="font-semibold text-sm">{studio.studioName}</div>
-                    <div className="text-xs text-white/60 mt-1 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {studio.location || "No location"}
-                    </div>
-                    {studio.reviewCount > 0 && (
-                      <div className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-yellow-400" />
-                        {studio.averageRating} ({studio.reviewCount} reviews)
-                      </div>
-                    )}
-                  </button>
-                ))
+            <div className="space-y-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-3 w-5 h-5 text-white/40" />
+                <Input
+                  placeholder="Search studios..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                />
+              </div>
+
+              {/* Admin Button */}
+              {isAdmin && (
+                <Button
+                  onClick={() => setShowAdminForm(!showAdminForm)}
+                  className="w-full bg-red-600 hover:bg-red-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Studio
+                </Button>
               )}
+
+              {/* Admin Form */}
+              {showAdminForm && isAdmin && (
+                <Card className="p-6 bg-white/5 border-white/10">
+                  <h3 className="text-lg font-bold mb-4">Add New Studio</h3>
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Studio Name *"
+                      value={adminFormData.studioName}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, studioName: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="Location"
+                      value={adminFormData.location}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, location: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Latitude"
+                        type="number"
+                        step="0.0001"
+                        value={adminFormData.latitude}
+                        onChange={(e) => setAdminFormData({ ...adminFormData, latitude: e.target.value })}
+                        className="bg-white/5 border-white/10"
+                      />
+                      <Input
+                        placeholder="Longitude"
+                        type="number"
+                        step="0.0001"
+                        value={adminFormData.longitude}
+                        onChange={(e) => setAdminFormData({ ...adminFormData, longitude: e.target.value })}
+                        className="bg-white/5 border-white/10"
+                      />
+                    </div>
+                    <Input
+                      placeholder="Engineers"
+                      value={adminFormData.engineers}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, engineers: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="Contact Info"
+                      value={adminFormData.contactInfo}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, contactInfo: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="Instagram Handle"
+                      value={adminFormData.instagramHandle}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, instagramHandle: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="Twitter Handle"
+                      value={adminFormData.twitterHandle}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, twitterHandle: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="Facebook URL"
+                      value={adminFormData.facebookUrl}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, facebookUrl: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="Website URL"
+                      value={adminFormData.websiteUrl}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, websiteUrl: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="YouTube Channel"
+                      value={adminFormData.youtubeChannel}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, youtubeChannel: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Input
+                      placeholder="TikTok Handle"
+                      value={adminFormData.tiktokHandle}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, tiktokHandle: e.target.value })}
+                      className="bg-white/5 border-white/10"
+                    />
+                    <Textarea
+                      placeholder="Description"
+                      value={adminFormData.description}
+                      onChange={(e) => setAdminFormData({ ...adminFormData, description: e.target.value })}
+                      className="bg-white/5 border-white/10 min-h-24"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleCreateStudio}
+                        disabled={createStudioMutation.isPending}
+                        className="flex-1 bg-red-600 hover:bg-red-700"
+                      >
+                        {createStudioMutation.isPending ? "Creating..." : "Create Studio"}
+                      </Button>
+                      <Button
+                        onClick={() => setShowAdminForm(false)}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Studio List */}
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {filteredStudios.length === 0 ? (
+                  <div className="text-center py-8 text-white/40">
+                    <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No studios found</p>
+                  </div>
+                ) : (
+                  filteredStudios.map((studio) => (
+                    <button
+                      key={studio.id}
+                      onClick={() => setSelectedStudio(studio.id)}
+                      className={`w-full text-left p-3 rounded-lg border transition-all ${
+                        selectedStudio === studio.id
+                          ? "bg-red-600/20 border-red-600"
+                          : "bg-white/5 border-white/10 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{studio.studioName}</div>
+                      <div className="text-xs text-white/60 flex items-center gap-1 mt-1">
+                        <MapPin className="w-3 h-3" />
+                        {studio.location || "Location TBA"}
+                      </div>
+                      {studio.averageRating && parseInt(studio.averageRating) > 0 && (
+                        <div className="text-xs text-yellow-500 flex items-center gap-1 mt-1">
+                          <Star className="w-3 h-3 fill-yellow-500" />
+                          {studio.averageRating} ({studio.reviewCount} reviews)
+                        </div>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Studio Details */}
+          {/* Right Panel - Studio Details */}
           <div className="lg:col-span-2">
-            {currentStudio ? (
+            {selectedStudioData ? (
               <div className="space-y-6">
-                {/* Studio Info */}
-                <Card className="bg-white/5 border-white/10 p-6">
+                {/* Studio Header */}
+                <Card className="p-8 bg-gradient-to-br from-white/10 to-white/5 border-white/10">
                   <div className="flex items-start justify-between mb-4">
-                    <h2 className="text-2xl font-bold">{currentStudio.studioName}</h2>
-                    {user?.role === "admin" && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleEditStudio(currentStudio)}
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            if (confirm("Are you sure you want to delete this studio?")) {
-                              deleteStudioMutation.mutate({ id: currentStudio.id });
-                            }
-                          }}
-                          size="sm"
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                    <div>
+                      <h2 className="text-3xl font-bold mb-2">{selectedStudioData.studioName}</h2>
+                      {selectedStudioData.location && (
+                        <div className="flex items-center gap-2 text-white/60">
+                          <MapPin className="w-4 h-4" />
+                          {selectedStudioData.location}
+                        </div>
+                      )}
+                    </div>
+                    {selectedStudioData.averageRating && parseInt(selectedStudioData.averageRating) > 0 && (
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 justify-end mb-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-5 h-5 ${
+                                i < Math.round(parseFloat(selectedStudioData.averageRating))
+                                  ? "fill-yellow-500 text-yellow-500"
+                                  : "text-white/20"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <div className="text-sm text-white/60">{selectedStudioData.reviewCount} reviews</div>
                       </div>
                     )}
                   </div>
 
-                  {currentStudio.description && (
-                    <p className="text-white/80 mb-4">{currentStudio.description}</p>
+                  {selectedStudioData.description && (
+                    <p className="text-white/70 mb-6">{selectedStudioData.description}</p>
                   )}
 
-                  {/* Location */}
-                  {currentStudio.location && (
-                    <div className="flex items-start gap-3 mb-4">
-                      <MapPin className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    {selectedStudioData.engineers && (
                       <div>
-                        <div className="text-sm font-semibold">Location</div>
-                        <div className="text-white/60">{currentStudio.location}</div>
+                        <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Engineers</div>
+                        <div className="text-sm">{selectedStudioData.engineers}</div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Contact */}
-                  {currentStudio.contactInfo && (
-                    <div className="flex items-start gap-3 mb-4">
-                      <Phone className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    {selectedStudioData.contactInfo && (
                       <div>
-                        <div className="text-sm font-semibold">Contact</div>
-                        <div className="text-white/60">{currentStudio.contactInfo}</div>
+                        <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Contact</div>
+                        <div className="text-sm flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          {selectedStudioData.contactInfo}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Social Links */}
                   <div className="flex gap-3 flex-wrap">
-                    {currentStudio.instagramHandle && (
+                    {selectedStudioData.instagramHandle && (
                       <a
-                        href={`https://instagram.com/${currentStudio.instagramHandle}`}
+                        href={`https://instagram.com/${selectedStudioData.instagramHandle}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-white/60 hover:text-red-600 transition-colors"
-                        title="Instagram"
+                        className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
                       >
-                        <Instagram className="w-5 h-5" />
+                        <Instagram className="w-4 h-4" />
                       </a>
                     )}
-                    {currentStudio.twitterHandle && (
+                    {selectedStudioData.twitterHandle && (
                       <a
-                        href={`https://twitter.com/${currentStudio.twitterHandle}`}
+                        href={`https://twitter.com/${selectedStudioData.twitterHandle}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-white/60 hover:text-red-600 transition-colors"
-                        title="Twitter"
+                        className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
                       >
-                        <Twitter className="w-5 h-5" />
+                        <Twitter className="w-4 h-4" />
                       </a>
                     )}
-                    {currentStudio.facebookUrl && (
+                    {selectedStudioData.facebookUrl && (
                       <a
-                        href={currentStudio.facebookUrl}
+                        href={selectedStudioData.facebookUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-white/60 hover:text-red-600 transition-colors"
-                        title="Facebook"
+                        className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
                       >
-                        <Facebook className="w-5 h-5" />
+                        <Facebook className="w-4 h-4" />
                       </a>
                     )}
-                    {currentStudio.youtubeChannel && (
+                    {selectedStudioData.youtubeChannel && (
                       <a
-                        href={currentStudio.youtubeChannel}
+                        href={selectedStudioData.youtubeChannel}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-white/60 hover:text-red-600 transition-colors"
-                        title="YouTube"
+                        className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
                       >
-                        <Youtube className="w-5 h-5" />
+                        <Youtube className="w-4 h-4" />
                       </a>
                     )}
-                    {currentStudio.tiktokHandle && (
+                    {selectedStudioData.websiteUrl && (
                       <a
-                        href={`https://tiktok.com/@${currentStudio.tiktokHandle}`}
+                        href={selectedStudioData.websiteUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-white/60 hover:text-red-600 transition-colors"
-                        title="TikTok"
+                        className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
                       >
-                        <Music className="w-5 h-5" />
+                        <Mail className="w-4 h-4" />
                       </a>
                     )}
                   </div>
                 </Card>
 
-                {/* Engineers Management */}
-                {user?.role === "admin" && (
-                  <Card className="bg-white/5 border-white/10 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-bold">Engineers</h3>
-                      <Button
-                        onClick={() => setShowEngineersForm(!showEngineersForm)}
-                        className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
-                        size="sm"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Engineer
-                      </Button>
-                    </div>
-
-                    {showEngineersForm && (
-                      <div className="flex gap-2 mb-4">
-                        <Input
-                          placeholder="Engineer name"
-                          value={newEngineer}
-                          onChange={(e) => setNewEngineer(e.target.value)}
-                          className="bg-white/5 border-white/10 text-white"
-                        />
-                        <Button
-                          onClick={handleAddEngineer}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          Add
-                        </Button>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                      {currentStudio.engineers
-                        ? currentStudio.engineers.split(", ").map((engineer) => (
-                            <div
-                              key={engineer}
-                              className="bg-red-600/20 border border-red-600/50 rounded-full px-3 py-1 flex items-center gap-2 text-sm"
-                            >
-                              {engineer}
-                              <button
-                                onClick={() => handleRemoveEngineer(engineer)}
-                                className="hover:text-red-400 transition-colors"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))
-                        : <div className="text-white/40 text-sm">No engineers added yet</div>}
-                    </div>
-                  </Card>
-                )}
-
-                {/* Rating */}
-                {currentStudio.reviewCount > 0 && (
-                  <Card className="bg-white/5 border-white/10 p-4">
-                    <div className="flex items-center gap-2">
-                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      <span className="font-bold">{currentStudio.averageRating}</span>
-                      <span className="text-white/60">({currentStudio.reviewCount} reviews)</span>
-                    </div>
-                  </Card>
-                )}
-
-                {/* Reviews */}
+                {/* Reviews Section */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
+                    <h3 className="text-2xl font-bold flex items-center gap-2">
+                      <MessageSquare className="w-6 h-6" />
                       Reviews
                     </h3>
                     <Button
                       onClick={() => setShowReviewForm(!showReviewForm)}
-                      className="bg-red-600 hover:bg-red-700 text-white"
+                      className="bg-red-600 hover:bg-red-700"
                     >
-                      {showReviewForm ? "Cancel" : "Write Review"}
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Review
                     </Button>
                   </div>
 
-                  {/* Review Form */}
                   {showReviewForm && (
-                    <Card className="bg-white/5 border-white/10 p-6 mb-6">
-                      <div className="space-y-4">
+                    <Card className="p-6 bg-white/5 border-white/10 mb-6">
+                      <h4 className="font-bold mb-4">Submit Your Review</h4>
+                      <div className="space-y-3">
                         <div>
-                          <label className="text-sm font-semibold mb-2 block">Rating</label>
-                          <select
-                            value={reviewData.rating}
-                            onChange={(e) =>
-                              setReviewData({ ...reviewData, rating: parseInt(e.target.value) })
-                            }
-                            className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white"
-                          >
-                            {[5, 4, 3, 2, 1].map((r) => (
-                              <option key={r} value={r}>
-                                {r} Star{r !== 1 ? "s" : ""}
-                              </option>
+                          <label className="text-sm text-white/60 mb-2 block">Rating</label>
+                          <div className="flex gap-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                onClick={() => setReviewData({ ...reviewData, rating: star })}
+                                className="transition-transform hover:scale-110"
+                              >
+                                <Star
+                                  className={`w-6 h-6 ${
+                                    star <= reviewData.rating
+                                      ? "fill-yellow-500 text-yellow-500"
+                                      : "text-white/20"
+                                  }`}
+                                />
+                              </button>
                             ))}
-                          </select>
+                          </div>
                         </div>
-
-                        <div>
-                          <label className="text-sm font-semibold mb-2 block">Title</label>
-                          <Input
-                            placeholder="Review title"
-                            value={reviewData.title}
-                            onChange={(e) =>
-                              setReviewData({ ...reviewData, title: e.target.value })
-                            }
-                            className="bg-white/5 border-white/10 text-white"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-semibold mb-2 block">Review</label>
-                          <Textarea
-                            placeholder="Share your experience..."
-                            value={reviewData.reviewText}
-                            onChange={(e) =>
-                              setReviewData({ ...reviewData, reviewText: e.target.value })
-                            }
-                            className="bg-white/5 border-white/10 text-white"
-                            rows={4}
-                          />
-                        </div>
-
+                        <Input
+                          placeholder="Review Title"
+                          value={reviewData.title}
+                          onChange={(e) => setReviewData({ ...reviewData, title: e.target.value })}
+                          className="bg-white/5 border-white/10"
+                        />
+                        <Textarea
+                          placeholder="Your review..."
+                          value={reviewData.reviewText}
+                          onChange={(e) => setReviewData({ ...reviewData, reviewText: e.target.value })}
+                          className="bg-white/5 border-white/10 min-h-24"
+                        />
                         {!user && (
                           <>
-                            <div>
-                              <label className="text-sm font-semibold mb-2 block">Your Name</label>
-                              <Input
-                                placeholder="Name"
-                                value={reviewData.guestName}
-                                onChange={(e) =>
-                                  setReviewData({ ...reviewData, guestName: e.target.value })
-                                }
-                                className="bg-white/5 border-white/10 text-white"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-semibold mb-2 block">Email</label>
-                              <Input
-                                type="email"
-                                placeholder="Email"
-                                value={reviewData.guestEmail}
-                                onChange={(e) =>
-                                  setReviewData({ ...reviewData, guestEmail: e.target.value })
-                                }
-                                className="bg-white/5 border-white/10 text-white"
-                              />
-                            </div>
+                            <Input
+                              placeholder="Your Name"
+                              value={reviewData.guestName}
+                              onChange={(e) => setReviewData({ ...reviewData, guestName: e.target.value })}
+                              className="bg-white/5 border-white/10"
+                            />
+                            <Input
+                              placeholder="Your Email"
+                              type="email"
+                              value={reviewData.guestEmail}
+                              onChange={(e) => setReviewData({ ...reviewData, guestEmail: e.target.value })}
+                              className="bg-white/5 border-white/10"
+                            />
                           </>
                         )}
-
-                        <Button
-                          onClick={handleSubmitReview}
-                          disabled={createReviewMutation.isPending}
-                          className="w-full bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          {createReviewMutation.isPending ? "Submitting..." : "Submit Review"}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleSubmitReview}
+                            disabled={createReviewMutation.isPending}
+                            className="flex-1 bg-red-600 hover:bg-red-700"
+                          >
+                            {createReviewMutation.isPending ? "Submitting..." : "Submit Review"}
+                          </Button>
+                          <Button
+                            onClick={() => setShowReviewForm(false)}
+                            variant="outline"
+                            className="flex-1"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   )}
 
                   {/* Reviews List */}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {reviews.length === 0 ? (
-                      <div className="text-white/40 text-center py-8">No reviews yet</div>
+                      <div className="text-center py-8 text-white/40">
+                        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>No reviews yet</p>
+                      </div>
                     ) : (
                       reviews.map((review) => (
-                        <Card key={review.id} className="bg-white/5 border-white/10 p-4">
+                        <Card key={review.id} className="p-4 bg-white/5 border-white/10">
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               <div className="font-semibold">{review.title}</div>
-                              <div className="text-sm text-white/60">
-                                {review.guestName || user?.name || "Anonymous"}
-                              </div>
+                              <div className="text-sm text-white/60">{review.guestName || "Anonymous"}</div>
                             </div>
                             <div className="flex gap-1">
                               {[...Array(5)].map((_, i) => (
@@ -673,14 +543,14 @@ export default function FindStudio() {
                                   key={i}
                                   className={`w-4 h-4 ${
                                     i < review.rating
-                                      ? "fill-yellow-400 text-yellow-400"
+                                      ? "fill-yellow-500 text-yellow-500"
                                       : "text-white/20"
                                   }`}
                                 />
                               ))}
                             </div>
                           </div>
-                          <p className="text-white/80 text-sm">{review.reviewText}</p>
+                          <p className="text-sm text-white/70">{review.reviewText}</p>
                         </Card>
                       ))
                     )}
@@ -688,7 +558,12 @@ export default function FindStudio() {
                 </div>
               </div>
             ) : (
-              <div className="text-white/40 text-center py-12">Select a studio to view details</div>
+              <div className="flex items-center justify-center h-96">
+                <div className="text-center">
+                  <MapIcon className="w-16 h-16 mx-auto mb-4 text-white/20" />
+                  <p className="text-white/60 text-lg">Select a studio to view details</p>
+                </div>
+              </div>
             )}
           </div>
         </div>

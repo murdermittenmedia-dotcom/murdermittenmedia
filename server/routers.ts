@@ -62,7 +62,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, articles, studioReviews, studios } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -255,6 +255,95 @@ const studiosRouter = router({
     }),
 });
 
+const newsRouter = router({
+  getAllArticles: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(articles).where(eq(articles.isPublished, true)).orderBy(desc(articles.publishedAt));
+  }),
+
+  getArticleBySlug: publicProcedure.input(z.object({ slug: z.string() })).query(async ({ input }) => {
+    const db = await getDb();
+    if (!db) return null;
+    return db.query.articles.findFirst({
+      where: and(eq(articles.slug, input.slug), eq(articles.isPublished, true)),
+    });
+  }),
+
+  getArticleById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+    const db = await getDb();
+    if (!db) return null;
+    return db.query.articles.findFirst({
+      where: and(eq(articles.id, input.id), eq(articles.isPublished, true)),
+    });
+  }),
+
+  syncInstagramPosts: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    try {
+      // Fetch Instagram posts from the existing Instagram router
+      const igPosts = await trpc.instagram.getLatestPosts.query();
+      
+      if (!igPosts || igPosts.length === 0) {
+        return { synced: 0, message: "No new Instagram posts found" };
+      }
+
+      let synced = 0;
+
+      for (const post of igPosts) {
+        // Check if article already exists
+        const existing = await db.query.articles.findFirst({
+          where: eq(articles.instagramPostId, post.id),
+        });
+
+        if (existing) continue;
+
+        // Generate SEO-friendly title from caption
+        const title = post.caption.split("\n")[0].substring(0, 100) || `Post from ${new Date(post.timestamp).toLocaleDateString()}`;
+        const slug = title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+        // Create article
+        await db.insert(articles).values({
+          instagramPostId: post.id,
+          title,
+          slug,
+          caption: post.caption,
+          mediaUrl: post.media_url,
+          thumbnailUrl: post.media_url,
+          metaTitle: title,
+          metaDescription: post.caption.substring(0, 160),
+          metaKeywords: "murder mitten media, detroit rap, hip hop news",
+          isPublished: true,
+          publishedAt: new Date(post.timestamp),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        synced++;
+      }
+
+      return { synced, message: `Synced ${synced} new articles from Instagram` };
+    } catch (error) {
+      console.error("[News] Sync error:", error);
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to sync Instagram posts" });
+    }
+  }),
+
+  publishArticle: adminProcedure
+    .input(z.object({ id: z.number(), isPublished: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(articles).set({ isPublished: input.isPublished }).where(eq(articles.id, input.id));
+      return { success: true };
+    }),
+  news: newsRouter,
+});
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -5108,3 +5197,8 @@ export type AppRouter = typeof appRouter;
 // ═══════════════════════════════════════════════════════════════════════════════
 // STUDIOS ROUTER
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEWS ROUTER (Instagram Posts → Articles)
+// ═══════════════════════════════════════════════════════════════════════════════
+
