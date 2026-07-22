@@ -1803,15 +1803,20 @@ export default function MusicReview() {
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
         {/* ── ADMIN PANEL (admin/judge only) ─────────────────── */}
-        {isAdmin && !isAdminPanelFloating && (
+        {isAdmin && (
           <div className="relative">
             <button
-              onClick={() => setIsAdminPanelFloating(true)}
-              className="absolute top-2 right-2 z-10 px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-              title="Pop out to floating window"
+              onClick={() => window.open('/admin-popout', '_blank', 'width=600,height=900,left=100,top=100')}
+              className="px-4 py-2 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors uppercase tracking-widest font-bold"
+              title="Open admin control panel in new window"
             >
-              Pop Out
+              📺 Open Admin Panel
             </button>
+          </div>
+        )}
+
+        {/* Hidden AdminPanel - kept for reference but not rendered */}
+        {false && (
             <AdminPanel
             data={data}
             refetch={refetch}
@@ -1846,11 +1851,10 @@ export default function MusicReview() {
             sentimentBias={sentimentBias}
             setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
             />
-          </div>
         )}
 
-        {/* ── FLOATING ADMIN PANEL ─────────────────────── */}
-        {isAdmin && isAdminPanelFloating && (
+        {/* ── FLOATING ADMIN PANEL (DISABLED - use new window instead) ─────────────────────── */}
+        {false && (
           <FloatingWindow
             title="Admin Control Panel"
             onClose={() => setIsAdminPanelFloating(false)}
