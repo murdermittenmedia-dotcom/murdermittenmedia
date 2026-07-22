@@ -93,15 +93,43 @@ export default function FindStudio() {
     },
   });
 
-  const handleLocationInput = (value: string) => {
+  const handleLocationInput = async (value: string) => {
     setFormData({ ...formData, location: value });
     
-    if (value.length > 1) {
-      // Filter Michigan cities based on input
-      const filtered = MICHIGAN_CITIES.filter(c =>
-        c.city.toLowerCase().includes(value.toLowerCase())
-      );
-      setLocationSuggestions(filtered);
+    if (value.length > 2) {
+      try {
+        // Use IPStack to geocode the address
+        const response = await fetch(
+          `http://api.ipstack.com/convert?access_key=${IPSTACK_API_KEY}&query=${encodeURIComponent(value)}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Show suggestions based on IPStack results
+          if (data.latitude && data.longitude) {
+            setLocationSuggestions([
+              {
+                city: value,
+                lat: data.latitude.toString(),
+                lng: data.longitude.toString(),
+              },
+            ]);
+          }
+        } else {
+          // Fallback to Michigan cities if IPStack fails
+          const filtered = MICHIGAN_CITIES.filter(c =>
+            c.city.toLowerCase().includes(value.toLowerCase())
+          );
+          setLocationSuggestions(filtered);
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        // Fallback to Michigan cities
+        const filtered = MICHIGAN_CITIES.filter(c =>
+          c.city.toLowerCase().includes(value.toLowerCase())
+        );
+        setLocationSuggestions(filtered);
+      }
     } else {
       setLocationSuggestions([]);
     }
@@ -239,7 +267,7 @@ export default function FindStudio() {
                   <Input
                     value={formData.location}
                     onChange={(e) => handleLocationInput(e.target.value)}
-                    placeholder="Search Michigan cities..."
+                    placeholder="Enter full address (e.g., 123 Main St, Detroit, MI 48201)..."
                     className="bg-white/5 border-white/10 text-white"
                   />
                   {locationSuggestions.length > 0 && (
