@@ -1074,11 +1074,11 @@ export type InsertPromoCode = typeof promoCodes.$inferInsert;
 export const studios = mysqlTable("studios", {
   id: int("id").autoincrement().primaryKey(),
   studioName: varchar("studioName", { length: 256 }).notNull(),
-  location: varchar("location", { length: 512 }).notNull(), // Full address
-  latitude: varchar("latitude", { length: 32 }).notNull(), // Stored as string for precision
-  longitude: varchar("longitude", { length: 32 }).notNull(), // Stored as string for precision
+  location: varchar("location", { length: 512 }).default(""), // Full address
+  latitude: varchar("latitude", { length: 32 }).default(""), // Stored as string for precision
+  longitude: varchar("longitude", { length: 32 }).default(""), // Stored as string for precision
   engineers: text("engineers"), // JSON array of engineer names
-  contactInfo: varchar("contactInfo", { length: 512 }).notNull(), // Phone, email, etc.
+  contactInfo: varchar("contactInfo", { length: 512 }).default(""), // Phone, email, etc.
   instagramHandle: varchar("instagramHandle", { length: 128 }),
   twitterHandle: varchar("twitterHandle", { length: 128 }),
   facebookUrl: varchar("facebookUrl", { length: 512 }),
