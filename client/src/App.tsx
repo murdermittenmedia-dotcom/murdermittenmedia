@@ -25,7 +25,6 @@ import Leaderboard from "./pages/Leaderboard";
 import Search from "./pages/Search";
 import AdminModeration from "./pages/AdminModeration";
 import AdminPanel from "./pages/AdminPanel";
-import AdminPanelPopout from "./pages/AdminPanelPopout";
 import AdminSiteStats from "./pages/AdminSiteStats";
 import Banned from "./pages/Banned";
 import WheelOfNames from "./pages/WheelOfNames";
@@ -119,9 +118,8 @@ function Router() {
         <Redirect to="/explore" />
       </Route>
 
-      {/* Admin Routes */}
-      <Route path="/admin" component={AdminPanel} />
-      <Route path="/admin-popout" component={AdminPanelPopout} />
+      {/* Admin */}
+      <Route path={"/admin"} component={AdminPanel} />
       <Route path={"/admin/moderation"} component={AdminModeration} />
       <Route path={"/admin/stats"} component={AdminSiteStats} />
       <Route path={"/admin/golden-wheel"} component={AdminGoldenWheel} />
