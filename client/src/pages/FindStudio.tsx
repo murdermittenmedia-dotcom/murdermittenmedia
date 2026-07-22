@@ -98,37 +98,30 @@ export default function FindStudio() {
     
     if (value.length > 2) {
       try {
-        // Use IPStack to geocode the address
+        // Use OpenCage Geocoding API (free alternative to IPStack for geocoding)
+        // For now, use a simple approach: geocode via nominatim (free, open-source)
         const response = await fetch(
-          `http://api.ipstack.com/convert?access_key=${IPSTACK_API_KEY}&query=${encodeURIComponent(value)}`
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&limit=5`
         );
         
         if (response.ok) {
-          const data = await response.json();
-          // Show suggestions based on IPStack results
-          if (data.latitude && data.longitude) {
-            setLocationSuggestions([
-              {
-                city: value,
-                lat: data.latitude.toString(),
-                lng: data.longitude.toString(),
-              },
-            ]);
+          const results = await response.json();
+          if (results.length > 0) {
+            const suggestions = results.map((result: any) => ({
+              city: result.display_name,
+              lat: result.lat,
+              lng: result.lon,
+            }));
+            setLocationSuggestions(suggestions);
+          } else {
+            setLocationSuggestions([]);
           }
         } else {
-          // Fallback to Michigan cities if IPStack fails
-          const filtered = MICHIGAN_CITIES.filter(c =>
-            c.city.toLowerCase().includes(value.toLowerCase())
-          );
-          setLocationSuggestions(filtered);
+          setLocationSuggestions([]);
         }
       } catch (error) {
         console.error("Geocoding error:", error);
-        // Fallback to Michigan cities
-        const filtered = MICHIGAN_CITIES.filter(c =>
-          c.city.toLowerCase().includes(value.toLowerCase())
-        );
-        setLocationSuggestions(filtered);
+        setLocationSuggestions([]);
       }
     } else {
       setLocationSuggestions([]);
@@ -139,8 +132,8 @@ export default function FindStudio() {
     setFormData({
       ...formData,
       location: city.city,
-      latitude: city.lat,
-      longitude: city.lng,
+      latitude: String(city.lat),
+      longitude: String(city.lng),
     });
     setLocationSuggestions([]);
   };
