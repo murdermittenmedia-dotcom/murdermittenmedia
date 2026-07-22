@@ -1,9 +1,9 @@
 /* ============================================================
-   FIND A STUDIO — Studio Directory with Google Maps
+   FIND A STUDIO — Studio Directory with IPStack Geolocation
    Dark Editorial Theme matching Murder Mitten Media
    ============================================================ */
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -17,7 +17,26 @@ import {
 import { Link } from "wouter";
 import { SiteNav } from "@/components/SiteNav";
 
-const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
+const IPSTACK_API_KEY = "4e752c114b52090fa0e7ad236ea145e1";
+
+// Michigan cities with coordinates for quick selection
+const MICHIGAN_CITIES = [
+  { city: "Detroit, Michigan", lat: "42.3314", lng: "-83.0458" },
+  { city: "Ann Arbor, Michigan", lat: "42.2808", lng: "-83.7430" },
+  { city: "Lansing, Michigan", lat: "42.7335", lng: "-84.5555" },
+  { city: "Grand Rapids, Michigan", lat: "42.9633", lng: "-85.6789" },
+  { city: "Flint, Michigan", lat: "43.0125", lng: "-83.6875" },
+  { city: "Dearborn, Michigan", lat: "42.3222", lng: "-83.1763" },
+  { city: "Ypsilanti, Michigan", lat: "42.2411", lng: "-83.6137" },
+  { city: "Pontiac, Michigan", lat: "42.6386", lng: "-83.2900" },
+  { city: "Kalamazoo, Michigan", lat: "42.2917", lng: "-85.5872" },
+  { city: "Saginaw, Michigan", lat: "43.4167", lng: "-83.9500" },
+  { city: "Sterling Heights, Michigan", lat: "42.5833", lng: "-83.0333" },
+  { city: "Livonia, Michigan", lat: "42.3667", lng: "-83.3667" },
+  { city: "Warren, Michigan", lat: "42.5167", lng: "-83.0167" },
+  { city: "Westland, Michigan", lat: "42.3167", lng: "-83.4000" },
+  { city: "Farmington Hills, Michigan", lat: "42.4833", lng: "-83.4667" },
+];
 
 export default function FindStudio() {
   const { user } = useAuth();
@@ -26,9 +45,7 @@ export default function FindStudio() {
   const [selectedStudio, setSelectedStudio] = useState<any>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const locationInputRef = useRef<HTMLInputElement>(null);
-  const [autocompleteService, setAutocompleteService] = useState<any>(null);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -46,14 +63,6 @@ export default function FindStudio() {
     tiktokHandle: "",
     description: "",
   });
-
-  // Initialize Google Places Autocomplete
-  useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).google) {
-      const service = new (window as any).google.maps.places.AutocompleteService();
-      setAutocompleteService(service);
-    }
-  }, []);
 
   const { data: studios, refetch: refetchStudios } = trpc.studios.getAll.useQuery();
   const createStudioMutation = trpc.studios.create.useMutation({
@@ -76,7 +85,7 @@ export default function FindStudio() {
       });
       setUploadedImages([]);
       setShowForm(false);
-      setSuggestions([]);
+      setLocationSuggestions([]);
       refetchStudios();
     },
     onError: (error: any) => {
@@ -87,35 +96,25 @@ export default function FindStudio() {
   const handleLocationInput = (value: string) => {
     setFormData({ ...formData, location: value });
     
-    if (value.length > 2 && autocompleteService) {
-      autocompleteService.getPlacePredictions(
-        { input: value, types: ["geocode"] },
-        (predictions: any) => {
-          setSuggestions(predictions || []);
-        }
+    if (value.length > 1) {
+      // Filter Michigan cities based on input
+      const filtered = MICHIGAN_CITIES.filter(c =>
+        c.city.toLowerCase().includes(value.toLowerCase())
       );
+      setLocationSuggestions(filtered);
     } else {
-      setSuggestions([]);
+      setLocationSuggestions([]);
     }
   };
 
-  const handleLocationSelect = (place: any) => {
-    const geocoder = new (window as any).google.maps.Geocoder();
-    geocoder.geocode({ placeId: place.place_id }, (results: any) => {
-      if (results && results[0]) {
-        const location = results[0];
-        const lat = location.geometry.location.lat();
-        const lng = location.geometry.location.lng();
-        
-        setFormData({
-          ...formData,
-          location: location.formatted_address,
-          latitude: lat.toString(),
-          longitude: lng.toString(),
-        });
-        setSuggestions([]);
-      }
+  const handleLocationSelect = (city: any) => {
+    setFormData({
+      ...formData,
+      location: city.city,
+      latitude: city.lat,
+      longitude: city.lng,
     });
+    setLocationSuggestions([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -231,29 +230,28 @@ export default function FindStudio() {
                 />
               </div>
 
-              {/* Location with Google Autocomplete */}
+              {/* Location with Suggestions */}
               <div>
                 <label className="text-sm uppercase tracking-widest text-white/60 mb-2 block">
                   Location
                 </label>
                 <div className="relative">
                   <Input
-                    ref={locationInputRef}
                     value={formData.location}
                     onChange={(e) => handleLocationInput(e.target.value)}
-                    placeholder="Search location..."
+                    placeholder="Search Michigan cities..."
                     className="bg-white/5 border-white/10 text-white"
                   />
-                  {suggestions.length > 0 && (
+                  {locationSuggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 bg-[#1a1a1a] border border-white/10 rounded-lg mt-1 z-50 max-h-48 overflow-y-auto">
-                      {suggestions.map((suggestion, idx) => (
+                      {locationSuggestions.map((suggestion, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => handleLocationSelect(suggestion)}
                           className="w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-sm text-white/80"
                         >
-                          {suggestion.main_text}
+                          {suggestion.city}
                         </button>
                       ))}
                     </div>
