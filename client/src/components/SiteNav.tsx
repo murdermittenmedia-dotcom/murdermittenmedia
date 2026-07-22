@@ -363,7 +363,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 }
 
 function NotificationBell() {
-  const { data: unreadCount } = trpc.system.getUnreadNotifications.useQuery();
+  // Notifications feature - procedure not yet implemented
   return (
     <a
       href="/notifications"
@@ -371,9 +371,6 @@ function NotificationBell() {
       title="Notifications"
     >
       <Bell className="w-4 h-4" />
-      {unreadCount && unreadCount > 0 && (
-        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-      )}
     </a>
   );
 }
