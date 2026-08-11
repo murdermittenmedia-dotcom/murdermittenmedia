@@ -12,6 +12,7 @@ type PublicItem = {
   subtitle: string | null;
   platform: string | null;
   icon: string | null;
+  thumbnailUrl: string | null;
 };
 
 function iconFor(item: PublicItem) {
@@ -56,7 +57,7 @@ export default function PublicLinkPage() {
           {visibleItems.map((item) => {
             if (item.type === "header") return <div key={item.id} className="pt-4 pb-1 text-left text-xs uppercase tracking-[0.28em] opacity-55 font-bold">{item.title}</div>;
             const Icon = iconFor(item);
-            const content = <><span className="w-8 h-8 grid place-items-center rounded-full bg-black/20 shrink-0"><Icon className="w-4 h-4" /></span><span className="min-w-0 flex-1 text-left"><span className="block font-semibold truncate">{item.title}</span>{item.subtitle && <span className="block text-xs opacity-60 truncate mt-0.5">{item.subtitle}</span>}</span>{item.type === "release" ? <Play className="w-4 h-4 opacity-50 shrink-0" /> : <ExternalLink className="w-4 h-4 opacity-40 shrink-0" />}</>;
+            const content = <>{item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" /> : <span className="w-8 h-8 grid place-items-center rounded-full bg-black/20 shrink-0"><Icon className="w-4 h-4" /></span>}<span className="min-w-0 flex-1 text-left"><span className="block font-semibold truncate">{item.title}</span>{item.subtitle && <span className="block text-xs opacity-60 truncate mt-0.5">{item.subtitle}</span>}</span>{item.type === "release" ? <Play className="w-4 h-4 opacity-50 shrink-0" /> : <ExternalLink className="w-4 h-4 opacity-40 shrink-0" />}</>;
             const style = { color: page.textColor, backgroundColor: page.buttonStyle === "solid" || page.buttonStyle === "soft" ? page.buttonColor : undefined, borderColor: page.buttonStyle === "outline" || page.buttonStyle === "glass" ? page.buttonColor : undefined };
             return item.url ? <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={style} className={`flex items-center gap-3 min-h-14 px-4 py-3 rounded-2xl transition-colors ${buttonClass(page.buttonStyle)}`}>{content}</a> : <div key={item.id} style={style} className={`flex items-center gap-3 min-h-14 px-4 py-3 rounded-2xl ${buttonClass(page.buttonStyle)}`}>{content}</div>;
           })}

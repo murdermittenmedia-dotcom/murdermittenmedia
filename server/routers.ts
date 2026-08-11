@@ -9,6 +9,7 @@ import { eq, and, inArray, desc } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
+import { getMusicLinkMetadata } from "./music-link-metadata";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
@@ -475,6 +476,19 @@ export const appRouter = router({
       .input(z.object({ slug: z.string().trim().min(3).max(64) }))
       .query(async ({ input }) => {
         return getPublicLinkPageBySlug(input.slug.toLowerCase());
+      }),
+
+    enrichMusicUrl: protectedProcedure
+      .input(z.object({ url: z.string().trim().min(8).max(1_024) }))
+      .mutation(async ({ input }) => {
+        try {
+          return await getMusicLinkMetadata(input.url);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Could not read metadata from this music link",
+          });
+        }
       }),
 
     create: protectedProcedure

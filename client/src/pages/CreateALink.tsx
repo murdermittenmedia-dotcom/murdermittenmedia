@@ -30,6 +30,7 @@ type LinkDraft = {
   subtitle: string;
   platform: string;
   icon: string;
+  thumbnailUrl: string;
 };
 
 const emptyDraft: LinkDraft = {
@@ -39,12 +40,24 @@ const emptyDraft: LinkDraft = {
   subtitle: "",
   platform: "",
   icon: "link",
+  thumbnailUrl: "",
 };
 
 function normalizeUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function isSupportedMusicUrl(value: string) {
+  try {
+    const hostname = new URL(normalizeUrl(value)).hostname.toLowerCase();
+    return ["spotify.com", "spotify.link", "music.apple.com", "youtube.com", "youtu.be"].some(
+      (host) => hostname === host || hostname.endsWith(`.${host}`),
+    );
+  } catch {
+    return false;
+  }
 }
 
 export default function CreateALink() {
@@ -84,6 +97,22 @@ export default function CreateALink() {
     onSuccess: async () => {
       toast.success("Avatar uploaded");
       await utils.linkPages.mine.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const enrichMusicUrl = trpc.linkPages.enrichMusicUrl.useMutation({
+    onSuccess: (metadata) => {
+      setDraft((current) => ({
+        ...current,
+        type: "release",
+        url: metadata.canonicalUrl,
+        title: metadata.title,
+        subtitle: metadata.artist ?? "",
+        platform: metadata.platform,
+        icon: "music",
+        thumbnailUrl: metadata.artworkUrl ?? "",
+      }));
+      toast.success("Release details filled in");
     },
     onError: (error) => toast.error(error.message),
   });
@@ -170,6 +199,7 @@ export default function CreateALink() {
     subtitle: item.subtitle ?? "",
     platform: item.platform ?? "",
     icon: item.icon ?? "link",
+    thumbnailUrl: item.thumbnailUrl ?? "",
   };
 
   const updateDraft = (itemId: number, changes: Partial<LinkDraft>) => {
@@ -192,6 +222,7 @@ export default function CreateALink() {
       subtitle: itemDraft.subtitle || null,
       platform: itemDraft.platform || null,
       icon: itemDraft.icon || null,
+      thumbnailUrl: itemDraft.thumbnailUrl || null,
     });
   };
 
@@ -206,6 +237,7 @@ export default function CreateALink() {
       subtitle: draft.subtitle.trim() || null,
       platform: draft.platform.trim() || null,
       icon: draft.icon.trim() || null,
+      thumbnailUrl: draft.thumbnailUrl.trim() || null,
       songId: selectedSongId ? Number(selectedSongId) : null,
       sortOrder: items.length,
       isVisible: true,
@@ -213,7 +245,12 @@ export default function CreateALink() {
   };
 
   const addSocialPreset = (preset: typeof SOCIAL_PRESETS[number]) => {
-    setDraft({ type: "social", title: preset.title, url: "", subtitle: "", platform: preset.platform, icon: preset.icon });
+    setDraft({ type: "social", title: preset.title, url: "", subtitle: "", platform: preset.platform, icon: preset.icon, thumbnailUrl: "" });
+  };
+
+  const autoFillMusicRelease = () => {
+    if (!draft.url.trim()) return toast.error("Paste a Spotify, Apple Music, or YouTube link first");
+    enrichMusicUrl.mutate({ url: normalizeUrl(draft.url) });
   };
 
   const moveItem = (index: number, direction: -1 | 1) => {
@@ -251,13 +288,14 @@ export default function CreateALink() {
       <main className="container max-w-6xl pt-28 pb-20 px-4">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-8">
           <div><p className="text-red-500 text-xs font-black uppercase tracking-[0.3em] mb-2">Creator tools</p><h1 className="font-['Anton'] text-5xl md:text-7xl uppercase leading-none">Create A <span className="text-red-600">Link</span></h1><p className="text-white/50 mt-3 max-w-xl">Build and publish your all-in-one destination for music, socials, bookings, and drops.</p></div>
-          <div className="flex flex-wrap gap-2"><a href={`/link/${page.slug}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-white/20 hover:border-red-500 px-4 py-2 text-xs uppercase tracking-widest font-bold"><ExternalLink className="w-4 h-4" />View page</a><button onClick={copyLink} className="inline-flex items-center gap-2 border border-white/20 hover:border-red-500 px-4 py-2 text-xs uppercase tracking-widest font-bold">{copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}{copied ? "Copied" : "Copy link"}</button></div>
+          <div className="flex flex-wrap gap-2"><button onClick={() => updatePage.mutate({ pageId: page.id, isPublished: !page.isPublished })} disabled={updatePage.isPending} className={`inline-flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-widest font-black disabled:opacity-50 ${page.isPublished ? "border border-white/20 hover:border-red-500" : "bg-red-600 hover:bg-red-500"}`}>{page.isPublished ? "Unpublish" : "Publish page"}</button><a href={`/link/${page.slug}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-white/20 hover:border-red-500 px-4 py-2 text-xs uppercase tracking-widest font-bold"><ExternalLink className="w-4 h-4" />View page</a><button onClick={copyLink} className="inline-flex items-center gap-2 border border-white/20 hover:border-red-500 px-4 py-2 text-xs uppercase tracking-widest font-bold">{copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}{copied ? "Copied" : "Copy link"}</button></div>
         </div>
 
         <div className="grid xl:grid-cols-[1fr_360px] gap-6 items-start">
           <section className="space-y-6 min-w-0">
-            <div className="border border-white/10 bg-white/[0.03] p-5 md:p-6">
-              <div className="flex items-center justify-between gap-3 mb-5"><div><h2 className="font-['Anton'] text-2xl uppercase">Page identity</h2><p className="text-white/40 text-xs mt-1">These details sit at the top of your public page.</p></div><Palette className="w-5 h-5 text-red-500" /></div>
+            <details className="group border border-white/10 bg-white/[0.03]">
+              <summary className="flex items-center justify-between gap-3 cursor-pointer list-none p-5 md:p-6"><div><h2 className="font-['Anton'] text-2xl uppercase">Profile & style</h2><p className="text-white/40 text-xs mt-1">Name, avatar, colors, and page settings.</p></div><Palette className="w-5 h-5 text-red-500 group-open:rotate-45 transition-transform" /></summary>
+              <div className="px-5 pb-5 md:px-6 md:pb-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Public username</span><Input defaultValue={page.slug} onBlur={(e) => updatePage.mutate({ pageId: page.id, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} className="mt-2 bg-white/5 border-white/10 text-white" /></label>
                 <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Display name</span><Input defaultValue={page.displayName ?? ""} onBlur={(e) => updatePage.mutate({ pageId: page.id, displayName: e.target.value || null })} className="mt-2 bg-white/5 border-white/10 text-white" /></label>
@@ -270,8 +308,9 @@ export default function CreateALink() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/10"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.backgroundColor} onChange={(e) => updatePage.mutate({ pageId: page.id, backgroundColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Background<br /><code className="text-[10px] text-white/35">{page.backgroundColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.accentColor} onChange={(e) => updatePage.mutate({ pageId: page.id, accentColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Accent<br /><code className="text-[10px] text-white/35">{page.accentColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.textColor} onChange={(e) => updatePage.mutate({ pageId: page.id, textColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Text<br /><code className="text-[10px] text-white/35">{page.textColor}</code></span></label></div>
               <div className="flex items-center gap-3 mt-4"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.buttonColor} onChange={(e) => updatePage.mutate({ pageId: page.id, buttonColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Link/button color<br /><code className="text-[10px] text-white/35">{page.buttonColor}</code></span></label></div>
-              <div className="flex flex-wrap items-center gap-5 mt-5 pt-5 border-t border-white/10"><label className="inline-flex items-center gap-2 text-xs text-white/60 cursor-pointer"><input type="checkbox" defaultChecked={page.isPublished} onChange={(e) => updatePage.mutate({ pageId: page.id, isPublished: e.target.checked })} className="accent-red-600" /><span>{page.isPublished ? "Published" : "Draft"}</span></label><label className="inline-flex items-center gap-2 text-xs text-white/60 cursor-pointer"><input type="checkbox" defaultChecked={page.showBranding} onChange={(e) => updatePage.mutate({ pageId: page.id, showBranding: e.target.checked })} className="accent-red-600" />Show Murder Mitten branding</label><span className="text-[10px] text-white/30 ml-auto">{selectedTheme.label} theme</span></div>
-            </div>
+              <div className="flex flex-wrap items-center gap-5 mt-5 pt-5 border-t border-white/10"><label className="inline-flex items-center gap-2 text-xs text-white/60 cursor-pointer"><input type="checkbox" defaultChecked={page.showBranding} onChange={(e) => updatePage.mutate({ pageId: page.id, showBranding: e.target.checked })} className="accent-red-600" />Show Murder Mitten branding</label><span className="text-[10px] text-white/30 ml-auto">{selectedTheme.label} theme</span></div>
+              </div>
+            </details>
 
             <div className="border border-white/10 bg-white/[0.03] p-5 md:p-6">
               <div className="flex items-center justify-between mb-5"><div><h2 className="font-['Anton'] text-2xl uppercase">Your links</h2><p className="text-white/40 text-xs mt-1">Drag-ready ordered blocks. Use the arrows to reorder on mobile.</p></div><Link2 className="w-5 h-5 text-red-500" /></div>
@@ -286,12 +325,13 @@ export default function CreateALink() {
             </div>
 
             <div className="border border-red-600/30 bg-red-950/10 p-5 md:p-6">
-              <div className="flex items-center gap-3 mb-5"><Plus className="w-5 h-5 text-red-500" /><div><h2 className="font-['Anton'] text-2xl uppercase">Add a block</h2><p className="text-white/45 text-xs mt-1">Socials, releases, booking links, or a section header.</p></div></div>
-              <div className="flex flex-wrap gap-2 mb-5">{SOCIAL_PRESETS.map((preset) => { const Icon = preset.Icon; return <button key={preset.platform} onClick={() => addSocialPreset(preset)} className="inline-flex items-center gap-2 border border-white/15 hover:border-red-500 px-3 py-2 text-xs text-white/70 hover:text-white"><Icon className="w-4 h-4" />{preset.platform}</button>; })}</div>
-              <div className="grid md:grid-cols-3 gap-3"><select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as LinkDraft["type"] })} className="h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="custom">Custom link</option><option value="social">Social link</option><option value="release">Music release</option><option value="header">Section header</option></select><Input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Title" className="bg-white/5 border-white/10 text-white" /><Input value={draft.url} onChange={(e) => setDraft({ ...draft, url: e.target.value })} placeholder={draft.type === "header" ? "No URL needed" : "https://..."} disabled={draft.type === "header"} className="bg-white/5 border-white/10 text-white" /></div>
-              <div className="grid md:grid-cols-2 gap-3 mt-3"><Input value={draft.subtitle} onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })} placeholder="Optional subtitle" className="bg-white/5 border-white/10 text-white" /><Input value={draft.platform} onChange={(e) => setDraft({ ...draft, platform: e.target.value })} placeholder="Platform label" className="bg-white/5 border-white/10 text-white" /></div>
-              {draft.type === "release" && <select value={selectedSongId} onChange={(e) => { const songId = e.target.value; setSelectedSongId(songId); const song = songs.find((entry) => entry.id === Number(songId)); if (song) setDraft({ ...draft, title: song.title, url: song.externalUrl ?? song.fileUrl ?? "", subtitle: song.artistName, platform: song.genre ?? "Release" }); }} className="mt-3 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="">Select an existing release (optional)</option>{songs.map((song) => <option key={song.id} value={song.id}>{song.title} — {song.artistName}</option>)}</select>}
-              <Button onClick={addNewItem} disabled={addItem.isPending} className="mt-4 bg-red-600 hover:bg-red-500 uppercase tracking-widest font-black"><Plus className="w-4 h-4 mr-2" />{addItem.isPending ? "Adding..." : "Add to page"}</Button>
+              <div className="flex items-center gap-3 mb-5"><Plus className="w-5 h-5 text-red-500" /><div><h2 className="font-['Anton'] text-2xl uppercase">Add a link</h2><p className="text-white/45 text-xs mt-1">Paste a release link first, then we’ll handle the details.</p></div></div>
+              <div className="flex flex-wrap gap-2 mb-4"><button onClick={() => setDraft({ ...emptyDraft, type: "release", icon: "music" })} className={`px-3 py-2 text-xs font-bold border ${draft.type === "release" ? "border-red-500 bg-red-600/15 text-white" : "border-white/15 text-white/60"}`}>Music release</button><button onClick={() => setDraft({ ...emptyDraft, type: "custom" })} className={`px-3 py-2 text-xs font-bold border ${draft.type === "custom" ? "border-red-500 bg-red-600/15 text-white" : "border-white/15 text-white/60"}`}>Custom link</button>{SOCIAL_PRESETS.slice(0, 3).map((preset) => { const Icon = preset.Icon; return <button key={preset.platform} onClick={() => addSocialPreset(preset)} className="inline-flex items-center gap-1.5 border border-white/15 hover:border-red-500 px-3 py-2 text-xs text-white/60 hover:text-white"><Icon className="w-3.5 h-3.5" />{preset.platform}</button>; })}</div>
+              <div className="flex flex-col sm:flex-row gap-3"><Input value={draft.url} onChange={(e) => setDraft({ ...draft, url: e.target.value })} onBlur={() => { if (isSupportedMusicUrl(draft.url)) autoFillMusicRelease(); }} placeholder={draft.type === "release" ? "Paste Spotify, Apple Music, or YouTube link" : "Paste any link"} className="bg-white/5 border-white/10 text-white" /><Button onClick={autoFillMusicRelease} disabled={!isSupportedMusicUrl(draft.url) || enrichMusicUrl.isPending} variant="outline" className="shrink-0 border-white/20 text-white hover:bg-white/10">{enrichMusicUrl.isPending ? "Reading..." : "Auto-fill"}</Button></div>
+              <div className="grid sm:grid-cols-2 gap-3 mt-3"><Input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Title (filled automatically for releases)" className="bg-white/5 border-white/10 text-white" /><Input value={draft.subtitle} onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })} placeholder="Artist or short subtitle" className="bg-white/5 border-white/10 text-white" /></div>
+              {draft.thumbnailUrl && <div className="mt-3 flex items-center gap-3 rounded-md border border-white/10 bg-black/20 p-2"><img src={draft.thumbnailUrl} alt="Release artwork" className="w-11 h-11 rounded object-cover" /><span className="text-xs text-white/60">Artwork found and ready to use</span></div>}
+              <details className="mt-4"><summary className="cursor-pointer text-xs text-white/45 hover:text-white">More options</summary><div className="grid md:grid-cols-2 gap-3 mt-3"><select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as LinkDraft["type"] })} className="h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="custom">Custom link</option><option value="social">Social link</option><option value="release">Music release</option><option value="header">Section header</option></select><Input value={draft.platform} onChange={(e) => setDraft({ ...draft, platform: e.target.value })} placeholder="Platform label" className="bg-white/5 border-white/10 text-white" /></div>{draft.type === "release" && <select value={selectedSongId} onChange={(e) => { const songId = e.target.value; setSelectedSongId(songId); const song = songs.find((entry) => entry.id === Number(songId)); if (song) setDraft({ ...draft, title: song.title, url: song.externalUrl ?? song.fileUrl ?? "", subtitle: song.artistName, platform: song.genre ?? "Release", icon: "music", thumbnailUrl: "" }); }} className="mt-3 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="">Or select an existing release</option>{songs.map((song) => <option key={song.id} value={song.id}>{song.title} — {song.artistName}</option>)}</select>}</details>
+              <Button onClick={addNewItem} disabled={addItem.isPending} className="mt-4 bg-red-600 hover:bg-red-500 uppercase tracking-widest font-black"><Plus className="w-4 h-4 mr-2" />{addItem.isPending ? "Adding..." : "Add link"}</Button>
             </div>
           </section>
 

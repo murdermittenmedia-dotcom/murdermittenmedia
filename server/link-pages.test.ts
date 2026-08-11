@@ -50,14 +50,14 @@ describe("linkPages", () => {
     await expect(caller.linkPages.uploadAvatar({ pageId: 22, base64: "aGVsbG8=", mimeType: "image/png" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 
-  it("persists owner-selected text and button colors", async () => {
+  it("persists owner-selected colors and publication state", async () => {
     ownerLookup.mockResolvedValue({ page: { id: 22, slug: "artist" }, items: [] });
     updatePage.mockResolvedValue({ page: { id: 22 }, items: [] });
     const user = { id: 7, role: "user", name: "Artist", openId: "artist", email: "artist@example.com", loginMethod: "manus", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() } as NonNullable<TrpcContext["user"]>;
     const caller = appRouter.createCaller(context(user));
 
-    await caller.linkPages.update({ pageId: 22, textColor: "#fefefe", buttonColor: "#ff3344" });
+    await caller.linkPages.update({ pageId: 22, textColor: "#fefefe", buttonColor: "#ff3344", isPublished: true });
 
-    expect(updatePage).toHaveBeenCalledWith(22, 7, expect.objectContaining({ textColor: "#fefefe", buttonColor: "#ff3344" }));
+    expect(updatePage).toHaveBeenCalledWith(22, 7, expect.objectContaining({ textColor: "#fefefe", buttonColor: "#ff3344", isPublished: true }));
   });
 });

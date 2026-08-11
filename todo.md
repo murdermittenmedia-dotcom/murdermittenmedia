@@ -1400,4 +1400,13 @@
 - [x] Add page background, accent, text, and link/button color controls with persistence
 - [x] Render the uploaded avatar and customized colors in the live preview and public link page
 - [x] Add tests for owner-only avatar upload and style persistence
-- [ ] Publish the Create A Link enhancement checkpoint
+- [x] Publish the Create A Link enhancement checkpoint
+
+## Create A Link Simplification & Release Metadata
+- [x] Audit the current editor, publish state, and music-link data flow
+- [x] Add secure server-side enrichment for Spotify, Apple Music, and YouTube URLs
+- [x] Simplify the Create A Link editor layout and controls
+- [x] Add an explicit working publish/unpublish action
+- [x] Auto-fill song title, artist, platform, and artwork when provider metadata is available
+- [x] Add metadata and publish workflow tests
+- [ ] Publish the Create A Link simplification and metadata checkpoint
