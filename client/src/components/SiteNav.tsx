@@ -61,8 +61,13 @@ const ALL_PAGES = [
   {
     category: "STUDIO",
     items: [
-      { href: "/find-studio",  label: "Find A Studio",   icon: MapPin },
-      { href: "/create-a-link", label: "Create A Link",    icon: Link2 },
+      { href: "/find-studio", label: "Find A Studio", icon: MapPin },
+    ],
+  },
+  {
+    category: "CREATOR",
+    items: [
+      { href: "/create-a-link", label: "Create A Link", icon: Link2 },
     ],
   },
 ] as const;

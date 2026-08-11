@@ -1384,7 +1384,7 @@
 - [x] Build authenticated Create A Link editor for social and release links
 - [x] Build public shareable link page and navigation entry points
 - [x] Add Vitest coverage and verify responsive/security behavior
-- [ ] Save checkpoint for Create A Link feature
+- [x] Save checkpoint for Create A Link feature
 - [x] Support Linktree-style social links and music release links
 - [x] Support reorder, visibility, title, bio, avatar, and basic theme controls
 - [x] Provide a public shareable URL for each user link page
