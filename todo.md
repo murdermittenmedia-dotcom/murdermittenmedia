@@ -1409,4 +1409,4 @@
 - [x] Add an explicit working publish/unpublish action
 - [x] Auto-fill song title, artist, platform, and artwork when provider metadata is available
 - [x] Add metadata and publish workflow tests
-- [ ] Publish the Create A Link simplification and metadata checkpoint
+- [x] Publish the Create A Link simplification and metadata checkpoint
