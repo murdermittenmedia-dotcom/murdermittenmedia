@@ -1393,3 +1393,11 @@
 - [x] Add mobile-safe layout with no horizontal overflow
 - [x] Add Create A Link entry to the site menu/account area
 - [x] Test invalid URLs, duplicate slugs, unauthorized edits, and public visibility states
+
+
+## Create A Link Enhancements
+- [x] Add avatar image upload control to the Create A Link editor using project storage
+- [x] Add page background, accent, text, and link/button color controls with persistence
+- [x] Render the uploaded avatar and customized colors in the live preview and public link page
+- [x] Add tests for owner-only avatar upload and style persistence
+- [ ] Publish the Create A Link enhancement checkpoint

@@ -486,6 +486,8 @@ export const appRouter = router({
         theme: z.string().max(32).default("midnight"),
         backgroundColor: z.string().max(32).default("#080808"),
         accentColor: z.string().max(32).default("#d10000"),
+        textColor: z.string().max(32).default("#ffffff"),
+        buttonColor: z.string().max(32).default("#d10000"),
         buttonStyle: z.enum(["solid", "outline", "soft", "glass"]).default("solid"),
         isPublished: z.boolean().default(false),
         showBranding: z.boolean().default(true),
@@ -508,6 +510,8 @@ export const appRouter = router({
           theme: input.theme,
           backgroundColor: input.backgroundColor,
           accentColor: input.accentColor,
+          textColor: input.textColor,
+          buttonColor: input.buttonColor,
           buttonStyle: input.buttonStyle,
           isPublished: input.isPublished,
           showBranding: input.showBranding,
@@ -524,6 +528,8 @@ export const appRouter = router({
         theme: z.string().max(32).optional(),
         backgroundColor: z.string().max(32).optional(),
         accentColor: z.string().max(32).optional(),
+        textColor: z.string().max(32).optional(),
+        buttonColor: z.string().max(32).optional(),
         buttonStyle: z.enum(["solid", "outline", "soft", "glass"]).optional(),
         isPublished: z.boolean().optional(),
         showBranding: z.boolean().optional(),
@@ -544,6 +550,26 @@ export const appRouter = router({
           ...changes,
           slug: changes.slug?.toLowerCase(),
         });
+      }),
+
+    uploadAvatar: protectedProcedure
+      .input(z.object({
+        pageId: z.number().int().positive(),
+        base64: z.string().max(6_000_000),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const current = await getLinkPageByUserId(ctx.user.id);
+        if (!current || current.page.id !== input.pageId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only update your own link page" });
+        }
+        const buffer = Buffer.from(input.base64, "base64");
+        if (buffer.length > 4 * 1024 * 1024) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Avatar image must be 4MB or smaller" });
+        }
+        const extension = input.mimeType.split("/")[1];
+        const { url } = await storagePut(`link-pages/${ctx.user.id}/avatar-${Date.now()}.${extension}`, buffer, input.mimeType);
+        return updateLinkPage(input.pageId, ctx.user.id, { avatarUrl: url });
       }),
 
     delete: protectedProcedure

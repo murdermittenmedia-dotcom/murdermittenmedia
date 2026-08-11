@@ -215,6 +215,8 @@ export const linkPages = mysqlTable("link_pages", {
   theme: varchar("theme", { length: 32 }).default("midnight").notNull(),
   backgroundColor: varchar("backgroundColor", { length: 32 }).default("#080808").notNull(),
   accentColor: varchar("accentColor", { length: 32 }).default("#d10000").notNull(),
+  textColor: varchar("textColor", { length: 32 }).default("#ffffff").notNull(),
+  buttonColor: varchar("buttonColor", { length: 32 }).default("#d10000").notNull(),
   buttonStyle: mysqlEnum("buttonStyle", ["solid", "outline", "soft", "glass"]).default("solid").notNull(),
   isPublished: boolean("isPublished").default(false).notNull(),
   showBranding: boolean("showBranding").default(true).notNull(),

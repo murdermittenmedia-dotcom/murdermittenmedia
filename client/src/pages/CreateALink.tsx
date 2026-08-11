@@ -80,6 +80,13 @@ export default function CreateALink() {
     },
     onError: (error) => toast.error(error.message),
   });
+  const uploadAvatar = trpc.linkPages.uploadAvatar.useMutation({
+    onSuccess: async () => {
+      toast.success("Avatar uploaded");
+      await utils.linkPages.mine.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const addItem = trpc.linkPages.addItem.useMutation({
     onSuccess: async () => {
       setDraft(emptyDraft);
@@ -217,6 +224,20 @@ export default function CreateALink() {
     reorder.mutate({ pageId: page.id, itemIds: ids });
   };
 
+  const handleAvatarUpload = (file: File | undefined) => {
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) return toast.error("Use a JPG, PNG, WEBP, or GIF image");
+    if (file.size > 4 * 1024 * 1024) return toast.error("Avatar image must be 4MB or smaller");
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || "");
+      const base64 = value.includes(",") ? value.split(",")[1] : value;
+      uploadAvatar.mutate({ pageId: page.id, base64, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif" });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const copyLink = async () => {
     if (!publicHref) return;
     await navigator.clipboard.writeText(publicHref);
@@ -243,10 +264,12 @@ export default function CreateALink() {
               </div>
               <label className="block mt-4"><span className="text-[10px] uppercase tracking-widest text-white/50">Bio</span><Textarea defaultValue={page.bio ?? ""} onBlur={(e) => updatePage.mutate({ pageId: page.id, bio: e.target.value || null })} className="mt-2 bg-white/5 border-white/10 text-white min-h-20" /></label>
               <div className="grid md:grid-cols-3 gap-4 mt-4">
-                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Avatar URL</span><Input defaultValue={page.avatarUrl ?? ""} onBlur={(e) => updatePage.mutate({ pageId: page.id, avatarUrl: e.target.value || null })} placeholder="https://..." className="mt-2 bg-white/5 border-white/10 text-white" /></label>
-                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Theme</span><select defaultValue={page.theme} onChange={(e) => { const theme = THEME_OPTIONS.find((option) => option.value === e.target.value); updatePage.mutate({ pageId: page.id, theme: e.target.value, backgroundColor: theme?.background, accentColor: theme?.accent }); }} className="mt-2 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="midnight">Midnight</option><option value="ember">Ember</option><option value="ice">Ice</option><option value="violet">Violet</option></select></label>
+                <div className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Avatar image</span><label className="mt-2 flex items-center gap-3 rounded-md border border-dashed border-white/20 bg-white/5 p-2.5 cursor-pointer hover:border-red-500"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(e) => handleAvatarUpload(e.target.files?.[0])} /><span className="w-10 h-10 rounded-full overflow-hidden bg-red-600/70 grid place-items-center text-sm font-black">{page.avatarUrl ? <img src={page.avatarUrl} alt="Current avatar" className="w-full h-full object-cover" /> : (page.displayName ?? "C").charAt(0).toUpperCase()}</span><span className="text-xs text-white/70">{uploadAvatar.isPending ? "Uploading..." : "Choose an image"}</span></label></div>
+                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Theme preset</span><select defaultValue={page.theme} onChange={(e) => { const theme = THEME_OPTIONS.find((option) => option.value === e.target.value); updatePage.mutate({ pageId: page.id, theme: e.target.value, backgroundColor: theme?.background, accentColor: theme?.accent, buttonColor: theme?.accent }); }} className="mt-2 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="midnight">Midnight</option><option value="ember">Ember</option><option value="ice">Ice</option><option value="violet">Violet</option></select></label>
                 <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Button style</span><select defaultValue={page.buttonStyle} onChange={(e) => updatePage.mutate({ pageId: page.id, buttonStyle: e.target.value as "solid" | "outline" | "soft" | "glass" })} className="mt-2 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="solid">Solid</option><option value="outline">Outline</option><option value="soft">Soft</option><option value="glass">Glass</option></select></label>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/10"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.backgroundColor} onChange={(e) => updatePage.mutate({ pageId: page.id, backgroundColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Background<br /><code className="text-[10px] text-white/35">{page.backgroundColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.accentColor} onChange={(e) => updatePage.mutate({ pageId: page.id, accentColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Accent<br /><code className="text-[10px] text-white/35">{page.accentColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.textColor} onChange={(e) => updatePage.mutate({ pageId: page.id, textColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Text<br /><code className="text-[10px] text-white/35">{page.textColor}</code></span></label></div>
+              <div className="flex items-center gap-3 mt-4"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.buttonColor} onChange={(e) => updatePage.mutate({ pageId: page.id, buttonColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Link/button color<br /><code className="text-[10px] text-white/35">{page.buttonColor}</code></span></label></div>
               <div className="flex flex-wrap items-center gap-5 mt-5 pt-5 border-t border-white/10"><label className="inline-flex items-center gap-2 text-xs text-white/60 cursor-pointer"><input type="checkbox" defaultChecked={page.isPublished} onChange={(e) => updatePage.mutate({ pageId: page.id, isPublished: e.target.checked })} className="accent-red-600" /><span>{page.isPublished ? "Published" : "Draft"}</span></label><label className="inline-flex items-center gap-2 text-xs text-white/60 cursor-pointer"><input type="checkbox" defaultChecked={page.showBranding} onChange={(e) => updatePage.mutate({ pageId: page.id, showBranding: e.target.checked })} className="accent-red-600" />Show Murder Mitten branding</label><span className="text-[10px] text-white/30 ml-auto">{selectedTheme.label} theme</span></div>
             </div>
 
@@ -275,11 +298,11 @@ export default function CreateALink() {
           <aside className="xl:sticky xl:top-24 min-w-0">
             <div className="border border-white/10 bg-black/60 p-4 md:p-5">
               <div className="flex items-center justify-between mb-4"><div><p className="text-[10px] uppercase tracking-widest text-red-500 font-bold">Live preview</p><h2 className="font-['Anton'] text-2xl uppercase">Your page</h2></div><a href={`/link/${page.slug}`} target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white"><ExternalLink className="w-4 h-4" /></a></div>
-              <div className="mx-auto max-w-[300px] min-h-[440px] p-5 flex flex-col items-center text-center border border-white/10" style={{ background: `linear-gradient(145deg, ${page.backgroundColor}, #050505)` }}>
+              <div className="mx-auto max-w-[300px] min-h-[440px] p-5 flex flex-col items-center text-center border border-white/10" style={{ background: `linear-gradient(145deg, ${page.backgroundColor}, #050505)`, color: page.textColor }}>
                 {page.avatarUrl ? <img src={page.avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover ring-2 ring-white/20" /> : <div className="w-16 h-16 rounded-full bg-red-600/80 grid place-items-center text-2xl font-['Anton']">{(page.displayName ?? user.name ?? "C").charAt(0).toUpperCase()}</div>}
                 <h3 className="font-['Anton'] text-xl uppercase mt-4">{page.displayName || user.name || "Creator"}</h3>
                 {page.bio && <p className="text-white/55 text-xs mt-2 line-clamp-3">{page.bio}</p>}
-                <div className="w-full space-y-2 mt-6">{items.filter((item) => item.isVisible).slice(0, 5).map((item) => <div key={item.id} className={`w-full px-3 py-2.5 text-xs ${page.buttonStyle === "outline" ? "border border-white/30" : page.buttonStyle === "soft" ? "bg-white/10" : page.buttonStyle === "glass" ? "bg-white/10 backdrop-blur border border-white/15" : "bg-white/15"}`}>{item.title}</div>)}</div>
+                <div className="w-full space-y-2 mt-6">{items.filter((item) => item.isVisible).slice(0, 5).map((item) => <div key={item.id} className={`w-full px-3 py-2.5 text-xs ${page.buttonStyle === "outline" ? "border" : page.buttonStyle === "soft" ? "bg-white/10" : page.buttonStyle === "glass" ? "bg-white/10 backdrop-blur border border-white/15" : ""}`} style={{ backgroundColor: page.buttonStyle === "solid" ? page.buttonColor : undefined, borderColor: page.buttonStyle === "outline" ? page.buttonColor : undefined, color: page.textColor }}>{item.title}</div>)}</div>
                 {page.showBranding && <p className="mt-auto pt-8 text-[9px] uppercase tracking-widest text-white/25">Murder Mitten Media</p>}
               </div>
               <p className="text-[11px] text-white/30 mt-4 break-all">{publicHref}</p>
