@@ -52,6 +52,8 @@ import AdminGoldenWheel from "./pages/AdminGoldenWheel";
 import OrderHistory from "./pages/OrderHistory";
 import OrderDetail from "./pages/OrderDetail";
 import FindStudio from "./pages/FindStudio";
+import CreateALink from "./pages/CreateALink";
+import PublicLinkPage from "./pages/PublicLinkPage";
 
 function Router() {
   return (
@@ -69,6 +71,8 @@ function Router() {
       <Route path={"/admin/shop/edit/:id"} component={AdminShopForm} />
       <Route path={"/shop/:slug"} component={ShopProduct} />
       <Route path={"/find-studio"} component={FindStudio} />
+      <Route path={"/create-a-link"} component={CreateALink} />
+      <Route path={"/link/:slug"} component={PublicLinkPage} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/review"} component={MusicReview} />

@@ -204,6 +204,48 @@ export const userSongs = mysqlTable("user_songs", {
 export type UserSong = typeof userSongs.$inferSelect;
 export type InsertUserSong = typeof userSongs.$inferInsert;
 
+// CREATE A LINK — Linktree-style public profile pages owned by users
+export const linkPages = mysqlTable("link_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  displayName: varchar("displayName", { length: 128 }),
+  bio: text("bio"),
+  avatarUrl: varchar("avatarUrl", { length: 512 }),
+  theme: varchar("theme", { length: 32 }).default("midnight").notNull(),
+  backgroundColor: varchar("backgroundColor", { length: 32 }).default("#080808").notNull(),
+  accentColor: varchar("accentColor", { length: 32 }).default("#d10000").notNull(),
+  buttonStyle: mysqlEnum("buttonStyle", ["solid", "outline", "soft", "glass"]).default("solid").notNull(),
+  isPublished: boolean("isPublished").default(false).notNull(),
+  showBranding: boolean("showBranding").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LinkPage = typeof linkPages.$inferSelect;
+export type InsertLinkPage = typeof linkPages.$inferInsert;
+
+// Ordered blocks shown on a user's public CREATE A LINK page
+export const linkItems = mysqlTable("link_items", {
+  id: int("id").autoincrement().primaryKey(),
+  pageId: int("pageId").notNull(),
+  type: mysqlEnum("type", ["social", "release", "custom", "header"]).default("custom").notNull(),
+  title: varchar("title", { length: 128 }).notNull(),
+  url: varchar("url", { length: 512 }),
+  subtitle: varchar("subtitle", { length: 255 }),
+  platform: varchar("platform", { length: 64 }),
+  icon: varchar("icon", { length: 64 }),
+  thumbnailUrl: varchar("thumbnailUrl", { length: 512 }),
+  songId: int("songId"),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isVisible: boolean("isVisible").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LinkItem = typeof linkItems.$inferSelect;
+export type InsertLinkItem = typeof linkItems.$inferInsert;
+
 // Active Battle — singleton row tracking the current live battle matchup
 export const activeBattle = mysqlTable("active_battle", {
   id: int("id").autoincrement().primaryKey(),

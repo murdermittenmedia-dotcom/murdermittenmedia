@@ -21,6 +21,9 @@ import {
   getBattleLeaderboard, getBattleRecordsByArtistName,
   addUserSong, getUserSongs, deleteUserSong, updateUserSongVisibility,
   getArtistProfile, updateUserProfile, getUserById,
+  getLinkPageByUserId, getLinkPageBySlug, getPublicLinkPageBySlug,
+  createLinkPage, updateLinkPage, deleteLinkPage,
+  createLinkItem, updateLinkItem, deleteLinkItem, reorderLinkItems,
   getAllUsers, setUserRole,
   getSubmissionsByArtistName, getLifetimeStats,
   getActiveBattle, setActiveBattle, updateActiveBattleStatus, clearBattleVotes,
@@ -457,6 +460,164 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const url = await storageGetSignedUrl(input.fileKey);
         return { url };
+      }),
+  }),
+
+  // -- CREATE A LINK ---------------------------------------------
+  linkPages: router({
+    // Owner-only editor payload, including private draft pages.
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      return getLinkPageByUserId(ctx.user.id);
+    }),
+
+    // Public pages are readable only after publication.
+    publicBySlug: publicProcedure
+      .input(z.object({ slug: z.string().trim().min(3).max(64) }))
+      .query(async ({ input }) => {
+        return getPublicLinkPageBySlug(input.slug.toLowerCase());
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        slug: z.string().trim().min(3).max(64).regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/).optional(),
+        displayName: z.string().max(128).optional().nullable(),
+        bio: z.string().max(500).optional().nullable(),
+        avatarUrl: z.string().max(512).optional().nullable(),
+        theme: z.string().max(32).default("midnight"),
+        backgroundColor: z.string().max(32).default("#080808"),
+        accentColor: z.string().max(32).default("#d10000"),
+        buttonStyle: z.enum(["solid", "outline", "soft", "glass"]).default("solid"),
+        isPublished: z.boolean().default(false),
+        showBranding: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getLinkPageByUserId(ctx.user.id);
+        if (existing) throw new TRPCError({ code: "CONFLICT", message: "You already have a link page" });
+        const base = (input.slug || ctx.user.artistName || ctx.user.name || `creator-${ctx.user.id}`)
+          .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 56);
+        const slug = input.slug ? base : `${base || "creator"}-${ctx.user.id}`.slice(0, 64);
+        if (await getLinkPageBySlug(slug)) {
+          throw new TRPCError({ code: "CONFLICT", message: "That link username is already taken" });
+        }
+        return createLinkPage({
+          userId: ctx.user.id,
+          slug,
+          displayName: input.displayName ?? ctx.user.artistName ?? ctx.user.name ?? null,
+          bio: input.bio ?? null,
+          avatarUrl: input.avatarUrl ?? ctx.user.avatarUrl ?? null,
+          theme: input.theme,
+          backgroundColor: input.backgroundColor,
+          accentColor: input.accentColor,
+          buttonStyle: input.buttonStyle,
+          isPublished: input.isPublished,
+          showBranding: input.showBranding,
+        });
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        pageId: z.number().int().positive(),
+        slug: z.string().trim().min(3).max(64).regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/).optional(),
+        displayName: z.string().max(128).optional().nullable(),
+        bio: z.string().max(500).optional().nullable(),
+        avatarUrl: z.string().max(512).optional().nullable(),
+        theme: z.string().max(32).optional(),
+        backgroundColor: z.string().max(32).optional(),
+        accentColor: z.string().max(32).optional(),
+        buttonStyle: z.enum(["solid", "outline", "soft", "glass"]).optional(),
+        isPublished: z.boolean().optional(),
+        showBranding: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const current = await getLinkPageByUserId(ctx.user.id);
+        if (!current || current.page.id !== input.pageId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only edit your own link page" });
+        }
+        if (input.slug && input.slug !== current.page.slug) {
+          const taken = await getLinkPageBySlug(input.slug.toLowerCase());
+          if (taken && taken.id !== input.pageId) {
+            throw new TRPCError({ code: "CONFLICT", message: "That link username is already taken" });
+          }
+        }
+        const { pageId, ...changes } = input;
+        return updateLinkPage(input.pageId, ctx.user.id, {
+          ...changes,
+          slug: changes.slug?.toLowerCase(),
+        });
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ pageId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await deleteLinkPage(input.pageId, ctx.user.id);
+        if (!result.deleted) throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete your own link page" });
+        return result;
+      }),
+
+    addItem: protectedProcedure
+      .input(z.object({
+        pageId: z.number().int().positive(),
+        type: z.enum(["social", "release", "custom", "header"]).default("custom"),
+        title: z.string().trim().min(1).max(128),
+        url: z.string().max(512).optional().nullable(),
+        subtitle: z.string().max(255).optional().nullable(),
+        platform: z.string().max(64).optional().nullable(),
+        icon: z.string().max(64).optional().nullable(),
+        thumbnailUrl: z.string().max(512).optional().nullable(),
+        songId: z.number().int().positive().optional().nullable(),
+        sortOrder: z.number().int().optional().default(0),
+        isVisible: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const page = await getLinkPageByUserId(ctx.user.id);
+        if (!page || page.page.id !== input.pageId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only add links to your own page" });
+        }
+        return createLinkItem(input);
+      }),
+
+    updateItem: protectedProcedure
+      .input(z.object({
+        pageId: z.number().int().positive(),
+        itemId: z.number().int().positive(),
+        type: z.enum(["social", "release", "custom", "header"]).optional(),
+        title: z.string().trim().min(1).max(128).optional(),
+        url: z.string().max(512).optional().nullable(),
+        subtitle: z.string().max(255).optional().nullable(),
+        platform: z.string().max(64).optional().nullable(),
+        icon: z.string().max(64).optional().nullable(),
+        thumbnailUrl: z.string().max(512).optional().nullable(),
+        songId: z.number().int().positive().optional().nullable(),
+        sortOrder: z.number().int().optional(),
+        isVisible: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const page = await getLinkPageByUserId(ctx.user.id);
+        if (!page || page.page.id !== input.pageId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only edit links on your own page" });
+        }
+        const { pageId, itemId, ...changes } = input;
+        return updateLinkItem(itemId, pageId, changes);
+      }),
+
+    deleteItem: protectedProcedure
+      .input(z.object({ pageId: z.number().int().positive(), itemId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const page = await getLinkPageByUserId(ctx.user.id);
+        if (!page || page.page.id !== input.pageId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete links from your own page" });
+        }
+        return deleteLinkItem(input.itemId, input.pageId);
+      }),
+
+    reorder: protectedProcedure
+      .input(z.object({ pageId: z.number().int().positive(), itemIds: z.array(z.number().int().positive()).min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const page = await getLinkPageByUserId(ctx.user.id);
+        if (!page || page.page.id !== input.pageId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only reorder links on your own page" });
+        }
+        return reorderLinkItems(input.pageId, input.itemIds);
       }),
   }),
 

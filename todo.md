@@ -1375,3 +1375,21 @@
 - [ ] Update Stripe webhook to increment usage_count after payment confirmed
 - [ ] Add admin controls to AdminPanel for promo code management (enable/disable, edit code, set expiration, minimum subtotal, max uses, first-time-only flag)
 - [ ] Test FREESHIP code in dev mode with test Stripe card
+
+
+## Create A Link Feature
+- [x] Audit existing profile, releases, auth, and route patterns for Create A Link
+- [x] Add link pages and ordered link items database schema and migration
+- [x] Add secure owner and public tRPC procedures for link pages
+- [x] Build authenticated Create A Link editor for social and release links
+- [x] Build public shareable link page and navigation entry points
+- [x] Add Vitest coverage and verify responsive/security behavior
+- [ ] Save checkpoint for Create A Link feature
+- [x] Support Linktree-style social links and music release links
+- [x] Support reorder, visibility, title, bio, avatar, and basic theme controls
+- [x] Provide a public shareable URL for each user link page
+- [x] Ensure users can only edit their own link page
+- [x] Add release preview/player links where existing release data supports them
+- [x] Add mobile-safe layout with no horizontal overflow
+- [x] Add Create A Link entry to the site menu/account area
+- [x] Test invalid URLs, duplicate slugs, unauthorized edits, and public visibility states

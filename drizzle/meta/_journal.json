@@ -232,6 +232,13 @@
       "when": 1784738733002,
       "tag": "0032_minor_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1786462407816,
+      "tag": "0033_flat_shocker",
+      "breakpoints": true
     }
   ]
 }

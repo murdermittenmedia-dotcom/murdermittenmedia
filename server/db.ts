@@ -9,6 +9,8 @@ import {
   siteSettings,
   battleRecords, InsertBattleRecord,
   userSongs, InsertUserSong,
+  linkPages, InsertLinkPage, LinkPage,
+  linkItems, InsertLinkItem, LinkItem,
   votes, InsertVote,
   activeBattle, InsertActiveBattle,
   songReactions, InsertSongReaction,
@@ -522,6 +524,111 @@ export async function getArtistProfile(userId: number) {
     getUserSongs(userId, false),
   ]);
   return { user, artistName, stats, songs };
+}
+
+// -- CREATE A LINK ----------------------------------------------
+
+export async function getLinkPageByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(linkPages).where(eq(linkPages.userId, userId)).limit(1);
+  if (!rows.length) return null;
+  const page = rows[0];
+  const items = await db.select().from(linkItems)
+    .where(eq(linkItems.pageId, page.id))
+    .orderBy(asc(linkItems.sortOrder), asc(linkItems.id));
+  return { page, items };
+}
+
+export async function getLinkPageBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(linkPages).where(eq(linkPages.slug, slug)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPublicLinkPageBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(linkPages)
+    .where(and(eq(linkPages.slug, slug), eq(linkPages.isPublished, true)))
+    .limit(1);
+  if (!rows.length) return null;
+  const page = rows[0];
+  const items = await db.select().from(linkItems)
+    .where(and(eq(linkItems.pageId, page.id), eq(linkItems.isVisible, true)))
+    .orderBy(asc(linkItems.sortOrder), asc(linkItems.id));
+  return { page, items };
+}
+
+export async function createLinkPage(data: InsertLinkPage) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(linkPages).values(data);
+  return getLinkPageByUserId(data.userId);
+}
+
+export async function updateLinkPage(id: number, userId: number, data: Partial<InsertLinkPage>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(linkPages).set(data).where(and(eq(linkPages.id, id), eq(linkPages.userId, userId)));
+  return getLinkPageByUserId(userId);
+}
+
+export async function deleteLinkPage(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const owned = await db.select({ id: linkPages.id }).from(linkPages)
+    .where(and(eq(linkPages.id, id), eq(linkPages.userId, userId))).limit(1);
+  if (!owned.length) return { deleted: false };
+  await db.delete(linkItems).where(eq(linkItems.pageId, id));
+  await db.delete(linkPages).where(and(eq(linkPages.id, id), eq(linkPages.userId, userId)));
+  return { deleted: true };
+}
+
+export async function createLinkItem(data: InsertLinkItem) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(linkItems).values(data);
+  const rows = await db.select().from(linkItems)
+    .where(eq(linkItems.pageId, data.pageId))
+    .orderBy(desc(linkItems.id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateLinkItem(id: number, pageId: number, data: Partial<InsertLinkItem>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(linkItems).set(data).where(and(eq(linkItems.id, id), eq(linkItems.pageId, pageId)));
+  const rows = await db.select().from(linkItems).where(and(eq(linkItems.id, id), eq(linkItems.pageId, pageId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function deleteLinkItem(id: number, pageId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(linkItems).where(and(eq(linkItems.id, id), eq(linkItems.pageId, pageId)));
+  return { deleted: true };
+}
+
+export async function reorderLinkItems(pageId: number, itemIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  for (const [index, itemId] of itemIds.entries()) {
+    await db.update(linkItems).set({ sortOrder: index })
+      .where(and(eq(linkItems.id, itemId), eq(linkItems.pageId, pageId)));
+  }
+  return getLinkPageById(pageId);
+}
+
+export async function getLinkPageById(pageId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(linkPages).where(eq(linkPages.id, pageId)).limit(1);
+  if (!rows.length) return null;
+  const items = await db.select().from(linkItems).where(eq(linkItems.pageId, pageId))
+    .orderBy(asc(linkItems.sortOrder), asc(linkItems.id));
+  return { page: rows[0], items };
 }
 
 // -- User Management (admin) -----------------------------------
