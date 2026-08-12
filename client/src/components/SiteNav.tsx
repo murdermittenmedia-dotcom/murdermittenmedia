@@ -13,7 +13,7 @@ import {
   User, Star, Mic2, Podcast, Music, Swords, MessageSquare,
   Search, Trophy, Tag, LogOut, LogIn, ChevronDown, X, Menu,
   Shield, Zap, Radio, Coins, Bell, Newspaper, Wallet, Flame,
-  ShoppingBag, MapPin, Link2,
+  ShoppingBag, MapPin, Link2, BarChart3,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -68,6 +68,7 @@ const ALL_PAGES = [
     category: "CREATOR",
     items: [
       { href: "/create-a-link", label: "Create A Link", icon: Link2 },
+      { href: "/account/link-analytics", label: "Link Analytics", icon: BarChart3 },
     ],
   },
 ] as const;
