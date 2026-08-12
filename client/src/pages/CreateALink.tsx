@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
+import { buildPreviewLinks, type PreviewLink } from "@/lib/linkPreview";
 
 const SOCIAL_PRESETS = [
   { platform: "Instagram", icon: "instagram", title: "Instagram", Icon: Instagram },
@@ -57,8 +58,6 @@ type LiveProfile = {
   showBranding: boolean;
   theme: string;
 };
-
-type PreviewLink = LinkDraft & { id: number | string; isVisible: boolean };
 
 type LiveMobilePreviewProps = {
   profile: LiveProfile;
@@ -386,23 +385,7 @@ export default function CreateALink() {
     showBranding: page.showBranding,
     theme: page.theme,
   };
-  const previewLinks: PreviewLink[] = [
-    ...items.map((item) => {
-      const itemDraft = drafts[item.id];
-      return {
-        id: item.id,
-        type: itemDraft?.type ?? item.type,
-        title: itemDraft?.title ?? item.title,
-        url: itemDraft?.url ?? item.url ?? "",
-        subtitle: itemDraft?.subtitle ?? item.subtitle ?? "",
-        platform: itemDraft?.platform ?? item.platform ?? "",
-        icon: itemDraft?.icon ?? item.icon ?? "link",
-        thumbnailUrl: itemDraft?.thumbnailUrl ?? item.thumbnailUrl ?? "",
-        isVisible: item.isVisible,
-      };
-    }),
-    ...(draft.title.trim() ? [{ id: "draft", ...draft, isVisible: true }] : []),
-  ];
+  const previewLinks: PreviewLink[] = buildPreviewLinks(items, drafts, draft);
 
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">

@@ -1413,11 +1413,11 @@
 
 
 ## Create A Link Live Mobile Preview
-- [ ] Add a live mobile preview panel beside the Create A Link editor
-- [ ] Reflect unsaved profile, avatar, color, release, visibility, and ordering changes immediately in the preview
-- [ ] Keep the editor and preview responsive with no horizontal overflow on mobile
-- [ ] Add validation coverage for the preview model and key unsaved states
-- [ ] Publish the live mobile preview enhancement checkpoint
+- [x] Add a live mobile preview panel beside the Create A Link editor
+- [x] Reflect unsaved profile, avatar, color, release, visibility, and ordering changes immediately in the preview
+- [x] Keep the editor and preview responsive with no horizontal overflow on mobile
+- [x] Add validation coverage for the preview model and key unsaved states
+- [x] Publish the live mobile preview enhancement checkpoint
 
 
 ## Create A Link Embedded Music Players
@@ -1425,4 +1425,4 @@
 - [x] Render official responsive embeds for supported music links on public pages
 - [x] Keep normal external-link fallback behavior for unsupported or malformed URLs
 - [x] Add provider URL and embed rendering tests
-- [ ] Publish the embedded music player enhancement checkpoint
+- [x] Publish the embedded music player enhancement checkpoint
