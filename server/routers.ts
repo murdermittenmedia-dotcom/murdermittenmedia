@@ -22,7 +22,8 @@ import {
   getBattleLeaderboard, getBattleRecordsByArtistName,
   addUserSong, getUserSongs, deleteUserSong, updateUserSongVisibility,
   getArtistProfile, updateUserProfile, getUserById,
-  getLinkPageByUserId, getLinkPageBySlug, getPublicLinkPageBySlug,
+  getLinkPageByUserId, getLinkPageBySlug, getPublicLinkPageBySlug, getLinkPageById, getAllLinkPages,
+  recordLinkAnalyticsEvent, getLinkAnalytics,
   createLinkPage, updateLinkPage, deleteLinkPage,
   createLinkItem, updateLinkItem, deleteLinkItem, reorderLinkItems,
   getAllUsers, setUserRole,
@@ -477,6 +478,44 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return getPublicLinkPageBySlug(input.slug.toLowerCase());
       }),
+
+    trackAnalytics: publicProcedure
+      .input(z.object({
+        slug: z.string().trim().min(3).max(64),
+        itemId: z.number().int().positive().optional(),
+        eventType: z.enum(["view", "click", "presence"]),
+        visitorId: z.string().trim().min(8).max(64),
+        deviceType: z.enum(["desktop", "mobile", "tablet", "unknown"]).default("unknown"),
+        referrerHost: z.string().trim().max(128).optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const page = await getPublicLinkPageBySlug(input.slug.toLowerCase());
+        if (!page) return { tracked: false };
+        if (input.itemId && !page.items.some((item) => item.id === input.itemId)) return { tracked: false };
+        await recordLinkAnalyticsEvent({
+          pageId: page.page.id,
+          itemId: input.itemId ?? null,
+          eventType: input.eventType,
+          visitorId: input.visitorId,
+          deviceType: input.deviceType,
+          referrerHost: input.referrerHost || null,
+        });
+        return { tracked: true };
+      }),
+
+    analytics: protectedProcedure
+      .input(z.object({ pageId: z.number().int().positive().optional(), days: z.number().int().min(1).max(90).default(30) }))
+      .query(async ({ ctx, input }) => {
+        const page = input.pageId ? await getLinkPageById(input.pageId) : await getLinkPageByUserId(ctx.user.id);
+        if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Link page not found" });
+        if (ctx.user.role !== "admin" && page.page.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only view analytics for your own page" });
+        }
+        const analytics = await getLinkAnalytics(page.page.id, input.days);
+        return { page: page.page, analytics };
+      }),
+
+    adminPages: adminProcedure.query(async () => getAllLinkPages()),
 
     enrichMusicUrl: protectedProcedure
       .input(z.object({ url: z.string().trim().min(8).max(1_024) }))

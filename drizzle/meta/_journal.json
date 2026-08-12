@@ -246,6 +246,13 @@
       "when": 1786479575156,
       "tag": "0034_odd_hairball",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1786503317357,
+      "tag": "0035_parched_solo",
+      "breakpoints": true
     }
   ]
 }

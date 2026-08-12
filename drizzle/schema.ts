@@ -1186,3 +1186,19 @@ export const articles = mysqlTable("articles", {
 
 export type Article = typeof articles.$inferSelect;
 export type InsertArticle = typeof articles.$inferInsert;
+
+
+// Create A Link Analytics — privacy-conscious events for published creator pages.
+// visitorId is an anonymous client session identifier; no raw IP address is stored.
+export const linkAnalyticsEvents = mysqlTable("link_analytics_events", {
+  id: int("id").autoincrement().primaryKey(),
+  pageId: int("pageId").notNull(),
+  itemId: int("itemId"),
+  eventType: mysqlEnum("eventType", ["view", "click", "presence"]).notNull(),
+  visitorId: varchar("visitorId", { length: 64 }).notNull(),
+  deviceType: mysqlEnum("deviceType", ["desktop", "mobile", "tablet", "unknown"]).default("unknown").notNull(),
+  referrerHost: varchar("referrerHost", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LinkAnalyticsEvent = typeof linkAnalyticsEvents.$inferSelect;
+export type InsertLinkAnalyticsEvent = typeof linkAnalyticsEvents.$inferInsert;

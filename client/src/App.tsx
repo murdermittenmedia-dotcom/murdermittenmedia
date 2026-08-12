@@ -54,6 +54,7 @@ import OrderDetail from "./pages/OrderDetail";
 import FindStudio from "./pages/FindStudio";
 import CreateALink from "./pages/CreateALink";
 import PublicLinkPage from "./pages/PublicLinkPage";
+import LinkAnalytics from "./pages/LinkAnalytics";
 
 function Router() {
   return (
@@ -72,6 +73,8 @@ function Router() {
       <Route path={"/shop/:slug"} component={ShopProduct} />
       <Route path={"/find-studio"} component={FindStudio} />
       <Route path={"/create-a-link"} component={CreateALink} />
+      <Route path={"/account/link-analytics"} component={LinkAnalytics} />
+      <Route path={"/admin/link-analytics"} component={LinkAnalytics} />
       <Route path={"/link/:slug"} component={PublicLinkPage} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />

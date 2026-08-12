@@ -43,6 +43,7 @@ import {
   studios, InsertStudio, Studio,
   studioReviews, InsertStudioReview, StudioReview,
   articles, InsertArticle, Article,
+  linkAnalyticsEvents, InsertLinkAnalyticsEvent,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2466,4 +2467,94 @@ export async function generateSlug(title: string): Promise<string> {
   }
 
   return slug;
+}
+
+
+// -- CREATE A LINK ANALYTICS ------------------------------------
+
+export async function recordLinkAnalyticsEvent(data: InsertLinkAnalyticsEvent) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(linkAnalyticsEvents).values(data);
+}
+
+export async function getLinkAnalytics(pageId: number, days = 30) {
+  const db = await getDb();
+  if (!db) return null;
+  const safeDays = Math.min(Math.max(days, 1), 90);
+  const start = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+  const liveSince = new Date(Date.now() - 90 * 1000);
+  const baseWhere = gte(linkAnalyticsEvents.createdAt, start);
+  const pageWhere = and(eq(linkAnalyticsEvents.pageId, pageId), baseWhere);
+  const [summary] = await db.select({
+    views: sql<number>`COALESCE(SUM(CASE WHEN ${linkAnalyticsEvents.eventType} = 'view' THEN 1 ELSE 0 END), 0)`,
+    clicks: sql<number>`COALESCE(SUM(CASE WHEN ${linkAnalyticsEvents.eventType} = 'click' THEN 1 ELSE 0 END), 0)`,
+    uniqueVisitors: sql<number>`COUNT(DISTINCT CASE WHEN ${linkAnalyticsEvents.eventType} IN ('view', 'presence') THEN ${linkAnalyticsEvents.visitorId} END)`,
+    liveViewers: sql<number>`COUNT(DISTINCT CASE WHEN ${linkAnalyticsEvents.eventType} = 'presence' AND ${linkAnalyticsEvents.createdAt} >= ${liveSince} THEN ${linkAnalyticsEvents.visitorId} END)`,
+  }).from(linkAnalyticsEvents).where(pageWhere);
+
+  const daily = await db.select({
+    date: sql<string>`DATE(${linkAnalyticsEvents.createdAt})`,
+    views: sql<number>`COALESCE(SUM(CASE WHEN ${linkAnalyticsEvents.eventType} = 'view' THEN 1 ELSE 0 END), 0)`,
+    clicks: sql<number>`COALESCE(SUM(CASE WHEN ${linkAnalyticsEvents.eventType} = 'click' THEN 1 ELSE 0 END), 0)`,
+  }).from(linkAnalyticsEvents).where(pageWhere)
+    .groupBy(sql`DATE(${linkAnalyticsEvents.createdAt})`)
+    .orderBy(sql`DATE(${linkAnalyticsEvents.createdAt})`);
+
+  const topLinks = await db.select({
+    itemId: linkAnalyticsEvents.itemId,
+    title: linkItems.title,
+    clicks: count(),
+  }).from(linkAnalyticsEvents)
+    .leftJoin(linkItems, eq(linkAnalyticsEvents.itemId, linkItems.id))
+    .where(and(pageWhere, eq(linkAnalyticsEvents.eventType, "click")))
+    .groupBy(linkAnalyticsEvents.itemId, linkItems.title)
+    .orderBy(desc(count()))
+    .limit(10);
+
+  const referrers = await db.select({
+    referrerHost: linkAnalyticsEvents.referrerHost,
+    visits: count(),
+  }).from(linkAnalyticsEvents)
+    .where(and(pageWhere, eq(linkAnalyticsEvents.eventType, "view"), isNotNull(linkAnalyticsEvents.referrerHost)))
+    .groupBy(linkAnalyticsEvents.referrerHost)
+    .orderBy(desc(count()))
+    .limit(10);
+
+  const devices = await db.select({
+    deviceType: linkAnalyticsEvents.deviceType,
+    visits: count(),
+  }).from(linkAnalyticsEvents)
+    .where(and(pageWhere, eq(linkAnalyticsEvents.eventType, "view")))
+    .groupBy(linkAnalyticsEvents.deviceType)
+    .orderBy(desc(count()));
+
+  return {
+    rangeDays: safeDays,
+    summary: {
+      views: Number(summary?.views ?? 0),
+      clicks: Number(summary?.clicks ?? 0),
+      uniqueVisitors: Number(summary?.uniqueVisitors ?? 0),
+      liveViewers: Number(summary?.liveViewers ?? 0),
+      clickThroughRate: Number(summary?.views ?? 0) > 0 ? Number(((Number(summary?.clicks ?? 0) / Number(summary?.views ?? 0)) * 100).toFixed(1)) : 0,
+    },
+    daily: daily.map((row) => ({ date: row.date, views: Number(row.views ?? 0), clicks: Number(row.clicks ?? 0) })),
+    topLinks: topLinks.map((row) => ({ itemId: row.itemId, title: row.title || "Untitled link", clicks: Number(row.clicks ?? 0) })),
+    referrers: referrers.map((row) => ({ referrerHost: row.referrerHost || "Direct", visits: Number(row.visits ?? 0) })),
+    devices: devices.map((row) => ({ deviceType: row.deviceType, visits: Number(row.visits ?? 0) })),
+  };
+}
+
+export async function getAllLinkPages(limit = 200) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: linkPages.id,
+    userId: linkPages.userId,
+    slug: linkPages.slug,
+    displayName: linkPages.displayName,
+    avatarUrl: linkPages.avatarUrl,
+    isPublished: linkPages.isPublished,
+    updatedAt: linkPages.updatedAt,
+  }).from(linkPages).orderBy(desc(linkPages.updatedAt)).limit(Math.min(limit, 500));
 }
