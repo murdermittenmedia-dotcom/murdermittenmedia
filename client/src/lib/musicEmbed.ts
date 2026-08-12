@@ -61,3 +61,9 @@ export function musicProviderLabel(provider: MusicEmbedProvider) {
   if (provider === "apple_music") return "Apple Music player";
   return "YouTube player";
 }
+
+export function musicProviderTheme(provider: MusicEmbedProvider) {
+  if (provider === "spotify") return { name: "Spotify", accent: "#1ed760", soft: "rgba(30, 215, 96, 0.16)" };
+  if (provider === "apple_music") return { name: "Apple Music", accent: "#fa2d48", soft: "rgba(250, 45, 72, 0.16)" };
+  return { name: "YouTube", accent: "#ff0033", soft: "rgba(255, 0, 51, 0.16)" };
+}

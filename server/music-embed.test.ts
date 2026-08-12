@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMusicEmbed } from "../client/src/lib/musicEmbed";
+import { getMusicEmbed, musicProviderTheme } from "../client/src/lib/musicEmbed";
 
 describe("getMusicEmbed", () => {
   it("builds a Spotify track embed", () => {
@@ -27,5 +27,11 @@ describe("getMusicEmbed", () => {
     expect(getMusicEmbed("not a url")).toBeNull();
     expect(getMusicEmbed("https://example.com/song")).toBeNull();
     expect(getMusicEmbed("https://open.spotify.com/track/")).toBeNull();
+  });
+
+  it("provides distinct MiniPlayer branding for every provider", () => {
+    expect(musicProviderTheme("spotify").name).toBe("Spotify");
+    expect(musicProviderTheme("apple_music").name).toBe("Apple Music");
+    expect(musicProviderTheme("youtube").name).toBe("YouTube");
   });
 });

@@ -1433,4 +1433,13 @@
 - [x] Use the creator-selected avatar in Open Graph and Twitter image metadata
 - [x] Preserve safe fallback metadata when no custom avatar or name is available
 - [x] Add tests for creator metadata injection and fallback behavior
-- [ ] Publish the social preview metadata enhancement checkpoint
+- [x] Publish the social preview metadata enhancement checkpoint
+
+
+## Create A Link Provider MiniPlayers
+- [x] Audit existing public music embeds and provider detection
+- [x] Add a reusable compact MiniPlayer with Spotify, Apple Music, and YouTube variants
+- [x] Integrate MiniPlayers into all supported public music release links
+- [x] Preserve normal external-link fallback for unsupported URLs
+- [x] Add provider rendering and responsive behavior tests
+- [ ] Publish the provider MiniPlayers enhancement checkpoint

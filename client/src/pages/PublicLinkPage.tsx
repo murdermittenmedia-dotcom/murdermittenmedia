@@ -1,7 +1,7 @@
 import { ArrowLeft, ExternalLink, Globe, Instagram, Link2, Loader2, Music2, Play, Youtube } from "lucide-react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { getMusicEmbed, musicProviderLabel } from "@/lib/musicEmbed";
+import { getMusicEmbed, musicProviderLabel, musicProviderTheme } from "@/lib/musicEmbed";
 
 const BRAND_LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -35,16 +35,17 @@ function buttonClass(style: string) {
 function MusicPlayerCard({ item, page }: { item: PublicItem; page: { textColor: string; buttonColor: string; buttonStyle: string } }) {
   const embed = getMusicEmbed(item.url);
   if (!embed) return null;
-  const height = embed.provider === "youtube" ? 190 : 152;
+  const theme = musicProviderTheme(embed.provider);
+  const providerLabel = musicProviderLabel(embed.provider);
+  const height = embed.provider === "youtube" ? 92 : 82;
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/15 bg-black/25 shadow-xl" style={{ borderColor: `${page.buttonColor}66` }}>
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-        {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" className="h-10 w-10 shrink-0 rounded-md object-cover" /> : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-black/25"><Music2 className="h-4 w-4" /></span>}
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p>{item.subtitle && <p className="truncate text-xs opacity-60">{item.subtitle}</p>}</div>
-        <span className="shrink-0 text-[9px] uppercase tracking-widest opacity-50">{musicProviderLabel(embed.provider)}</span>
+    <div className="overflow-hidden rounded-2xl border shadow-lg" style={{ borderColor: `${theme.accent}66`, background: `linear-gradient(135deg, ${theme.soft}, rgba(0,0,0,0.28))` }}>
+      <div className="flex items-center gap-2.5 px-3 py-2.5">
+        {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" /> : <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: theme.soft, color: theme.accent }}><Music2 className="h-4 w-4" /></span>}
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p>{item.subtitle && <p className="truncate text-[11px] opacity-65">{item.subtitle}</p>}<p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: theme.accent }}>{theme.name} MiniPlayer</p></div>
+        <a href={item.url ?? "#"} target="_blank" rel="noopener noreferrer" aria-label={`Open ${item.title} in ${theme.name}`} className="shrink-0 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-widest transition-opacity hover:opacity-75" style={{ borderColor: `${theme.accent}88`, color: theme.accent }}>Open</a>
       </div>
-      <iframe title={`${item.title} ${musicProviderLabel(embed.provider)}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowFullScreen className="block w-full border-0" style={{ height }} />
-      <a href={item.url ?? "#"} target="_blank" rel="noopener noreferrer" className="block px-4 py-2 text-[10px] uppercase tracking-widest opacity-55 hover:opacity-100">Open in {embed.provider === "apple_music" ? "Apple Music" : embed.provider === "spotify" ? "Spotify" : "YouTube"}</a>
+      <iframe title={`${item.title} ${providerLabel}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowFullScreen className="block w-full border-0" style={{ height }} />
     </div>
   );
 }
