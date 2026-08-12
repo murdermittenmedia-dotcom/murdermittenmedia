@@ -1491,6 +1491,12 @@ export default function AdminPanel() {
                 Golden Wheel
               </button>
             </Link>
+            <Link href="/admin/link-analytics">
+              <button className="flex items-center gap-2 text-xs border border-red-500/40 text-red-300 bg-red-500/10 px-4 py-2 hover:bg-red-500/20 transition-all uppercase tracking-widest font-semibold">
+                <BarChart3 className="w-3.5 h-3.5" />
+                Link Analytics
+              </button>
+            </Link>
           </div>
         </div>
       </section>

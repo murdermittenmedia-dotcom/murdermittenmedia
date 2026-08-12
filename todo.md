@@ -1453,4 +1453,4 @@
 - [x] Build live owner/admin analytics dashboard with KPIs and trends
 - [x] Add top-link, referrer, device, and click-through-rate reporting
 - [x] Add privacy/security and analytics tests
-- [ ] Publish the Create A Link analytics checkpoint
+- [x] Publish the Create A Link analytics checkpoint
