@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
+import { getMusicEmbed, musicProviderLabel, musicProviderTheme } from "@/lib/musicEmbed";
 import { buildPreviewLinks, type PreviewLink } from "@/lib/linkPreview";
 
 const SOCIAL_PRESETS = [
@@ -87,6 +88,8 @@ function LiveMobilePreview({ profile, userName, links, publicHref }: LiveMobileP
             <div className="mt-7 w-full space-y-3">
               {links.filter((link) => link.isVisible).map((link) => {
                 const hasArtwork = Boolean(link.thumbnailUrl);
+                const embed = link.type === "release" ? getMusicEmbed(link.url) : null;
+                const providerTheme = embed ? musicProviderTheme(embed.provider) : null;
                 const buttonClasses = buttonStyle === "outline"
                   ? "border bg-transparent"
                   : buttonStyle === "soft"
@@ -94,6 +97,19 @@ function LiveMobilePreview({ profile, userName, links, publicHref }: LiveMobileP
                     : buttonStyle === "glass"
                       ? "border border-white/15 bg-white/10 backdrop-blur"
                       : "border border-transparent";
+
+                if (embed && providerTheme) {
+                  return (
+                    <div key={link.id} className="overflow-hidden rounded-xl border text-left" style={{ borderColor: `${providerTheme.accent}66`, background: `linear-gradient(135deg, ${providerTheme.soft}, rgba(0,0,0,0.25))` }}>
+                      <div className="flex min-w-0 items-center gap-2 px-2.5 py-2">
+                        {hasArtwork ? <img src={link.thumbnailUrl} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md" style={{ backgroundColor: providerTheme.soft, color: providerTheme.accent }}><Music2 className="h-3.5 w-3.5" /></span>}
+                        <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold">{link.title || "Untitled release"}</span>{link.subtitle && <span className="block truncate text-[9px] opacity-60">{link.subtitle}</span>}<span className="mt-0.5 block truncate text-[8px] font-bold uppercase tracking-[0.14em]" style={{ color: providerTheme.accent }}>{providerTheme.name} MiniPlayer</span></span>
+                      </div>
+                      <iframe title={`${link.title || "Release"} ${musicProviderLabel(embed.provider)}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" className="block h-16 w-full border-0" />
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={link.id} className={`flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-semibold transition ${buttonClasses}`} style={{ backgroundColor: buttonStyle === "solid" ? profile.buttonColor : undefined, borderColor: buttonStyle === "outline" ? profile.buttonColor : undefined, color: profile.textColor }}>
                     {hasArtwork && <img src={link.thumbnailUrl} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />}

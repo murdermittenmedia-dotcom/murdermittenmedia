@@ -1472,3 +1472,11 @@
 - [x] Repair full-site hourly, daily, top-page, recent-view, and unique-session aggregations
 - [x] Add regression tests for tracking and aggregation behavior
 - [x] Validate Live Site Stats on mobile and publish the complete fix
+
+
+## Create A Link YouTube MiniPlayer
+- [x] Audit existing YouTube provider detection and public MiniPlayer rendering
+- [x] Add or correct the official compact YouTube MiniPlayer for supported URLs
+- [x] Preserve Spotify, Apple Music, and unsupported-link behavior
+- [x] Add YouTube MiniPlayer regression coverage and validate mobile rendering
+- [ ] Publish the YouTube MiniPlayer enhancement checkpoint
