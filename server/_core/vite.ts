@@ -5,6 +5,8 @@ import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+import { getPublicLinkPageBySlug } from "../db";
+import { buildCreatorPreviewMeta } from "../social-preview";
 
 // ── Per-route OG meta tag definitions ────────────────────────────────────────
 const BASE_URL = "https://murdermittenmedia.com";
@@ -41,29 +43,52 @@ const ROUTE_META: Array<{ test: (p: string) => boolean; meta: RouteMeta }> = [
   },
 ];
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&#39;" })[character] ?? character);
+}
+
 function buildOgTags(meta: RouteMeta): string {
+  const title = escapeHtml(meta.title);
+  const description = escapeHtml(meta.description);
+  const url = escapeHtml(meta.url ?? BASE_URL);
   const tags: string[] = [
     `<meta property="og:type" content="website" />`,
-    `<meta property="og:title" content="${meta.title}" />`,
-    `<meta property="og:description" content="${meta.description}" />`,
-    `<meta property="og:url" content="${meta.url ?? BASE_URL}" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
+    `<meta property="og:url" content="${url}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
-    `<meta name="twitter:title" content="${meta.title}" />`,
-    `<meta name="twitter:description" content="${meta.description}" />`,
+    `<meta name="twitter:title" content="${title}" />`,
+    `<meta name="twitter:description" content="${description}" />`,
   ];
   if (meta.image) {
-    tags.push(`<meta property="og:image" content="${meta.image}" />`);
-    tags.push(`<meta name="twitter:image" content="${meta.image}" />`);
+    const image = escapeHtml(meta.image);
+    tags.push(`<meta property="og:image" content="${image}" />`);
+    tags.push(`<meta name="twitter:image" content="${image}" />`);
   }
   if (meta.imageWidth)  tags.push(`<meta property="og:image:width" content="${meta.imageWidth}" />`);
   if (meta.imageHeight) tags.push(`<meta property="og:image:height" content="${meta.imageHeight}" />`);
   return tags.join("\n    ");
 }
 
-function injectOgTags(html: string, pathname: string): string {
+async function resolveRouteMeta(pathname: string): Promise<RouteMeta | null> {
   const route = ROUTE_META.find((r) => r.test(pathname));
-  if (!route) return html;
-  const { meta } = route;
+  if (route) return route.meta;
+  const linkMatch = pathname.match(/^\/link\/([^/]+)\/?$/i);
+  if (!linkMatch) return null;
+  try {
+    const slug = decodeURIComponent(linkMatch[1]).toLowerCase();
+    const publicPage = await getPublicLinkPageBySlug(slug);
+    if (!publicPage) return null;
+    return buildCreatorPreviewMeta(publicPage.page, slug);
+  } catch (error) {
+    console.warn("[OG] Could not resolve creator link metadata", error);
+    return null;
+  }
+}
+
+async function injectOgTags(html: string, pathname: string): Promise<string> {
+  const meta = await resolveRouteMeta(pathname);
+  if (!meta) return html;
   // Remove any existing og: / twitter: meta tags from the static template
   let out = html.replace(/<meta\s+property="og:[^"]+"[^>]*\/>/g, "");
   out = out.replace(/<meta\s+name="twitter:[^"]+"[^>]*\/>/g, "");
@@ -109,7 +134,7 @@ export async function setupVite(app: Express, server: Server) {
       );
       const page = await vite.transformIndexHtml(url, template);
       const pathname = url.split("?")[0];
-      const finalPage = injectOgTags(page, pathname);
+      const finalPage = await injectOgTags(page, pathname);
       res.status(200).set({ "Content-Type": "text/html" }).end(finalPage);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
@@ -132,11 +157,11 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist — inject OG tags per route
-  app.use("*", (req, res) => {
+  app.use("*", async (req, res) => {
     const indexPath = path.resolve(distPath, "index.html");
     const html = fs.readFileSync(indexPath, "utf-8");
     const pathname = (req.originalUrl || "/").split("?")[0];
-    const finalHtml = injectOgTags(html, pathname);
+    const finalHtml = await injectOgTags(html, pathname);
     res.status(200).set({ "Content-Type": "text/html" }).end(finalHtml);
   });
 }

@@ -1426,3 +1426,11 @@
 - [x] Keep normal external-link fallback behavior for unsupported or malformed URLs
 - [x] Add provider URL and embed rendering tests
 - [x] Publish the embedded music player enhancement checkpoint
+
+
+## Create A Link Social Preview Metadata
+- [x] Use the creator artist/display name in shared-link title metadata
+- [x] Use the creator-selected avatar in Open Graph and Twitter image metadata
+- [x] Preserve safe fallback metadata when no custom avatar or name is available
+- [x] Add tests for creator metadata injection and fallback behavior
+- [ ] Publish the social preview metadata enhancement checkpoint
