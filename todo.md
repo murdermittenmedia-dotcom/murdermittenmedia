@@ -1463,3 +1463,12 @@
 - [x] Preserve daily views and clicks output for owner/admin dashboards
 - [x] Add regression coverage for analytics aggregation with event data
 - [x] Validate mobile analytics loading and publish the bug fix checkpoint
+
+
+## Full-Site Live Stats Repair
+- [x] Trace the full-site page-view and active-session tracking pipeline
+- [x] Repair page-view recording for initial loads and client-side route changes
+- [x] Repair active-session heartbeat and live visitor counting
+- [x] Repair full-site hourly, daily, top-page, recent-view, and unique-session aggregations
+- [x] Add regression tests for tracking and aggregation behavior
+- [x] Validate Live Site Stats on mobile and publish the complete fix

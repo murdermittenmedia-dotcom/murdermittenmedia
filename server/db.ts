@@ -47,6 +47,7 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { aggregateLinkAnalyticsDaily } from './link-analytics';
+import { aggregateSiteAnalytics } from './site-analytics';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -1748,54 +1749,24 @@ export async function getSiteStats() {
   if (!db) return null;
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  // Total page views
+  // Keep simple count queries in SQL, but do all grouped date/hour work in application code.
+  // This avoids MySQL/TiDB DATE()/HOUR() compatibility differences in production.
   const [totalViews] = await db.select({ count: count() }).from(pageViews);
   const [todayViews] = await db.select({ count: count() }).from(pageViews).where(gte(pageViews.createdAt, todayStart));
   const [weekViews] = await db.select({ count: count() }).from(pageViews).where(gte(pageViews.createdAt, weekStart));
-
-  // Unique sessions
   const [totalSessions] = await db.select({ count: sql<number>`COUNT(DISTINCT ${pageViews.sessionId})` }).from(pageViews);
-  const [todaySessions] = await db.select({ count: sql<number>`COUNT(DISTINCT ${pageViews.sessionId})` }).from(pageViews).where(gte(pageViews.createdAt, todayStart));
-
-  // Logged-in vs anonymous
   const [loggedInViews] = await db.select({ count: count() }).from(pageViews).where(isNotNull(pageViews.userId));
 
-  // Top pages (last 7 days)
-  const topPages = await db
-    .select({ path: pageViews.path, views: count() })
+  const recentAnalyticsRows = await db
+    .select()
     .from(pageViews)
-    .where(gte(pageViews.createdAt, weekStart))
-    .groupBy(pageViews.path)
-    .orderBy(desc(count()))
-    .limit(10);
+    .where(gte(pageViews.createdAt, monthStart));
+  const siteAggregates = aggregateSiteAnalytics(recentAnalyticsRows, now);
 
-  // Hourly views for today (last 24 hours)
-  const hourlyRows = await db
-    .select({
-      hour: sql<number>`HOUR(${pageViews.createdAt})`,
-      views: count(),
-    })
-    .from(pageViews)
-    .where(gte(pageViews.createdAt, todayStart))
-    .groupBy(sql`HOUR(${pageViews.createdAt})`)
-    .orderBy(sql`HOUR(${pageViews.createdAt})`);
-
-  // Daily views for last 30 days
-  const dailyRows = await db
-    .select({
-      day: sql<string>`DATE(${pageViews.createdAt})`,
-      views: count(),
-    })
-    .from(pageViews)
-    .where(gte(pageViews.createdAt, monthStart))
-    .groupBy(sql`DATE(${pageViews.createdAt})`)
-    .orderBy(sql`DATE(${pageViews.createdAt})`);
-
-  // Recent page views (last 50)
   const recentViews = await db
     .select()
     .from(pageViews)
@@ -1815,12 +1786,12 @@ export async function getSiteStats() {
     },
     sessions: {
       total: Number(totalSessions.count),
-      today: Number(todaySessions.count),
+      today: siteAggregates.uniqueSessionsToday,
     },
     activeNow: activeSess,
-    topPages,
-    hourlyToday: hourlyRows,
-    dailyMonth: dailyRows,
+    topPages: siteAggregates.topPages,
+    hourlyToday: siteAggregates.hourlyToday,
+    dailyMonth: siteAggregates.dailyMonth,
     recentViews,
   };
 }

@@ -109,7 +109,7 @@ export default function AdminSiteStats() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const utils = trpc.useUtils();
-  const { data: stats, isLoading, refetch, dataUpdatedAt } = trpc.siteAnalytics.getStats.useQuery(undefined, {
+  const { data: stats, isLoading, isError, error, refetch, dataUpdatedAt } = trpc.siteAnalytics.getStats.useQuery(undefined, {
     refetchInterval: autoRefresh ? 15_000 : false,
   });
 
@@ -137,6 +137,18 @@ export default function AdminSiteStats() {
         <div className="text-center">
           <div className="text-white/40 mb-4">Admin access required</div>
           <a href={getLoginUrl()} className="text-red-500 hover:underline text-sm">Sign in</a>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-[#080808] text-white flex items-center justify-center px-5">
+        <div className="max-w-xl text-center border border-red-500/20 bg-red-500/5 p-6">
+          <div className="text-red-400 text-xs uppercase tracking-[0.22em] font-semibold mb-3">Analytics unavailable</div>
+          <p className="text-white/60 text-sm leading-relaxed">{error instanceof Error ? error.message : "The live site analytics request failed. Try refreshing in a moment."}</p>
+          <button onClick={handleRefresh} className="mt-5 border border-white/20 px-4 py-2 text-xs uppercase tracking-widest text-white/70 hover:text-white hover:border-white/40 transition-colors">Retry</button>
         </div>
       </div>
     );
