@@ -1,6 +1,7 @@
 import { ArrowLeft, ExternalLink, Globe, Instagram, Link2, Loader2, Music2, Play, Youtube } from "lucide-react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { getMusicEmbed, musicProviderLabel } from "@/lib/musicEmbed";
 
 const BRAND_LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -31,6 +32,23 @@ function buttonClass(style: string) {
   return "hover:brightness-110";
 }
 
+function MusicPlayerCard({ item, page }: { item: PublicItem; page: { textColor: string; buttonColor: string; buttonStyle: string } }) {
+  const embed = getMusicEmbed(item.url);
+  if (!embed) return null;
+  const height = embed.provider === "youtube" ? 190 : 152;
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/15 bg-black/25 shadow-xl" style={{ borderColor: `${page.buttonColor}66` }}>
+      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+        {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" className="h-10 w-10 shrink-0 rounded-md object-cover" /> : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-black/25"><Music2 className="h-4 w-4" /></span>}
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p>{item.subtitle && <p className="truncate text-xs opacity-60">{item.subtitle}</p>}</div>
+        <span className="shrink-0 text-[9px] uppercase tracking-widest opacity-50">{musicProviderLabel(embed.provider)}</span>
+      </div>
+      <iframe title={`${item.title} ${musicProviderLabel(embed.provider)}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowFullScreen className="block w-full border-0" style={{ height }} />
+      <a href={item.url ?? "#"} target="_blank" rel="noopener noreferrer" className="block px-4 py-2 text-[10px] uppercase tracking-widest opacity-55 hover:opacity-100">Open in {embed.provider === "apple_music" ? "Apple Music" : embed.provider === "spotify" ? "Spotify" : "YouTube"}</a>
+    </div>
+  );
+}
+
 export default function PublicLinkPage() {
   const { slug = "" } = useParams<{ slug: string }>();
   const query = trpc.linkPages.publicBySlug.useQuery({ slug }, { enabled: Boolean(slug) });
@@ -56,6 +74,8 @@ export default function PublicLinkPage() {
         <section className="space-y-3 mt-8">
           {visibleItems.map((item) => {
             if (item.type === "header") return <div key={item.id} className="pt-4 pb-1 text-left text-xs uppercase tracking-[0.28em] opacity-55 font-bold">{item.title}</div>;
+            const embed = item.type === "release" ? getMusicEmbed(item.url) : null;
+            if (embed) return <MusicPlayerCard key={item.id} item={item} page={page} />;
             const Icon = iconFor(item);
             const content = <>{item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" /> : <span className="w-8 h-8 grid place-items-center rounded-full bg-black/20 shrink-0"><Icon className="w-4 h-4" /></span>}<span className="min-w-0 flex-1 text-left"><span className="block font-semibold truncate">{item.title}</span>{item.subtitle && <span className="block text-xs opacity-60 truncate mt-0.5">{item.subtitle}</span>}</span>{item.type === "release" ? <Play className="w-4 h-4 opacity-50 shrink-0" /> : <ExternalLink className="w-4 h-4 opacity-40 shrink-0" />}</>;
             const style = { color: page.textColor, backgroundColor: page.buttonStyle === "solid" || page.buttonStyle === "soft" ? page.buttonColor : undefined, borderColor: page.buttonStyle === "outline" || page.buttonStyle === "glass" ? page.buttonColor : undefined };

@@ -1410,3 +1410,19 @@
 - [x] Auto-fill song title, artist, platform, and artwork when provider metadata is available
 - [x] Add metadata and publish workflow tests
 - [x] Publish the Create A Link simplification and metadata checkpoint
+
+
+## Create A Link Live Mobile Preview
+- [ ] Add a live mobile preview panel beside the Create A Link editor
+- [ ] Reflect unsaved profile, avatar, color, release, visibility, and ordering changes immediately in the preview
+- [ ] Keep the editor and preview responsive with no horizontal overflow on mobile
+- [ ] Add validation coverage for the preview model and key unsaved states
+- [ ] Publish the live mobile preview enhancement checkpoint
+
+
+## Create A Link Embedded Music Players
+- [x] Detect supported Spotify, Apple Music, and YouTube URLs safely
+- [x] Render official responsive embeds for supported music links on public pages
+- [x] Keep normal external-link fallback behavior for unsupported or malformed URLs
+- [x] Add provider URL and embed rendering tests
+- [ ] Publish the embedded music player enhancement checkpoint

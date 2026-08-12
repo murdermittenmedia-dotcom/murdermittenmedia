@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link2, Plus, Trash2, ArrowUp, ArrowDown, Eye, EyeOff, ExternalLink, Copy, Check, Music2, Instagram, Youtube, Globe, Sparkles, Palette, Save, Loader2 } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,76 @@ const emptyDraft: LinkDraft = {
   thumbnailUrl: "",
 };
 
+type LiveProfile = {
+  id: number;
+  slug: string;
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  backgroundColor: string;
+  accentColor: string;
+  textColor: string;
+  buttonColor: string;
+  buttonStyle: "solid" | "outline" | "soft" | "glass";
+  showBranding: boolean;
+  theme: string;
+};
+
+type PreviewLink = LinkDraft & { id: number | string; isVisible: boolean };
+
+type LiveMobilePreviewProps = {
+  profile: LiveProfile;
+  userName: string;
+  links: PreviewLink[];
+  publicHref: string;
+};
+
+function LiveMobilePreview({ profile, userName, links, publicHref }: LiveMobilePreviewProps) {
+  const displayName = profile.displayName || userName || "Creator";
+  const initial = displayName.charAt(0).toUpperCase();
+  const buttonStyle = profile.buttonStyle;
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative w-full max-w-[330px] rounded-[2.25rem] border-[7px] border-[#252525] bg-[#050505] p-2 shadow-[0_25px_80px_rgba(0,0,0,0.55)]">
+        <div className="pointer-events-none absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-[#050505]" />
+        <div className="min-h-[610px] overflow-hidden rounded-[1.65rem] px-5 pb-6 pt-10" style={{ background: `linear-gradient(145deg, ${profile.backgroundColor}, #050505)`, color: profile.textColor }}>
+          <div className="flex min-h-[570px] flex-col items-center text-center">
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" className="h-20 w-20 rounded-full object-cover ring-2 ring-white/20" />
+            ) : (
+              <div className="grid h-20 w-20 place-items-center rounded-full text-3xl font-['Anton']" style={{ backgroundColor: profile.accentColor, color: profile.textColor }}>{initial}</div>
+            )}
+            <h3 className="mt-4 max-w-full break-words font-['Anton'] text-2xl uppercase">{displayName}</h3>
+            {profile.bio && <p className="mt-2 max-w-full break-words text-xs opacity-65">{profile.bio}</p>}
+            <div className="mt-7 w-full space-y-3">
+              {links.filter((link) => link.isVisible).map((link) => {
+                const hasArtwork = Boolean(link.thumbnailUrl);
+                const buttonClasses = buttonStyle === "outline"
+                  ? "border bg-transparent"
+                  : buttonStyle === "soft"
+                    ? "border border-transparent bg-white/10"
+                    : buttonStyle === "glass"
+                      ? "border border-white/15 bg-white/10 backdrop-blur"
+                      : "border border-transparent";
+                return (
+                  <div key={link.id} className={`flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-semibold transition ${buttonClasses}`} style={{ backgroundColor: buttonStyle === "solid" ? profile.buttonColor : undefined, borderColor: buttonStyle === "outline" ? profile.buttonColor : undefined, color: profile.textColor }}>
+                    {hasArtwork && <img src={link.thumbnailUrl} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover" />}
+                    <span className="min-w-0 flex-1 break-words">{link.title || "Untitled link"}{link.subtitle && <span className="mt-0.5 block text-[10px] font-normal opacity-60">{link.subtitle}</span>}</span>
+                  </div>
+                );
+              })}
+              {links.filter((link) => link.isVisible).length === 0 && <p className="rounded-xl border border-dashed border-white/20 px-3 py-5 text-xs opacity-50">Add a link to see it here.</p>}
+            </div>
+            {profile.showBranding && <p className="mt-auto pt-10 text-[9px] uppercase tracking-[0.2em] opacity-35">Murder Mitten Media</p>}
+          </div>
+        </div>
+      </div>
+      <p className="mt-4 max-w-[330px] break-all text-center text-[11px] text-white/35">{publicHref}</p>
+    </div>
+  );
+}
+
 function normalizeUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -71,6 +141,7 @@ export default function CreateALink() {
   const [selectedSongId, setSelectedSongId] = useState("");
   const [drafts, setDrafts] = useState<Record<number, LinkDraft>>({});
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
+  const [liveProfile, setLiveProfile] = useState<LiveProfile | null>(null);
 
   const pageQuery = trpc.linkPages.mine.useQuery(undefined, { enabled: !!user });
   const songsQuery = trpc.songs.mine.useQuery(undefined, { enabled: !!user });
@@ -78,6 +149,24 @@ export default function CreateALink() {
   const page = pageData?.page;
   const items = pageData?.items ?? [];
   const songs = songsQuery.data ?? [];
+
+  useEffect(() => {
+    if (!page) return;
+    setLiveProfile({
+      id: page.id,
+      slug: page.slug,
+      displayName: page.displayName ?? "",
+      bio: page.bio ?? "",
+      avatarUrl: page.avatarUrl ?? "",
+      backgroundColor: page.backgroundColor,
+      accentColor: page.accentColor,
+      textColor: page.textColor,
+      buttonColor: page.buttonColor,
+      buttonStyle: page.buttonStyle,
+      showBranding: page.showBranding,
+      theme: page.theme,
+    });
+  }, [page?.id]);
 
   const createPage = trpc.linkPages.create.useMutation({
     onSuccess: async () => {
@@ -147,8 +236,8 @@ export default function CreateALink() {
     onError: (error) => toast.error(error.message),
   });
 
-  const publicHref = page ? `${window.location.origin}/link/${page.slug}` : "";
-  const selectedTheme = useMemo(() => THEME_OPTIONS.find((theme) => theme.value === page?.theme) ?? THEME_OPTIONS[0], [page?.theme]);
+  const publicHref = page ? `${window.location.origin}/link/${liveProfile?.slug ?? page.slug}` : "";
+  const selectedTheme = useMemo(() => THEME_OPTIONS.find((theme) => theme.value === (liveProfile?.theme ?? page?.theme)) ?? THEME_OPTIONS[0], [liveProfile?.theme, page?.theme]);
 
   if (loading || (user && pageQuery.isLoading)) {
     return <div className="min-h-screen bg-[#080808] text-white grid place-items-center"><Loader2 className="w-7 h-7 animate-spin text-red-500" /></div>;
@@ -270,6 +359,7 @@ export default function CreateALink() {
     reader.onload = () => {
       const value = String(reader.result || "");
       const base64 = value.includes(",") ? value.split(",")[1] : value;
+      setLiveProfile((current) => current ? { ...current, avatarUrl: value } : current);
       uploadAvatar.mutate({ pageId: page.id, base64, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif" });
     };
     reader.readAsDataURL(file);
@@ -281,6 +371,38 @@ export default function CreateALink() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
+
+  const previewProfile: LiveProfile = liveProfile ?? {
+    id: page.id,
+    slug: page.slug,
+    displayName: page.displayName ?? "",
+    bio: page.bio ?? "",
+    avatarUrl: page.avatarUrl ?? "",
+    backgroundColor: page.backgroundColor,
+    accentColor: page.accentColor,
+    textColor: page.textColor,
+    buttonColor: page.buttonColor,
+    buttonStyle: page.buttonStyle,
+    showBranding: page.showBranding,
+    theme: page.theme,
+  };
+  const previewLinks: PreviewLink[] = [
+    ...items.map((item) => {
+      const itemDraft = drafts[item.id];
+      return {
+        id: item.id,
+        type: itemDraft?.type ?? item.type,
+        title: itemDraft?.title ?? item.title,
+        url: itemDraft?.url ?? item.url ?? "",
+        subtitle: itemDraft?.subtitle ?? item.subtitle ?? "",
+        platform: itemDraft?.platform ?? item.platform ?? "",
+        icon: itemDraft?.icon ?? item.icon ?? "link",
+        thumbnailUrl: itemDraft?.thumbnailUrl ?? item.thumbnailUrl ?? "",
+        isVisible: item.isVisible,
+      };
+    }),
+    ...(draft.title.trim() ? [{ id: "draft", ...draft, isVisible: true }] : []),
+  ];
 
   return (
     <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
@@ -297,18 +419,18 @@ export default function CreateALink() {
               <summary className="flex items-center justify-between gap-3 cursor-pointer list-none p-5 md:p-6"><div><h2 className="font-['Anton'] text-2xl uppercase">Profile & style</h2><p className="text-white/40 text-xs mt-1">Name, avatar, colors, and page settings.</p></div><Palette className="w-5 h-5 text-red-500 group-open:rotate-45 transition-transform" /></summary>
               <div className="px-5 pb-5 md:px-6 md:pb-6">
               <div className="grid md:grid-cols-2 gap-4">
-                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Public username</span><Input defaultValue={page.slug} onBlur={(e) => updatePage.mutate({ pageId: page.id, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} className="mt-2 bg-white/5 border-white/10 text-white" /></label>
-                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Display name</span><Input defaultValue={page.displayName ?? ""} onBlur={(e) => updatePage.mutate({ pageId: page.id, displayName: e.target.value || null })} className="mt-2 bg-white/5 border-white/10 text-white" /></label>
+                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Public username</span><Input value={liveProfile?.slug ?? page.slug} onChange={(e) => setLiveProfile((current) => current ? { ...current, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") } : current)} onBlur={(e) => updatePage.mutate({ pageId: page.id, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} className="mt-2 bg-white/5 border-white/10 text-white" /></label>
+                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Display name</span><Input value={liveProfile?.displayName ?? page.displayName ?? ""} onChange={(e) => setLiveProfile((current) => current ? { ...current, displayName: e.target.value } : current)} onBlur={(e) => updatePage.mutate({ pageId: page.id, displayName: e.target.value || null })} className="mt-2 bg-white/5 border-white/10 text-white" /></label>
               </div>
-              <label className="block mt-4"><span className="text-[10px] uppercase tracking-widest text-white/50">Bio</span><Textarea defaultValue={page.bio ?? ""} onBlur={(e) => updatePage.mutate({ pageId: page.id, bio: e.target.value || null })} className="mt-2 bg-white/5 border-white/10 text-white min-h-20" /></label>
+              <label className="block mt-4"><span className="text-[10px] uppercase tracking-widest text-white/50">Bio</span><Textarea value={liveProfile?.bio ?? page.bio ?? ""} onChange={(e) => setLiveProfile((current) => current ? { ...current, bio: e.target.value } : current)} onBlur={(e) => updatePage.mutate({ pageId: page.id, bio: e.target.value || null })} className="mt-2 bg-white/5 border-white/10 text-white min-h-20" /></label>
               <div className="grid md:grid-cols-3 gap-4 mt-4">
                 <div className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Avatar image</span><label className="mt-2 flex items-center gap-3 rounded-md border border-dashed border-white/20 bg-white/5 p-2.5 cursor-pointer hover:border-red-500"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(e) => handleAvatarUpload(e.target.files?.[0])} /><span className="w-10 h-10 rounded-full overflow-hidden bg-red-600/70 grid place-items-center text-sm font-black">{page.avatarUrl ? <img src={page.avatarUrl} alt="Current avatar" className="w-full h-full object-cover" /> : (page.displayName ?? "C").charAt(0).toUpperCase()}</span><span className="text-xs text-white/70">{uploadAvatar.isPending ? "Uploading..." : "Choose an image"}</span></label></div>
-                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Theme preset</span><select defaultValue={page.theme} onChange={(e) => { const theme = THEME_OPTIONS.find((option) => option.value === e.target.value); updatePage.mutate({ pageId: page.id, theme: e.target.value, backgroundColor: theme?.background, accentColor: theme?.accent, buttonColor: theme?.accent }); }} className="mt-2 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="midnight">Midnight</option><option value="ember">Ember</option><option value="ice">Ice</option><option value="violet">Violet</option></select></label>
-                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Button style</span><select defaultValue={page.buttonStyle} onChange={(e) => updatePage.mutate({ pageId: page.id, buttonStyle: e.target.value as "solid" | "outline" | "soft" | "glass" })} className="mt-2 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="solid">Solid</option><option value="outline">Outline</option><option value="soft">Soft</option><option value="glass">Glass</option></select></label>
+                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Theme preset</span><select value={liveProfile?.theme ?? page.theme} onChange={(e) => { const theme = THEME_OPTIONS.find((option) => option.value === e.target.value); setLiveProfile((current) => current ? { ...current, theme: e.target.value, backgroundColor: theme?.background ?? current.backgroundColor, accentColor: theme?.accent ?? current.accentColor, buttonColor: theme?.accent ?? current.buttonColor } : current); updatePage.mutate({ pageId: page.id, theme: e.target.value, backgroundColor: theme?.background, accentColor: theme?.accent, buttonColor: theme?.accent }); }} className="mt-2 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="midnight">Midnight</option><option value="ember">Ember</option><option value="ice">Ice</option><option value="violet">Violet</option></select></label>
+                <label className="block"><span className="text-[10px] uppercase tracking-widest text-white/50">Button style</span><select value={liveProfile?.buttonStyle ?? page.buttonStyle} onChange={(e) => { const buttonStyle = e.target.value as LiveProfile["buttonStyle"]; setLiveProfile((current) => current ? { ...current, buttonStyle } : current); updatePage.mutate({ pageId: page.id, buttonStyle }); }} className="mt-2 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"><option value="solid">Solid</option><option value="outline">Outline</option><option value="soft">Soft</option><option value="glass">Glass</option></select></label>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/10"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.backgroundColor} onChange={(e) => updatePage.mutate({ pageId: page.id, backgroundColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Background<br /><code className="text-[10px] text-white/35">{page.backgroundColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.accentColor} onChange={(e) => updatePage.mutate({ pageId: page.id, accentColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Accent<br /><code className="text-[10px] text-white/35">{page.accentColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.textColor} onChange={(e) => updatePage.mutate({ pageId: page.id, textColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Text<br /><code className="text-[10px] text-white/35">{page.textColor}</code></span></label></div>
-              <div className="flex items-center gap-3 mt-4"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" defaultValue={page.buttonColor} onChange={(e) => updatePage.mutate({ pageId: page.id, buttonColor: e.target.value })} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Link/button color<br /><code className="text-[10px] text-white/35">{page.buttonColor}</code></span></label></div>
-              <div className="flex flex-wrap items-center gap-5 mt-5 pt-5 border-t border-white/10"><label className="inline-flex items-center gap-2 text-xs text-white/60 cursor-pointer"><input type="checkbox" defaultChecked={page.showBranding} onChange={(e) => updatePage.mutate({ pageId: page.id, showBranding: e.target.checked })} className="accent-red-600" />Show Murder Mitten branding</label><span className="text-[10px] text-white/30 ml-auto">{selectedTheme.label} theme</span></div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/10"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" value={liveProfile?.backgroundColor ?? page.backgroundColor} onChange={(e) => { setLiveProfile((current) => current ? { ...current, backgroundColor: e.target.value } : current); updatePage.mutate({ pageId: page.id, backgroundColor: e.target.value }); }} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Background<br /><code className="text-[10px] text-white/35">{page.backgroundColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" value={liveProfile?.accentColor ?? page.accentColor} onChange={(e) => { setLiveProfile((current) => current ? { ...current, accentColor: e.target.value } : current); updatePage.mutate({ pageId: page.id, accentColor: e.target.value }); }} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Accent<br /><code className="text-[10px] text-white/35">{page.accentColor}</code></span></label><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" value={liveProfile?.textColor ?? page.textColor} onChange={(e) => { setLiveProfile((current) => current ? { ...current, textColor: e.target.value } : current); updatePage.mutate({ pageId: page.id, textColor: e.target.value }); }} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Text<br /><code className="text-[10px] text-white/35">{page.textColor}</code></span></label></div>
+              <div className="flex items-center gap-3 mt-4"><label className="flex items-center gap-3 text-xs text-white/60"><input type="color" value={liveProfile?.buttonColor ?? page.buttonColor} onChange={(e) => { setLiveProfile((current) => current ? { ...current, buttonColor: e.target.value } : current); updatePage.mutate({ pageId: page.id, buttonColor: e.target.value }); }} className="w-10 h-8 rounded border-0 bg-transparent cursor-pointer" /><span>Link/button color<br /><code className="text-[10px] text-white/35">{page.buttonColor}</code></span></label></div>
+              <div className="flex flex-wrap items-center gap-5 mt-5 pt-5 border-t border-white/10"><label className="inline-flex items-center gap-2 text-xs text-white/60 cursor-pointer"><input type="checkbox" checked={liveProfile?.showBranding ?? page.showBranding} onChange={(e) => { setLiveProfile((current) => current ? { ...current, showBranding: e.target.checked } : current); updatePage.mutate({ pageId: page.id, showBranding: e.target.checked }); }} className="accent-red-600" />Show Murder Mitten branding</label><span className="text-[10px] text-white/30 ml-auto">{selectedTheme.label} theme</span></div>
               </div>
             </details>
 
@@ -335,17 +457,13 @@ export default function CreateALink() {
             </div>
           </section>
 
-          <aside className="xl:sticky xl:top-24 min-w-0">
-            <div className="border border-white/10 bg-black/60 p-4 md:p-5">
-              <div className="flex items-center justify-between mb-4"><div><p className="text-[10px] uppercase tracking-widest text-red-500 font-bold">Live preview</p><h2 className="font-['Anton'] text-2xl uppercase">Your page</h2></div><a href={`/link/${page.slug}`} target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white"><ExternalLink className="w-4 h-4" /></a></div>
-              <div className="mx-auto max-w-[300px] min-h-[440px] p-5 flex flex-col items-center text-center border border-white/10" style={{ background: `linear-gradient(145deg, ${page.backgroundColor}, #050505)`, color: page.textColor }}>
-                {page.avatarUrl ? <img src={page.avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover ring-2 ring-white/20" /> : <div className="w-16 h-16 rounded-full bg-red-600/80 grid place-items-center text-2xl font-['Anton']">{(page.displayName ?? user.name ?? "C").charAt(0).toUpperCase()}</div>}
-                <h3 className="font-['Anton'] text-xl uppercase mt-4">{page.displayName || user.name || "Creator"}</h3>
-                {page.bio && <p className="text-white/55 text-xs mt-2 line-clamp-3">{page.bio}</p>}
-                <div className="w-full space-y-2 mt-6">{items.filter((item) => item.isVisible).slice(0, 5).map((item) => <div key={item.id} className={`w-full px-3 py-2.5 text-xs ${page.buttonStyle === "outline" ? "border" : page.buttonStyle === "soft" ? "bg-white/10" : page.buttonStyle === "glass" ? "bg-white/10 backdrop-blur border border-white/15" : ""}`} style={{ backgroundColor: page.buttonStyle === "solid" ? page.buttonColor : undefined, borderColor: page.buttonStyle === "outline" ? page.buttonColor : undefined, color: page.textColor }}>{item.title}</div>)}</div>
-                {page.showBranding && <p className="mt-auto pt-8 text-[9px] uppercase tracking-widest text-white/25">Murder Mitten Media</p>}
+          <aside className="min-w-0 xl:sticky xl:top-24">
+            <div className="border border-white/10 bg-white/[0.03] p-4 md:p-5">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div><p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-500">Live mobile preview</p><h2 className="mt-1 font-['Anton'] text-2xl uppercase">See it live</h2><p className="mt-1 text-xs text-white/40">Unsaved changes appear here instantly.</p></div>
+                <a href={`/link/${previewProfile.slug}`} target="_blank" rel="noopener noreferrer" className="shrink-0 text-white/40 hover:text-white" aria-label="Open public page"><ExternalLink className="h-4 w-4" /></a>
               </div>
-              <p className="text-[11px] text-white/30 mt-4 break-all">{publicHref}</p>
+              <LiveMobilePreview profile={previewProfile} userName={user.name ?? ""} links={previewLinks} publicHref={publicHref} />
             </div>
           </aside>
         </div>
