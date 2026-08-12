@@ -251,7 +251,11 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                     className="flex items-center gap-1.5 text-[10px] border border-white/15 text-white/40 px-3 py-2 hover:border-white/40 hover:text-white transition-all uppercase tracking-widest font-semibold"
                     title="Account"
                   >
-                    <User className="w-3.5 h-3.5" />
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    ) : (
+                      <User className="w-3.5 h-3.5" />
+                    )}
                     <span className="hidden lg:inline">Account</span>
                   </a>
                   <button
@@ -338,7 +342,11 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                     href="/account"
                     className="flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:text-white"
                   >
-                    <User className="w-4 h-4" />
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <User className="w-4 h-4" />
+                    )}
                     Account
                   </a>
                   <button

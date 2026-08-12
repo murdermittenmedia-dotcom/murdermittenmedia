@@ -197,6 +197,8 @@
 - [x] ArtistStatModal: show avatar at top, upload button when viewing own profile
 - [ ] SiteNav: show avatar circle instead of letter initial when avatarUrl is set
 - [ ] Chat messages: show tiny avatar next to username
+- [ ] Update all SiteNav authenticated avatar render paths consistently for desktop and mobile
+- [ ] Resolve current TypeScript/LSP errors and re-verify SiteNav avatar behavior
 - [ ] Leaderboard: show avatar next to artist name
 
 ## Wheel Auto-Remove & Queue Notifications
@@ -1454,3 +1456,10 @@
 - [x] Add top-link, referrer, device, and click-through-rate reporting
 - [x] Add privacy/security and analytics tests
 - [x] Publish the Create A Link analytics checkpoint
+
+
+## Analytics Daily Trend Fix
+- [x] Fix the database-incompatible daily trend aggregation in Create A Link analytics
+- [x] Preserve daily views and clicks output for owner/admin dashboards
+- [x] Add regression coverage for analytics aggregation with event data
+- [x] Validate mobile analytics loading and publish the bug fix checkpoint

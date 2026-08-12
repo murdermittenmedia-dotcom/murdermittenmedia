@@ -46,6 +46,7 @@ import {
   linkAnalyticsEvents, InsertLinkAnalyticsEvent,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { aggregateLinkAnalyticsDaily } from './link-analytics';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -2493,13 +2494,14 @@ export async function getLinkAnalytics(pageId: number, days = 30) {
     liveViewers: sql<number>`COUNT(DISTINCT CASE WHEN ${linkAnalyticsEvents.eventType} = 'presence' AND ${linkAnalyticsEvents.createdAt} >= ${liveSince} THEN ${linkAnalyticsEvents.visitorId} END)`,
   }).from(linkAnalyticsEvents).where(pageWhere);
 
-  const daily = await db.select({
-    date: sql<string>`DATE(${linkAnalyticsEvents.createdAt})`,
-    views: sql<number>`COALESCE(SUM(CASE WHEN ${linkAnalyticsEvents.eventType} = 'view' THEN 1 ELSE 0 END), 0)`,
-    clicks: sql<number>`COALESCE(SUM(CASE WHEN ${linkAnalyticsEvents.eventType} = 'click' THEN 1 ELSE 0 END), 0)`,
-  }).from(linkAnalyticsEvents).where(pageWhere)
-    .groupBy(sql`DATE(${linkAnalyticsEvents.createdAt})`)
-    .orderBy(sql`DATE(${linkAnalyticsEvents.createdAt})`);
+  // Aggregate daily trends in application code instead of using DATE() in SQL.
+  // This keeps the dashboard compatible with the deployed MySQL/TiDB variants.
+  const dailyEvents = await db.select({
+    eventType: linkAnalyticsEvents.eventType,
+    createdAt: linkAnalyticsEvents.createdAt,
+  }).from(linkAnalyticsEvents).where(pageWhere).orderBy(asc(linkAnalyticsEvents.createdAt));
+
+  const daily = aggregateLinkAnalyticsDaily(dailyEvents);
 
   const topLinks = await db.select({
     itemId: linkAnalyticsEvents.itemId,
