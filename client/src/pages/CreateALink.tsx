@@ -99,13 +99,14 @@ function LiveMobilePreview({ profile, userName, links, publicHref }: LiveMobileP
                       : "border border-transparent";
 
                 if (embed && providerTheme) {
+                  const previewHeight = embed.provider === "apple_music" ? 150 : 82;
                   return (
                     <div key={link.id} className="overflow-hidden rounded-xl border text-left" style={{ borderColor: `${providerTheme.accent}66`, background: `linear-gradient(135deg, ${providerTheme.soft}, rgba(0,0,0,0.25))` }}>
                       <div className="flex min-w-0 items-center gap-2 px-2.5 py-2">
                         {hasArtwork ? <img src={link.thumbnailUrl} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" /> : <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md" style={{ backgroundColor: providerTheme.soft, color: providerTheme.accent }}><Music2 className="h-3.5 w-3.5" /></span>}
                         <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold">{link.title || "Untitled release"}</span>{link.subtitle && <span className="block truncate text-[9px] opacity-60">{link.subtitle}</span>}<span className="mt-0.5 block truncate text-[8px] font-bold uppercase tracking-[0.14em]" style={{ color: providerTheme.accent }}>{providerTheme.name} MiniPlayer</span></span>
                       </div>
-                      <iframe title={`${link.title || "Release"} ${musicProviderLabel(embed.provider)}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" className="block h-16 w-full border-0" />
+                      <iframe title={`${link.title || "Release"} ${musicProviderLabel(embed.provider)}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" className="block w-full border-0 bg-transparent" style={{ height: previewHeight }} />
                     </div>
                   );
                 }

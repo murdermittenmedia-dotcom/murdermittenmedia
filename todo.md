@@ -1479,4 +1479,4 @@
 - [x] Add or correct the official compact YouTube MiniPlayer for supported URLs
 - [x] Preserve Spotify, Apple Music, and unsupported-link behavior
 - [x] Add YouTube MiniPlayer regression coverage and validate mobile rendering
-- [ ] Publish the YouTube MiniPlayer enhancement checkpoint
+- [x] Publish the YouTube MiniPlayer enhancement checkpoint

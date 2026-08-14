@@ -62,22 +62,22 @@ function buttonClass(style: string) {
 }
 
 function MusicPlayerCard({ item, page, onOpen }: { item: PublicItem; page: { textColor: string; buttonColor: string; buttonStyle: string }; onOpen: () => void }) {
-  const embed = getMusicEmbed(item.url);
-  if (!embed) return null;
-  const theme = musicProviderTheme(embed.provider);
-  const providerLabel = musicProviderLabel(embed.provider);
-  const height = embed.provider === "youtube" ? 92 : 82;
-  return (
-    <div className="overflow-hidden rounded-2xl border shadow-lg" style={{ borderColor: `${theme.accent}66`, background: `linear-gradient(135deg, ${theme.soft}, rgba(0,0,0,0.28))` }}>
-      <div className="flex items-center gap-2.5 px-3 py-2.5">
-        {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" /> : <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: theme.soft, color: theme.accent }}><Music2 className="h-4 w-4" /></span>}
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p>{item.subtitle && <p className="truncate text-[11px] opacity-65">{item.subtitle}</p>}<p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: theme.accent }}>{theme.name} MiniPlayer</p></div>
-        <a href={item.url ?? "#"} target="_blank" rel="noopener noreferrer" onClick={onOpen} aria-label={`Open ${item.title} in ${theme.name}`} className="shrink-0 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-widest transition-opacity hover:opacity-75" style={{ borderColor: `${theme.accent}88`, color: theme.accent }}>Open</a>
-      </div>
-      <iframe title={`${item.title} ${providerLabel}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowFullScreen className="block w-full border-0" style={{ height }} />
-    </div>
-  );
-}
+	  const embed = getMusicEmbed(item.url);
+	  if (!embed) return null;
+	  const theme = musicProviderTheme(embed.provider);
+	  const providerLabel = musicProviderLabel(embed.provider);
+	  const height = embed.provider === "apple_music" ? 150 : embed.provider === "youtube" ? 92 : 82;
+	  return (
+	    <div className="overflow-hidden rounded-2xl border shadow-lg" style={{ borderColor: `${theme.accent}66`, background: `linear-gradient(135deg, ${theme.soft}, rgba(0,0,0,0.28))` }}>
+	      <div className="flex items-center gap-2.5 px-3 py-2.5">
+	        {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" /> : <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: theme.soft, color: theme.accent }}><Music2 className="h-4 w-4" /></span>}
+	        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p>{item.subtitle && <p className="truncate text-[11px] opacity-65">{item.subtitle}</p>}<p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: theme.accent }}>{theme.name} MiniPlayer</p></div>
+	        <a href={item.url ?? "#"} target="_blank" rel="noopener noreferrer" onClick={onOpen} aria-label={`Open ${item.title} in ${theme.name}`} className="shrink-0 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-widest transition-opacity hover:opacity-75" style={{ borderColor: `${theme.accent}88`, color: theme.accent }}>Open</a>
+	      </div>
+	      <iframe title={`${item.title} ${providerLabel}`} src={embed.src} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowFullScreen className="block w-full border-0 bg-transparent" style={{ height }} />
+	    </div>
+	  );
+	}
 
 export default function PublicLinkPage() {
   const { slug = "" } = useParams<{ slug: string }>();
