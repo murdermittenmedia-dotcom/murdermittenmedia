@@ -1278,10 +1278,11 @@ export default function MusicReview() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const isJudge = user?.role === "judge";
+  const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
   const [showOBSSetup, setShowOBSSetup] = useState(false);
   const [myBroadcast, setMyBroadcast] = useState<any>(null);
   const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
-  const [livekitBroadcastData, setLivekitBroadcastData] = useState<{ token: string; roomName: string; livekitUrl: string } | null>(null);
+  const [livekitBroadcastData, setLivekitBroadcastData] = useState<{ broadcastId: number; token: string; roomName: string; livekitUrl: string } | null>(null);
   
   // Fetch judge broadcasts
   const { data: broadcasts } = trpc.review.getActive.useQuery(undefined, { refetchInterval: 3000 });
@@ -1289,6 +1290,21 @@ export default function MusicReview() {
   const startBroadcast = trpc.review.startBroadcast.useMutation();
   const endBroadcast = trpc.review.endBroadcast.useMutation();
   const getJudgeToken = trpc.review.getJudgeToken.useMutation();
+
+  const startJudgeBroadcast = useCallback(async () => {
+    try {
+      const result = await startBroadcast.mutateAsync();
+      setMyBroadcast(result.broadcast);
+      setLivekitBroadcastData({
+        broadcastId: result.broadcast.id,
+        token: result.token,
+        roomName: result.broadcast.roomName,
+        livekitUrl: result.livekitUrl,
+      });
+    } catch (error: any) {
+      toast.error(error?.message ?? "Unable to start judge broadcast");
+    }
+  }, [startBroadcast]);
   
   const broadcastsRef = useRef<any[]>([]);
   useEffect(() => {
@@ -1815,8 +1831,36 @@ export default function MusicReview() {
           </div>
         )}
 
-        {/* Hidden AdminPanel - kept for reference but not rendered */}
-        {false && (
+        {(isJudge || isAdmin) && !isAdminPopout && (
+          <section className="rounded-2xl border border-green-500/25 bg-gradient-to-br from-green-950/20 via-[#0d0d0d] to-[#080808] p-4 shadow-[0_0_30px_rgba(34,197,94,0.06)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-[0.18em]"><Mic className="w-4 h-4" /> Judge broadcast</div>
+                <p className="text-white/40 text-xs mt-1">Share your native mic and camera with the live review room.</p>
+              </div>
+              {!livekitBroadcastData && (
+                <button onClick={startJudgeBroadcast} disabled={startBroadcast.isPending} className="rounded-lg bg-green-600 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-green-500 disabled:opacity-50">
+                  {startBroadcast.isPending ? "Starting…" : myBroadcast ? "Reconnect broadcast" : "Go live as judge"}
+                </button>
+              )}
+            </div>
+            {livekitBroadcastData && (
+              <JudgeLiveBroadcast
+                broadcastId={livekitBroadcastData.broadcastId}
+                token={livekitBroadcastData.token}
+                livekitUrl={livekitBroadcastData.livekitUrl}
+                onStop={() => {
+                  setLivekitBroadcastData(null);
+                  setMyBroadcast(null);
+                  void refetch();
+                }}
+              />
+            )}
+          </section>
+        )}
+
+        {/* The pop-out uses the same tested control board in its own window. */}
+        {isAdmin && isAdminPopout && (
             <AdminPanel
             data={data}
             refetch={refetch}

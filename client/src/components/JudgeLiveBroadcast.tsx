@@ -7,6 +7,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Room, RoomEvent, LocalTrack, createLocalVideoTrack, createLocalAudioTrack, Track } from "livekit-client";
 import { Mic, MicOff, Video, VideoOff, Loader2, X, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { shouldEndJudgeBroadcast } from "@/lib/musicReviewLive";
 
 interface JudgeLiveBroadcastProps {
   broadcastId: number;
@@ -25,6 +27,17 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
   const [error, setError] = useState<string | null>(null);
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalTrack | null>(null);
   const [localAudioTrack, setLocalAudioTrack] = useState<LocalTrack | null>(null);
+  const endBroadcastMutation = trpc.review.endBroadcast.useMutation();
+  const endedRef = useRef(false);
+  const onStopRef = useRef(onStop);
+  onStopRef.current = onStop;
+
+  const finishBroadcast = useCallback(() => {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    void endBroadcastMutation.mutateAsync({ broadcastId }).catch(() => undefined);
+    onStopRef.current();
+  }, [broadcastId, endBroadcastMutation]);
 
   // Connect to LiveKit room and publish mic + camera
   useEffect(() => {
@@ -36,7 +49,10 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
     roomRef.current = room;
 
     room.on(RoomEvent.Disconnected, () => {
-      if (!cancelled) setConnected(false);
+      if (shouldEndJudgeBroadcast("disconnected") && !cancelled) {
+        setConnected(false);
+        finishBroadcast();
+      }
     });
 
     (async () => {
@@ -87,8 +103,9 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
     return () => {
       cancelled = true;
       room.disconnect();
+      finishBroadcast();
     };
-  }, [token, livekitUrl]);
+  }, [token, livekitUrl, finishBroadcast]);
 
   // Attach local video track to video element after track is set
   useEffect(() => {
@@ -133,8 +150,8 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
     if (roomRef.current) {
       await roomRef.current.disconnect();
     }
-    onStop();
-  }, [onStop]);
+    finishBroadcast();
+  }, [finishBroadcast]);
 
   if (error) {
     return (
@@ -257,6 +274,9 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const audioUnlockedRef = useRef(false);
+  audioUnlockedRef.current = audioUnlocked;
 
   useEffect(() => {
     let cancelled = false;
@@ -272,6 +292,7 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
         // Attach audio to a dedicated audio element so judge mic is heard
         if (remoteAudioRef.current) {
           track.attach(remoteAudioRef.current);
+          if (audioUnlockedRef.current) remoteAudioRef.current.play().catch(() => undefined);
         } else {
           // Fallback: create a new audio element
           const audioEl = track.attach() as HTMLAudioElement;
@@ -299,10 +320,20 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
     };
   }, [livekitUrl, viewerToken]);
 
+  const enableJudgeAudio = useCallback(async () => {
+    try {
+      await roomRef.current?.startAudio();
+      setAudioUnlocked(true);
+      await remoteAudioRef.current?.play();
+    } catch {
+      toast.error("Click again to enable judge audio");
+    }
+  }, []);
+
   return (
     <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
-      {/* Hidden audio element for judge mic */}
-      <audio ref={remoteAudioRef} autoPlay playsInline muted={muted} />
+      {/* Hidden audio element for judge mic; browsers require a user gesture before playback */}
+      <audio ref={remoteAudioRef} autoPlay playsInline muted={muted || !audioUnlocked} />
       <div className="relative bg-black" style={{ aspectRatio: '16/9', maxHeight: '180px' }}>
         <video
           ref={remoteVideoRef}
@@ -329,10 +360,18 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
           </div>
         )}
         {/* Mic indicator overlay */}
-        {hasAudio && (
-          <div className="absolute bottom-1 right-1">
-            <button
-              onClick={() => setMuted(v => !v)}
+          {hasAudio && (
+            <div className="absolute bottom-1 right-1 flex items-center gap-1.5">
+              {!audioUnlocked && (
+                <button
+                  onClick={enableJudgeAudio}
+                  className="rounded-full bg-green-600/90 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white"
+                >
+                  Enable audio
+                </button>
+              )}
+              <button
+                onClick={() => setMuted(v => !v)}
               className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                 muted ? 'bg-red-600/80' : 'bg-green-600/80'
               }`}

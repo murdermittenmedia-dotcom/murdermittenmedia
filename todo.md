@@ -1492,3 +1492,11 @@
 - [x] Add map markers, studio details, and selection behavior without breaking the directory
 - [x] Add regression coverage for coordinate filtering and map marker data
 - [x] Verify responsive map rendering and publish the interactive map
+
+## Music Review Live Room Stabilization
+- [x] End judge live state and clean up audio connections when a judge disconnects or the session closes
+- [x] Route judge microphone audio alongside the live review radio audio for listeners
+- [x] Repair radio play, pause, rewind, forward, seek, and volume controls
+- [x] Redesign the Music Review live-room layout for clear judge, radio, reactions, chat, and queue states
+- [x] Add regression coverage for disconnect cleanup, mixed audio state, and control behavior
+- [x] Verify the live room in the browser and publish the repair

@@ -95,8 +95,9 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
     socket.on("radio:state", (data: (LiveNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
       // Support both file and YouTube submissions
       if (!data || (!data.audioUrl && !data.youtubeUrl)) return;
-      // Admin already has the YouTube embed in the Now Playing card — skip FloatingPlayer for YT
-      if (isAdminRef.current && data.submissionType === "youtube") return;
+      // The Music Review admin controls the local player directly. Never let the
+      // global listener create a second competing player on the admin page.
+      if (isAdminRef.current) return;
       const t = buildTrack(data);
       // Use playWithSeek for file tracks — seeks to admin's position on canplay (reliable)
       if (data.submissionType !== "youtube" && data.currentTime > 1) {
@@ -120,8 +121,9 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
         }
         return;
       }
-      // Admin already has the YouTube embed in the Now Playing card — skip FloatingPlayer for YT
-      if (isAdminRef.current && data.submissionType === "youtube") return;
+      // The Music Review admin controls the local player directly. Never let the
+      // global listener create a second competing player on the admin page.
+      if (isAdminRef.current) return;
       // Support both file and YouTube submissions
       if (data.audioUrl || data.youtubeUrl) {
         const t = buildTrack(data);

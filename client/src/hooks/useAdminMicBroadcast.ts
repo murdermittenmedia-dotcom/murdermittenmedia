@@ -120,6 +120,11 @@ export function useAdminMicBroadcast({
       if (isAdmin) return; // We are the broadcaster
       setIsAdminMicLive(true);
       setBroadcasterSocketId(data.broadcasterSocketId);
+      // Tell the broadcaster to create a peer connection for this listener.
+      socket.emit("radio:mic_listener_ready", {
+        broadcasterSocketId: data.broadcasterSocketId,
+        listenerSocketId: socket.id,
+      });
     });
 
     socket.on("radio:mic_broadcast_inactive", () => {

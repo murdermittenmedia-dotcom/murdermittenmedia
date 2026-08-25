@@ -79,6 +79,7 @@ function Router() {
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/review"} component={MusicReview} />
+      <Route path={"/admin-popout"} component={MusicReview} />
       <Route path={"/artist-of-the-week"} component={ArtistOfWeek} />
       <Route path={"/live"} component={LiveStream} />
       <Route path={"/music-wars"} component={MusicWars} />
