@@ -1486,3 +1486,9 @@
 - [x] Repair full-address autocomplete/geocoding so selected addresses populate latitude and longitude
 - [x] Add regression coverage for optional-field submission and address geocoding
 - [x] Verify the admin studio form in the browser and publish the repair
+
+## Interactive Find A Studio Map
+- [x] Add an interactive map view for saved studios with valid geocoded coordinates
+- [x] Add map markers, studio details, and selection behavior without breaking the directory
+- [x] Add regression coverage for coordinate filtering and map marker data
+- [x] Verify responsive map rendering and publish the interactive map

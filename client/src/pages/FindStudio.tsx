@@ -3,7 +3,7 @@
    Dark Editorial Theme matching Murder Mitten Media
    ============================================================ */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiteNav } from "@/components/SiteNav";
+import { MapView } from "@/components/Map";
+import { getStudioMapLocations } from "@/lib/studioMap";
 
 const IPSTACK_API_KEY = "4e752c114b52090fa0e7ad236ea145e1";
 
@@ -46,7 +48,10 @@ export default function FindStudio() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<Array<{ displayName: string; lat: string; lng: string }>>([]);
+  const [mapReady, setMapReady] = useState(false);
   const locationRequestId = useRef(0);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -175,6 +180,33 @@ export default function FindStudio() {
   };
 
   const isAdmin = user?.role === "admin";
+  const mapStudios = getStudioMapLocations(studios ?? []);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = mapStudios.map((studio) => {
+      const marker = new google.maps.Marker({
+        map: mapRef.current!,
+        position: studio.position,
+        title: studio.studioName,
+      });
+      marker.addListener("click", () => setSelectedStudio(studio));
+      return marker;
+    });
+
+    if (mapStudios.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      mapStudios.forEach((studio) => bounds.extend(studio.position));
+      mapRef.current.fitBounds(bounds, 56);
+    }
+
+    return () => {
+      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current = [];
+    };
+  }, [mapReady, studios]);
+
   const filteredStudios = studios?.filter(s =>
     s.studioName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.location.toLowerCase().includes(searchQuery.toLowerCase())
@@ -408,6 +440,30 @@ export default function FindStudio() {
             </form>
           </div>
         )}
+
+        {/* Interactive map */}
+        <section className="mb-10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+            <div>
+              <h2 className="font-['Anton'] text-2xl uppercase">Studio Map</h2>
+              <p className="text-sm text-white/50">
+                {mapStudios.length > 0
+                  ? `${mapStudios.length} studio${mapStudios.length === 1 ? "" : "s"} mapped from saved coordinates`
+                  : "Studios appear here after an address is geocoded"}
+              </p>
+            </div>
+            <MapPin className="h-5 w-5 text-red-500" />
+          </div>
+          <MapView
+            className="h-[360px] sm:h-[460px]"
+            initialCenter={{ lat: 42.3314, lng: -83.0458 }}
+            initialZoom={9}
+            onMapReady={(map) => {
+              mapRef.current = map;
+              setMapReady(true);
+            }}
+          />
+        </section>
 
         {/* Search */}
         <div className="mb-8">
