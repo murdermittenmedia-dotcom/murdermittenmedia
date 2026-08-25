@@ -22,7 +22,6 @@ import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
-import { JudgeLiveBroadcast, JudgeBroadcastViewer } from "@/components/JudgeLiveBroadcast";
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 
 // Types inferred from tRPC query
@@ -42,125 +41,7 @@ const CASHAPP = "$MittenMedia";
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
 
-type SubmitTab = "queue" | "history" | "submit" | "skip-info" | "apply-judge";
-
-// ── Apply As Judge Tab ────────────────────────────────────────
-function ApplyAsJudgeTab({ user, getLoginUrl }: { user: any; getLoginUrl: () => string }) {
-  const [reason, setReason] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const myApp = trpc.judgeApps.getMine.useQuery(undefined, { enabled: !!user });
-  const applyMutation = trpc.judgeApps.submitApplication.useMutation({
-    onSuccess: () => { setSubmitted(true); myApp.refetch(); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  if (!user) {
-    return (
-      <div className="text-center py-12 border border-white/10 bg-white/[0.02] rounded-2xl">
-        <div className="text-4xl mb-3">⚖️</div>
-        <div className="font-['Anton'] text-2xl uppercase mb-2">Apply as Judge</div>
-        <p className="text-white/40 text-sm mb-5">Login to apply to become a judge on Murder Mitten Media.</p>
-        <a href={getLoginUrl()} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-xs uppercase tracking-widest transition-all">
-          Login to Apply
-        </a>
-      </div>
-    );
-  }
-
-  if (myApp.data?.status === "pending") {
-    return (
-      <div className="text-center py-12 border border-yellow-500/30 bg-yellow-500/5 rounded-2xl max-w-lg mx-auto">
-        <div className="text-4xl mb-3">⏳</div>
-        <div className="font-['Anton'] text-2xl uppercase mb-2 text-yellow-400">Application Pending</div>
-        <p className="text-white/50 text-sm">Your judge application is under review. We'll notify you when a decision is made.</p>
-      </div>
-    );
-  }
-
-  if (myApp.data?.status === "approved") {
-    return (
-      <div className="text-center py-12 border border-green-500/30 bg-green-500/5 rounded-2xl max-w-lg mx-auto">
-        <div className="text-4xl mb-3">✅</div>
-        <div className="font-['Anton'] text-2xl uppercase mb-2 text-green-400">You're a Judge!</div>
-        <p className="text-white/50 text-sm">Your application was approved. You can now broadcast as a judge during live sessions.</p>
-      </div>
-    );
-  }
-
-  if (submitted) {
-    return (
-      <div className="text-center py-12 border border-green-500/30 bg-green-500/5 rounded-2xl max-w-lg mx-auto">
-        <div className="text-4xl mb-3">🎉</div>
-        <div className="font-['Anton'] text-2xl uppercase mb-2">Application Submitted!</div>
-        <p className="text-white/50 text-sm">We'll review your application and get back to you soon.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="border border-purple-500/30 bg-gradient-to-b from-purple-500/5 to-transparent rounded-2xl p-8 max-w-lg mx-auto">
-      <div className="text-center mb-6">
-        <div className="text-4xl mb-3">⚖️</div>
-        <h2 className="font-['Anton'] text-3xl uppercase mb-2">Apply as <span className="text-purple-400">Judge</span></h2>
-        <p className="text-white/50 text-sm">Think you have what it takes to judge tracks on Murder Mitten Media? Apply below.</p>
-      </div>
-      <div className="space-y-4">
-        <div>
-          <label className="text-white/50 text-xs uppercase tracking-wider block mb-1.5">Why should you be a judge? (Optional)</label>
-          <textarea
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            placeholder="Tell us about your music background, taste, and why you'd make a great judge..."
-            rows={4}
-            maxLength={512}
-            className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-purple-500/50 placeholder-white/20 resize-none text-sm"
-          />
-          <div className="text-white/20 text-xs text-right mt-1">{reason.length}/512</div>
-        </div>
-        <button
-          onClick={() => applyMutation.mutate({ reason: reason.trim() || undefined })}
-          disabled={applyMutation.isPending}
-          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 text-white py-4 rounded-xl font-semibold uppercase tracking-widest transition-all"
-        >
-          {applyMutation.isPending ? "Submitting..." : "Submit Application →"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Judge Broadcast Card Component (LiveKit viewer) ───────────
-function JudgeBroadcastCard({ broadcast }: { broadcast: any }) {
-  const { data: viewerData } = trpc.review.getJudgeViewerToken.useQuery(
-    { broadcastId: broadcast.id },
-    { retry: false, staleTime: 1000 * 60 * 5 }
-  );
-  if (viewerData) {
-    return (
-      <JudgeBroadcastViewer
-        roomName={viewerData.roomName}
-        livekitUrl={viewerData.livekitUrl}
-        viewerToken={viewerData.token}
-        judgeName={`Judge #${broadcast.userId}`}
-        judgeUserId={broadcast.userId}
-      />
-    );
-  }
-  return (
-    <div className="border border-green-500/30 bg-black/40 rounded-lg overflow-hidden">
-      <div className="aspect-video bg-black/60 flex items-center justify-center">
-        <div className="text-green-400/50 text-xs text-center">Connecting…</div>
-      </div>
-      <div className="p-2 border-t border-green-500/20">
-        <div className="text-white/80 text-xs font-semibold truncate">Judge #{broadcast.userId}</div>
-        <div className="text-green-400 text-[10px] flex items-center gap-1 mt-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          Live
-        </div>
-      </div>
-    </div>
-  );
-}
+type SubmitTab = "queue" | "history" | "submit" | "skip-info";
 
 // ── Helpers ───────────────────────────────────────────────────
 function extractYouTubeId(url: string): string | null {
@@ -245,11 +126,6 @@ function AdminPanel({
   const [submitPriceDollars, setSubmitPriceDollars] = useState(String((data?.state?.submitPriceCents ?? 0) / 100));
   const [skipPriceDollars, setSkipPriceDollars] = useState(String((data?.state?.skipPriceCents ?? 1500) / 100));
   const [fullSongPriceDollars, setFullSongPriceDollars] = useState(String((data?.state?.fullSongPriceCents ?? 500) / 100));
-  const { data: activeBroadcasts } = trpc.review.getActive.useQuery();
-  const forceEndBroadcast = trpc.review.forceEnd.useMutation({
-    onSuccess: () => { toast.success("Judge broadcast ended"); },
-    onError: (e: any) => toast.error("Failed to end broadcast: " + e.message),
-  });
   const requeueMutation = trpc.queue.requeue.useMutation({
     onSuccess: () => { refetch(); broadcastReviewQueueUpdated(); toast.success("Song re-queued"); },
     onError: () => toast.error("Failed to re-queue song"),
@@ -493,21 +369,6 @@ function AdminPanel({
             placeholder="Stream URL (YouTube Live / HLS)"
             className="flex-1 bg-white/5 border border-white/10 rounded-lg text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
           />
-          {currentUser?.role === "admin" && activeBroadcasts && activeBroadcasts.length > 0 && (
-            <div className="flex gap-1">
-              {activeBroadcasts.map((b: any) => (
-                <button
-                  key={b.id}
-                  onClick={() => forceEndBroadcast.mutate({ broadcastId: b.id })}
-                  disabled={forceEndBroadcast.isPending}
-                  className="flex-shrink-0 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-green-900/40 border border-green-600/50 text-green-300 hover:bg-green-900/60 transition-all"
-                  title="End judge broadcast"
-                >
-                  X Judge
-                </button>
-              ))}
-            </div>
-          )}
           <button
             onClick={() => setShowStreamSettings(v => !v)}
             className="border border-white/15 rounded-lg text-white/40 hover:text-white hover:border-white/30 px-3 transition-all flex-shrink-0"
@@ -1280,7 +1141,6 @@ export default function MusicReview() {
   const [submitted, setSubmitted] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [voiceJoined, setVoiceJoined] = useState(false);
-  const [expandedJudge, setExpandedJudge] = useState<string | null>(null);
   const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [selectedYouTube, setSelectedYouTube] = useState<{ url: string; title: string; artist: string } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -1297,50 +1157,7 @@ export default function MusicReview() {
 
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const isJudge = user?.role === "judge";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
-  const [showOBSSetup, setShowOBSSetup] = useState(false);
-  const [myBroadcast, setMyBroadcast] = useState<any>(null);
-  const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
-  const [livekitBroadcastData, setLivekitBroadcastData] = useState<{ broadcastId: number; token: string; roomName: string; livekitUrl: string } | null>(null);
-  
-  // Fetch judge broadcasts
-  const { data: broadcasts } = trpc.review.getActive.useQuery(undefined, { refetchInterval: 3000 });
-  const { data: myBroadcastData } = trpc.review.getMyBroadcast.useQuery(undefined, { enabled: isJudge || isAdmin });
-  const startBroadcast = trpc.review.startBroadcast.useMutation();
-  const endBroadcast = trpc.review.endBroadcast.useMutation();
-  const getJudgeToken = trpc.review.getJudgeToken.useMutation();
-
-  const startJudgeBroadcast = useCallback(async () => {
-    try {
-      const result = await startBroadcast.mutateAsync();
-      setMyBroadcast(result.broadcast);
-      setLivekitBroadcastData({
-        broadcastId: result.broadcast.id,
-        token: result.token,
-        roomName: result.broadcast.roomName,
-        livekitUrl: result.livekitUrl,
-      });
-    } catch (error: any) {
-      toast.error(error?.message ?? "Unable to start judge broadcast");
-    }
-  }, [startBroadcast]);
-  
-  const broadcastsRef = useRef<any[]>([]);
-  useEffect(() => {
-    if (broadcasts && JSON.stringify(broadcasts) !== JSON.stringify(broadcastsRef.current)) {
-      broadcastsRef.current = broadcasts;
-      setActiveBroadcasts(broadcasts);
-    }
-  }, [broadcasts]);
-  
-  const myBroadcastRef = useRef<any>(null);
-  useEffect(() => {
-    if (myBroadcastData && JSON.stringify(myBroadcastData) !== JSON.stringify(myBroadcastRef.current)) {
-      myBroadcastRef.current = myBroadcastData;
-      setMyBroadcast(myBroadcastData);
-    }
-  }, [myBroadcastData]);
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
@@ -1832,11 +1649,6 @@ export default function MusicReview() {
     return ta - tb;
   });
 
-  const activeEntries = activeBroadcasts ?? [];
-
-  // ── Expanded judge state ──────────────────────────────────────
-  const expandedBroadcast = expandedJudge ? activeEntries.find((b: any) => String(b.id) === expandedJudge) : null;
-
   return (
     <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
@@ -1889,34 +1701,6 @@ export default function MusicReview() {
               📺 Open Admin Panel
             </button>
           </div>
-        )}
-
-        {(isJudge || isAdmin) && !isAdminPopout && (
-          <section className="rounded-2xl border border-green-500/25 bg-gradient-to-br from-green-950/20 via-[#0d0d0d] to-[#080808] p-4 shadow-[0_0_30px_rgba(34,197,94,0.06)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <div>
-                <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-[0.18em]"><Mic className="w-4 h-4" /> Judge broadcast</div>
-                <p className="text-white/40 text-xs mt-1">Share your native mic and camera with the live review room.</p>
-              </div>
-              {!livekitBroadcastData && (
-                <button onClick={startJudgeBroadcast} disabled={startBroadcast.isPending} className="rounded-lg bg-green-600 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-green-500 disabled:opacity-50">
-                  {startBroadcast.isPending ? "Starting…" : myBroadcast ? "Reconnect broadcast" : "Go live as judge"}
-                </button>
-              )}
-            </div>
-            {livekitBroadcastData && (
-              <JudgeLiveBroadcast
-                broadcastId={livekitBroadcastData.broadcastId}
-                token={livekitBroadcastData.token}
-                livekitUrl={livekitBroadcastData.livekitUrl}
-                onStop={() => {
-                  setLivekitBroadcastData(null);
-                  setMyBroadcast(null);
-                  void refetch();
-                }}
-              />
-            )}
-          </section>
         )}
 
         {/* The pop-out uses the same tested control board in its own window. */}
@@ -2137,48 +1921,6 @@ export default function MusicReview() {
           </div>
         )}
 
-        {/* ── JUDGE CAMERAS ──────────────────────────────────── */}
-        {activeEntries.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Video className="w-4 h-4 text-white/40" />
-              <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Judge Cameras</span>
-              <span className="text-white/20 text-xs">— click to expand</span>
-            </div>
-
-            {/* Expanded judge view */}
-            {expandedBroadcast && (
-              <div className="mb-4 rounded-2xl overflow-hidden border border-green-500/40 bg-black/60 relative">
-                <button
-                  onClick={() => setExpandedJudge(null)}
-                  className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center hover:bg-black/80 transition-colors"
-                >
-                  <X className="w-4 h-4 text-white/70" />
-                </button>
-                <JudgeBroadcastCard broadcast={expandedBroadcast} />
-              </div>
-            )}
-
-            {/* Judge camera thumbnails */}
-            <div className={`grid gap-3 ${activeEntries.length === 1 ? "grid-cols-1 max-w-sm" : activeEntries.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
-              {activeEntries.map((broadcast: any) => (
-                <button
-                  key={broadcast.id}
-                  onClick={() => setExpandedJudge(expandedJudge === String(broadcast.id) ? null : String(broadcast.id))}
-                  className={`relative rounded-xl overflow-hidden border transition-all duration-200 cursor-pointer group ${expandedJudge === String(broadcast.id) ? "border-green-500/60 ring-1 ring-green-500/30" : "border-green-500/20 hover:border-green-500/50"}`}
-                >
-                  <JudgeBroadcastCard broadcast={broadcast} />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-3 py-1 text-white/80 text-xs font-semibold">
-                      {expandedJudge === String(broadcast.id) ? "Collapse" : "Expand"}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ── LIVE CHAT ───────────────────────────────────────── */}
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Chat header */}
@@ -2297,7 +2039,6 @@ export default function MusicReview() {
               { id: "queue", label: "Queue", icon: "📋" },
               { id: "history", label: "History", icon: "📜" },
               { id: "skip-info", label: "Skip Track", icon: "⏭️" },
-              { id: "apply-judge", label: "Apply as Judge", icon: "⚖️" },
             ] as const).map(t => (
               <button
                 key={t.id}
@@ -2612,11 +2353,6 @@ export default function MusicReview() {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* ── APPLY AS JUDGE TAB ── */}
-            {tab === "apply-judge" && (
-              <ApplyAsJudgeTab user={user} getLoginUrl={getLoginUrl} />
             )}
 
           </div>

@@ -1514,3 +1514,9 @@
 - [x] Keep studio name and all other form fields easy to submit without unintended required-field validation
 - [x] Add regression coverage for a minimal studio payload and optional-field normalization
 - [x] Verify the admin upload flow with the geocoded address shown in the report and publish the repair
+
+## Temporary Music Review Judge Panel Removal
+- [x] Remove the judge broadcast panel and judge-specific actions from the Music Review page
+- [x] Remove broken judge panel wiring without disrupting radio, queue, chat, or review controls
+- [x] Add regression coverage for the simplified Music Review render state
+- [x] Verify the simplified page and publish the judge-panel removal
