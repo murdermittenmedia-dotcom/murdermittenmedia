@@ -1508,3 +1508,9 @@
 - [x] Keep Cash App as a manual payment option with the configured handle and receipt confirmation
 - [x] Add regression coverage for viewer visibility and skip payment mapping
 - [x] Verify payment redirects and viewer-count behavior, then publish the update
+
+## Find A Studio Optional Upload Repair
+- [x] Normalize every optional studio field before database insert so blank values never become invalid nulls
+- [x] Keep studio name and all other form fields easy to submit without unintended required-field validation
+- [x] Add regression coverage for a minimal studio payload and optional-field normalization
+- [x] Verify the admin upload flow with the geocoded address shown in the report and publish the repair

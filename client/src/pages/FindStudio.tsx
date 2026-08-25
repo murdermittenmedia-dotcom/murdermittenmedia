@@ -128,26 +128,21 @@ export default function FindStudio() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.studioName.trim()) {
-      toast.error("Studio name is required");
-      return;
-    }
-
     createStudioMutation.mutate({
-      studioName: formData.studioName,
-      location: formData.location || "",
-      latitude: formData.latitude || "",
-      longitude: formData.longitude || "",
-      engineers: formData.engineers.trim() || undefined,
-      contactInfo: formData.contactInfo.trim() || undefined,
-      instagramHandle: formData.instagramHandle.trim() || undefined,
-      twitterHandle: formData.twitterHandle.trim() || undefined,
-      facebookUrl: formData.facebookUrl.trim() || undefined,
-      websiteUrl: formData.websiteUrl.trim() || undefined,
-      youtubeChannel: formData.youtubeChannel.trim() || undefined,
-      tiktokHandle: formData.tiktokHandle.trim() || undefined,
-      description: formData.description.trim() || undefined,
-      imageUrl: uploadedImages[0] || undefined,
+      studioName: formData.studioName.trim(),
+      location: formData.location.trim(),
+      latitude: formData.latitude.trim(),
+      longitude: formData.longitude.trim(),
+      engineers: formData.engineers.trim(),
+      contactInfo: formData.contactInfo.trim(),
+      instagramHandle: formData.instagramHandle.trim(),
+      twitterHandle: formData.twitterHandle.trim(),
+      facebookUrl: formData.facebookUrl.trim(),
+      websiteUrl: formData.websiteUrl.trim(),
+      youtubeChannel: formData.youtubeChannel.trim(),
+      tiktokHandle: formData.tiktokHandle.trim(),
+      description: formData.description.trim(),
+      imageUrl: uploadedImages[0] || "",
     });
   };
 
@@ -255,7 +250,7 @@ export default function FindStudio() {
               {/* Studio Name */}
               <div>
                 <label className="text-sm uppercase tracking-widest text-white/60 mb-2 block">
-                  Studio Name *
+                  Studio Name (optional)
                 </label>
                 <Input
                   value={formData.studioName}

@@ -12,6 +12,7 @@ import { validateFreeShippingPromoCode } from "./promo-codes";
 import { getMusicLinkMetadata } from "./music-link-metadata";
 import { geocodeStudioAddress } from "./studio-geocode";
 import { getSkipLinePriceCents, getSkipLineLabel } from "./skip-payments";
+import { normalizeStudioInput } from "./studio-input";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
@@ -197,7 +198,7 @@ const studiosRouter = router({
   // Admin procedures
   create: protectedProcedure
     .input(z.object({
-      studioName: z.string().trim().min(1),
+      studioName: z.string().nullish(),
       location: z.string().nullish(),
       latitude: z.string().nullish(),
       longitude: z.string().nullish(),
@@ -214,17 +215,15 @@ const studiosRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const location = input.location?.trim() ?? "";
-      const latitude = input.latitude?.trim() ?? "";
-      const longitude = input.longitude?.trim() ?? "";
-      const geocoded = location && (!latitude || !longitude) ? await geocodeStudioAddress(location) : [];
+      const normalized = normalizeStudioInput(input);
+      const geocoded = normalized.location && (!normalized.latitude || !normalized.longitude)
+        ? await geocodeStudioAddress(normalized.location)
+        : [];
       const firstMatch = geocoded[0];
       return createStudio({
-        ...input,
-        location,
-        latitude: latitude || firstMatch?.lat || "",
-        longitude: longitude || firstMatch?.lng || "",
-        contactInfo: input.contactInfo?.trim() ?? "",
+        ...normalized,
+        latitude: normalized.latitude || firstMatch?.lat || "",
+        longitude: normalized.longitude || firstMatch?.lng || "",
       });
     }),
 
