@@ -1525,8 +1525,16 @@
 - [x] Audit current admin routes, permissions, data sources, realtime listeners, audio state, and payment flows
 - [x] Build a responsive admin shell with a wide desktop sidebar, tablet collapse, mobile drawer, sticky top bar, and persistent bottom player
 - [x] Add a real-data admin overview with live status, current track, queue, pending submissions, paid reviews, viewers, activity, and errors
-- [ ] Redesign the Music Review workspace into readable queue, playback, and settings columns without replacing real backend behavior
-- [ ] Improve action hierarchy, confirmations, loading/error feedback, and accessibility across admin controls
-- [ ] Preserve and verify member, rewards, moderation, orders, payments, radio, and settings sections using existing functionality
+- [x] Redesign the Music Review workspace into readable queue, playback, and settings columns without replacing real backend behavior
+- [x] Improve action hierarchy, confirmations, loading/error feedback, and accessibility across admin controls
+- [x] Preserve and verify member, rewards, moderation, orders, payments, radio, and settings sections using existing functionality
 - [x] Add regression coverage and verify authenticated desktop, tablet, and mobile workflows
-- [ ] Publish the verified admin redesign and provide a changed-file and workflow summary
+- [x] Publish the verified admin redesign and provide a changed-file and workflow summary
+
+## Next Admin Control Board Milestone
+- [x] Audit the live Music Review admin controls and their real mutation handlers
+- [x] Group playback, review reactions, viewer settings, and danger actions with clear labels and helper text
+- [x] Add pending, success, error, disabled, and confirmation states without duplicating backend requests
+- [x] Improve admin navigation destinations and operational summaries using existing data
+- [x] Add regression coverage and verify the control board on desktop, tablet, and mobile
+- [x] Publish the next verified admin control-board milestone

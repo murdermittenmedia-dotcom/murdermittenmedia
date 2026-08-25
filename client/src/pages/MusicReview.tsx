@@ -348,10 +348,21 @@ function AdminPanel({
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-4">
+        <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="text-white text-xs font-bold uppercase tracking-wider">Live session controls</p><p className="mt-1 text-[10px] text-white/40">Set the room state first, then manage playback and audience tools below.</p></div>
+            <span className={`shrink-0 text-[10px] font-bold uppercase tracking-widest ${isLive ? "text-green-400" : "text-white/35"}`}>{isLive ? "On air" : "Offline"}</span>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 pt-3">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-300/70">Broadcast state</div>
         {/* ── Row 1: Go Live + Stream URL ── */}
         <div className="flex gap-2 items-stretch">
           <button
+            type="button"
+            aria-label={isLive ? "End live session" : "Start live session"}
             onClick={handleGoLive}
             disabled={setLive.isPending}
             className={`flex-shrink-0 px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-lg transition-all ${
@@ -370,6 +381,8 @@ function AdminPanel({
             className="flex-1 bg-white/5 border border-white/10 rounded-lg text-white text-xs px-3 py-2 focus:outline-none focus:border-red-600/50 placeholder-white/20 min-w-0"
           />
           <button
+            type="button"
+            aria-label="Toggle stream settings"
             onClick={() => setShowStreamSettings(v => !v)}
             className="border border-white/15 rounded-lg text-white/40 hover:text-white hover:border-white/30 px-3 transition-all flex-shrink-0"
             title="More stream settings"
@@ -403,7 +416,11 @@ function AdminPanel({
           </div>
         )}
 
+        </div>
+
         {/* ── Row 2: Mic / Camera / Mic→Radio ── */}
+        <div className="border-t border-white/10 pt-3">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300/70">Audio routing</div>
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={audioRoom.toggleMic}
@@ -452,7 +469,11 @@ function AdminPanel({
           </button>
         </div>
 
+        </div>
+
         {/* ── Reaction triggers (admin only) ── */}
+        <div className="border-t border-white/10 pt-3">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-orange-300/70">Audience reactions</div>
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => triggerReaction("hype", 3000)}
@@ -498,6 +519,8 @@ function AdminPanel({
           >
             ⏭️ Next
           </button>
+        </div>
+
         </div>
 
         {/* ── Chat & Viewer Controls ── */}
