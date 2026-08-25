@@ -26,7 +26,18 @@ import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string | null; paidSubmissionType?: "reentry5" | "reentry10" | "skip" | null };
-type QueueState = { id: number; isLive: boolean; liveMessage: string | null; streamUrl: string | null; currentPlayingId: number | null; updatedAt: Date };
+type QueueState = {
+  id: number;
+  isLive: boolean;
+  liveMessage: string | null;
+  streamUrl: string | null;
+  currentPlayingId: number | null;
+  playbackMode?: "90sec" | "full" | "paid_only" | null;
+  submitPriceCents?: number | null;
+  skipPriceCents?: number | null;
+  fullSongPriceCents?: number | null;
+  updatedAt: Date;
+};
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
 
 import {
@@ -1647,10 +1658,20 @@ export default function MusicReview() {
     : null;
   const fire = reactionCounts?.fire ?? activeTrackData?.fireCount ?? 0;
   const trash = reactionCounts?.trash ?? activeTrackData?.trashCount ?? 0;
-  // Unified active track — liveReviewActive (from socket) takes priority,
-  // falls back to currentPlaying from DB so the Now Playing box always shows
-  const activeTrack = liveReviewActive
-    ? liveReviewActive
+  // Normalize socket and database track data into the render contract. A stopped
+  // socket event carries { submissionId: null } and must not render a poll/player.
+  const activeTrack = liveReviewActive?.submissionId != null
+    ? {
+          submissionId: liveReviewActive.submissionId,
+          userId: liveReviewActive.userId ?? null,
+          artistName: liveReviewActive.artistName ?? "Unknown Artist",
+          songTitle: liveReviewActive.songTitle ?? "Untitled Submission",
+          audioUrl: liveReviewActive.audioUrl ?? null,
+          youtubeUrl: liveReviewActive.youtubeUrl ?? null,
+          submissionType: liveReviewActive.submissionType === "youtube" ? "youtube" as const : "file" as const,
+          fileKey: liveReviewActive.fileKey ?? null,
+          fileUrl: liveReviewActive.fileUrl ?? liveReviewActive.audioUrl ?? null,
+        }
     : currentPlaying
       ? {
           submissionId: currentPlaying.id,
@@ -1665,10 +1686,10 @@ export default function MusicReview() {
         }
       : null;
 
-  // ── Merged chat messages (real + fake) sorted by timestamp ───
+  // ── Merged chat messages (real + fake) sorted chronologically ───
   const allMessages = [...chatMessages, ...fakeMessages].sort((a, b) => {
-    const ta = typeof a.timestamp === "number" ? a.timestamp : new Date(a.timestamp).getTime();
-    const tb = typeof b.timestamp === "number" ? b.timestamp : new Date(b.timestamp).getTime();
+    const ta = "timestamp" in a ? a.timestamp : new Date(a.createdAt).getTime();
+    const tb = "timestamp" in b ? b.timestamp : new Date(b.createdAt).getTime();
     return ta - tb;
   });
 
@@ -1890,20 +1911,22 @@ export default function MusicReview() {
               {activeTrack.submissionType === "youtube" && activeTrack.youtubeUrl ? (
                 <div className="rounded-xl overflow-hidden mb-5">
                   <SyncedYouTubePlayer
-                    videoUrl={activeTrack.youtubeUrl}
-                    ytSyncState={ytSyncState}
+                    videoId={extractYouTubeId(activeTrack.youtubeUrl) ?? ""}
+                    submissionId={activeTrack.submissionId}
+                    initialCurrentTime={ytSyncState?.currentTime ?? null}
+                    initialUpdatedAt={ytSyncState?.updatedAt ?? null}
                     isAdmin={isAdmin}
-                    onSeek={isAdmin ? (t) => broadcastRadioSeek(t) : undefined}
-                    onPause={isAdmin ? (t) => broadcastRadioPause(t) : undefined}
-                    onResume={isAdmin ? (t) => broadcastRadioResume(t) : undefined}
                   />
                 </div>
               ) : activeTrack.submissionType === "file" && activeTrack.fileUrl ? (
                 <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-xl px-5 py-4 mb-5">
                   <AudioPlayButton
                     url={activeTrack.fileUrl}
-                    songTitle={activeTrack.songTitle}
-                    artistName={activeTrack.artistName}
+                    title={activeTrack.songTitle}
+                    artist={activeTrack.artistName}
+                    sourcePage="Music Review"
+                    submissionId={activeTrack.submissionId}
+                    artistUserId={activeTrack.userId ?? undefined}
                     size="lg"
                   />
                   <div>
@@ -1927,6 +1950,7 @@ export default function MusicReview() {
                     myReaction={myReaction?.reaction ?? null}
                     onVote={(reaction) => {
                       if (!user) { toast.error("Login to vote"); return; }
+                      if (pollId == null) return;
                       reactMutation.mutate({ submissionId: pollId, reaction });
                     }}
                     isPending={reactMutation.isPending}

@@ -54,6 +54,8 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   isPaidSubmission: boolean("isPaidSubmission").default(false).notNull(),
   paidSubmissionType: mysqlEnum("paidSubmissionType", ["reentry5", "reentry10", "skip"]),  // reentry5=$5, reentry10=$10, skip=$15+skip
   paidSubmissionConfirmed: boolean("paidSubmissionConfirmed").default(false).notNull(),
+  // Optional manual payment proof for paid/re-entry submissions (Cash App or other method).
+  cashappPaymentReceiptUrl: varchar("cashappPaymentReceiptUrl", { length: 512 }),
   position: int("position").default(0).notNull(),
   notes: text("notes"),
   // Career reaction totals (incremented on each vote)

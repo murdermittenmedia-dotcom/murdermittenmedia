@@ -1546,3 +1546,10 @@
 - [x] Improve payment loading, retry, failure, and approval feedback without exposing secrets
 - [x] Add regression coverage for payment state transitions and protected access
 - [ ] Verify purchase-to-access flows and publish the monetization completion milestone
+
+## August 2026 Hardening Pass
+- [x] Fix Promo return-verification React import and centralize Stripe promo package prices and labels
+- [x] Add optional review submission Cash App receipt storage and apply the non-destructive database migration
+- [x] Align Music Review with synchronized YouTube and audio-player contracts, including stopped-track handling
+- [x] Resolve actionable client and server TypeScript diagnostics across admin, studio, links, navigation, and database helpers
+- [x] Run the full Vitest suite, production build, and targeted Promo/Music Review/admin-popout visual verification

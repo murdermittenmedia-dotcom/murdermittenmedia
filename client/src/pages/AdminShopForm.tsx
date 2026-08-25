@@ -287,7 +287,7 @@ export default function AdminShopForm() {
   };
 
   const generateAllVariants = () => {
-    const selectedColors = [...new Set(variants.map(v => v.color))];
+    const selectedColors = Array.from(new Set(variants.map(v => v.color)));
     const colorsToUse = selectedColors.length > 0 ? selectedColors : ["Black", "White"];
     const rows: VariantRow[] = [];
     for (const color of colorsToUse) {

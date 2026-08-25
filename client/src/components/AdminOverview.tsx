@@ -96,7 +96,7 @@ export function AdminOverview({ onNavigate }: { onNavigate: (destination: AdminO
           </div>
           <div className="mt-6 flex flex-wrap gap-2 text-xs text-white/45">
             <span className="rounded-full border border-white/10 px-3 py-1.5">{queue?.state?.isLive ? "Shared playback active" : "Private preview / offline"}</span>
-            <span className="rounded-full border border-white/10 px-3 py-1.5">{submissions.length} queue items</span>
+            <span className="rounded-full border border-white/10 px-3 py-1.5">{queue?.submissions?.length ?? 0} queue items</span>
           </div>
         </button>
 

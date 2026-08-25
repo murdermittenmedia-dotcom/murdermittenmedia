@@ -768,14 +768,14 @@ export function useFakeLiveChat({
   }, []);
 
   const { data: allUsers } = trpc.admin.listUsers.useQuery(
-    { limit: 100, offset: 0 },
+    { limit: 100 },
     { staleTime: 1000 * 60 * 5, retry: false }
   );
 
   // Build chat pool: real users with names + some User-style accounts
   useEffect(() => {
     const realNameUsers = (allUsers ?? []).filter(u => {
-      const name = u.artistName || u.username || "";
+      const name = u.artistName || u.name || "";
       // Only regular users — exclude admins and judges
       return name.trim().length > 0 && u.role === "user";
     });

@@ -173,11 +173,11 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                   <div className="space-y-0">
                     {ALL_PAGES.map((section) => (
                       <div key={section.category} className={`border-b border-white/5 last:border-0 ${
-                        section.accent ? "bg-red-950/10" : ""
+                        ("accent" in section && section.accent) ? "bg-red-950/10" : ""
                       }`}>
                         {/* Category header */}
                         <div className={`px-4 py-2 text-[9px] font-black uppercase tracking-[0.3em] ${
-                          section.accent
+                          ("accent" in section && section.accent)
                             ? "text-red-500 bg-red-950/20"
                             : "text-white/30 bg-white/[0.02]"
                         }`}>
@@ -309,7 +309,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
             {ALL_PAGES.map((section) => (
               <div key={section.category} className="space-y-1">
                 <div className={`px-3 py-2 text-[9px] font-black uppercase tracking-[0.3em] ${
-                  section.accent ? "text-red-500" : "text-white/30"
+                  ("accent" in section && section.accent) ? "text-red-500" : "text-white/30"
                 }`}>
                   {section.category}
                 </div>

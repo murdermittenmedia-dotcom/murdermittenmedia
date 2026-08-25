@@ -204,7 +204,7 @@ export default function FindStudio() {
 
   const filteredStudios = studios?.filter(s =>
     s.studioName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.location.toLowerCase().includes(searchQuery.toLowerCase())
+    (s.location ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
   return (

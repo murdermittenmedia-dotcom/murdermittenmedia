@@ -8,8 +8,15 @@ export type LinkPreviewDraft = {
   thumbnailUrl: string;
 };
 
-export type LinkPreviewItem = LinkPreviewDraft & {
+export type LinkPreviewItem = {
   id: number;
+  type: string;
+  title: string;
+  url?: string | null;
+  subtitle?: string | null;
+  platform?: string | null;
+  icon?: string | null;
+  thumbnailUrl?: string | null;
   isVisible: boolean;
 };
 

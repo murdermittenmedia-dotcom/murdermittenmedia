@@ -560,10 +560,10 @@ export default function AdminGoldenWheel() {
                       <tr key={order.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                         <td className="px-4 py-3 font-mono text-xs text-white/70">{order.id}</td>
                         <td className="px-4 py-3 font-mono text-xs text-white/40 max-w-[160px] truncate">
-                          {order.stripeSessionId}
+                          {order.stripeCheckoutSessionId}
                         </td>
                         <td className="px-4 py-3 text-white">
-                          ${((order.amountTotal ?? 0) / 100).toFixed(2)}
+                          ${((order.totalCents ?? 0) / 100).toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2 py-1 rounded-full border ${
