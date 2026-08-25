@@ -3,7 +3,7 @@
    Dark Editorial Theme matching Murder Mitten Media
    ============================================================ */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -45,7 +45,8 @@ export default function FindStudio() {
   const [selectedStudio, setSelectedStudio] = useState<any>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+  const [locationSuggestions, setLocationSuggestions] = useState<Array<{ displayName: string; lat: string; lng: string }>>([]);
+  const locationRequestId = useRef(0);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -65,6 +66,7 @@ export default function FindStudio() {
   });
 
   const { data: studios, refetch: refetchStudios } = trpc.studios.getAll.useQuery();
+  const geocodeLocation = trpc.studios.geocode.useMutation();
   const createStudioMutation = trpc.studios.create.useMutation({
     onSuccess: () => {
       toast.success("Studio added!");
@@ -94,47 +96,27 @@ export default function FindStudio() {
   });
 
   const handleLocationInput = async (value: string) => {
-    setFormData({ ...formData, location: value });
-    
-    if (value.length > 2) {
-      try {
-        // Use OpenCage Geocoding API (free alternative to IPStack for geocoding)
-        // For now, use a simple approach: geocode via nominatim (free, open-source)
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&limit=5`
-        );
-        
-        if (response.ok) {
-          const results = await response.json();
-          if (results.length > 0) {
-            const suggestions = results.map((result: any) => ({
-              city: result.display_name,
-              lat: result.lat,
-              lng: result.lon,
-            }));
-            setLocationSuggestions(suggestions);
-          } else {
-            setLocationSuggestions([]);
-          }
-        } else {
-          setLocationSuggestions([]);
-        }
-      } catch (error) {
-        console.error("Geocoding error:", error);
-        setLocationSuggestions([]);
-      }
-    } else {
-      setLocationSuggestions([]);
+    const requestId = ++locationRequestId.current;
+    setFormData((current) => ({ ...current, location: value, latitude: "", longitude: "" }));
+    setLocationSuggestions([]);
+    if (value.trim().length < 3) return;
+
+    try {
+      const results = await geocodeLocation.mutateAsync({ query: value.trim() });
+      if (requestId === locationRequestId.current) setLocationSuggestions(results);
+    } catch (error) {
+      if (requestId === locationRequestId.current) setLocationSuggestions([]);
+      console.error("Geocoding error:", error);
     }
   };
 
-  const handleLocationSelect = (city: any) => {
-    setFormData({
-      ...formData,
-      location: city.city,
-      latitude: String(city.lat),
-      longitude: String(city.lng),
-    });
+  const handleLocationSelect = (suggestion: { displayName: string; lat: string; lng: string }) => {
+    setFormData((current) => ({
+      ...current,
+      location: suggestion.displayName,
+      latitude: suggestion.lat,
+      longitude: suggestion.lng,
+    }));
     setLocationSuggestions([]);
   };
 
@@ -151,16 +133,16 @@ export default function FindStudio() {
       location: formData.location || "",
       latitude: formData.latitude || "",
       longitude: formData.longitude || "",
-      engineers: formData.engineers || null,
-      contactInfo: formData.contactInfo || null,
-      instagramHandle: formData.instagramHandle || null,
-      twitterHandle: formData.twitterHandle || null,
-      facebookUrl: formData.facebookUrl || null,
-      websiteUrl: formData.websiteUrl || null,
-      youtubeChannel: formData.youtubeChannel || null,
-      tiktokHandle: formData.tiktokHandle || null,
-      description: formData.description || null,
-      imageUrl: uploadedImages[0] || null,
+      engineers: formData.engineers.trim() || undefined,
+      contactInfo: formData.contactInfo.trim() || undefined,
+      instagramHandle: formData.instagramHandle.trim() || undefined,
+      twitterHandle: formData.twitterHandle.trim() || undefined,
+      facebookUrl: formData.facebookUrl.trim() || undefined,
+      websiteUrl: formData.websiteUrl.trim() || undefined,
+      youtubeChannel: formData.youtubeChannel.trim() || undefined,
+      tiktokHandle: formData.tiktokHandle.trim() || undefined,
+      description: formData.description.trim() || undefined,
+      imageUrl: uploadedImages[0] || undefined,
     });
   };
 
@@ -272,7 +254,7 @@ export default function FindStudio() {
                           onClick={() => handleLocationSelect(suggestion)}
                           className="w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-sm text-white/80"
                         >
-                          {suggestion.city}
+                          {suggestion.displayName}
                         </button>
                       ))}
                     </div>

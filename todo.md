@@ -1480,3 +1480,9 @@
 - [x] Preserve Spotify, Apple Music, and unsupported-link behavior
 - [x] Add YouTube MiniPlayer regression coverage and validate mobile rendering
 - [x] Publish the YouTube MiniPlayer enhancement checkpoint
+
+## Find A Studio Form Repair
+- [x] Normalize optional blank studio fields before submit so omitted values satisfy server validation
+- [x] Repair full-address autocomplete/geocoding so selected addresses populate latitude and longitude
+- [x] Add regression coverage for optional-field submission and address geocoding
+- [x] Verify the admin studio form in the browser and publish the repair

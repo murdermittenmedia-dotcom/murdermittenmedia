@@ -10,6 +10,7 @@ import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
 import { getMusicLinkMetadata } from "./music-link-metadata";
+import { geocodeStudioAddress } from "./studio-geocode";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
@@ -142,6 +143,10 @@ import {
 
 const studiosRouter = router({
   // Public procedures
+  geocode: publicProcedure
+    .input(z.object({ query: z.string().min(3) }))
+    .mutation(async ({ input }) => geocodeStudioAddress(input.query)),
+
   getAll: publicProcedure
     .query(async () => {
       return getAllStudios();
@@ -191,24 +196,35 @@ const studiosRouter = router({
   // Admin procedures
   create: protectedProcedure
     .input(z.object({
-      studioName: z.string().min(1),
-      location: z.string().min(1),
-      latitude: z.string(),
-      longitude: z.string(),
-      engineers: z.string().optional(),
-      contactInfo: z.string().min(1),
-      instagramHandle: z.string().optional(),
-      twitterHandle: z.string().optional(),
-      facebookUrl: z.string().optional(),
-      websiteUrl: z.string().optional(),
-      youtubeChannel: z.string().optional(),
-      tiktokHandle: z.string().optional(),
-      description: z.string().optional(),
-      imageUrl: z.string().optional(),
+      studioName: z.string().trim().min(1),
+      location: z.string().nullish(),
+      latitude: z.string().nullish(),
+      longitude: z.string().nullish(),
+      engineers: z.string().nullish(),
+      contactInfo: z.string().nullish(),
+      instagramHandle: z.string().nullish(),
+      twitterHandle: z.string().nullish(),
+      facebookUrl: z.string().nullish(),
+      websiteUrl: z.string().nullish(),
+      youtubeChannel: z.string().nullish(),
+      tiktokHandle: z.string().nullish(),
+      description: z.string().nullish(),
+      imageUrl: z.string().nullish(),
     }))
     .mutation(async ({ input, ctx }) => {
       if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      return createStudio(input);
+      const location = input.location?.trim() ?? "";
+      const latitude = input.latitude?.trim() ?? "";
+      const longitude = input.longitude?.trim() ?? "";
+      const geocoded = location && (!latitude || !longitude) ? await geocodeStudioAddress(location) : [];
+      const firstMatch = geocoded[0];
+      return createStudio({
+        ...input,
+        location,
+        latitude: latitude || firstMatch?.lat || "",
+        longitude: longitude || firstMatch?.lng || "",
+        contactInfo: input.contactInfo?.trim() ?? "",
+      });
     }),
 
   update: protectedProcedure
