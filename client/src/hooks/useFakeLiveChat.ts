@@ -712,6 +712,7 @@ export function useFakeLiveChat({
   emitChatControls,
 }: UseFakeLiveChatOptions = {}) {
   const [viewerCount, setViewerCount] = useState(50);
+  const [viewerCountVisible, setViewerCountVisible] = useState(false);
   const [fakeMessages, setFakeMessages] = useState<FakeChatMessage[]>([]);
   const [triggeredReaction, setTriggeredReaction] = useState<ReactionType | null>(null);
   const [chatPool, setChatPool] = useState<any[]>([]);
@@ -906,6 +907,7 @@ export function useFakeLiveChat({
     if (data.ghostFireIntervalSec !== undefined) setGhostFireIntervalSec(data.ghostFireIntervalSec);
     if (data.ghostTrashIntervalSec !== undefined) setGhostTrashIntervalSec(data.ghostTrashIntervalSec);
     if (data.viewerCount !== undefined) setViewerCount(data.viewerCount);
+    if (data.viewerCountVisible !== undefined) setViewerCountVisible(data.viewerCountVisible);
   }, []);
 
   // Admin: broadcast chat controls whenever they change
@@ -914,6 +916,8 @@ export function useFakeLiveChat({
 
   return {
     viewerCount,
+    viewerCountVisible,
+    setViewerCountVisible,
     fakeMessages,
     triggerReaction,
     triggeredReaction,

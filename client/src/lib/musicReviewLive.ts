@@ -6,6 +6,10 @@ export function shouldEndJudgeBroadcast(connectionState: RoomConnectionState): b
   return TERMINAL_ROOM_STATES.has(connectionState);
 }
 
+export function shouldShowViewerCount(isLive: boolean, viewerCountVisible: boolean): boolean {
+  return isLive && viewerCountVisible;
+}
+
 export function shouldEnableMixedRadioAudio({
   isAdmin,
   hasRadioTrack,

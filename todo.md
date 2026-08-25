@@ -1500,3 +1500,11 @@
 - [x] Redesign the Music Review live-room layout for clear judge, radio, reactions, chat, and queue states
 - [x] Add regression coverage for disconnect cleanup, mixed audio state, and control behavior
 - [x] Verify the live room in the browser and publish the repair
+
+## Music Review Viewer Count and Skip Payments
+- [x] Make the fake viewer count hidden by default when review live mode is off
+- [x] Add an admin toggle to show or hide the viewer count while live
+- [x] Add a dedicated Stripe checkout path for $5, $10, and $20 skip-line options
+- [x] Keep Cash App as a manual payment option with the configured handle and receipt confirmation
+- [x] Add regression coverage for viewer visibility and skip payment mapping
+- [x] Verify payment redirects and viewer-count behavior, then publish the update

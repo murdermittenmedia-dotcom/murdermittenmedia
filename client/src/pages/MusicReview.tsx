@@ -15,6 +15,7 @@ import { useChat, type LiveReviewActiveItem, type LiveReviewPlayback } from "@/h
 import { useAudioRoom } from "@/hooks/useAudioRoom";
 import { useVideoRoom } from "@/hooks/useVideoRoom";
 import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
+import { shouldShowViewerCount } from "@/lib/musicReviewLive";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
@@ -188,7 +189,7 @@ function AdminPanel({
   commentIntervalMs, setCommentIntervalMs, viewerMin, setViewerMin, viewerMax, setViewerMax,
   ghostFireCount, setGhostFireCount, ghostTrashCount, setGhostTrashCount,
   ghostFireIntervalSec, setGhostFireIntervalSec, ghostTrashIntervalSec, setGhostTrashIntervalSec,
-  sentimentBias, setSentimentBias,
+  sentimentBias, setSentimentBias, viewerCountVisible, setViewerCountVisible,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -222,6 +223,8 @@ function AdminPanel({
   setGhostTrashIntervalSec: (v: number) => void;
   sentimentBias: number;
   setSentimentBias: (v: number) => void;
+  viewerCountVisible: boolean;
+  setViewerCountVisible: (v: boolean) => void;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -855,6 +858,21 @@ function AdminPanel({
               </div>
             </div>
           </div>
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+            <div>
+              <div className="text-white/70 text-[10px] uppercase tracking-wider font-semibold">Viewer count display</div>
+              <div className="text-white/30 text-[10px] mt-0.5">Show the aesthetic viewer number only while the review is live.</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewerCountVisible(!viewerCountVisible)}
+              className={`relative h-6 w-11 rounded-full border transition-colors ${viewerCountVisible ? "border-red-500 bg-red-600" : "border-white/20 bg-white/10"}`}
+              aria-pressed={viewerCountVisible}
+              aria-label={viewerCountVisible ? "Hide viewer count" : "Show viewer count"}
+            >
+              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${viewerCountVisible ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+          </div>
         </div>
         {/* ── Pending skip payments ── */}
         {pendingSkips.length > 0 && (
@@ -1274,6 +1292,8 @@ export default function MusicReview() {
   const [skipReceiptUrl, setSkipReceiptUrl] = useState("");
   const [skipPaymentMethod, setSkipPaymentMethod] = useState("");
   const [skipSubmitting, setSkipSubmitting] = useState(false);
+  const createSkipStripeCheckout = trpc.stripe.createSkipCheckoutSession.useMutation();
+  const confirmSkipStripeCheckout = trpc.stripe.confirmSkipCheckout.useMutation();
 
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -1438,7 +1458,7 @@ export default function MusicReview() {
   const chatControlsEmitRef = useRef<((data: any) => void) | undefined>(undefined);
 
   const {
-    viewerCount, fakeMessages, triggerReaction,
+    viewerCount, viewerCountVisible, setViewerCountVisible, fakeMessages, triggerReaction,
     commentIntervalMs, setCommentIntervalMs,
     viewerMin, setViewerMin, viewerMax, setViewerMax,
     ghostFireCount, setGhostFireCount,
@@ -1674,6 +1694,44 @@ export default function MusicReview() {
   };
 
   // Standalone skip-the-line purchase (user already has a submission in queue)
+  const handleStripeSkipCheckout = async () => {
+    if (!selectedSkipType || !user) return;
+    const mySubmission = data?.submissions?.find(s => s.userId === user.id && (s.status === "pending" || s.status === "playing"));
+    if (!mySubmission) {
+      toast.error("You need to have a track in the queue first to purchase a skip.");
+      return;
+    }
+    setSkipSubmitting(true);
+    try {
+      const result = await createSkipStripeCheckout.mutateAsync({
+        submissionId: mySubmission.id,
+        skipType: selectedSkipType,
+        origin: window.location.origin,
+      });
+      window.location.assign(result.checkoutUrl);
+    } catch (error: any) {
+      setSkipSubmitting(false);
+      toast.error(error?.message ?? "Unable to open Stripe checkout");
+    }
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("skip_paid") !== "true" || !sessionId || !user || confirmSkipStripeCheckout.isPending) return;
+    void confirmSkipStripeCheckout.mutateAsync({ sessionId }).then(() => {
+      setSkipStep("done");
+      setSkipSubmitting(false);
+      void refetch();
+      toast.success("Stripe payment received. Your skip is pending admin approval.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }).catch((error: any) => {
+      setSkipSubmitting(false);
+      toast.error(error?.message ?? "Stripe payment could not be verified");
+      window.history.replaceState({}, "", window.location.pathname);
+    });
+  }, [user, confirmSkipStripeCheckout, refetch]);
+
   const handleSkipPurchase = () => {
     if (!selectedSkipType || !user) return;
     const mySubmission = data?.submissions?.find(s => s.userId === user.id && (s.status === "pending" || s.status === "playing"));
@@ -1798,13 +1856,15 @@ export default function MusicReview() {
               <p className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Live Session</p>
             </div>
           </div>
-          {/* LIVE VIEWER COUNT — super visible */}
+          {/* LIVE VIEWER COUNT — optional and only visible while the review is live */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/30 rounded-full px-5 py-2.5">
-              <Eye className="w-5 h-5 text-red-400" />
-              <span className="font-['Anton'] text-2xl text-white tabular-nums">{viewerCount.toLocaleString()}</span>
-              <span className="text-red-400 text-xs uppercase tracking-widest font-semibold">Watching</span>
-            </div>
+            {shouldShowViewerCount(isLive, viewerCountVisible) && (
+              <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/30 rounded-full px-5 py-2.5">
+                <Eye className="w-5 h-5 text-red-400" />
+                <span className="font-['Anton'] text-2xl text-white tabular-nums">{viewerCount.toLocaleString()}</span>
+                <span className="text-red-400 text-xs uppercase tracking-widest font-semibold">Watching</span>
+              </div>
+            )}
             {isLive && (
               <div className="flex items-center gap-2 bg-green-600/10 border border-green-600/30 rounded-full px-4 py-2.5">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -1894,6 +1954,8 @@ export default function MusicReview() {
             setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
             sentimentBias={sentimentBias}
             setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
+            viewerCountVisible={viewerCountVisible}
+            setViewerCountVisible={(v) => { setViewerCountVisible(v); emitChatControls({ viewerCountVisible: v }); }}
             />
         )}
 
@@ -1940,6 +2002,8 @@ export default function MusicReview() {
               setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
               sentimentBias={sentimentBias}
               setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
+              viewerCountVisible={viewerCountVisible}
+              setViewerCountVisible={(v) => { setViewerCountVisible(v); emitChatControls({ viewerCountVisible: v }); }}
             />
           </FloatingWindow>
         )}
@@ -2123,11 +2187,13 @@ export default function MusicReview() {
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-white font-semibold text-sm uppercase tracking-wider">Live Chat</span>
             </div>
-            <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/20 rounded-full px-4 py-1.5">
-              <Eye className="w-4 h-4 text-red-400" />
-              <span className="font-['Anton'] text-lg text-white tabular-nums">{viewerCount.toLocaleString()}</span>
-              <span className="text-red-400 text-[10px] uppercase tracking-widest">watching</span>
-            </div>
+            {shouldShowViewerCount(isLive, viewerCountVisible) && (
+              <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/20 rounded-full px-4 py-1.5">
+                <Eye className="w-4 h-4 text-red-400" />
+                <span className="font-['Anton'] text-lg text-white tabular-nums">{viewerCount.toLocaleString()}</span>
+                <span className="text-red-400 text-[10px] uppercase tracking-widest">watching</span>
+              </div>
+            )}
           </div>
 
           {/* Messages — real and fake merged by timestamp */}
@@ -2439,7 +2505,7 @@ export default function MusicReview() {
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       {[
-                        { name: "CashApp", handle: "$MittenMedia", link: "https://cash.app/$MittenMedia", icon: "💸", color: "border-[#00D632]/40 bg-[#00D632]/5", textColor: "text-[#00D632]" },
+                        { name: "Cash App", handle: "$MittenMedia", link: "https://cash.app/$MittenMedia", icon: "💸", color: "border-[#00D632]/40 bg-[#00D632]/5", textColor: "text-[#00D632]" },
                         { name: "PayPal", handle: "@MurderMittenPromo", link: "https://paypal.me/MurderMittenPromo", icon: "🈿️", color: "border-[#009cde]/40 bg-[#003087]/5", textColor: "text-[#009cde]" },
                         { name: "Apple Pay", handle: "(313) 420-9004", link: "tel:3134209004", icon: "🍎", color: "border-white/20 bg-white/5", textColor: "text-white" },
                         { name: "Chime", handle: "DM on Instagram", link: "https://www.instagram.com/murdermittenmedia/", icon: "🏦", color: "border-[#00D632]/20 bg-[#00D632]/5", textColor: "text-[#00D632]" },
@@ -2461,8 +2527,17 @@ export default function MusicReview() {
                       ))}
                     </div>
                     <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={handleStripeSkipCheckout}
+                        disabled={skipSubmitting}
+                        className="w-full flex items-center justify-center gap-2 bg-[#635bff] hover:bg-[#5148e8] disabled:opacity-50 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors"
+                      >
+                        {skipSubmitting ? "Opening Stripe…" : "Pay securely with Stripe"}
+                      </button>
+                      <div className="text-center text-white/30 text-[10px] uppercase tracking-widest">or pay manually with Cash App above</div>
                       <div>
-                        <label className="text-white/60 text-xs uppercase tracking-wider block mb-1">Payment Receipt / Confirmation URL <span className="text-white/30">(optional but speeds up approval)</span></label>
+                        <label className="text-white/60 text-xs uppercase tracking-wider block mb-1">Cash App receipt / confirmation URL <span className="text-white/30">(optional but speeds up approval)</span></label>
                         <input
                           type="url"
                           value={skipReceiptUrl}

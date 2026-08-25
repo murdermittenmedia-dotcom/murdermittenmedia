@@ -11,6 +11,7 @@ import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
 import { getMusicLinkMetadata } from "./music-link-metadata";
 import { geocodeStudioAddress } from "./studio-geocode";
+import { getSkipLinePriceCents, getSkipLineLabel } from "./skip-payments";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
@@ -4603,6 +4604,101 @@ export const appRouter = router({
 
   // Stripe payment integration
   stripe: router({
+    createSkipCheckoutSession: protectedProcedure
+      .input(z.object({
+        submissionId: z.number().int().positive(),
+        skipType: z.enum(["reentry5", "reentry10", "skip"]),
+        origin: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [submission] = await db.select({
+          id: reviewSubmissions.id,
+          userId: reviewSubmissions.userId,
+          songTitle: reviewSubmissions.songTitle,
+          artistName: reviewSubmissions.artistName,
+          status: reviewSubmissions.status,
+          skippedLine: reviewSubmissions.skippedLine,
+        }).from(reviewSubmissions).where(and(
+          eq(reviewSubmissions.id, input.submissionId),
+          eq(reviewSubmissions.userId, ctx.user.id),
+        )).limit(1);
+        if (!submission || submission.status === "removed" || submission.status === "reviewed") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "That queue submission is no longer eligible for a skip." });
+        }
+        if (submission.skippedLine) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "That submission has already been moved up." });
+        }
+
+        const amount = getSkipLinePriceCents(input.skipType);
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+        try {
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            mode: "payment",
+            customer_email: ctx.user.email ?? undefined,
+            client_reference_id: `${ctx.user.id}:${submission.id}`,
+            metadata: {
+              kind: "music_review_skip",
+              user_id: String(ctx.user.id),
+              submission_id: String(submission.id),
+              skip_type: input.skipType,
+            },
+            line_items: [{
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `Music Review Skip — ${submission.songTitle}`,
+                  description: `${submission.artistName} · ${getSkipLineLabel(input.skipType)}`,
+                },
+                unit_amount: amount,
+              },
+              quantity: 1,
+            }],
+            success_url: `${input.origin}/review?skip_paid=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${input.origin}/review?skip_canceled=true`,
+          });
+          if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL" });
+          return { checkoutUrl: session.url };
+        } catch (error: any) {
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error?.message || "Unable to start Stripe checkout" });
+        }
+      }),
+
+    confirmSkipCheckout: protectedProcedure
+      .input(z.object({ sessionId: z.string().min(10) }))
+      .mutation(async ({ ctx, input }) => {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+        const session = await stripe.checkout.sessions.retrieve(input.sessionId);
+        if (session.payment_status !== "paid" || session.metadata?.kind !== "music_review_skip") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Stripe payment has not been completed." });
+        }
+        if (session.metadata.user_id !== String(ctx.user.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This payment does not belong to your account." });
+        }
+        const submissionId = Number(session.metadata.submission_id);
+        const skipType = session.metadata.skip_type as "reentry5" | "reentry10" | "skip";
+        if (!Number.isInteger(submissionId) || !["reentry5", "reentry10", "skip"].includes(skipType)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid skip payment metadata." });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [submission] = await db.select({ id: reviewSubmissions.id, userId: reviewSubmissions.userId, skippedLine: reviewSubmissions.skippedLine })
+          .from(reviewSubmissions).where(and(eq(reviewSubmissions.id, submissionId), eq(reviewSubmissions.userId, ctx.user.id))).limit(1);
+        if (!submission) throw new TRPCError({ code: "NOT_FOUND", message: "Queue submission not found." });
+        if (!submission.skippedLine) {
+          await db.update(reviewSubmissions).set({
+            skippedLine: true,
+            skipPaymentConfirmed: true,
+            isPaidSubmission: true,
+            paidSubmissionType: skipType,
+          }).where(eq(reviewSubmissions.id, submissionId));
+        }
+        return { success: true, submissionId };
+      }),
+
     createCheckoutSession: protectedProcedure
       .input((val: unknown) => {
         const obj = val as any;

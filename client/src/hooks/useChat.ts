@@ -55,6 +55,7 @@ export interface ChatControlsData {
   ghostFireIntervalSec?: number;
   ghostTrashIntervalSec?: number;
   viewerCount?: number;
+  viewerCountVisible?: boolean;
 }
 
 interface UseChatOptions {

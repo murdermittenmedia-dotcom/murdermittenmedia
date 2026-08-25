@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldEnableMixedRadioAudio, shouldEndJudgeBroadcast } from "../client/src/lib/musicReviewLive";
+import { shouldEnableMixedRadioAudio, shouldEndJudgeBroadcast, shouldShowViewerCount } from "../client/src/lib/musicReviewLive";
 
 describe("Music Review live-room state", () => {
   it("ends a judge broadcast for terminal room disconnect states", () => {
@@ -8,6 +8,13 @@ describe("Music Review live-room state", () => {
     expect(shouldEndJudgeBroadcast("closed")).toBe(true);
     expect(shouldEndJudgeBroadcast("reconnecting")).toBe(false);
     expect(shouldEndJudgeBroadcast("connected")).toBe(false);
+  });
+
+  it("hides the viewer count whenever the review is offline", () => {
+    expect(shouldShowViewerCount(false, false)).toBe(false);
+    expect(shouldShowViewerCount(false, true)).toBe(false);
+    expect(shouldShowViewerCount(true, false)).toBe(false);
+    expect(shouldShowViewerCount(true, true)).toBe(true);
   });
 
   it("allows mixed radio audio for listeners when both sources exist", () => {
