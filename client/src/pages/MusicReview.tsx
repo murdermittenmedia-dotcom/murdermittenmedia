@@ -1688,7 +1688,8 @@ export default function MusicReview() {
       </div>
 
       {/* ── MAIN SINGLE-COLUMN CONTENT ──────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-[1500px] mx-auto px-4 py-6 space-y-6">
+
 
         {/* ── ADMIN PANEL (admin/judge only) ─────────────────── */}
         {isAdmin && (
@@ -1792,6 +1793,7 @@ export default function MusicReview() {
           </FloatingWindow>
         )}
 
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] lg:items-start">
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
         {activeTrack ? (
           <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
@@ -2028,6 +2030,8 @@ export default function MusicReview() {
               </a>
             )}
           </div>
+        </div>
+
         </div>
 
         {/* ── BOTTOM MENU TABS ────────────────────────────────── */}

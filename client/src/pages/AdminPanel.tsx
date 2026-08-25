@@ -9,6 +9,7 @@ import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import LabelBadge, { ALL_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
 import { AdminRewardsTab } from "@/components/AdminRewardsTab";
+import { AdminOverview, type AdminOverviewDestination } from "@/components/AdminOverview";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { Button } from "@/components/ui/button";
@@ -1423,8 +1424,9 @@ function PaidSubmissionsTab() {
 }
 
 // ─── Main Admin Panel ─────────────────────────────────────────
-type Tab = "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions" | "cashouts" | "economy" | "notifications" | "streams";
+type Tab = "overview" | "users" | "orders" | "analytics" | "settings" | "danger" | "rewards" | "dailywheel" | "live" | "paidsubmissions" | "cashouts" | "economy" | "notifications" | "streams";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "overview", label: "Overview", icon: Activity },
   { id: "users", label: "Users", icon: Users },
   { id: "orders", label: "Promo Orders", icon: ShoppingBag },
   { id: "paidsubmissions", label: "Paid Submissions", icon: CreditCard },
@@ -1443,7 +1445,8 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
 export default function AdminPanel() {
   const [, navigate] = useLocation();
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("users");
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (loading) {
     return (
@@ -1466,78 +1469,92 @@ export default function AdminPanel() {
     );
   }
 
+  const routeToTab = (destination: AdminOverviewDestination) => {
+    setActiveTab(destination);
+    setDrawerOpen(false);
+  };
+  const sidebarItems: Array<{ id: Tab | "music-review" | "moderation" | "site-stats" | "link-analytics"; label: string; icon: React.ComponentType<{ className?: string }>; description: string }> = [
+    { id: "overview", label: "Overview", icon: Activity, description: "Live command center" },
+    { id: "music-review", label: "Music Review", icon: Radio, description: "Run the live room" },
+    { id: "paidsubmissions", label: "Review Queue", icon: Music, description: "Submissions and playback" },
+    { id: "streams", label: "Live Playback", icon: PlayCircle, description: "Stream and radio settings" },
+    { id: "analytics", label: "Viewer Controls", icon: Eye, description: "Stats and audience" },
+    { id: "paidsubmissions", label: "Submissions", icon: FileText, description: "Paid and pending work" },
+    { id: "paidsubmissions", label: "Paid Reviews", icon: CreditCard, description: "Payment review queue" },
+    { id: "users", label: "Members", icon: Users, description: "Accounts and roles" },
+    { id: "rewards", label: "Rewards and XP", icon: Trophy, description: "Recognition and economy" },
+    { id: "settings", label: "Content and Posts", icon: FileText, description: "Site content tools" },
+    { id: "moderation", label: "Moderation", icon: Shield, description: "Reports and removals" },
+    { id: "orders", label: "Orders and Payments", icon: ShoppingBag, description: "Orders and payment status" },
+    { id: "streams", label: "Radio Queue", icon: Radio, description: "Broadcast configuration" },
+    { id: "site-stats", label: "Activity Logs", icon: BarChart3, description: "Traffic and activity" },
+    { id: "settings", label: "Settings", icon: Settings, description: "Site configuration" },
+  ];
+
   return (
     <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
-
-      {/* Header */}
-      <section className="pt-24 pb-8 border-b border-white/10">
-        <div className="container">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="w-6 h-6 text-red-600" />
-            <h1 className="font-['Anton'] text-4xl uppercase">Admin Panel</h1>
+      {drawerOpen && <button type="button" aria-label="Close admin navigation" onClick={() => setDrawerOpen(false)} className="fixed inset-0 z-40 bg-black/70 lg:hidden" />}
+      <div className="flex min-h-screen pt-16">
+        <aside className={`fixed inset-y-0 left-0 z-50 w-[min(86vw,280px)] border-r border-white/10 bg-[#0b0b0b] pt-20 transition-transform lg:sticky lg:top-16 lg:z-20 lg:h-[calc(100vh-4rem)] lg:w-[260px] lg:translate-x-0 ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}>
+          <div className="flex h-full flex-col px-4 pb-5">
+            <div className="mb-5 border-b border-white/10 px-2 pb-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-red-400">Murder Mitten</p>
+              <h1 className="mt-2 font-['Anton'] text-2xl uppercase tracking-wide text-white">Admin Command</h1>
+              <p className="mt-1 text-xs text-white/35">Live operations center</p>
+            </div>
+            <nav aria-label="Admin navigation" className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+              {sidebarItems.map((item, index) => {
+                const active = (item.id === "overview" && activeTab === "overview") || (item.id !== "overview" && item.id === activeTab);
+                return (
+                  <button
+                    key={`${item.label}-${index}`}
+                    type="button"
+                    onClick={() => {
+                      if (item.id === "music-review") navigate("/review");
+                      else if (item.id === "moderation") navigate("/admin/moderation");
+                      else if (item.id === "site-stats") navigate("/admin/stats");
+                      else if (item.id === "link-analytics") navigate("/admin/link-analytics");
+                      else routeToTab(item.id as AdminOverviewDestination);
+                    }}
+                    className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${active ? "bg-red-600/15 text-white ring-1 ring-red-500/30" : "text-white/55 hover:bg-white/[0.05] hover:text-white"}`}
+                  >
+                    <item.icon className={`h-4 w-4 shrink-0 ${active ? "text-red-400" : "text-white/35 group-hover:text-white/70"}`} aria-hidden="true" />
+                    <span className="min-w-0"><span className="block text-sm font-semibold">{item.label}</span><span className="block truncate text-[11px] text-white/30">{item.description}</span></span>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-3"><div className="h-2 w-2 rounded-full bg-green-400" /><div><p className="text-xs font-bold text-white">{user.name || "Admin"}</p><p className="text-[10px] uppercase tracking-widest text-green-300/70">Administrator</p></div></div>
+            </div>
           </div>
-          <p className="text-white/40 text-sm">Manage users, orders, analytics, and site settings.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/admin/stats">
-              <button className="flex items-center gap-2 text-xs border border-green-500/40 text-green-400 bg-green-500/10 px-4 py-2 hover:bg-green-500/20 transition-all uppercase tracking-widest font-semibold">
-                <Activity className="w-3.5 h-3.5" />
-                Live Site Stats
-              </button>
-            </Link>
-            <Link href="/admin/golden-wheel">
-              <button className="flex items-center gap-2 text-xs border border-yellow-500/40 text-yellow-400 bg-yellow-500/10 px-4 py-2 hover:bg-yellow-500/20 transition-all uppercase tracking-widest font-semibold">
-                <Trophy className="w-3.5 h-3.5" />
-                Golden Wheel
-              </button>
-            </Link>
-            <Link href="/admin/link-analytics">
-              <button className="flex items-center gap-2 text-xs border border-red-500/40 text-red-300 bg-red-500/10 px-4 py-2 hover:bg-red-500/20 transition-all uppercase tracking-widest font-semibold">
-                <BarChart3 className="w-3.5 h-3.5" />
-                Link Analytics
-              </button>
-            </Link>
-          </div>
-        </div>
-      </section>
+        </aside>
 
-      {/* Tabs */}
-      <div className="border-b border-white/10 sticky top-0 bg-[#080808]/95 backdrop-blur-sm z-10">
-        <div className="container">
-          <div className="flex gap-0 overflow-x-auto">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-4 text-sm font-semibold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === tab.id
-                    ? "border-red-600 text-white"
-                    : "border-transparent text-white/40 hover:text-white/70"
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
+        <main className="min-w-0 flex-1">
+          <header className="sticky top-16 z-30 border-b border-white/10 bg-[#080808]/90 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-10">
+            <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
+              <div className="flex items-center gap-3"><button type="button" onClick={() => setDrawerOpen(true)} className="rounded-lg border border-white/10 p-2 text-white/70 hover:border-red-500/50 lg:hidden" aria-label="Open admin navigation">☰</button><div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-400">Admin workspace</p><h2 className="mt-1 font-['Anton'] text-2xl uppercase tracking-wide sm:text-3xl">{activeTab === "overview" ? "Overview" : TABS.find((tab) => tab.id === activeTab)?.label ?? "Operations"}</h2></div></div>
+              <div className="flex items-center gap-2"><Link href="/admin/stats"><button className="hidden rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-green-300 hover:bg-green-500/20 sm:block">Live stats</button></Link><Link href="/review"><button className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-red-500">Open review</button></Link></div>
+            </div>
+          </header>
+          <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+            {activeTab === "overview" && <AdminOverview onNavigate={routeToTab} />}
+            {activeTab === "users" && <UsersTab />}
+            {activeTab === "orders" && <PromoOrdersTab />}
+            {activeTab === "paidsubmissions" && <PaidSubmissionsTab />}
+            {activeTab === "analytics" && <AnalyticsTab />}
+            {activeTab === "settings" && <SiteSettingsTab />}
+            {activeTab === "danger" && <DangerZoneTab />}
+            {activeTab === "rewards" && <AdminRewardsTab />}
+            {activeTab === "dailywheel" && <DailyWheelTab />}
+            {activeTab === "live" && <LiveCookUpAdminTab />}
+            {activeTab === "cashouts" && <CashoutsAdminTab />}
+            {activeTab === "economy" && <EconomyAdminTab />}
+            {activeTab === "notifications" && <NotificationsAdminTab />}
+            {activeTab === "streams" && <StreamsAdminTab />}
           </div>
-        </div>
-      </div>
-
-      {/* Tab content */}
-      <div className="container py-8">
-        {activeTab === "users" && <UsersTab />}
-        {activeTab === "orders" && <PromoOrdersTab />}
-        {activeTab === "paidsubmissions" && <PaidSubmissionsTab />}
-        {activeTab === "analytics" && <AnalyticsTab />}
-        {activeTab === "settings" && <SiteSettingsTab />}
-        {activeTab === "danger" && <DangerZoneTab />}
-        {activeTab === "rewards" && <AdminRewardsTab />}
-        {activeTab === "dailywheel" && <DailyWheelTab />}
-        {activeTab === "live" && <LiveCookUpAdminTab />}
-        {activeTab === "cashouts" && <CashoutsAdminTab />}
-        {activeTab === "economy" && <EconomyAdminTab />}
-        {activeTab === "notifications" && <NotificationsAdminTab />}
-        {activeTab === "streams" && <StreamsAdminTab />}
+        </main>
       </div>
     </div>
   );
