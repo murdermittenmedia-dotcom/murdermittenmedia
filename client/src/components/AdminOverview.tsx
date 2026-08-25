@@ -49,9 +49,10 @@ function SummaryCard({
 }
 
 export function AdminOverview({ onNavigate }: { onNavigate: (destination: AdminOverviewDestination) => void }) {
-  const { data: queue } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 10_000 });
-  const { data: analytics } = trpc.admin.analytics.useQuery(undefined, { refetchInterval: 30_000 });
-
+  const queueQuery = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 10_000 });
+  const analyticsQuery = trpc.admin.analytics.useQuery(undefined, { refetchInterval: 30_000 });
+  const queue = queueQuery.data;
+  const analytics = analyticsQuery.data;
   const metrics = getAdminOverviewMetrics(queue, analytics);
   const current = queue?.currentPlaying;
 
@@ -68,6 +69,13 @@ export function AdminOverview({ onNavigate }: { onNavigate: (destination: AdminO
           {queue?.state?.isLive ? "Live session" : "Session offline"}
         </div>
       </div>
+
+      {(queueQuery.isError || analyticsQuery.isError) && (
+        <div role="alert" className="flex flex-col gap-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="text-sm font-bold text-amber-200">Some command-center data is unavailable.</p><p className="mt-1 text-xs text-white/45">The last known values remain visible. Retry the failed source before making live decisions.</p></div>
+          <button type="button" onClick={() => { if (queueQuery.isError) void queueQuery.refetch(); if (analyticsQuery.isError) void analyticsQuery.refetch(); }} className="rounded-lg border border-amber-400/30 px-3 py-2 text-xs font-bold uppercase tracking-widest text-amber-200 hover:bg-amber-400/10">Retry</button>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="Live status" value={queue?.state?.isLive ? "LIVE" : "OFFLINE"} detail={queue?.state?.liveMessage || "Open Music Review controls"} icon={Radio} tone={queue?.state?.isLive ? "green" : "blue"} onClick={() => onNavigate("live")} />
