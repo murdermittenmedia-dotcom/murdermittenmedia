@@ -12,6 +12,7 @@ import { validateFreeShippingPromoCode } from "./promo-codes";
 import { getMusicLinkMetadata } from "./music-link-metadata";
 import { geocodeStudioAddress } from "./studio-geocode";
 import { getSkipLinePriceCents, getSkipLineLabel } from "./skip-payments";
+import { getPromoPackagePriceCents, getPromoPackageLabel } from "./promo-payments";
 import { normalizeStudioInput } from "./studio-input";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
@@ -4702,27 +4703,17 @@ export const appRouter = router({
       .input((val: unknown) => {
         const obj = val as any;
         if (typeof obj?.packageId !== "string") throw new Error("packageId required");
-        return { packageId: obj.packageId };
+        if (typeof obj?.origin !== "string" || !/^https?:\/\//.test(obj.origin)) throw new Error("origin required");
+        return { packageId: obj.packageId, origin: obj.origin };
       })
       .mutation(async ({ ctx, input }) => {
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
         const { packageId } = input;
         const user = ctx.user;
 
-        // Map package IDs to prices (in cents)
-        const priceMap: Record<string, number> = {
-          repost: 500,
-          story: 2000,
-          "day-post": 5000,
-          "perm-post": 10000,
-          "dual-perm": 15000,
-          "7day-pinned": 30000,
-          "monthly-pass": 50000,
-        };
-
-        const amount = priceMap[packageId];
+        const amount = getPromoPackagePriceCents(packageId);
         if (!amount) {
-          console.error("[Stripe] Invalid package ID", { packageId, availablePackages: Object.keys(priceMap) });
+          console.error("[Stripe] Invalid package ID", { packageId });
           throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid package: ${packageId}` });
         }
 
@@ -4743,16 +4734,16 @@ export const appRouter = router({
                 price_data: {
                   currency: "usd",
                   product_data: {
-                    name: `Murder Mitten Media Promo - ${packageId}`,
-                    description: `Promo package: ${packageId}`,
+                    name: `Murder Mitten Media Promo - ${getPromoPackageLabel(packageId)}`,
+                    description: `Promo package: ${getPromoPackageLabel(packageId)}`,
                   },
                   unit_amount: amount,
                 },
                 quantity: 1,
               },
             ],
-            success_url: `${ctx.req.headers.origin}/promo?success=true`,
-            cancel_url: `${ctx.req.headers.origin}/promo?canceled=true`,
+            success_url: `${input.origin}/promo?success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${input.origin}/promo?canceled=true`,
             allow_promotion_codes: true,
           });
 
@@ -4767,6 +4758,29 @@ export const appRouter = router({
           console.error("[Stripe] Checkout session creation failed", { error: error.message, packageId, stack: error.stack });
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message || "Stripe checkout failed" });
         }
+      }),
+
+    confirmPromoCheckout: protectedProcedure
+      .input(z.object({ sessionId: z.string().min(10) }))
+      .mutation(async ({ ctx, input }) => {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+        let session: Stripe.Checkout.Session;
+        try {
+          session = await stripe.checkout.sessions.retrieve(input.sessionId);
+        } catch {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Promo payment session could not be found." });
+        }
+        if (session.payment_status !== "paid" || session.metadata?.package_id === undefined) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Promo payment has not been completed." });
+        }
+        if (session.metadata.user_id !== String(ctx.user.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This payment does not belong to your account." });
+        }
+        return {
+          success: true as const,
+          packageId: session.metadata.package_id,
+          amountTotal: session.amount_total ?? 0,
+        };
       }),
   }),
 

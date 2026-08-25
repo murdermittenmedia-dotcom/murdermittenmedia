@@ -1538,3 +1538,11 @@
 - [x] Improve admin navigation destinations and operational summaries using existing data
 - [x] Add regression coverage and verify the control board on desktop, tablet, and mobile
 - [x] Publish the next verified admin control-board milestone
+
+## Paywall and Monetization Completion
+- [x] Audit all existing Stripe checkout, webhook, Cash App receipt, and protected-access paths
+- [ ] Map submission, skip-line, promo, and membership purchase states for users and admins
+- [x] Repair paywall UI, checkout redirects, payment verification, receipt confirmation, and access gating
+- [x] Improve payment loading, retry, failure, and approval feedback without exposing secrets
+- [x] Add regression coverage for payment state transitions and protected access
+- [ ] Verify purchase-to-access flows and publish the monetization completion milestone

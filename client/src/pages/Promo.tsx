@@ -2,11 +2,12 @@
    MURDER MITTEN MEDIA -- Promo Packages Page
    ============================================================ */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { toast } from "sonner";
 
 const PACKAGES = [
   {
@@ -116,7 +117,33 @@ export default function Promo() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [activeQR, setActiveQR] = useState<string | null>(null);
   const { user, isAuthenticated } = useAuth();
-  const stripeCheckout = trpc.stripe.createCheckoutSession.useMutation();
+  const stripeCheckout = trpc.stripe.createCheckoutSession.useMutation({
+    onError: (error) => toast.error(error.message || "Stripe checkout could not be started"),
+  });
+  const confirmPromoCheckout = trpc.stripe.confirmPromoCheckout.useMutation();
+  const [paymentState, setPaymentState] = useState<"idle" | "success" | "canceled" | "error">("idle");
+  const [paidPackageId, setPaidPackageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("canceled") === "true") {
+      setPaymentState("canceled");
+      window.history.replaceState({}, "", "/promo");
+      return;
+    }
+    if (params.get("success") !== "true" || !sessionId || !user || confirmPromoCheckout.isPending) return;
+    void confirmPromoCheckout.mutateAsync({ sessionId }).then((result) => {
+      setPaidPackageId(result.packageId);
+      setPaymentState("success");
+      window.history.replaceState({}, "", "/promo");
+      toast.success("Payment confirmed. We received your promo order.");
+    }).catch((error: any) => {
+      setPaymentState("error");
+      toast.error(error?.message || "Payment could not be verified");
+      window.history.replaceState({}, "", "/promo");
+    });
+  }, [user, confirmPromoCheckout]);
 
   const handleCheckout = async (packageId: string) => {
     if (!isAuthenticated) {
@@ -125,12 +152,11 @@ export default function Promo() {
     }
 
     try {
-      const { checkoutUrl } = await stripeCheckout.mutateAsync({ packageId });
-      if (checkoutUrl) {
-        window.open(checkoutUrl, "_blank");
-      }
+      const { checkoutUrl } = await stripeCheckout.mutateAsync({ packageId, origin: window.location.origin });
+      if (checkoutUrl) window.location.assign(checkoutUrl);
     } catch (error) {
       console.error("Checkout error:", error);
+      toast.error(error instanceof Error ? error.message : "Checkout could not be started");
     }
   };
 
@@ -139,6 +165,18 @@ export default function Promo() {
 
       {/* -- NAV ----------------------------------------------- */}
       <SiteNav />
+
+      {paymentState !== "idle" && (
+        <div className={`container pt-28 ${paymentState === "success" ? "" : ""}`}>
+          <div className={`flex items-start gap-3 border p-4 ${paymentState === "success" ? "border-green-500/30 bg-green-500/10" : paymentState === "canceled" ? "border-yellow-500/30 bg-yellow-500/10" : "border-red-500/30 bg-red-500/10"}`} role="status">
+            {paymentState === "success" ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-400" /> : paymentState === "canceled" ? <XCircle className="mt-0.5 h-5 w-5 text-yellow-400" /> : <XCircle className="mt-0.5 h-5 w-5 text-red-400" />}
+            <div>
+              <p className="font-semibold text-white">{paymentState === "success" ? "Promo payment confirmed" : paymentState === "canceled" ? "Checkout canceled" : "Payment verification needs attention"}</p>
+              <p className="mt-1 text-sm text-white/60">{paymentState === "success" ? `Package ${paidPackageId ?? "selected"} was received. Send your content and receipt details to @murdermittenmedia so the team can schedule it.` : paymentState === "canceled" ? "No charge was completed. You can choose a package whenever you are ready." : "We could not verify this return. Check your Stripe receipt or contact the team before paying again."}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* -- HERO ---------------------------------------------- */}
       <section className="pt-32 pb-16 text-center relative overflow-hidden">
