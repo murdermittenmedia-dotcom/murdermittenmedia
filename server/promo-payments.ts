@@ -3,7 +3,7 @@ export const PROMO_PACKAGE_PRICES_CENTS: Record<string, number> = {
   story: 2000,
   "day-post": 5000,
   "perm-post": 10000,
-  "dual-perm": 15000,
+  "dual-perm": 12500,
   "7day-pinned": 30000,
   "monthly-pass": 50000,
 };

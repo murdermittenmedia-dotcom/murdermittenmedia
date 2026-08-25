@@ -49,7 +49,7 @@ const PACKAGES = [
   {
     id: "dual-perm",
     name: "2 Permanent Page Posts",
-    price: 150,
+    price: 125,
     tag: "BEST VALUE",
     color: "border-red-600",
     features: ["2 permanent posts to our page"],
@@ -224,7 +224,7 @@ export default function Promo() {
                 {pkg.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="bg-red-600 text-white text-xs px-4 py-1 uppercase tracking-widest font-semibold">
-                      Most Popular
+                      {pkg.tag === "BEST VALUE" ? "Best Value" : "Most Popular"}
                     </span>
                   </div>
                 )}

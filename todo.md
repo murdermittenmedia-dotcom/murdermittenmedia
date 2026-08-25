@@ -1553,3 +1553,4 @@
 - [x] Align Music Review with synchronized YouTube and audio-player contracts, including stopped-track handling
 - [x] Resolve actionable client and server TypeScript diagnostics across admin, studio, links, navigation, and database helpers
 - [x] Run the full Vitest suite, production build, and targeted Promo/Music Review/admin-popout visual verification
+- [x] Align the Promo page and Stripe catalog with the requested $100 Most Popular and $125 Best Value package labels

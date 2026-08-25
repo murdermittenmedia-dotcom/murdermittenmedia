@@ -5,6 +5,7 @@ describe("promo payment catalog", () => {
   it("keeps the public promo package prices in cents", () => {
     expect(getPromoPackagePriceCents("repost")).toBe(500);
     expect(getPromoPackagePriceCents("perm-post")).toBe(10000);
+    expect(getPromoPackagePriceCents("dual-perm")).toBe(12500);
     expect(getPromoPackagePriceCents("monthly-pass")).toBe(50000);
   });
 
