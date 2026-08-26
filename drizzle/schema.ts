@@ -56,6 +56,7 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   paidSubmissionConfirmed: boolean("paidSubmissionConfirmed").default(false).notNull(),
   // Optional manual payment proof for paid/re-entry submissions (Cash App or other method).
   cashappPaymentReceiptUrl: varchar("cashappPaymentReceiptUrl", { length: 512 }),
+  stripePaymentSessionId: varchar("stripePaymentSessionId", { length: 255 }),
   position: int("position").default(0).notNull(),
   notes: text("notes"),
   // Career reaction totals (incremented on each vote)

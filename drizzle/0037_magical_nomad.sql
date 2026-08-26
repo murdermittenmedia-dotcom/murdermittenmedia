@@ -1,0 +1,1 @@
+ALTER TABLE `review_submissions` ADD `stripePaymentSessionId` varchar(255);

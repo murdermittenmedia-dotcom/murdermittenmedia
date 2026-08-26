@@ -1232,6 +1232,10 @@ export default function MusicReview() {
     },
     onError: (err) => { toast.error("Submission failed: " + err.message); setSubmitting(false); },
   });
+  const preparePaidSubmissionAudioMutation = trpc.stripe.preparePaidSubmissionAudio.useMutation();
+  const createPaidSubmissionCheckoutMutation = trpc.stripe.createPaidSubmissionCheckout.useMutation();
+  const confirmPaidSubmissionCheckoutMutation = trpc.stripe.confirmPaidSubmissionCheckout.useMutation();
+
   const uploadAudioMutation = trpc.queue.uploadAudio.useMutation({
     onSuccess: (data) => {
       if (!data.success && 'limitReached' in data && data.limitReached && 'message' in data && 'upgradeOptions' in data) {
@@ -1250,6 +1254,35 @@ export default function MusicReview() {
     },
     onError: (err) => { toast.error("Upload failed: " + err.message); setSubmitting(false); },
   });
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("paid_submission_success") === "true" && sessionId) {
+      window.history.replaceState({}, "", "/review");
+      setSubmitting(true);
+      confirmPaidSubmissionCheckoutMutation.mutate({ sessionId }, {
+        onSuccess: (result) => {
+          setPaidSubmitSuccess(result.alreadyCreated ? "already-created" : "stripe");
+          setLimitReachedData(null);
+          setPendingFormData(null);
+          setSelectedPaidType(null);
+          setPaidReceiptUrl("");
+          setSubmitting(false);
+          refetch();
+          toast.success("Payment verified — your paid track is pending admin approval.");
+        },
+        onError: (error) => {
+          setSubmitting(false);
+          toast.error("Payment verification failed: " + error.message);
+        },
+      });
+    } else if (params.get("paid_submission_canceled") === "true") {
+      window.history.replaceState({}, "", "/review");
+      toast.error("Stripe checkout was canceled. Your track was not submitted.");
+    }
+  }, [user]);
+
   const { data: lineSkipCreditsData, refetch: refetchLineSkipCredits } = trpc.dailyWheel.getMyLineSkipCredits.useQuery(undefined, { enabled: !!user });
   const useLineSkipMutation = trpc.dailyWheel.useLineSkip.useMutation({
     onSuccess: (data) => {
@@ -1555,6 +1588,39 @@ export default function MusicReview() {
         receiptUrl,
         paymentMethod: "Cash App",
       });
+    }
+  };
+
+  const startPaidStripeCheckout = async (paidType: 'reentry5' | 'reentry10' | 'skip') => {
+    if (!pendingFormData || !user) return;
+    setSubmitting(true);
+    try {
+      let fileKey: string | undefined;
+      let fileUrl: string | undefined;
+      if (pendingFormData.type === "file") {
+        if (!pendingFormData.fileBase64 || !pendingFormData.fileName) throw new Error("Choose an audio file before checkout.");
+        const prepared = await preparePaidSubmissionAudioMutation.mutateAsync({
+          fileBase64: pendingFormData.fileBase64,
+          fileName: pendingFormData.fileName,
+          mimeType: (pendingFormData.mimeType === "audio/wav" || pendingFormData.mimeType === "audio/mp4" || pendingFormData.mimeType === "audio/x-m4a" ? pendingFormData.mimeType : "audio/mpeg"),
+        });
+        fileKey = prepared.fileKey;
+        fileUrl = prepared.fileUrl;
+      }
+      const { checkoutUrl } = await createPaidSubmissionCheckoutMutation.mutateAsync({
+        submissionType: pendingFormData.type,
+        songTitle: pendingFormData.songTitle,
+        youtubeUrl: pendingFormData.youtubeUrl,
+        fileKey,
+        fileUrl,
+        contactInfo: pendingFormData.contactInfo,
+        paidSubmissionType: paidType,
+        origin: window.location.origin,
+      });
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      setSubmitting(false);
+      toast.error("Unable to start Stripe checkout: " + (error instanceof Error ? error.message : "Please try again."));
     }
   };
 
@@ -2175,12 +2241,16 @@ export default function MusicReview() {
                       ))}
                     </div>
                     {selectedPaidType && (
-                      <div className="rounded-xl border border-[#00D632]/30 bg-[#00D632]/[0.06] p-4">
+                      <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+                        <button type="button" onClick={() => startPaidStripeCheckout(selectedPaidType)} disabled={submitting} className="w-full rounded-xl bg-red-600 px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">
+                          {submitting ? "Opening secure checkout..." : `Pay securely with Stripe — $${selectedPaidType === "reentry5" ? 5 : selectedPaidType === "reentry10" ? 10 : 20}`}
+                        </button>
+                        <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-white/25"><span className="h-px flex-1 bg-white/10" />or Cash App<span className="h-px flex-1 bg-white/10" /></div>
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00D632]">Cash App: $MittenMedia</p>
-                        <p className="mt-1 text-xs leading-relaxed text-white/55">Pay the exact amount for the selected option, then paste the receipt URL. Admin approval is required before the paid submission is eligible for the queue.</p>
-                        <input value={paidReceiptUrl} onChange={(event) => setPaidReceiptUrl(event.target.value)} placeholder="Cash App receipt URL" className="mt-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:border-green-500/50 focus:outline-none" />
-                        <button type="button" onClick={() => handlePaidSubmit(selectedPaidType)} disabled={submitting || paidReceiptUrl.trim().length < 4} className="mt-3 w-full rounded-xl bg-red-600 px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">
-                          {submitting ? "Submitting for approval..." : "Submit Paid Track →"}
+                        <p className="text-xs leading-relaxed text-white/55">Pay the exact amount for the selected option, then paste the receipt URL. Admin approval is required before the paid submission is eligible for the queue.</p>
+                        <input value={paidReceiptUrl} onChange={(event) => setPaidReceiptUrl(event.target.value)} placeholder="Cash App receipt URL" className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:border-green-500/50 focus:outline-none" />
+                        <button type="button" onClick={() => handlePaidSubmit(selectedPaidType)} disabled={submitting || paidReceiptUrl.trim().length < 4} className="w-full rounded-xl border border-[#00D632]/40 bg-[#00D632]/10 px-3 py-3 text-xs font-bold uppercase tracking-wider text-[#00D632] transition-colors hover:bg-[#00D632]/20 disabled:cursor-not-allowed disabled:opacity-40">
+                          {submitting ? "Submitting for approval..." : "Submit Cash App Receipt →"}
                         </button>
                       </div>
                     )}

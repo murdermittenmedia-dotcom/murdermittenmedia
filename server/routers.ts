@@ -4604,6 +4604,146 @@ export const appRouter = router({
 
   // Stripe payment integration
   stripe: router({
+    preparePaidSubmissionAudio: protectedProcedure
+      .input(z.object({
+        fileBase64: z.string().min(1),
+        fileName: z.string().min(1).max(256),
+        mimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        if (buffer.length > 20 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 20MB" });
+        const profile = await getArtistProfile(ctx.user.id);
+        const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
+        const ext = input.fileName.split(".").pop()?.toLowerCase() || "mp3";
+        if (!["mp3", "wav", "m4a"].includes(ext)) throw new TRPCError({ code: "BAD_REQUEST", message: "Only MP3, WAV, and M4A files are accepted." });
+        const key = `queue-submissions/${Date.now()}-${artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        return { fileKey: key, fileUrl: url };
+      }),
+
+    createPaidSubmissionCheckout: protectedProcedure
+      .input(z.object({
+        submissionType: z.enum(["youtube", "file"]),
+        songTitle: z.string().min(1).max(128),
+        youtubeUrl: z.string().max(512).optional(),
+        fileKey: z.string().max(512).optional(),
+        fileUrl: z.string().max(512).optional(),
+        contactInfo: z.string().max(256).optional(),
+        paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]),
+        origin: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.submissionType === "youtube" && !input.youtubeUrl) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A YouTube URL is required for this submission." });
+        }
+        if (input.submissionType === "file" && (!input.fileKey || !input.fileUrl)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "The uploaded audio file is not ready for payment." });
+        }
+        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
+        if (submissionCount < 2) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Paid re-entry is available after your two free submissions for this live session." });
+        }
+        const option = MUSIC_REVIEW_PAID_OPTIONS.find((candidate) => candidate.type === input.paidSubmissionType);
+        if (!option) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid Music Review payment option." });
+        const profile = await getArtistProfile(ctx.user.id);
+        const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+        const metadata = {
+          kind: "music_review_paid_submission",
+          user_id: String(ctx.user.id),
+          paid_submission_type: input.paidSubmissionType,
+          submission_type: input.submissionType,
+          song_title: input.songTitle,
+          artist_name: artistName,
+          youtube_url: input.youtubeUrl ?? "",
+          file_key: input.fileKey ?? "",
+          file_url: input.fileUrl ?? "",
+          contact_info: input.contactInfo ?? "",
+        };
+        try {
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            mode: "payment",
+            customer_email: ctx.user.email ?? undefined,
+            client_reference_id: String(ctx.user.id),
+            metadata,
+            line_items: [{
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `Music Review Re-entry — ${input.songTitle}`,
+                  description: option.label,
+                },
+                unit_amount: option.price * 100,
+              },
+              quantity: 1,
+            }],
+            success_url: `${input.origin}/review?paid_submission_success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${input.origin}/review?paid_submission_canceled=true`,
+          });
+          if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL" });
+          return { checkoutUrl: session.url };
+        } catch (error: any) {
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error?.message || "Unable to start Music Review checkout" });
+        }
+      }),
+
+    confirmPaidSubmissionCheckout: protectedProcedure
+      .input(z.object({ sessionId: z.string().min(10) }))
+      .mutation(async ({ ctx, input }) => {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+        let session: Stripe.Checkout.Session;
+        try {
+          session = await stripe.checkout.sessions.retrieve(input.sessionId);
+        } catch {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Music Review payment session could not be found." });
+        }
+        if (session.payment_status !== "paid" || session.metadata?.kind !== "music_review_paid_submission") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Music Review payment has not been completed." });
+        }
+        if (session.metadata.user_id !== String(ctx.user.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This payment does not belong to your account." });
+        }
+        const metadata = session.metadata;
+        const paidType = metadata.paid_submission_type as "reentry5" | "reentry10" | "skip";
+        const submissionType = metadata.submission_type as "youtube" | "file";
+        if (!['reentry5', 'reentry10', 'skip'].includes(paidType) || !['youtube', 'file'].includes(submissionType) || !metadata.song_title || !metadata.artist_name) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid Music Review payment metadata." });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const existing = await db.select({ id: reviewSubmissions.id })
+          .from(reviewSubmissions)
+          .where(and(eq(reviewSubmissions.userId, ctx.user.id), eq(reviewSubmissions.stripePaymentSessionId, input.sessionId)))
+          .limit(1);
+        if (existing[0]) return { success: true as const, submissionId: existing[0].id, alreadyCreated: true as const };
+        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
+        if (submissionCount < 2) throw new TRPCError({ code: "BAD_REQUEST", message: "This paid re-entry is no longer needed because your session limit is not active." });
+        const activeSession = await getOrCreateActiveMusicReviewSession();
+        await addSubmission({
+          userId: ctx.user.id,
+          musicReviewSessionId: activeSession.id,
+          artistName: metadata.artist_name,
+          songTitle: metadata.song_title,
+          submissionType,
+          youtubeUrl: metadata.youtube_url || null,
+          fileKey: metadata.file_key || null,
+          fileUrl: metadata.file_url || null,
+          contactInfo: metadata.contact_info || null,
+          skippedLine: paidType === "skip",
+          skipPaymentConfirmed: paidType === "skip",
+          isPaidSubmission: true,
+          paidSubmissionType: paidType,
+          paidSubmissionConfirmed: true,
+          stripePaymentSessionId: input.sessionId,
+          status: "pending",
+          position: 0,
+        });
+        return { success: true as const, submissionId: Number((await db.select({ id: reviewSubmissions.id }).from(reviewSubmissions).where(and(eq(reviewSubmissions.userId, ctx.user.id), eq(reviewSubmissions.stripePaymentSessionId, input.sessionId))).limit(1))[0]?.id ?? 0), alreadyCreated: false as const };
+      }),
+
     createSkipCheckoutSession: protectedProcedure
       .input(z.object({
         submissionId: z.number().int().positive(),

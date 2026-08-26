@@ -1582,6 +1582,6 @@
 
 ## Music Review Session Paywall Completion
 - [x] Show the session-limit paywall when a user reaches the two free submissions
-- [ ] Route paid re-entry and skip options through server-verified Stripe checkout instead of client-only paid submission flags
+- [x] Route paid re-entry and skip options through server-verified Stripe checkout instead of client-only paid submission flags
 - [x] Keep Cash App as a manual receipt path for the same paid submission options
 - [x] Verify payment return handling, protected submission access, tests, build, and Music Review UI
