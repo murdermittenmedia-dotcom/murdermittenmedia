@@ -13,6 +13,7 @@ import { getMusicLinkMetadata } from "./music-link-metadata";
 import { geocodeStudioAddress } from "./studio-geocode";
 import { getSkipLinePriceCents, getSkipLineLabel } from "./skip-payments";
 import { getPromoPackagePriceCents, getPromoPackageLabel } from "./promo-payments";
+import { getMusicReviewSessionLimitMessage, MUSIC_REVIEW_PAID_OPTIONS, hasCashAppPaymentProof } from "../shared/music-review-paywall";
 import { normalizeStudioInput } from "./studio-input";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
@@ -838,12 +839,8 @@ export const appRouter = router({
           return {
             success: false,
             limitReached: true,
-            message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
-            upgradeOptions: [
-              { type: "reentry5", price: 5, label: "$5 Reentry — 1 more song, normal queue" },
-              { type: "reentry10", price: 10, label: "$10 Reentry — 1 more song, normal queue" },
-              { type: "skip", price: 15, label: "$15 Reentry + Skip the Line — pending admin approval" },
-            ],
+            message: getMusicReviewSessionLimitMessage(),
+            upgradeOptions: MUSIC_REVIEW_PAID_OPTIONS.map((option) => ({ ...option })),
           };
         }
         
@@ -851,6 +848,9 @@ export const appRouter = router({
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
         const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
+        if (isPaid && !hasCashAppPaymentProof(input.receiptUrl, input.paymentMethod)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Paid submissions require a Cash App receipt URL and payment method. Send payment to $MittenMedia, then submit the receipt for admin approval." });
+        }
         // Get the active session to link this submission to it
         const session = await getOrCreateActiveMusicReviewSession();
         await addSubmission({
@@ -994,6 +994,8 @@ export const appRouter = router({
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
         paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
+        receiptUrl: z.string().max(512).optional(),
+        paymentMethod: z.string().max(64).optional(),
       }))
       .output(z.union([
         z.object({ success: z.literal(true), isPaid: z.boolean().optional() }),
@@ -1010,15 +1012,14 @@ export const appRouter = router({
           return {
             success: false,
             limitReached: true,
-            message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
-            upgradeOptions: [
-              { type: "reentry5", price: 5, label: "$5 Reentry — 1 more song, normal queue" },
-              { type: "reentry10", price: 10, label: "$10 Reentry — 1 more song, normal queue" },
-              { type: "skip", price: 15, label: "$15 Reentry + Skip the Line — pending admin approval" },
-            ],
+            message: getMusicReviewSessionLimitMessage(),
+            upgradeOptions: MUSIC_REVIEW_PAID_OPTIONS.map((option) => ({ ...option })),
           };
         }
         const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
+        if (isPaid && !hasCashAppPaymentProof(input.receiptUrl, input.paymentMethod)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Paid submissions require a Cash App receipt URL and payment method. Send payment to $MittenMedia, then submit the receipt for admin approval." });
+        }
         const session = await getOrCreateActiveMusicReviewSession();
         await addSubmission({
           userId: ctx.user.id,
@@ -1070,15 +1071,14 @@ export const appRouter = router({
           return {
             success: false,
             limitReached: true,
-            message: "You've used your 2 free submissions for this live session. Submit more for a fee:",
-            upgradeOptions: [
-              { type: "reentry5", price: 5, label: "$5 Reentry — 1 more song, normal queue" },
-              { type: "reentry10", price: 10, label: "$10 Reentry — 1 more song, normal queue" },
-              { type: "skip", price: 15, label: "$15 Reentry + Skip the Line — pending admin approval" },
-            ],
+            message: getMusicReviewSessionLimitMessage(),
+            upgradeOptions: MUSIC_REVIEW_PAID_OPTIONS.map((option) => ({ ...option })),
           };
         }
         const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
+        if (isPaid && !hasCashAppPaymentProof(input.receiptUrl, input.paymentMethod)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Paid submissions require a Cash App receipt URL and payment method. Send payment to $MittenMedia, then submit the receipt for admin approval." });
+        }
         // Get the active session to link this submission to it
         const session = await getOrCreateActiveMusicReviewSession();
         // Auto-resolve artist name from the user's registered profile

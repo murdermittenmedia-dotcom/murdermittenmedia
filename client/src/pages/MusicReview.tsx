@@ -23,6 +23,7 @@ import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
+import { MUSIC_REVIEW_FREE_SUBMISSION_LIMIT } from "@shared/music-review-paywall";
 
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string | null; paidSubmissionType?: "reentry5" | "reentry10" | "skip" | null };
@@ -1185,6 +1186,8 @@ export default function MusicReview() {
   const [selectedSkipType, setSelectedSkipType] = useState<"reentry5" | "reentry10" | "skip" | null>(null);
   const [skipReceiptUrl, setSkipReceiptUrl] = useState("");
   const [skipPaymentMethod, setSkipPaymentMethod] = useState("");
+  const [paidReceiptUrl, setPaidReceiptUrl] = useState("");
+  const [selectedPaidType, setSelectedPaidType] = useState<'reentry5' | 'reentry10' | 'skip' | null>(null);
   const [skipSubmitting, setSkipSubmitting] = useState(false);
   const createSkipStripeCheckout = trpc.stripe.createSkipCheckoutSession.useMutation();
   const confirmSkipStripeCheckout = trpc.stripe.confirmSkipCheckout.useMutation();
@@ -1522,6 +1525,12 @@ export default function MusicReview() {
 
   const handlePaidSubmit = (paidType: 'reentry5' | 'reentry10' | 'skip') => {
     if (!pendingFormData) return;
+    const receiptUrl = paidReceiptUrl.trim();
+    if (receiptUrl.length < 4) {
+      toast.error("Send payment to $MittenMedia in Cash App, then paste the receipt URL.");
+      return;
+    }
+    setPaidSubmitSuccess(null);
     setSubmitting(true);
     if (pendingFormData.type === 'file' && pendingFormData.fileBase64) {
       uploadAudioMutation.mutate({
@@ -1532,6 +1541,8 @@ export default function MusicReview() {
         contactInfo: pendingFormData.contactInfo,
         wantsSkip: paidType === 'skip',
         paidSubmissionType: paidType,
+        receiptUrl,
+        paymentMethod: "Cash App",
       });
     } else {
       submitMutation.mutate({
@@ -1541,6 +1552,8 @@ export default function MusicReview() {
         contactInfo: pendingFormData.contactInfo,
         wantsSkip: paidType === 'skip',
         paidSubmissionType: paidType,
+        receiptUrl,
+        paymentMethod: "Cash App",
       });
     }
   };
@@ -2132,12 +2145,46 @@ export default function MusicReview() {
                       Login to Submit
                     </a>
                   </div>
+                ) : paidSubmitSuccess ? (
+                  <div className="text-center py-10 border border-yellow-500/30 bg-yellow-500/5 rounded-2xl">
+                    <div className="text-4xl mb-3">🧾</div>
+                    <div className="font-['Anton'] text-2xl uppercase mb-2">Payment Submitted</div>
+                    <p className="text-white/50 text-sm">Your paid submission is pending admin approval. We’ll move it into the queue after the receipt is verified.</p>
+                    <button onClick={() => { setPaidSubmitSuccess(null); setPaidReceiptUrl(""); setSelectedPaidType(null); }} className="mt-4 text-red-400 text-xs hover:text-red-300 transition-colors">Submit another track</button>
+                  </div>
                 ) : submitted ? (
                   <div className="text-center py-10 border border-green-500/30 bg-green-500/5 rounded-2xl">
                     <div className="text-4xl mb-3">🎉</div>
                     <div className="font-['Anton'] text-2xl uppercase mb-2">Submitted!</div>
                     <p className="text-white/50 text-sm">Your track is in the queue. Stay tuned!</p>
                     <button onClick={() => setSubmitted(false)} className="mt-4 text-red-400 text-xs hover:text-red-300 transition-colors">Submit another</button>
+                  </div>
+                ) : limitReachedData ? (
+                  <div className="space-y-4 rounded-2xl border border-red-500/30 bg-red-500/[0.06] p-5">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-400">Session limit reached</p>
+                      <h3 className="mt-1 font-['Anton'] text-2xl uppercase">Keep your track moving</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-white/55">{limitReachedData.message} Your first {MUSIC_REVIEW_FREE_SUBMISSION_LIMIT} submissions in each live session are free. Paid submissions stay pending until the team verifies payment.</p>
+                    </div>
+                    <div className="space-y-2">
+                      {limitReachedData.upgradeOptions.map((option) => (
+                        <button key={option.type} type="button" onClick={() => setSelectedPaidType(option.type as 'reentry5' | 'reentry10' | 'skip')} className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedPaidType === option.type ? "border-red-500 bg-red-500/[0.12]" : "border-white/10 bg-white/[0.04] hover:border-red-500/40 hover:bg-red-500/[0.08]"}`}>
+                          <span className="block text-sm font-bold text-white">{option.label}</span>
+                          <span className="mt-1 block text-xs text-white/40">Cash App receipt required · ${option.price}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {selectedPaidType && (
+                      <div className="rounded-xl border border-[#00D632]/30 bg-[#00D632]/[0.06] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00D632]">Cash App: $MittenMedia</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/55">Pay the exact amount for the selected option, then paste the receipt URL. Admin approval is required before the paid submission is eligible for the queue.</p>
+                        <input value={paidReceiptUrl} onChange={(event) => setPaidReceiptUrl(event.target.value)} placeholder="Cash App receipt URL" className="mt-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:border-green-500/50 focus:outline-none" />
+                        <button type="button" onClick={() => handlePaidSubmit(selectedPaidType)} disabled={submitting || paidReceiptUrl.trim().length < 4} className="mt-3 w-full rounded-xl bg-red-600 px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">
+                          {submitting ? "Submitting for approval..." : "Submit Paid Track →"}
+                        </button>
+                      </div>
+                    )}
+                    <button type="button" onClick={() => { setLimitReachedData(null); setPendingFormData(null); setPaidReceiptUrl(""); setSelectedPaidType(null); }} className="w-full text-xs text-white/40 transition-colors hover:text-white/70">Back to submission form</button>
                   </div>
                 ) : (
                   <>

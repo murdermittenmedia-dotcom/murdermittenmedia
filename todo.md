@@ -1078,8 +1078,8 @@
 - [x] tRPC: queue.uploadTrack uses session-based limit instead of daily limit
 - [x] tRPC: queue.uploadAudio uses session-based limit instead of daily limit
 - [x] Tests: sessionLimit.test.ts covers all session helpers and limit enforcement
-- [ ] Frontend: Update MusicReview.tsx paywall message from "daily limit" to "session limit"
-- [ ] Frontend: Update submission error messages to reflect per-session limit
+- [x] Frontend: Update MusicReview.tsx paywall message from "daily limit" to "session limit"
+- [x] Frontend: Update submission error messages to reflect per-session limit
 
 ## Live Cook Up — Full Streaming Overhaul
 - [x] Browser camera + microphone WebRTC streaming via LiveKit
@@ -1579,3 +1579,9 @@
 - [x] Preserve the original Spirit of The Mitten Tee as its own unchanged product and checkout identity
 - [x] Verify catalog labels, checkout line items, database rows, tests, build, and responsive merch presentation
 - [x] Fix the new clothing-drop colorway selector on narrow screens so all ten options remain readable and do not overlap
+
+## Music Review Session Paywall Completion
+- [x] Show the session-limit paywall when a user reaches the two free submissions
+- [ ] Route paid re-entry and skip options through server-verified Stripe checkout instead of client-only paid submission flags
+- [x] Keep Cash App as a manual receipt path for the same paid submission options
+- [x] Verify payment return handling, protected submission access, tests, build, and Music Review UI
