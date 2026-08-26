@@ -199,7 +199,7 @@
 - [x] Chat messages: show tiny avatar next to username
 - [x] Update all SiteNav authenticated avatar render paths consistently for desktop and mobile
 - [ ] Resolve current TypeScript/LSP errors and re-verify SiteNav avatar behavior
-- [ ] Leaderboard: show avatar next to artist name
+- [x] Leaderboard: show avatar next to artist name
 
 ## Wheel Auto-Remove & Queue Notifications
 - [x] Auto-remove name from wheel after it's spun (mark status "called" on spin)
