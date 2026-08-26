@@ -106,7 +106,7 @@
 - [x] Song upload form in modal (own profile only): title, file upload (.mp3/.wav), or external URL
 
 ## Role Management & Voting System
-- [ ] DB: extend users.role enum to include "judge" (admin | judge | user)
+- [x] DB: extend users.role enum to include "judge" (admin | judge | user)
 - [ ] DB: votes table (id, battleId, voterId, voterRole, candidate, weight, createdAt, battleRound)
 - [ ] DB: active_battle table (id, contestant1, contestant2, round, status, createdAt) for tracking current battle
 - [ ] tRPC: admin.listUsers — paginated list of all users with roles
@@ -195,9 +195,9 @@
 - [x] Add avatarUrl column to users table in schema; push migration
 - [x] tRPC: profile.uploadAvatar — upload image to S3, save URL to users.avatarUrl
 - [x] ArtistStatModal: show avatar at top, upload button when viewing own profile
-- [ ] SiteNav: show avatar circle instead of letter initial when avatarUrl is set
+- [x] SiteNav: show avatar circle instead of letter initial when avatarUrl is set
 - [ ] Chat messages: show tiny avatar next to username
-- [ ] Update all SiteNav authenticated avatar render paths consistently for desktop and mobile
+- [x] Update all SiteNav authenticated avatar render paths consistently for desktop and mobile
 - [ ] Resolve current TypeScript/LSP errors and re-verify SiteNav avatar behavior
 - [ ] Leaderboard: show avatar next to artist name
 
@@ -1554,3 +1554,9 @@
 - [x] Resolve actionable client and server TypeScript diagnostics across admin, studio, links, navigation, and database helpers
 - [x] Run the full Vitest suite, production build, and targeted Promo/Music Review/admin-popout visual verification
 - [x] Align the Promo page and Stripe catalog with the requested $100 Most Popular and $125 Best Value package labels
+
+## Merch Shirt Colorway Catalog
+- [x] Add the 10 reference shirt colorways to the merch catalog with consistent names and sneaker-inspired colorway descriptors
+- [x] Present all shirt colorways on the single merch page with clear labels and optional product imagery
+- [x] Preserve existing merch checkout, shipping, and cart behavior while updating the catalog
+- [x] Add regression coverage and visually verify the updated merch section

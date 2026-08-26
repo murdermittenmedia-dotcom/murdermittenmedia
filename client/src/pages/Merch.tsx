@@ -12,8 +12,11 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
+import { MERCH_SHIRT_COLORWAYS } from "@shared/merch-colorways";
 
 // ─── Color-specific image galleries (fallback for Spirit of The Mitten Tee) ──
+const COLORWAY_BOARD_IMAGE = "/manus-storage/murder-mitten-shirt-colorways_ecde9cc5.png";
+
 const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
   White: [
     "/manus-storage/spirit-white-new-front_d5abb7f7.jpg",
@@ -85,6 +88,10 @@ type CartItem = {
 
 // ─── Helper: get color-specific images for a product ─────────────────────────
 function getProductImages(product: ShopProduct, color: string): string[] {
+  if (product.slug === "spirit-of-the-mitten-tee" && !SPIRIT_TEE_IMAGES[color]) {
+    return [COLORWAY_BOARD_IMAGE];
+  }
+
   if (!product.images || product.images.length === 0) {
     if (product.slug === "spirit-of-the-mitten-tee") {
       return SPIRIT_TEE_IMAGES[color] || SPIRIT_TEE_IMAGES.Black;
@@ -114,6 +121,12 @@ function getProductImages(product: ShopProduct, color: string): string[] {
 // ─── Helper: get unique colors from variants ──────────────────────────────────
 function getProductColors(product: ShopProduct): string[] {
   const colors = Array.from(new Set(product.variants.map((v) => v.color)));
+  if (product.slug === "spirit-of-the-mitten-tee") {
+    const referenceColors = MERCH_SHIRT_COLORWAYS
+      .map((colorway) => colorway.name)
+      .filter((color) => colors.includes(color));
+    if (referenceColors.length > 0) return referenceColors;
+  }
   return colors.length > 0 ? colors : ["Black", "White"];
 }
 
@@ -123,6 +136,76 @@ function getProductSizes(product: ShopProduct, color?: string): string[] {
     ? product.variants.filter((v) => v.color === color)
     : product.variants;
   return Array.from(new Set(variants.map((v) => v.size)));
+}
+
+const SWATCH_COLORS: Record<string, string> = {
+  "Midnight Navy": "#17213c",
+  Gold: "#eab308",
+  White: "#f5f5f4",
+  Olive: "#53613b",
+  Orange: "#f97316",
+  Black: "#111111",
+  Red: "#dc2626",
+  Bordeaux: "#6b1f2b",
+  "Dusty Rose": "#c7778e",
+  Purple: "#5b21b6",
+  Teal: "#159a9c",
+  "Military Blue": "#1e5b91",
+  "Wolf Grey": "#7b8088",
+  "Cherry Red": "#b91c1c",
+  Platinum: "#b8bcc2",
+  Cream: "#efe3c2",
+  "Varsity Red": "#dc2626",
+  "Mocha Brown": "#6b4a35",
+};
+
+function ColorwaySwatches({ colors }: { colors: readonly string[] }) {
+  return (
+    <div className="flex items-center gap-1.5" aria-label={`Design colors: ${colors.join(", ")}`}>
+      {colors.map((color) => (
+        <span
+          key={color}
+          title={color}
+          className="w-3 h-3 rounded-full border border-white/30 shadow-inner"
+          style={{ backgroundColor: SWATCH_COLORS[color] ?? "#8b8b8b" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ColorwayGuide() {
+  return (
+    <section className="mb-10 border border-white/10 bg-white/[0.025] rounded-lg overflow-hidden" aria-labelledby="colorway-guide-title">
+      <div className="p-5 sm:p-6 border-b border-white/10 bg-gradient-to-r from-red-950/30 via-transparent to-transparent">
+        <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.3em] mb-2">The Spirit Tee Collection</p>
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+          <div>
+            <h2 id="colorway-guide-title" className="font-['Anton'] text-2xl sm:text-3xl uppercase">Choose your colorway</h2>
+            <p className="text-white/50 text-sm mt-1 max-w-2xl">All ten colorways are available from the Spirit of The Mitten Tee selector below. The guide keeps the collection names and design colors easy to compare before choosing a size.</p>
+          </div>
+          <span className="text-white/30 text-xs uppercase tracking-widest">10 colorways · 6 sizes each</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
+        {MERCH_SHIRT_COLORWAYS.map((colorway) => (
+          <article key={colorway.id} className="p-4 min-w-0 sm:border-b sm:border-white/10 xl:border-b-0">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <span className="text-red-500 font-['Anton'] text-lg">{colorway.number}</span>
+              <ColorwaySwatches colors={[colorway.shirtColor, ...colorway.designColors]} />
+            </div>
+            <h3 className="text-white font-bold uppercase tracking-wider text-sm leading-tight">{colorway.name}</h3>
+            <p className="text-white/50 text-xs mt-1">Shirt: <span className="text-white/75">{colorway.shirtColor}</span></p>
+            <p className="text-white/40 text-[11px] mt-1 leading-relaxed">Design: {colorway.designColors.join(" · ")}</p>
+            <p className="text-white/25 text-[10px] mt-2 leading-relaxed">Colorway reference: {colorway.inspiredBy}</p>
+          </article>
+        ))}
+      </div>
+      <div className="border-t border-white/10 bg-black/20 p-3 sm:p-4">
+        <img src={COLORWAY_BOARD_IMAGE} alt="Murder Mitten shirt colorway reference board" className="w-full max-h-[360px] object-contain rounded border border-white/10 bg-black" />
+      </div>
+    </section>
+  );
 }
 
 // ─── Image Carousel Component ─────────────────────────────────────────────────
@@ -595,7 +678,7 @@ export default function Merch() {
     <div className="w-full max-w-full min-h-screen bg-[#080808] text-white overflow-x-hidden">
       <SiteNav />
 
-      <div className="w-full max-w-full container pt-12 pb-16 overflow-x-hidden">
+      <div className="w-full max-w-full container pt-28 sm:pt-32 pb-16 overflow-x-hidden">
         {/* Page header with cart button */}
         <div className="w-full max-w-full mb-8 min-w-0 flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -607,6 +690,8 @@ export default function Merch() {
           {/* Cart icon — merch section only */}
           <MerchCartButton onClick={() => setCartOpen(true)} />
         </div>
+
+        <ColorwayGuide />
 
         {/* Loading */}
         {productsQuery.isLoading && (
