@@ -12,6 +12,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
+import { MERCH_SHIRT_COLORWAYS } from "@shared/merch-colorways";
 
 // ─── Color-specific image galleries (fallback for Spirit of The Mitten Tee) ──
 const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
@@ -92,10 +93,10 @@ function getProductImages(product: ShopProduct, color: string): string[] {
     return [];
   }
 
-  const colorLower = color.toLowerCase();
+  const normalizedColor = color.toLowerCase().replace(/[^a-z0-9]/g, "");
   const colorImages = product.images.filter((img) => {
-    const key = (img.storageKey || img.url || "").toLowerCase();
-    return key.includes(colorLower);
+    const key = (img.storageKey || img.url || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return key.includes(normalizedColor);
   });
 
   const sortFn = (a: ShopImage, b: ShopImage) => {
@@ -114,6 +115,12 @@ function getProductImages(product: ShopProduct, color: string): string[] {
 // ─── Helper: get unique colors from variants ──────────────────────────────────
 function getProductColors(product: ShopProduct): string[] {
   const colors = Array.from(new Set(product.variants.map((v) => v.color)));
+  if (product.slug === "spirit-of-the-mitten-tee") {
+    const referenceColors = MERCH_SHIRT_COLORWAYS
+      .map((colorway) => colorway.name)
+      .filter((color) => colors.includes(color));
+    if (referenceColors.length > 0) return referenceColors;
+  }
   return colors.length > 0 ? colors : ["Black", "White"];
 }
 

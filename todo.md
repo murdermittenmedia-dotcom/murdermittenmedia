@@ -1566,3 +1566,9 @@
 - [x] Give each shirt product its own product image, colorway metadata, sizes, inventory, and checkout identity
 - [x] Keep the original Spirit Tee and current cart, shipping, and Stripe checkout flows working
 - [x] Remove the misleading shared colorway guide and verify the corrected single-page catalog
+
+## Merch Single Product Selector Correction
+- [x] Merge the ten colorway product rows into the original Spirit of The Mitten Tee product
+- [x] Keep ten selectable colorway options with their own images, sizes, inventory, and checkout line-item details
+- [x] Remove the duplicate colorway listings while retaining the separate Classic Logo Tee listing
+- [x] Verify the one-card colorway-and-size selection UI with tests, build, and responsive screenshots
