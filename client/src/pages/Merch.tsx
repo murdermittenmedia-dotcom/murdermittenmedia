@@ -14,7 +14,7 @@ import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 import { MERCH_SHIRT_COLORWAYS } from "@shared/merch-colorways";
 
-// ─── Color-specific image galleries (fallback for Spirit of The Mitten Tee) ──
+// ─── Original Spirit Tee image galleries ──────────────────────────────────────
 const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
   White: [
     "/manus-storage/spirit-white-new-front_d5abb7f7.jpg",
@@ -115,7 +115,7 @@ function getProductImages(product: ShopProduct, color: string): string[] {
 // ─── Helper: get unique colors from variants ──────────────────────────────────
 function getProductColors(product: ShopProduct): string[] {
   const colors = Array.from(new Set(product.variants.map((v) => v.color)));
-  if (product.slug === "spirit-of-the-mitten-tee") {
+  if (product.slug === "three-color-system-tee") {
     const referenceColors = MERCH_SHIRT_COLORWAYS
       .map((colorway) => colorway.name)
       .filter((color) => colors.includes(color));
@@ -321,17 +321,17 @@ function ProductCard({
             </p>
           )}
 
-          {/* Color */}
+          {/* Color / colorway */}
           <div className="w-full max-w-full min-w-0">
             <p className="text-xs uppercase tracking-widest text-white/50 mb-1.5">
-              Color: <span className="text-white">{selectedColor}</span>
+              {product.slug === "three-color-system-tee" ? "Colorway" : "Color"}: <span className="text-white">{selectedColor}</span>
             </p>
-            <div className="w-full max-w-full flex flex-wrap gap-1.5 min-w-0">
+            <div className="w-full max-w-full grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 min-w-0">
               {colors.map((color) => (
                 <button
                   key={color}
                   onClick={() => { setSelectedColor(color); setSelectedSize(""); }}
-                  className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-all border min-w-0 ${
+                  className={`w-full sm:w-auto px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-widest leading-tight whitespace-normal transition-all border min-w-0 ${
                     selectedColor === color
                       ? "bg-red-600 text-white border-red-600"
                       : "border-white/30 text-white/70 hover:border-white/60"
@@ -684,7 +684,7 @@ export default function Merch() {
             <h1 className="font-['Anton'] text-3xl sm:text-4xl uppercase mb-1 break-words w-full max-w-full">
               The Collection
             </h1>
-            <p className="text-white/40 text-sm">Murder Mitten Media Official Merch · 10 separate colorway drops</p>
+            <p className="text-white/40 text-sm">Murder Mitten Media Official Merch · Two distinct clothing drops</p>
           </div>
           {/* Cart icon — merch section only */}
           <MerchCartButton onClick={() => setCartOpen(true)} />

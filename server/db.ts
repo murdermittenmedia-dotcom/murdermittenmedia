@@ -48,6 +48,7 @@ import {
 import { ENV } from './_core/env';
 import { aggregateLinkAnalyticsDaily } from './link-analytics';
 import { aggregateSiteAnalytics } from './site-analytics';
+import { sanitizeChatAvatarUrl } from "../shared/chat-avatar";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -389,14 +390,28 @@ export async function getAllSettings(): Promise<Record<string, string>> {
 export async function getChatMessages(room: "music_wars" | "music_review", limit = 50) {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select().from(chatMessages)
+  const rows = await db.select({
+    id: chatMessages.id,
+    userId: chatMessages.userId,
+    username: chatMessages.username,
+    message: chatMessages.message,
+    room: chatMessages.room,
+    isAdmin: chatMessages.isAdmin,
+    deleted: chatMessages.deleted,
+    createdAt: chatMessages.createdAt,
+    avatarUrl: users.avatarUrl,
+  }).from(chatMessages)
+    .leftJoin(users, eq(users.id, chatMessages.userId))
     .where(and(
       eq(chatMessages.room, room),
       eq(chatMessages.deleted, false),
     ))
     .orderBy(desc(chatMessages.createdAt))
     .limit(limit);
-  return rows.reverse();
+  return rows.reverse().map((row) => ({
+    ...row,
+    avatarUrl: sanitizeChatAvatarUrl(row.avatarUrl),
+  }));
 }
 
 export async function deleteChatMessage(id: number) {

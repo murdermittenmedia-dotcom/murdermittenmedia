@@ -196,7 +196,7 @@
 - [x] tRPC: profile.uploadAvatar — upload image to S3, save URL to users.avatarUrl
 - [x] ArtistStatModal: show avatar at top, upload button when viewing own profile
 - [x] SiteNav: show avatar circle instead of letter initial when avatarUrl is set
-- [ ] Chat messages: show tiny avatar next to username
+- [x] Chat messages: show tiny avatar next to username
 - [x] Update all SiteNav authenticated avatar render paths consistently for desktop and mobile
 - [ ] Resolve current TypeScript/LSP errors and re-verify SiteNav avatar behavior
 - [ ] Leaderboard: show avatar next to artist name
@@ -1572,3 +1572,10 @@
 - [x] Keep ten selectable colorway options with their own images, sizes, inventory, and checkout line-item details
 - [x] Remove the duplicate colorway listings while retaining the separate Classic Logo Tee listing
 - [x] Verify the one-card colorway-and-size selection UI with tests, build, and responsive screenshots
+
+## Merch Clothing Drop Naming Correction
+- [x] Separate the ten reference-board shirts from the Spirit of The Mitten Tee product identity
+- [x] Give the reference-board shirts one distinct clothing-drop product name with ten selectable colorways
+- [x] Preserve the original Spirit of The Mitten Tee as its own unchanged product and checkout identity
+- [x] Verify catalog labels, checkout line items, database rows, tests, build, and responsive merch presentation
+- [x] Fix the new clothing-drop colorway selector on narrow screens so all ten options remain readable and do not overlap

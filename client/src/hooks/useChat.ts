@@ -10,6 +10,7 @@ export interface ChatMessage {
   accountLabels?: string[] | null;
   userId?: number | null;
   createdAt: Date;
+  avatarUrl?: string | null;
 }
 
 export interface WheelSpinState {
@@ -62,6 +63,7 @@ interface UseChatOptions {
   room: "music_wars" | "music_review";
   username: string;
   userId?: number;
+  avatarUrl?: string | null;
   isAdmin?: boolean;
   accountLabels?: string[];
   initialMessages?: ChatMessage[];
@@ -86,6 +88,7 @@ export function useChat({
   room,
   username,
   userId,
+  avatarUrl,
   isAdmin,
   accountLabels = [],
   initialMessages = [],
@@ -234,10 +237,11 @@ export function useChat({
       message: message.trim(),
       room,
       userId,
+      avatarUrl: avatarUrl ?? null,
       isAdmin: isAdmin || false,
       accountLabels: accountLabels ?? [],
     });
-  }, [username, room, userId, isAdmin, accountLabels]);
+  }, [username, room, userId, avatarUrl, isAdmin, accountLabels]);
 
   const broadcastSpin = useCallback(() => {
     socketRef.current?.emit("wheel:spin");

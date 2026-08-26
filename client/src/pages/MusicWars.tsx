@@ -422,7 +422,7 @@ function SpinWheel({
 function ChatPanel({
   messages, isConnected, onSend, username,
 }: {
-  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; accountLabels?: string[] | null; userId?: number | null; createdAt: Date }>;
+  messages: Array<{ id: number; username: string; message: string; isAdmin: boolean; accountLabels?: string[] | null; userId?: number | null; avatarUrl?: string | null; createdAt: Date }>;
   isConnected: boolean;
   onSend: (msg: string) => void;
   username: string;
@@ -452,7 +452,12 @@ function ChatPanel({
           <p className="text-white/30 text-xs text-center py-8">No messages yet. Be the first!</p>
         )}
         {messages.map(msg => (
-          <div key={msg.id} className="flex gap-2 text-sm flex-wrap">
+          <div key={msg.id} className="flex gap-2 text-sm flex-wrap items-start">
+            {msg.avatarUrl ? (
+              <img src={msg.avatarUrl} alt="" className="mt-0.5 h-4 w-4 rounded-full object-cover border border-white/15" />
+            ) : (
+              <span aria-hidden="true" className="mt-0.5 h-4 w-4 rounded-full bg-white/10 border border-white/10" />
+            )}
             <span className={`font-semibold flex-shrink-0 ${msg.isAdmin ? "text-red-400" : "text-white/70"}`}>
               {msg.isAdmin && "[ADMIN] "}
               {msg.userId ? (
@@ -1732,11 +1737,12 @@ export default function MusicWars() {
     room: "music_wars",
     username,
     userId: user?.id,
+    avatarUrl: (user as { avatarUrl?: string | null } | null)?.avatarUrl ?? null,
     isAdmin,
     accountLabels: (() => { const raw = (user as { accountLabels?: string | null } | null)?.accountLabels; if (!raw) return []; try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })(),
     initialMessages: (chatHistory || []).map(m => ({
       id: m.id, username: m.username, message: m.message,
-      room: m.room, isAdmin: m.isAdmin, accountLabels: null, createdAt: new Date(m.createdAt),
+      room: m.room, isAdmin: m.isAdmin, accountLabels: null, avatarUrl: m.avatarUrl ?? null, createdAt: new Date(m.createdAt),
     })),
     onSpinStateChange: (state) => {
       setSpinCount(state.spinCount);

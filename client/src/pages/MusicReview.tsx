@@ -1362,6 +1362,7 @@ export default function MusicReview() {
     room: "music_review",
     username: chatUsername,
     userId: user?.id,
+    avatarUrl: (user as { avatarUrl?: string | null } | null)?.avatarUrl ?? null,
     isAdmin,
     onFakeChatMessage: receiveFakeMessage,
     onChatControlsReceived: receiveChatControls,
@@ -2005,7 +2006,13 @@ export default function MusicReview() {
                         {(msg as any).type === 'system' ? (
                           <div className="text-white/20 text-center text-[10px] py-1">{(msg as any).text ?? msg.message}</div>
                         ) : (
-                          <div>
+                          <div className="flex items-start gap-1.5">
+                            {msg.avatarUrl ? (
+                              <img src={msg.avatarUrl} alt="" className="mt-0.5 h-4 w-4 rounded-full object-cover border border-white/15" />
+                            ) : (
+                              <span aria-hidden="true" className="mt-0.5 h-4 w-4 rounded-full bg-white/10 border border-white/10" />
+                            )}
+                            <div className="min-w-0">
                             <Link
                               href={`/profile/${msg.userId}`}
                               className={`font-semibold hover:underline hover:opacity-80 transition-opacity cursor-pointer ${
@@ -2017,6 +2024,7 @@ export default function MusicReview() {
                             {(msg.isAdmin || (msg as any).role === 'admin') && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
                             {(msg as any).role === 'judge' && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
                             <span className="text-white/50 ml-1.5">{(msg as any).text ?? msg.message}</span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2028,7 +2036,9 @@ export default function MusicReview() {
                       msg.role === 'admin' ? 'text-red-400' : msg.role === 'judge' ? 'text-yellow-400' : 'text-white/70'
                     }`;
                     return (
-                      <div key={msg.id} className="text-xs leading-relaxed">
+                      <div key={msg.id} className="text-xs leading-relaxed flex items-start gap-1.5">
+                        <span aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-white/10 border border-white/10" />
+                        <div className="min-w-0">
                         {isRealAccount ? (
                           <a
                             href={`/profile/${msg.userId}`}
@@ -2042,6 +2052,7 @@ export default function MusicReview() {
                         {msg.role === 'admin' && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
                         {msg.role === 'judge' && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
                         <span className="text-white/50 ml-1.5">{msg.text}</span>
+                        </div>
                       </div>
                     );
                   }

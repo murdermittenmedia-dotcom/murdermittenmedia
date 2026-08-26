@@ -14,6 +14,7 @@ import { chatMessages } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
 import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, setCurrentPlaying } from "../db";
 import { registerStripeWebhook } from "../stripe-webhook";
+import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -162,6 +163,7 @@ async function startServer() {
       message: string;
       room: string;
       userId?: number;
+      avatarUrl?: string | null;
       isAdmin?: boolean;
       accountLabels?: string[] | null;
     }) => {
@@ -176,6 +178,7 @@ async function startServer() {
         isAdmin: data.isAdmin || false,
         accountLabels: Array.isArray(data.accountLabels) ? data.accountLabels.slice(0, 8) : [],
         userId: data.userId ?? null,
+        avatarUrl: sanitizeChatAvatarUrl(data.avatarUrl),
         createdAt: new Date(),
       };
 
