@@ -175,11 +175,11 @@ function ColorwayGuide() {
   return (
     <section className="mb-10 border border-white/10 bg-white/[0.025] rounded-lg overflow-hidden" aria-labelledby="colorway-guide-title">
       <div className="p-5 sm:p-6 border-b border-white/10 bg-gradient-to-r from-red-950/30 via-transparent to-transparent">
-        <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.3em] mb-2">The Spirit Tee Collection</p>
+        <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.3em] mb-2">The MITTEN MADE BLADE TEE Collection</p>
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
           <div>
             <h2 id="colorway-guide-title" className="font-['Anton'] text-2xl sm:text-3xl uppercase">Choose your colorway</h2>
-            <p className="text-white/50 text-sm mt-1 max-w-2xl">All ten colorways are available from the Spirit of The Mitten Tee selector below. The guide keeps the collection names and design colors easy to compare before choosing a size.</p>
+            <p className="text-white/50 text-sm mt-1 max-w-2xl">All ten colorways are available from the MITTEN MADE BLADE TEE selector below. The guide keeps the collection names and design colors easy to compare before choosing a size.</p>
           </div>
           <span className="text-white/30 text-xs uppercase tracking-widest">10 colorways · 6 sizes each</span>
         </div>

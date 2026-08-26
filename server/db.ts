@@ -1317,6 +1317,8 @@ export async function getCombinedLeaderboard() {
 
   // Get all battle records
   const battles = await db.select().from(battleRecords).orderBy(desc(battleRecords.battleDate));
+  const profileRows = await db.select({ id: users.id, avatarUrl: users.avatarUrl }).from(users);
+  const avatarByUserId = new Map(profileRows.map((profile) => [profile.id, sanitizeChatAvatarUrl(profile.avatarUrl)]));
 
   // Get all reviewed submissions with fire/trash counts
   const submissions = await db.select({
@@ -1333,6 +1335,7 @@ export async function getCombinedLeaderboard() {
   const artistMap: Record<string, {
     artistName: string;
     userId?: number | null;
+    avatarUrl?: string | null;
     wins: number;
     losses: number;
     totalFire: number;
@@ -1345,10 +1348,13 @@ export async function getCombinedLeaderboard() {
   const ensureArtist = (name: string, userId?: number | null) => {
     const key = name.toLowerCase().trim();
     if (!artistMap[key]) {
-      artistMap[key] = { artistName: name, userId: userId ?? null, wins: 0, losses: 0, totalFire: 0, totalTrash: 0, totalBattles: 0, totalReviews: 0, score: 0 };
+      artistMap[key] = { artistName: name, userId: userId ?? null, avatarUrl: userId ? avatarByUserId.get(userId) ?? null : null, wins: 0, losses: 0, totalFire: 0, totalTrash: 0, totalBattles: 0, totalReviews: 0, score: 0 };
     }
     // Update userId if we have one and the existing entry doesn't
-    if (userId && !artistMap[key].userId) artistMap[key].userId = userId;
+    if (userId && !artistMap[key].userId) {
+      artistMap[key].userId = userId;
+      artistMap[key].avatarUrl = avatarByUserId.get(userId) ?? null;
+    }
     return artistMap[key];
   };
 

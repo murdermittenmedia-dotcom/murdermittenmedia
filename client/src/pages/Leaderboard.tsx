@@ -10,6 +10,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { ArtistLink } from "@/components/ArtistLink";
 import { UserBadges } from "@/components/UserBadges";
 import { Link } from "wouter";
+import { getArtistInitials } from "@shared/leaderboard-display";
 
 const RANK_COLORS = [
   "text-yellow-400", // 1st
@@ -22,6 +23,17 @@ function getRankBadge(rank: number) {
   if (rank === 2) return "🥈";
   if (rank === 3) return "🥉";
   return `#${rank}`;
+}
+
+function ArtistAvatar({ artistName, avatarUrl }: { artistName: string; avatarUrl?: string | null }) {
+  const initials = getArtistInitials(artistName);
+  return avatarUrl ? (
+    <img src={avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full border border-white/15 object-cover" />
+  ) : (
+    <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-[10px] font-bold text-white/65">
+      {initials}
+    </span>
+  );
 }
 
 // Fan level display info
@@ -171,7 +183,8 @@ export default function Leaderboard() {
                           <span className={`font-['Anton'] text-xl w-10 text-center ${rankColor}`}>
                             {getRankBadge(rank)}
                           </span>
-                          <div className="flex-1">
+                          <ArtistAvatar artistName={entry.artistName} avatarUrl={entry.avatarUrl} />
+                          <div className="flex-1 min-w-0">
                             <div className="font-semibold text-white inline-flex items-center gap-1">
                               <ArtistLink artistName={entry.artistName} userId={entry.userId} />
                               {entry.userId && <UserBadges userId={entry.userId} size="xs" maxVisible={2} />}
@@ -201,14 +214,17 @@ export default function Leaderboard() {
                         <span className={`font-['Anton'] text-lg text-center ${rankColor}`}>
                           {getRankBadge(rank)}
                         </span>
-                        <div>
-                          <div className="font-semibold text-white inline-flex items-center gap-1">
-                            <ArtistLink artistName={entry.artistName} userId={entry.userId} />
-                            {entry.userId && <UserBadges userId={entry.userId} size="xs" maxVisible={2} />}
-                          </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ArtistAvatar artistName={entry.artistName} avatarUrl={entry.avatarUrl} />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-white inline-flex items-center gap-1">
+                              <ArtistLink artistName={entry.artistName} userId={entry.userId} />
+                              {entry.userId && <UserBadges userId={entry.userId} size="xs" maxVisible={2} />}
+                            </div>
                           {winRate !== null && (
                             <div className="text-xs text-white/30">{winRate}% win rate · {entry.totalReviews} review{entry.totalReviews !== 1 ? "s" : ""}</div>
                           )}
+                          </div>
                         </div>
                         <div className={`font-['Anton'] text-xl text-center ${isTop3 ? "text-red-500" : "text-white/70"}`}>
                           {entry.score}
