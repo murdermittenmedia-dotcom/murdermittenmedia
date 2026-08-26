@@ -1560,3 +1560,9 @@
 - [x] Present all shirt colorways on the single merch page with clear labels and optional product imagery
 - [x] Preserve existing merch checkout, shipping, and cart behavior while updating the catalog
 - [x] Add regression coverage and visually verify the updated merch section
+
+## Merch Separate Product Correction
+- [x] Convert the ten reference shirt colorways from variants into ten distinct merch product objects
+- [x] Give each shirt product its own product image, colorway metadata, sizes, inventory, and checkout identity
+- [x] Keep the original Spirit Tee and current cart, shipping, and Stripe checkout flows working
+- [x] Remove the misleading shared colorway guide and verify the corrected single-page catalog

@@ -12,11 +12,8 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
-import { MERCH_SHIRT_COLORWAYS } from "@shared/merch-colorways";
 
 // ─── Color-specific image galleries (fallback for Spirit of The Mitten Tee) ──
-const COLORWAY_BOARD_IMAGE = "/manus-storage/murder-mitten-shirt-colorways_ecde9cc5.png";
-
 const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
   White: [
     "/manus-storage/spirit-white-new-front_d5abb7f7.jpg",
@@ -88,10 +85,6 @@ type CartItem = {
 
 // ─── Helper: get color-specific images for a product ─────────────────────────
 function getProductImages(product: ShopProduct, color: string): string[] {
-  if (product.slug === "spirit-of-the-mitten-tee" && !SPIRIT_TEE_IMAGES[color]) {
-    return [COLORWAY_BOARD_IMAGE];
-  }
-
   if (!product.images || product.images.length === 0) {
     if (product.slug === "spirit-of-the-mitten-tee") {
       return SPIRIT_TEE_IMAGES[color] || SPIRIT_TEE_IMAGES.Black;
@@ -121,12 +114,6 @@ function getProductImages(product: ShopProduct, color: string): string[] {
 // ─── Helper: get unique colors from variants ──────────────────────────────────
 function getProductColors(product: ShopProduct): string[] {
   const colors = Array.from(new Set(product.variants.map((v) => v.color)));
-  if (product.slug === "spirit-of-the-mitten-tee") {
-    const referenceColors = MERCH_SHIRT_COLORWAYS
-      .map((colorway) => colorway.name)
-      .filter((color) => colors.includes(color));
-    if (referenceColors.length > 0) return referenceColors;
-  }
   return colors.length > 0 ? colors : ["Black", "White"];
 }
 
@@ -138,7 +125,10 @@ function getProductSizes(product: ShopProduct, color?: string): string[] {
   return Array.from(new Set(variants.map((v) => v.size)));
 }
 
-const SWATCH_COLORS: Record<string, string> = {
+/* Colorway-specific product detail is now stored on each product object. */
+/* The public page intentionally renders every active product in one collection. */
+/*
+
   "Midnight Navy": "#17213c",
   Gold: "#eab308",
   White: "#f5f5f4",
@@ -207,6 +197,8 @@ function ColorwayGuide() {
     </section>
   );
 }
+
+*/
 
 // ─── Image Carousel Component ─────────────────────────────────────────────────
 function ImageCarousel({ images, productName }: { images: string[]; productName: string }) {
@@ -685,13 +677,11 @@ export default function Merch() {
             <h1 className="font-['Anton'] text-3xl sm:text-4xl uppercase mb-1 break-words w-full max-w-full">
               The Collection
             </h1>
-            <p className="text-white/40 text-sm">Murder Mitten Media Official Merch</p>
+            <p className="text-white/40 text-sm">Murder Mitten Media Official Merch · 10 separate colorway drops</p>
           </div>
           {/* Cart icon — merch section only */}
           <MerchCartButton onClick={() => setCartOpen(true)} />
         </div>
-
-        <ColorwayGuide />
 
         {/* Loading */}
         {productsQuery.isLoading && (
