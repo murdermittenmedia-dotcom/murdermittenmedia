@@ -88,48 +88,11 @@ import {
   ARTIST_LEVELS, FAN_LEVELS, getArtistLevelInfo, getFanLevelInfo, getNextArtistLevel,
   updateStreak,
 } from "./rewards";
+import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
-interface IgPost {
-  id: string;
-  caption: string;
-  mediaType: string;
-  mediaUrl: string;
-  thumbnailUrl?: string;
-  permalink: string;
-  likes: number;
-  comments: number;
-  timestamp: string;
-}
-let igCache: { posts: IgPost[]; fetchedAt: number } | null = null;
+let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
-
-async function fetchInstagramPosts(): Promise<IgPost[]> {
-  const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-  const igUserId = process.env.INSTAGRAM_USER_ID;
-  if (!igToken || !igUserId) return [];
-  try {
-    const fields = "id,caption,media_type,media_url,thumbnail_url,permalink,like_count,comments_count,timestamp";
-    const url = `https://graph.instagram.com/${igUserId}/media?fields=${fields}&limit=20&access_token=${igToken}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`IG API ${res.status}`);
-    const data = await res.json() as { data: any[] };
-    return (data.data || []).map((p: any) => ({
-      id: p.id,
-      caption: p.caption || "",
-      mediaType: p.media_type,
-      mediaUrl: p.media_url || "",
-      thumbnailUrl: p.thumbnail_url,
-      permalink: p.permalink,
-      likes: p.like_count || 0,
-      comments: p.comments_count || 0,
-      timestamp: p.timestamp,
-    }));
-  } catch (err) {
-    console.error("[IG Feed] Failed:", err);
-    return [];
-  }
-}
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -777,8 +740,8 @@ export const appRouter = router({
     feed: publicProcedure.query(async () => {
       const now = Date.now();
       if (igCache && now - igCache.fetchedAt < CACHE_TTL_MS) return igCache.posts;
-      const posts = await fetchInstagramPosts();
-      igCache = { posts, fetchedAt: now };
+      const posts = await fetchInstagramPosts({ accountHandle: "murdermittenmedia" });
+      if (posts.length > 0) igCache = { posts, fetchedAt: now };
       return posts;
     }),
   }),
@@ -4586,18 +4549,22 @@ export const appRouter = router({
     getPosts: publicProcedure.query(async () => {
       const now = Date.now();
       if (igCache && now - igCache.fetchedAt < CACHE_TTL_MS) return igCache.posts;
-      const posts = await fetchInstagramPosts();
-      igCache = { posts, fetchedAt: now };
-      return posts.map(p => ({
-        id: p.id,
-        caption: p.caption,
-        permalink: p.permalink,
-        mediaType: p.mediaType as "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM",
-        thumbnailUrl: p.thumbnailUrl,
-        mediaUrl: p.mediaUrl,
-        timestamp: p.timestamp,
-        likeCount: p.likes,
-        commentsCount: p.comments,
+
+      const posts = await fetchInstagramPosts({ accountHandle: "murdermittenmedia" });
+      // Do not cache an empty failure. A manual refresh can recover as soon as
+      // credentials, network connectivity, or Meta's API are healthy again.
+      if (posts.length > 0) igCache = { posts, fetchedAt: now };
+
+      return posts.map((post) => ({
+        id: post.id,
+        caption: post.caption,
+        permalink: post.permalink,
+        mediaType: post.mediaType,
+        thumbnailUrl: post.thumbnailUrl,
+        mediaUrl: post.mediaUrl,
+        timestamp: post.timestamp,
+        likeCount: post.likes,
+        commentsCount: post.comments,
       }));
     }),
   }),

@@ -1587,3 +1587,4 @@
 - [x] Verify payment return handling, protected submission access, tests, build, and Music Review UI
 - [x] Rename the Three Color System Tee to MITTEN MADE BLADE TEE and set its price to $27.99 across storefront and checkout while preserving Spirit of The Mitten Tee
 - [x] Add a New Arrival badge to the MITTEN MADE BLADE TEE in the single-page merch catalog
+- [x] Fix Latest News Instagram feed loading so posts reliably appear with a safe fallback when the external feed is unavailable

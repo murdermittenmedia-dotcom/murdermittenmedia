@@ -105,6 +105,9 @@ function PostCard({ post, index }: { post: NewsPost; index: number }) {
   const truncated = post.caption.length > 200 ? post.caption.slice(0, 200) + "…" : post.caption;
   const typeLabel = post.mediaType === "VIDEO" ? "Video" : post.mediaType === "CAROUSEL_ALBUM" ? "Gallery" : "Post";
   const typeColor = post.mediaType === "VIDEO" ? "text-blue-400 border-blue-600/40" : post.mediaType === "CAROUSEL_ALBUM" ? "text-purple-400 border-purple-600/40" : "text-red-400 border-red-600/40";
+  const previewUrl = post.mediaType === "VIDEO"
+    ? post.thumbnailUrl || post.mediaUrl
+    : post.mediaUrl || post.thumbnailUrl;
 
   const timeAgo = (ts: string) => {
     const diff = Date.now() - new Date(ts).getTime();
@@ -124,6 +127,23 @@ function PostCard({ post, index }: { post: NewsPost; index: number }) {
       className="block border border-white/10 bg-white/[0.02] hover:border-red-600/40 hover:bg-white/[0.04] transition-all duration-300 group"
       style={{ animationDelay: `${index * 60}ms` }}
     >
+      {previewUrl && (
+        <div className="relative aspect-[4/3] overflow-hidden bg-black border-b border-white/5">
+          <img
+            src={previewUrl}
+            alt={post.caption ? post.caption.slice(0, 100) : "Instagram post from @murdermittenmedia"}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            onError={(event) => { event.currentTarget.style.display = "none"; }}
+          />
+          {post.mediaType === "VIDEO" && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="w-10 h-10 rounded-full bg-black/70 border border-white/30 flex items-center justify-center text-white text-sm">▶</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Card header */}
       <div className="p-5 pb-4">
         <div className="flex items-center justify-between mb-3">
@@ -185,9 +205,13 @@ export default function News() {
   const [filter, setFilter] = useState<"all" | "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM">("all");
 
   // Try to fetch live Instagram posts from backend
-  const { data: livePosts, isLoading, refetch, isRefetching } = trpc.news.getPosts.useQuery(
+  const { data: livePosts, isLoading, isError, refetch, isRefetching } = trpc.news.getPosts.useQuery(
     undefined,
-    { retry: false }
+    {
+      retry: false,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    }
   );
 
   // Use live posts if available, otherwise fall back to static
@@ -224,7 +248,9 @@ export default function News() {
               <p className="text-white/40 text-sm mt-2">
                 {isLive
                   ? "Live from @murdermittenmedia on Instagram"
-                  : "Curated posts from @murdermittenmedia · Connect Instagram API for live updates"
+                  : isError
+                    ? "Instagram is temporarily unavailable · Showing the latest available posts"
+                    : "Curated posts from @murdermittenmedia · Connect Instagram API for live updates"
                 }
               </p>
             </div>
@@ -241,6 +267,7 @@ export default function News() {
               <button
                 onClick={() => refetch()}
                 disabled={isLoading || isRefetching}
+                aria-label="Refresh Instagram feed"
                 className="flex items-center gap-2 border border-white/10 hover:border-white/30 text-white/40 hover:text-white/70 px-3 py-2 text-xs transition-all disabled:opacity-40"
                 title="Refresh feed"
               >
@@ -313,7 +340,10 @@ export default function News() {
         {!isLive && (
           <div className="mt-8 border border-white/5 bg-white/[0.02] p-4 text-center">
             <p className="text-white/30 text-xs">
-              Showing curated posts. For live auto-updating feed, configure Instagram API credentials.
+              {isError
+                ? "Instagram is temporarily unavailable. Showing the latest available posts instead."
+                : "Showing curated posts. For live auto-updating feed, configure Instagram API credentials."
+              }
             </p>
             <a
               href="https://www.instagram.com/murdermittenmedia/"
