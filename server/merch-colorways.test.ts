@@ -38,6 +38,7 @@ describe("merch shirt colorways", () => {
     expect(bladeTee).toMatchObject({
       name: "MITTEN MADE BLADE TEE",
       price: 2799,
+      badge: "New Arrival",
       slug: "three-color-system-tee",
     });
     expect(spiritTee).toMatchObject({

@@ -198,7 +198,7 @@
 - [x] SiteNav: show avatar circle instead of letter initial when avatarUrl is set
 - [x] Chat messages: show tiny avatar next to username
 - [x] Update all SiteNav authenticated avatar render paths consistently for desktop and mobile
-- [ ] Resolve current TypeScript/LSP errors and re-verify SiteNav avatar behavior
+- [x] Resolve current TypeScript/LSP errors and re-verify SiteNav avatar behavior
 - [x] Leaderboard: show avatar next to artist name
 
 ## Wheel Auto-Remove & Queue Notifications
@@ -1586,3 +1586,4 @@
 - [x] Keep Cash App as a manual receipt path for the same paid submission options
 - [x] Verify payment return handling, protected submission access, tests, build, and Music Review UI
 - [x] Rename the Three Color System Tee to MITTEN MADE BLADE TEE and set its price to $27.99 across storefront and checkout while preserving Spirit of The Mitten Tee
+- [x] Add a New Arrival badge to the MITTEN MADE BLADE TEE in the single-page merch catalog
