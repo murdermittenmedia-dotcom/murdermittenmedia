@@ -49,6 +49,7 @@ import { ENV } from './_core/env';
 import { aggregateLinkAnalyticsDaily } from './link-analytics';
 import { aggregateSiteAnalytics } from './site-analytics';
 import { sanitizeChatAvatarUrl } from "../shared/chat-avatar";
+import { mergeProfileSongs } from "../shared/profile-songs";
 import { attachSongReactionTotals } from "../shared/song-reaction-totals";
 import { getPageMeta } from "../shared/pagination";
 
@@ -576,7 +577,7 @@ export async function getArtistProfile(userId: number) {
     getArtistStats(artistName),
     getUserSongs(userId, false),
   ]);
-  return { user, artistName, stats, songs };
+  return { user, artistName, stats, songs: mergeProfileSongs(songs, stats.records, artistName) };
 }
 
 // -- CREATE A LINK ----------------------------------------------

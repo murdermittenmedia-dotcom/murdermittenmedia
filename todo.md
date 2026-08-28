@@ -148,7 +148,7 @@
 ## Auto-Link Wheel Entry Songs to Profile
 - [x] When a logged-in user submits a wheel entry with a song (URL or uploaded MP3), auto-add it to their user_songs catalogue
 - [x] When admin records a battle result, auto-link the winning/losing songs to the respective user profiles if userId is known
-- [ ] ArtistStatModal: show both catalogue songs AND songs from past battle submissions (deduplicated by title)
+- [x] ArtistStatModal: show both catalogue songs AND songs from past battle submissions (deduplicated by title)
 
 ## Admin Wheel Controls
 - [x] Admin panel: X button on each wheel entry to remove/eliminate individual names instantly
