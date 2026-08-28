@@ -887,7 +887,7 @@ function VotingPanel({
   user: { id: number; name: string; role: string } | null | undefined;
   isJudge: boolean; isAdmin: boolean;
   onVote: (candidate: "contestant1" | "contestant2" | "contestant3") => void;
-  onSetActiveBattle: (c1: string, c2: string, c3?: string, isTriple?: boolean) => void;
+  onSetActiveBattle: (c1: string, c2: string, c3?: string, isTriple?: boolean, roundNumber?: number) => void;
   onClearVotes: () => void;
   entries: Array<{ id: number; artistName: string; status: string; userId?: number | null }>;
   onLoadToRadio?: (contestantName: string, songTitle: string, songUrl: string, contestantNumber: number) => void;
@@ -897,6 +897,7 @@ function VotingPanel({
   const [c1, setC1] = useState("");
   const [c2, setC2] = useState("");
   const [c3, setC3] = useState("");
+  const [roundNumber, setRoundNumber] = useState(1);
   const activeEntries = entries.filter(e => e.status === "active");
   const isTriple = !!(activeBattle?.isTripleThreat && activeBattle?.contestant3Name);
   const total = (voteResults?.contestant1 ?? 0) + (voteResults?.contestant2 ?? 0) + (isTriple ? (voteResults?.contestant3 ?? 0) : 0);
@@ -948,11 +949,23 @@ function VotingPanel({
               </select>
             )}
           </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="music-wars-round" className="text-[10px] text-white/40 uppercase tracking-widest whitespace-nowrap">Round</label>
+            <input
+              id="music-wars-round"
+              type="number"
+              min={1}
+              max={999}
+              value={roundNumber}
+              onChange={e => setRoundNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              className="w-20 bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none"
+            />
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => {
                 const valid = tripleTheatMode ? (c1 && c2 && c3 && c1 !== c2 && c1 !== c3 && c2 !== c3) : (c1 && c2 && c1 !== c2);
-                if (valid) onSetActiveBattle(c1, c2, tripleTheatMode ? c3 : undefined, tripleTheatMode);
+                if (valid) onSetActiveBattle(c1, c2, tripleTheatMode ? c3 : undefined, tripleTheatMode, roundNumber);
               }}
               disabled={tripleTheatMode ? (!c1 || !c2 || !c3 || c1 === c2 || c1 === c3 || c2 === c3) : (!c1 || !c2 || c1 === c2)}
               className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors">
@@ -1234,7 +1247,7 @@ function MusicWarsAdminHub({
   adminMicBroadcast: ReturnType<typeof useAdminMicBroadcast>;
   tripleTheatMode: boolean;
   onToggleTripleThreat: () => void;
-  onSetActiveBattle: (c1: string, c2: string, c3?: string, isTriple?: boolean) => void;
+  onSetActiveBattle: (c1: string, c2: string, c3?: string, isTriple?: boolean, roundNumber?: number) => void;
   onClearVotes: () => void;
   entries: Array<{ id: number; artistName: string; songTitle: string; paid: boolean; paymentConfirmed: boolean; status: string; songUrl?: string | null; userId?: number | null }>;
   onLoadToRadio: (contestantName: string, songTitle: string, songUrl: string, contestantNumber: number) => void;
@@ -1253,6 +1266,7 @@ function MusicWarsAdminHub({
   const [c1, setC1] = useState("");
   const [c2, setC2] = useState("");
   const [c3, setC3] = useState("");
+  const [roundNumber, setRoundNumber] = useState(1);
   const [confirmReset, setConfirmReset] = useState(false);
   const audioPlayer = useAudioPlayer();
   const activeEntries = entries.filter(e => e.status === "active");
@@ -1401,11 +1415,23 @@ function MusicWarsAdminHub({
                   </select>
                 )}
               </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="music-wars-admin-round" className="text-[10px] text-white/40 uppercase tracking-widest whitespace-nowrap">Round</label>
+                <input
+                  id="music-wars-admin-round"
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={roundNumber}
+                  onChange={e => setRoundNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-20 bg-white/5 border border-white/10 text-white text-xs px-2 py-1.5 focus:outline-none"
+                />
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
                     const valid = tripleTheatMode ? (c1 && c2 && c3 && c1 !== c2 && c1 !== c3 && c2 !== c3) : (c1 && c2 && c1 !== c2);
-                    if (valid) { onSetActiveBattle(c1, c2, tripleTheatMode ? c3 : undefined, tripleTheatMode); setC1(""); setC2(""); setC3(""); }
+                    if (valid) { onSetActiveBattle(c1, c2, tripleTheatMode ? c3 : undefined, tripleTheatMode, roundNumber); setC1(""); setC2(""); setC3(""); }
                   }}
                   disabled={tripleTheatMode ? (!c1 || !c2 || !c3 || c1 === c2 || c1 === c3 || c2 === c3) : (!c1 || !c2 || c1 === c2)}
                   className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors">
@@ -2347,8 +2373,8 @@ export default function MusicWars() {
                 adminMicBroadcast={adminMicBroadcast}
                 tripleTheatMode={tripleTheatMode}
                 onToggleTripleThreat={() => setTripleTheat(!tripleTheatMode)}
-                onSetActiveBattle={async (c1, c2, c3, isTriple) => {
-                  await setActiveBattleMutation.mutateAsync({ contestant1Name: c1, contestant2Name: c2, contestant3Name: c3 ?? undefined, isTripleThreat: isTriple });
+                onSetActiveBattle={async (c1, c2, c3, isTriple, roundNumber) => {
+                  await setActiveBattleMutation.mutateAsync({ contestant1Name: c1, contestant2Name: c2, contestant3Name: c3 ?? undefined, isTripleThreat: isTriple, roundNumber: roundNumber ?? 1 });
                 }}
                 onClearVotes={async () => { if (activeBattle?.id) await clearVotesMutation.mutateAsync({ battleId: activeBattle.id }); }}
                 entries={allEntries ?? []}
