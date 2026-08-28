@@ -235,7 +235,7 @@
 ## Reset War & User Management Fixes
 - [ ] Reset Current War: clears ALL wheel entries (not just non-winners), all votes, active battle, and battle records for current session
 - [ ] Admin User Panel: only shows users on the wheel OR who applied as judge (not all registered users)
-- [ ] "Apply as Judge" button: visible to logged-in users on Music Wars page
+- [x] "Apply as Judge" button: visible to logged-in users on Music Wars page
 - [ ] Judge application stored in DB (pending/approved/rejected)
 - [ ] Admin can approve/reject judge applications from user panel
 - [ ] Approved judge gets judge role and mic access

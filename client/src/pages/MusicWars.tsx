@@ -1763,6 +1763,13 @@ export default function MusicWars() {
     enabled: !!user,
     refetchInterval: 10_000,
   });
+  const { data: judgeApplication, refetch: refetchJudgeApplication } = trpc.judgeApps.getMine.useQuery(undefined, {
+    enabled: !!user && !isJudge,
+  });
+  const submitJudgeApplication = trpc.judgeApps.submitApplication.useMutation({
+    onSuccess: () => { refetchJudgeApplication(); toast.success("Judge application submitted for admin review."); },
+    onError: (error) => toast.error(`Could not submit application: ${error.message}`),
+  });
   const dismissPickedNotification = trpc.warsWheel.dismissNotification.useMutation({
     onSuccess: () => refetchPickedNotification(),
   });
@@ -2363,6 +2370,23 @@ export default function MusicWars() {
                   requiresPayment={requiresPayment}
                   user={user}
                 />
+                {user && !isJudge && (
+                  <div className="mt-4 border border-yellow-500/20 bg-yellow-500/5 rounded-xl p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-yellow-400 uppercase tracking-widest font-semibold">Join the panel</div>
+                        <p className="text-[11px] text-white/40 mt-1">Apply to judge upcoming Music Wars battles.</p>
+                      </div>
+                      <button
+                        onClick={() => submitJudgeApplication.mutate({})}
+                        disabled={submitJudgeApplication.isPending || judgeApplication?.status === "pending"}
+                        className="border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/10 disabled:opacity-40 px-3 py-2 text-[10px] uppercase tracking-wider font-semibold transition-colors"
+                      >
+                        {submitJudgeApplication.isPending ? "Submitting…" : judgeApplication?.status === "pending" ? "Application Pending" : judgeApplication?.status === "rejected" ? "Reapply as Judge" : "Apply as Judge"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* How it works */}
                 <div className="mt-4 bg-[#0d0d0d] border border-white/10 rounded-xl p-4">
