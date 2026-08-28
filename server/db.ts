@@ -50,6 +50,7 @@ import { aggregateLinkAnalyticsDaily } from './link-analytics';
 import { aggregateSiteAnalytics } from './site-analytics';
 import { sanitizeChatAvatarUrl } from "../shared/chat-avatar";
 import { mergeProfileSongs } from "../shared/profile-songs";
+import { summarizeVotes } from "../shared/voting";
 import { attachSongReactionTotals } from "../shared/song-reaction-totals";
 import { getPageMeta } from "../shared/pagination";
 
@@ -856,27 +857,11 @@ export async function getVoteResults(battleId: number) {
     audienceContestant1: 0, audienceContestant2: 0, audienceContestant3: 0,
   };
   const allVotes = await db.select().from(votes).where(eq(votes.battleId, battleId));
-  let c1 = 0, c2 = 0, c3 = 0, audienceC1 = 0, audienceC2 = 0, audienceC3 = 0;
-  const judgeVotes: Array<{ name: string; role: string; candidate: string }> = [];
-  for (const v of allVotes) {
-    const isJudge = v.voterRole === "judge" || v.voterRole === "admin";
-    if (v.candidate === "contestant1") { c1++; if (!isJudge) audienceC1++; }
-    else if (v.candidate === "contestant2") { c2++; if (!isJudge) audienceC2++; }
-    else if (v.candidate === "contestant3") { c3++; if (!isJudge) audienceC3++; }
-    if (isJudge) {
-      judgeVotes.push({ name: v.voterName ?? "Judge", role: v.voterRole, candidate: v.candidate });
-    }
-  }
-  return {
-    contestant1: c1,
-    contestant2: c2,
-    contestant3: c3,
-    total: allVotes.length,
-    judgeVotes,
-    audienceContestant1: audienceC1,
-    audienceContestant2: audienceC2,
-    audienceContestant3: audienceC3,
-  };
+  return summarizeVotes(allVotes.map(v => ({
+    candidate: v.candidate as "contestant1" | "contestant2" | "contestant3",
+    voterRole: v.voterRole,
+    voterName: v.voterName,
+  })));
 }
 
 export async function clearBattleVotes(battleId: number) {

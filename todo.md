@@ -118,7 +118,7 @@
 - [x] Admin panel: User Management tab — list users, search by name, promote/demote judge
 - [x] Implement true pagination for admin.listUsers with page metadata and update the user-management UI to consume it
 - [x] Music Wars: Audience vote panel — vote for contestant1 or contestant2, show live bar chart
-- [ ] Music Wars: Judge vote panel — judge votes are publicly identified and use the corrected equal-weight design
+- [x] Music Wars: Judge vote panel — judge votes are publicly identified and use the corrected equal-weight design
 - [x] Music Wars: Live vote tracker — live polling updates, show vote counts + percentages
 - [x] Judge role auto-grants mic access in audio room (no manual activation needed)
 - [x] Admin can set active battle matchup from admin panel (names + explicit round-number control)

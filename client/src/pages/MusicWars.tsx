@@ -1020,6 +1020,15 @@ function VotingPanel({
           </div>
 
           {/* Vote buttons */}
+          {isJudge && !myVote && (
+            <div className="mb-3 border border-yellow-500/30 bg-yellow-500/5 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-yellow-300 uppercase tracking-widest font-semibold">Judge Console</p>
+                <span className="text-[10px] text-yellow-200/60 uppercase tracking-wider">1 vote · public</span>
+              </div>
+              <p className="text-[11px] text-white/45 mt-1">Your selection is identified publicly and counts the same as every audience vote.</p>
+            </div>
+          )}
           {user && !myVote && (
             <div className={`grid gap-3 mb-4 ${isTriple ? "grid-cols-3" : "grid-cols-2"}`}>
               <button onClick={() => onVote("contestant1")}
@@ -1700,7 +1709,7 @@ function PastBattles() {
 export default function MusicWars() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const isJudge = user?.role === "judge";
+  const isJudge = user?.role === "judge" || isAdmin;
   const isContestant = user?.role === "contestant";
   const username = user?.artistName || user?.name || "Guest";
   const audioRole = isAdmin ? "admin" : isJudge ? "judge" : isContestant ? "contestant" : "user";
