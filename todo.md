@@ -163,7 +163,7 @@
 - [x] Music Review page: 🔥 / 🗑️ buttons on currently playing song, disabled after vote cast
 - [x] Music Review page: show live fire/trash tally updating in real-time (poll every 3s)
 - [x] Music Review page: clickable artist names in queue → ArtistStatModal popup (W/L record + songs)
-- [ ] ArtistStatModal: show career fire/trash totals on each song in the catalogue
+- [x] ArtistStatModal: show career fire/trash totals on each song in the catalogue
 
 ## Live Vote Visibility
 - [x] Vote results panel visible to ALL viewers (not just logged-in users)

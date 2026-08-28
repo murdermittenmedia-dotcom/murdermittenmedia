@@ -49,6 +49,7 @@ import { ENV } from './_core/env';
 import { aggregateLinkAnalyticsDaily } from './link-analytics';
 import { aggregateSiteAnalytics } from './site-analytics';
 import { sanitizeChatAvatarUrl } from "../shared/chat-avatar";
+import { attachSongReactionTotals } from "../shared/song-reaction-totals";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -512,9 +513,27 @@ export async function getUserSongs(userId: number, includePrivate = false) {
   const conditions = includePrivate
     ? [eq(userSongs.userId, userId)]
     : [eq(userSongs.userId, userId), eq(userSongs.isPublic, true)];
-  return db.select().from(userSongs)
-    .where(and(...conditions))
-    .orderBy(desc(userSongs.uploadedAt));
+  const [songs, userRows] = await Promise.all([
+    db.select().from(userSongs)
+      .where(and(...conditions))
+      .orderBy(desc(userSongs.uploadedAt)),
+    db.select({ artistName: users.artistName, name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1),
+  ]);
+  const artistName = userRows[0]?.artistName || userRows[0]?.name || "";
+  if (!artistName) return attachSongReactionTotals(songs, []);
+
+  const submissions = await db.select({
+    artistName: reviewSubmissions.artistName,
+    songTitle: reviewSubmissions.songTitle,
+    fireCount: reviewSubmissions.fireCount,
+    trashCount: reviewSubmissions.trashCount,
+  }).from(reviewSubmissions)
+    .where(eq(reviewSubmissions.artistName, artistName));
+
+  return attachSongReactionTotals(songs, submissions);
 }
 
 export async function deleteUserSong(id: number, userId: number) {

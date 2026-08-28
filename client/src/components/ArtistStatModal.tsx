@@ -7,7 +7,7 @@
 import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { MapPin, ExternalLink, X, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, ExternalLink, X, ChevronDown, ChevronUp, Flame, Trash2 } from "lucide-react";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { UserBadges } from "@/components/UserBadges";
 
@@ -27,6 +27,8 @@ interface Song {
   genre?: string | null;
   isPublic: boolean;
   uploadedAt: Date;
+  fireCount: number;
+  trashCount: number;
 }
 
 interface BattleRecord {
@@ -98,6 +100,14 @@ function SongRow({
         <div className="flex-1 min-w-0">
           <div className="text-sm text-white font-semibold truncate">{song.title}</div>
           {song.genre && <div className="text-xs text-white/30">{song.genre}</div>}
+          <div className="flex items-center gap-2 mt-1 text-[10px]" aria-label="Career reactions">
+            <span className="inline-flex items-center gap-1 text-orange-400/80" title="Career fire votes">
+              <Flame className="w-3 h-3" /> {song.fireCount ?? 0}
+            </span>
+            <span className="inline-flex items-center gap-1 text-white/35" title="Career trash votes">
+              <Trash2 className="w-3 h-3" /> {song.trashCount ?? 0}
+            </span>
+          </div>
         </div>
 
         {/* External link badge */}
