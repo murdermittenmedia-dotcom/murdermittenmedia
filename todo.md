@@ -294,7 +294,7 @@
 - [x] Fix uploaded file playback - use presigned URLs so audio actually loads in player
 - [x] Fix Music Review file upload to work same as Music Wars (base64 inline upload)
 - [x] Build pop-out floating audio player that appears when a song loads/plays
-- [ ] Auto-remove song from queue after it finishes playing
+- [x] Auto-remove song from queue after it finishes playing
 - [x] Add city field to user DB schema, profile update procedure, onboarding modal, and UserProfile display
 
 ## Session 4 — May 2026
