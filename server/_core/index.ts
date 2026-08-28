@@ -150,8 +150,12 @@ async function startServer() {
 
   (app as any).io = io;
 
+  const broadcastPresence = () => io.emit("presence:count", io.engine.clientsCount);
+
   io.on("connection", (socket) => {
     const room = socket.handshake.query.room as string;
+    broadcastPresence();
+    socket.on("disconnect", broadcastPresence);
     const validRooms = ["music_wars", "music_review", "promo_wheel"];
     if (validRooms.includes(room)) {
       socket.join(room);

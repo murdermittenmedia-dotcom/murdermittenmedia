@@ -903,7 +903,7 @@
 - [ ] Leaderboard page: add "Top Fans" tab showing fan leaderboard
 
 ### Live Platform Activity Indicators
-- [ ] Homepage: animated "X users online now" counter (use socket connection count)
+- [x] Homepage: animated "X users online now" counter (use socket connection count)
 - [x] Homepage: "X songs submitted today" live counter
 - [x] Music Review page: show live viewer count prominently
 - [x] Site-wide: show "LIVE" badge in nav when any live session is active
