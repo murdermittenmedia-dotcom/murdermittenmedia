@@ -13,6 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 import { MERCH_SHIRT_COLORWAYS } from "@shared/merch-colorways";
+import { MERCH_BLADE_CLOSEUP_IMAGES } from "@shared/merch-blade-images";
 
 // ─── Original Spirit Tee image galleries ──────────────────────────────────────
 const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
@@ -39,6 +40,10 @@ const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
     "/manus-storage/spirit-black-group-new_a5801d55.png",
   ],
 };
+
+function isBladeTee(product: ShopProduct): boolean {
+  return product.slug === "three-color-system-tee" || product.name.trim().toLowerCase() === "mitten made blade tee";
+}
 
 // ─── Type definitions ─────────────────────────────────────────────────────────
 type ShopImage = {
@@ -86,6 +91,10 @@ type CartItem = {
 
 // ─── Helper: get color-specific images for a product ─────────────────────────
 function getProductImages(product: ShopProduct, color: string): string[] {
+  if (isBladeTee(product) && MERCH_BLADE_CLOSEUP_IMAGES[color]) {
+    return [MERCH_BLADE_CLOSEUP_IMAGES[color]];
+  }
+
   if (!product.images || product.images.length === 0) {
     if (product.slug === "spirit-of-the-mitten-tee") {
       return SPIRIT_TEE_IMAGES[color] || SPIRIT_TEE_IMAGES.Black;
@@ -115,7 +124,7 @@ function getProductImages(product: ShopProduct, color: string): string[] {
 // ─── Helper: get unique colors from variants ──────────────────────────────────
 function getProductColors(product: ShopProduct): string[] {
   const colors = Array.from(new Set(product.variants.map((v) => v.color)));
-  if (product.slug === "three-color-system-tee") {
+  if (isBladeTee(product)) {
     const referenceColors = MERCH_SHIRT_COLORWAYS
       .map((colorway) => colorway.name)
       .filter((color) => colors.includes(color));

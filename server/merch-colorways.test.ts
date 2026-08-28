@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MERCH_SHIRT_COLORWAYS, MERCH_SHIRT_COLORWAY_NAMES } from "../shared/merch-colorways";
+import { MERCH_BLADE_CLOSEUP_IMAGES } from "../shared/merch-blade-images";
 import { getDb, getShopProductBySlug } from "./db";
 
 describe("merch shirt colorways", () => {
@@ -17,6 +18,13 @@ describe("merch shirt colorways", () => {
       "Red Black Cream",
       "Taupe Haze",
     ]);
+  });
+
+  it("maps every Blade Tee colorway to a dedicated close-up asset", () => {
+    expect(Object.keys(MERCH_BLADE_CLOSEUP_IMAGES)).toEqual(MERCH_SHIRT_COLORWAY_NAMES);
+    for (const url of Object.values(MERCH_BLADE_CLOSEUP_IMAGES)) {
+      expect(url).toMatch(/^\/manus-storage\/mitten-made-blade-.+\.(?:jpg|png)$/);
+    }
   });
 
   it("keeps every colorway backed by a shirt color and descriptor", () => {

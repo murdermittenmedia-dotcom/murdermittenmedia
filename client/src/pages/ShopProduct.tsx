@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
+import { MERCH_BLADE_CLOSEUP_IMAGES } from "@shared/merch-blade-images";
 import {
   ShoppingBag, ChevronLeft, ChevronRight, Truck, Shield,
   Star, ArrowLeft, Minus, Plus, Check, AlertCircle, X
@@ -115,9 +116,14 @@ export default function ShopProduct() {
     }
   }, [product]);
 
-  // Filter images by selected color (if color-specific images exist)
+  // Use the exact uploaded colorway crop for the Blade Tee detail route too.
+  const isBladeTee = product
+    ? product.slug === "three-color-system-tee" || product.name.trim().toLowerCase() === "mitten made blade tee"
+    : false;
   const displayImages = product
-    ? (product.images as any[]).filter((img: any) => img.sortOrder >= 0)
+    ? isBladeTee && MERCH_BLADE_CLOSEUP_IMAGES[selectedColor]
+      ? [{ url: MERCH_BLADE_CLOSEUP_IMAGES[selectedColor], imageType: "colorway close-up" }]
+      : (product.images as any[]).filter((img: any) => img.sortOrder >= 0)
     : [];
 
   // Check inventory for selected variant
