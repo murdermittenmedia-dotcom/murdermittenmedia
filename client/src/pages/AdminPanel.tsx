@@ -271,19 +271,34 @@ function UsersTab() {
     setExpandedUser(null);
   }, [search]);
 
-  const { data: userPage, isLoading } = trpc.admin.listUsers.useQuery({
-    search: search || undefined,
-    page,
-    pageSize,
+  const { data: relevantUsers, isLoading } = trpc.users.list.useQuery();
+  const filteredUsers = (relevantUsers ?? []).filter(user => {
+    if (!search.trim()) return true;
+    const query = search.trim().toLocaleLowerCase();
+    return [user.name, user.email, user.artistName, user.city]
+      .filter(Boolean)
+      .some(value => String(value).toLocaleLowerCase().includes(query));
   });
-  const users = userPage?.items ?? [];
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const userPage = {
+    items: filteredUsers.slice((page - 1) * pageSize, page * pageSize),
+    total: filteredUsers.length,
+    page,
+    totalPages,
+    hasMore: page < totalPages,
+  };
+  const users = userPage.items;
 
+  const reviewJudgeApplication = trpc.judgeApps.review.useMutation({
+    onSuccess: () => { utils.users.list.invalidate(); toast.success("Judge application updated"); },
+    onError: (error) => toast.error(error.message),
+  });
   const setRole = trpc.admin.setRole.useMutation({
-    onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Role updated"); },
+    onSuccess: () => { utils.users.list.invalidate(); utils.admin.listUsers.invalidate(); toast.success("Role updated"); },
     onError: (e) => toast.error(e.message),
   });
   const setAccountLabelsMutation = trpc.admin.setAccountLabels.useMutation({
-    onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Labels updated"); },
+    onSuccess: () => { utils.users.list.invalidate(); utils.admin.listUsers.invalidate(); toast.success("Labels updated"); },
     onError: (e: { message: string }) => toast.error(e.message),
   });
 
@@ -377,6 +392,20 @@ function UsersTab() {
               {/* Expanded controls */}
               {expandedUser === user.id && (
                 <div className="border-t border-white/10 p-4 bg-white/[0.02] space-y-4">
+                  {user.judgeApplication?.status === "pending" && (
+                    <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-yellow-300 text-xs font-semibold uppercase tracking-wider">Judge application pending</p>
+                          {user.judgeApplication.reason && <p className="text-white/40 text-xs mt-1">{user.judgeApplication.reason}</p>}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => reviewJudgeApplication.mutate({ applicationId: user.judgeApplication!.id, approved: true })} disabled={reviewJudgeApplication.isPending}>Approve</Button>
+                          <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/10" onClick={() => reviewJudgeApplication.mutate({ applicationId: user.judgeApplication!.id, approved: false })} disabled={reviewJudgeApplication.isPending}>Reject</Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {/* Role change */}
                   <div>
                     <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Grant Account Labels <span className="text-white/30 normal-case font-normal">(multi-select)</span></p>
