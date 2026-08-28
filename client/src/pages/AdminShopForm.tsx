@@ -249,12 +249,17 @@ export default function AdminShopForm() {
   };
 
   const setPrimaryThumbnail = (index: number) => {
-    setImages(prev => prev.map((image, position) => ({
-      ...image,
-      imageType: position === index ? "thumbnail" : image.imageType === "thumbnail" ? "gallery" : image.imageType,
-      sortOrder: position,
-    })));
-    toast.success("Primary thumbnail selected");
+    setImages(prev => {
+      const selected = prev[index];
+      if (!selected) return prev;
+      const reordered = [selected, ...prev.filter((_, position) => position !== index)];
+      return reordered.map((image, position) => ({
+        ...image,
+        imageType: position === 0 ? "thumbnail" : image.imageType === "thumbnail" ? "gallery" : image.imageType,
+        sortOrder: position,
+      }));
+    });
+    toast.success("Primary thumbnail selected and moved to position 1");
   };
 
   const uploadPendingImages = async (pid: number) => {
@@ -389,7 +394,10 @@ export default function AdminShopForm() {
         toast.success("Product created!");
       }
 
-      utils.shop.adminGetProducts.invalidate();
+      await Promise.all([
+        utils.shop.adminGetProducts.invalidate(),
+        utils.shop.getProducts.invalidate(),
+      ]);
       navigate("/admin/shop");
     } catch (err: any) {
       toast.error(err.message ?? "Failed to save product");

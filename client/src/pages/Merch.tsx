@@ -51,6 +51,7 @@ type ShopImage = {
   url: string;
   storageKey: string | null;
   imageType: string;
+  color: string | null;
   sortOrder: number;
 };
 
@@ -91,34 +92,31 @@ type CartItem = {
 
 // ─── Helper: get color-specific images for a product ─────────────────────────
 function getProductImages(product: ShopProduct, color: string): string[] {
-  if (isBladeTee(product) && MERCH_BLADE_CLOSEUP_IMAGES[color]) {
-    return [MERCH_BLADE_CLOSEUP_IMAGES[color]];
-  }
-
-  if (!product.images || product.images.length === 0) {
-    if (product.slug === "spirit-of-the-mitten-tee") {
-      return SPIRIT_TEE_IMAGES[color] || SPIRIT_TEE_IMAGES.Black;
-    }
-    return [];
-  }
-
   const normalizedColor = color.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const colorImages = product.images.filter((img) => {
+  const sortFn = (a: ShopImage, b: ShopImage) => a.sortOrder - b.sortOrder;
+  const allImages = [...(product.images || [])].sort(sortFn);
+  const explicitlyAssigned = allImages.filter((img) =>
+    (img.color || "").toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedColor
+  );
+  const filenameMatched = allImages.filter((img) => {
     const key = (img.storageKey || img.url || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     return key.includes(normalizedColor);
   });
+  const colorImages = explicitlyAssigned.length > 0 ? explicitlyAssigned : filenameMatched;
+  const orderedImages = colorImages.length > 0 ? colorImages : allImages;
+  const primary = orderedImages.find((img) => img.imageType === "thumbnail");
+  const displayImages = primary
+    ? [primary, ...orderedImages.filter((img) => img.id !== primary.id)]
+    : orderedImages;
 
-  const sortFn = (a: ShopImage, b: ShopImage) => {
-    if (a.imageType === "thumbnail" && b.imageType !== "thumbnail") return -1;
-    if (a.imageType !== "thumbnail" && b.imageType === "thumbnail") return 1;
-    return a.sortOrder - b.sortOrder;
-  };
-
-  if (colorImages.length > 0) {
-    return [...colorImages].sort(sortFn).map((img) => img.url);
+  if (displayImages.length > 0) return displayImages.map((img) => img.url);
+  if (isBladeTee(product) && MERCH_BLADE_CLOSEUP_IMAGES[color]) {
+    return [MERCH_BLADE_CLOSEUP_IMAGES[color]];
   }
-
-  return [...product.images].sort(sortFn).map((img) => img.url);
+  if (product.slug === "spirit-of-the-mitten-tee") {
+    return SPIRIT_TEE_IMAGES[color] || SPIRIT_TEE_IMAGES.Black;
+  }
+  return [];
 }
 
 // ─── Helper: get unique colors from variants ──────────────────────────────────

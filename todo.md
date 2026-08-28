@@ -1602,3 +1602,5 @@
 - [x] Simplify merch product sort-order controls with clear move up/down actions and visible order numbers
 - [x] Make product thumbnail replacement easy and explicit in the merch editor
 - [x] Make colorway image assignment easy, visible, and reliably saved in the merch editor
+
+- [x] Fix public merch storefront so saved admin thumbnail, order, and colorway image changes appear on merch cards and product pages

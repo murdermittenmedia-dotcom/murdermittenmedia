@@ -121,9 +121,27 @@ export default function ShopProduct() {
     ? product.slug === "three-color-system-tee" || product.name.trim().toLowerCase() === "mitten made blade tee"
     : false;
   const displayImages = product
-    ? isBladeTee && MERCH_BLADE_CLOSEUP_IMAGES[selectedColor]
-      ? [{ url: MERCH_BLADE_CLOSEUP_IMAGES[selectedColor], imageType: "colorway close-up" }]
-      : (product.images as any[]).filter((img: any) => img.sortOrder >= 0)
+    ? (() => {
+        const images = (product.images as any[]).filter((img: any) => img.sortOrder >= 0).sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+        const normalizedColor = selectedColor.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const assigned = images.filter((img: any) =>
+          String(img.color ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedColor
+        );
+        const filenameMatched = images.filter((img: any) =>
+          String(img.storageKey ?? img.url ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(normalizedColor)
+        );
+        const colorImages = assigned.length > 0 ? assigned : filenameMatched;
+        const orderedImages = colorImages.length > 0 ? colorImages : images;
+        const primary = orderedImages.find((img: any) => img.imageType === "thumbnail");
+        const displayImages = primary
+          ? [primary, ...orderedImages.filter((img: any) => img.id !== primary.id)]
+          : orderedImages;
+        if (displayImages.length > 0) return displayImages;
+        if (isBladeTee && MERCH_BLADE_CLOSEUP_IMAGES[selectedColor]) {
+          return [{ url: MERCH_BLADE_CLOSEUP_IMAGES[selectedColor], imageType: "colorway close-up" }];
+        }
+        return [];
+      })()
     : [];
 
   // Check inventory for selected variant
