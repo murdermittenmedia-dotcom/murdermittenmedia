@@ -15,6 +15,7 @@ import { getSkipLinePriceCents, getSkipLineLabel } from "./skip-payments";
 import { getPromoPackagePriceCents, getPromoPackageLabel } from "./promo-payments";
 import { getMusicReviewSessionLimitMessage, MUSIC_REVIEW_PAID_OPTIONS, hasCashAppPaymentProof } from "../shared/music-review-paywall";
 import { normalizeStudioInput } from "./studio-input";
+import { buildWheelCatalogueSong } from "../shared/wheel-catalogue";
 import {
   getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
@@ -25,7 +26,7 @@ import {
   getChatMessages, deleteChatMessage,
   createBattleRecord, getAllBattleRecords, getArtistStats,
   getBattleLeaderboard, getBattleRecordsByArtistName,
-  addUserSong, getUserSongs, deleteUserSong, updateUserSongVisibility,
+  addUserSong, addUserSongIfMissing, getUserSongs, deleteUserSong, updateUserSongVisibility,
   getArtistProfile, updateUserProfile, getUserById,
   getLinkPageByUserId, getLinkPageBySlug, getPublicLinkPageBySlug, getLinkPageById, getAllLinkPages,
   recordLinkAnalyticsEvent, getLinkAnalytics,
@@ -419,7 +420,7 @@ export const appRouter = router({
           isPublic: input.isPublic,
         });
         awardXP(ctx.user.id, "song_upload").catch(() => {});
-        return { success: true, url };
+        return { success: true, url, key };
       }),
 
     // Delete own song
@@ -728,6 +729,15 @@ export const appRouter = router({
           notes: input.notes ?? null,
           battleDate: new Date(),
         });
+        const battleSongs = [
+          input.winnerId ? { userId: input.winnerId, title: input.winnerSongTitle, artistName: input.winnerArtistName, songUrl: input.winnerSongUrl } : null,
+          input.loserId ? { userId: input.loserId, title: input.loserSongTitle, artistName: input.loserArtistName, songUrl: input.loserSongUrl } : null,
+        ].filter((song): song is { userId: number; title: string; artistName: string; songUrl: string | undefined } => song !== null);
+        await Promise.all(battleSongs.map(song =>
+          addUserSongIfMissing(buildWheelCatalogueSong(song)).catch(error => {
+            console.warn("[battles.record] Catalogue auto-link skipped:", error);
+          }),
+        ));
         // Award XP to winner and loser
         if (input.winnerId) awardXP(input.winnerId, "battle_win").catch(() => {});
         if (input.loserId) awardXP(input.loserId, "battle_participation").catch(() => {});
@@ -1362,6 +1372,8 @@ export const appRouter = router({
       .input(z.object({
         songTitle: z.string().min(1).max(128),
         songUrl: z.string().max(512).optional(),
+        songFileKey: z.string().max(512).optional(),
+        songFileUrl: z.string().max(512).optional(),
         contactInfo: z.string().max(256).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -1374,6 +1386,8 @@ export const appRouter = router({
           artistName,
           songTitle: input.songTitle,
           songUrl: input.songUrl ?? null,
+          songFileKey: input.songFileKey ?? null,
+          songFileUrl: input.songFileUrl ?? null,
           contactInfo: input.contactInfo ?? null,
           paid: isPaid,
           paymentConfirmed: !isPaid,
@@ -1381,6 +1395,18 @@ export const appRouter = router({
           wheelPosition: 0,
           roundNumber: 1,
         });
+        try {
+          await addUserSongIfMissing(buildWheelCatalogueSong({
+            userId: ctx.user.id,
+            title: input.songTitle,
+            artistName,
+            songUrl: input.songUrl,
+            fileKey: input.songFileKey,
+            fileUrl: input.songFileUrl,
+          }));
+        } catch (error) {
+          console.warn("[warsWheel.submit] Catalogue auto-link skipped:", error);
+        }
         return { success: true, requiresPayment: isPaid };
       }),
 

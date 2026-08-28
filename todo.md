@@ -146,8 +146,8 @@
 - [x] WheelEntry DB: ensure songUrl can store S3 URL from upload (already varchar 512, OK)
 
 ## Auto-Link Wheel Entry Songs to Profile
-- [ ] When a logged-in user submits a wheel entry with a song (URL or uploaded MP3), auto-add it to their user_songs catalogue
-- [ ] When admin records a battle result, auto-link the winning/losing songs to the respective user profiles if userId is known
+- [x] When a logged-in user submits a wheel entry with a song (URL or uploaded MP3), auto-add it to their user_songs catalogue
+- [x] When admin records a battle result, auto-link the winning/losing songs to the respective user profiles if userId is known
 - [ ] ArtistStatModal: show both catalogue songs AND songs from past battle submissions (deduplicated by title)
 
 ## Admin Wheel Controls
@@ -1592,3 +1592,5 @@
 - [x] Fix stale Latest News fallback so the page does not present two-month-old posts as current when live Instagram retrieval is unavailable
 - [x] Replace MITTEN MADE BLADE TEE catalog imagery with the supplied board and add a closer crop for each of the ten selectable colorways
 - [x] Apply the shared MITTEN MADE BLADE TEE close-up image map to the live /shop/:slug detail route
+- [x] Persist Music Wars uploaded-audio metadata on wheel submissions so profile auto-linking retains fileUrl and fileKey
+- [x] Add regression coverage proving Music Wars link and uploaded-audio submissions auto-link with correct source fields and deduplication

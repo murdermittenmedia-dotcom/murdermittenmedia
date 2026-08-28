@@ -600,7 +600,7 @@ function SubmissionForm({
   isPaid, entryFee, isOpen, onSubmit, isLoading, success, requiresPayment, user,
 }: {
   isPaid: boolean; entryFee: string; isOpen: boolean;
-  onSubmit: (d: { songTitle: string; songUrl: string; contactInfo: string; mp3Url?: string }) => void;
+  onSubmit: (d: { songTitle: string; songUrl: string; contactInfo: string; mp3Url?: string; mp3Key?: string }) => void;
   isLoading: boolean; success: boolean; requiresPayment: boolean;
   user?: { artistName?: string | null; name?: string | null } | null;
 }) {
@@ -610,6 +610,7 @@ function SubmissionForm({
   const [mp3File, setMp3File] = useState<File | null>(null);
   const [mp3Uploading, setMp3Uploading] = useState(false);
   const [mp3Url, setMp3Url] = useState("");
+  const [mp3Key, setMp3Key] = useState("");
   const uploadSongMutation = trpc.songs.uploadAudio.useMutation();
   const displayName = user?.artistName || user?.name || "Unknown Artist";
 
@@ -632,6 +633,7 @@ function SubmissionForm({
           isPublic: true,
         });
         setMp3Url(result.url);
+        setMp3Key(result.key);
         setMp3Uploading(false);
       };
       reader.readAsDataURL(file);
@@ -679,7 +681,7 @@ function SubmissionForm({
           {isPaid ? `$${entryFee} Entry` : "Free Entry"}
         </span>
       </div>
-      <form onSubmit={e => { e.preventDefault(); onSubmit({ songTitle, songUrl: mp3Url || songUrl, contactInfo, mp3Url: mp3Url || undefined }); }} className="space-y-3">
+      <form onSubmit={e => { e.preventDefault(); onSubmit({ songTitle, songUrl: mp3Url || songUrl, contactInfo, mp3Url: mp3Url || undefined, mp3Key: mp3Key || undefined }); }} className="space-y-3">
         {/* Artist name auto-filled from registered profile */}
         <div className="bg-white/5 border border-white/10 px-3 py-2.5">
           <div className="text-white/30 text-[10px] uppercase tracking-wider mb-0.5">Submitting as</div>
@@ -1887,11 +1889,14 @@ export default function MusicWars() {
     }
   }, [isAdmin, broadcastWinner, spinCount, wheelData, contestant1Entry, contestant2Entry, tripleTheatMode, markCalledAndSaveStateMutation, setBattleContestantsMutation, resetSpinStateMutation, refetchWheel, refetchAllEntries, loadTracks]);
 
-  const handleSubmit = async (data: { songTitle: string; songUrl: string; contactInfo: string }) => {
+  const handleSubmit = async (data: { songTitle: string; songUrl: string; contactInfo: string; mp3Url?: string; mp3Key?: string }) => {
     try {
       const result = await submitMutation.mutateAsync({
         songTitle: data.songTitle,
-        songUrl: data.songUrl || undefined, contactInfo: data.contactInfo || undefined,
+        songUrl: data.mp3Url ? undefined : (data.songUrl || undefined),
+        songFileKey: data.mp3Key || undefined,
+        songFileUrl: data.mp3Url || undefined,
+        contactInfo: data.contactInfo || undefined,
       });
       setSubmitSuccess(true);
       setRequiresPayment(result.requiresPayment);

@@ -126,6 +126,8 @@ export const wheelEntries = mysqlTable("wheel_entries", {
   artistName: varchar("artistName", { length: 128 }).notNull(),
   songTitle: varchar("songTitle", { length: 128 }).notNull(),
   songUrl: varchar("songUrl", { length: 512 }),
+  songFileKey: varchar("songFileKey", { length: 512 }),
+  songFileUrl: varchar("songFileUrl", { length: 512 }),
   contactInfo: varchar("contactInfo", { length: 256 }),
   paid: boolean("paid").default(false).notNull(),
   paymentConfirmed: boolean("paymentConfirmed").default(false).notNull(),

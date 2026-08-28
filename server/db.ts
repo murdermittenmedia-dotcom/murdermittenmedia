@@ -508,6 +508,21 @@ export async function addUserSong(data: InsertUserSong) {
   return result;
 }
 
+export async function addUserSongIfMissing(data: InsertUserSong) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select({ id: userSongs.id })
+    .from(userSongs)
+    .where(and(
+      eq(userSongs.userId, data.userId),
+      sql`LOWER(${userSongs.title}) = ${String(data.title).trim().toLowerCase()}`,
+    ))
+    .limit(1);
+  if (existing[0]) return { created: false, id: existing[0].id };
+  const result = await db.insert(userSongs).values(data);
+  return { created: true, id: Number(result[0].insertId) };
+}
+
 export async function getUserSongs(userId: number, includePrivate = false) {
   const db = await getDb();
   if (!db) return [];
