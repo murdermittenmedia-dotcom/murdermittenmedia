@@ -233,7 +233,7 @@
 - [ ] Role badge shown next to username in chat and audio room participant list
 
 ## Reset War & User Management Fixes
-- [ ] Reset Current War: clears ALL wheel entries (not just non-winners), all votes, active battle, and battle records for current session
+- [x] Reset Current War: clears ALL wheel entries (not just non-winners), all votes, active battle, and battle records for current session
 - [x] Admin User Panel: only shows users on the wheel OR who applied as judge (not all registered users)
 - [x] "Apply as Judge" button: visible to logged-in users on Music Wars page
 - [x] Judge application stored in DB (pending/approved/rejected)

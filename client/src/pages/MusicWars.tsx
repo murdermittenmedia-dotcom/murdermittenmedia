@@ -1237,7 +1237,7 @@ function AdminPanel({
           </button>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-orange-400 text-center">This clears all wheel entries and current votes. Battle records are kept.</p>
+            <p className="text-xs text-orange-400 text-center">This clears all wheel entries and current votes, closes the active battle, and deletes battle records for the current war session.</p>
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setConfirmReset(false)}
                 className="border border-white/20 text-white/50 py-2 text-xs uppercase tracking-wider transition-colors hover:border-white/40">
@@ -1583,7 +1583,7 @@ function MusicWarsAdminHub({
                   </button>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-xs text-orange-400 text-center">This clears all wheel entries and current votes. Battle records are kept.</p>
+                    <p className="text-xs text-orange-400 text-center">This clears all wheel entries and current votes, closes the active battle, and deletes battle records for the current war session.</p>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={() => setConfirmReset(false)}
                         className="border border-white/20 text-white/50 py-2 text-xs uppercase tracking-wider transition-colors hover:border-white/40">Cancel</button>
