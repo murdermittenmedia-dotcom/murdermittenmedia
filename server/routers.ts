@@ -19,7 +19,7 @@ import { getMusicReviewSessionLimitMessage, MUSIC_REVIEW_PAID_OPTIONS, hasCashAp
 import { normalizeStudioInput } from "./studio-input";
 import { buildWheelCatalogueSong } from "../shared/wheel-catalogue";
 import {
-  getQueueSubmissions, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
+  getQueueSubmissions, getTodaySubmissionCount, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
@@ -765,6 +765,7 @@ export const appRouter = router({
 
   // -- Review Queue ---------------------------------------------
   queue: router({
+    getTodayCount: publicProcedure.query(async () => getTodaySubmissionCount()),
     getAll: publicProcedure.query(async () => {
       const [submissions, state] = await Promise.all([
         getQueueSubmissions(),

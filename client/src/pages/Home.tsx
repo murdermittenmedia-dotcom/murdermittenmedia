@@ -207,6 +207,7 @@ export default function Home() {
   const { ref: sectionsRef, inView: sectionsInView } = useInView(0.1);
   const { reviewIsLive, reviewStreamUrl, warsIsLive, warsStreamUrl, cookUpIsLive, activeCookUpStreams, anyLive } = useLiveStatus();
   const { play: playAudio } = useAudioPlayer();
+  const { data: todaySubmissionCount } = trpc.queue.getTodayCount.useQuery(undefined, { refetchInterval: 60_000, refetchOnWindowFocus: false });
 
   // Set page title and meta tags for SEO
   useEffect(() => {
@@ -393,12 +394,13 @@ export default function Home() {
         className="border-y border-white/10 py-10 bg-[#0d0d0d]"
       >
         <div className="container">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-0 md:divide-x md:divide-white/10">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-0 md:divide-x md:divide-white/10">
             {[
               { value: 100000000, label: "Total Views", delay: 0 },
-              { value: 45800, label: "Followers", delay: 120 },
+              { value: 46500, label: "Followers", delay: 120 },
               { value: 228600, label: "Interactions / Mo", delay: 240 },
               { value: 2680, label: "Posts Published", delay: 360 },
+              { value: todaySubmissionCount ?? 0, label: "Songs Submitted Today", delay: 480 },
             ].map(s => (
               <div key={s.label} className="md:px-8 first:pl-0 last:pr-0">
                 <Stat value={s.value} label={s.label} delay={s.delay} started={statsInView} />

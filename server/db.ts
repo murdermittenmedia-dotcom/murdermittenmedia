@@ -139,6 +139,16 @@ export async function getQueueSubmissions() {
     );
 }
 
+export async function getTodaySubmissionCount() {
+  const db = await getDb();
+  if (!db) return 0;
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const submissions = await db.select({ createdAt: reviewSubmissions.createdAt }).from(reviewSubmissions)
+    .where(ne(reviewSubmissions.status, "removed"));
+  return submissions.filter(submission => submission.createdAt >= start).length;
+}
+
 /** Bulk-update position values for queue reordering (admin drag-and-drop) */
 export async function reorderQueueSubmissions(orderedIds: number[]) {
   const db = await getDb();

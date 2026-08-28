@@ -904,7 +904,7 @@
 
 ### Live Platform Activity Indicators
 - [ ] Homepage: animated "X users online now" counter (use socket connection count)
-- [ ] Homepage: "X songs submitted today" live counter
+- [x] Homepage: "X songs submitted today" live counter
 - [ ] Music Review page: show live viewer count prominently
 - [x] Site-wide: show "LIVE" badge in nav when any live session is active
 
@@ -1594,3 +1594,5 @@
 - [x] Apply the shared MITTEN MADE BLADE TEE close-up image map to the live /shop/:slug detail route
 - [x] Persist Music Wars uploaded-audio metadata on wheel submissions so profile auto-linking retains fileUrl and fileKey
 - [x] Add regression coverage proving Music Wars link and uploaded-audio submissions auto-link with correct source fields and deduplication
+
+- [x] Fix admin studio save failure: valid optional studio form submission currently fails on INSERT into `studios`
