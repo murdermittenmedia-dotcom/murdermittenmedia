@@ -2277,6 +2277,15 @@ export async function updateShopProductImageOrder(id: number, sortOrder: number)
   return db.update(shopProductImages).set({ sortOrder }).where(eq(shopProductImages.id, id));
 }
 
+export async function updateShopProductImageMetadata(
+  id: number,
+  data: { imageType?: InsertShopProductImage["imageType"]; color?: string | null; sortOrder?: number },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(shopProductImages).set(data).where(eq(shopProductImages.id, id));
+}
+
 export async function getShopVariants(productId: number) {
   const db = await getDb();
   if (!db) return [];

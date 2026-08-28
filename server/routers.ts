@@ -72,7 +72,7 @@ import {
   createOrder, getOrderById, getOrderByStripeSessionId, getUserOrders, updateOrderStatus,
   getShopProducts, getShopProductById, getShopProductBySlug,
   createShopProduct, updateShopProduct, softDeleteShopProduct,
-  getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder,
+  getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
 import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
@@ -5363,6 +5363,7 @@ export const appRouter = router({
             url: img.url,
             storageKey: img.storageKey ?? null,
             imageType: img.imageType,
+            color: img.color ?? null,
             sortOrder: img.sortOrder,
           })
         ));
@@ -5388,6 +5389,7 @@ export const appRouter = router({
         base64: z.string().max(8_000_000),
         mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
         imageType: z.enum(["thumbnail", "front", "back", "size_chart", "gallery"]).default("gallery"),
+        color: z.string().max(64).nullable().optional(),
         sortOrder: z.number().int().default(0),
       }))
       .mutation(async ({ input }) => {
@@ -5403,6 +5405,7 @@ export const appRouter = router({
           url,
           storageKey: key,
           imageType: input.imageType,
+          color: input.color ?? null,
           sortOrder: input.sortOrder,
         });
         return { url, key };
@@ -5413,6 +5416,20 @@ export const appRouter = router({
       .input(z.object({ imageId: z.number() }))
       .mutation(async ({ input }) => {
         await deleteShopProductImage(input.imageId);
+        return { success: true };
+      }),
+
+    // Admin: update image role, colorway assignment, and gallery order
+    updateImageMetadata: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        imageType: z.enum(["thumbnail", "front", "back", "size_chart", "gallery"]).optional(),
+        color: z.string().max(64).nullable().optional(),
+        sortOrder: z.number().int().min(0).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateShopProductImageMetadata(id, data);
         return { success: true };
       }),
 

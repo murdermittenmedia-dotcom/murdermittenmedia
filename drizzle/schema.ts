@@ -1002,6 +1002,7 @@ export const shopProductImages = mysqlTable("shop_product_images", {
   url: varchar("url", { length: 512 }).notNull(),
   storageKey: varchar("storageKey", { length: 512 }),
   imageType: mysqlEnum("imageType", ["thumbnail", "front", "back", "size_chart", "gallery"]).default("gallery").notNull(),
+  color: varchar("color", { length: 64 }), // Optional colorway assignment for product imagery
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

@@ -1598,3 +1598,7 @@
 - [x] Fix admin studio save failure: valid optional studio form submission currently fails on INSERT into `studios`
 
 - [x] Restore a clearly visible admin merch-management entry point so administrators can edit merch items
+
+- [x] Simplify merch product sort-order controls with clear move up/down actions and visible order numbers
+- [x] Make product thumbnail replacement easy and explicit in the merch editor
+- [x] Make colorway image assignment easy, visible, and reliably saved in the merch editor

@@ -215,6 +215,7 @@ export default function AdminShopForm() {
   const createProduct = trpc.shop.createProduct.useMutation();
   const updateProduct = trpc.shop.updateProduct.useMutation();
   const uploadImage = trpc.shop.uploadImage.useMutation();
+  const updateImageMetadata = trpc.shop.updateImageMetadata.useMutation();
   const deleteImageMutation = trpc.shop.deleteImage.useMutation();
 
   // ─── Image upload ──────────────────────────────────────────
@@ -237,6 +238,25 @@ export default function AdminShopForm() {
     });
   };
 
+  const moveImage = (index: number, direction: -1 | 1) => {
+    setImages(prev => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next.map((image, position) => ({ ...image, sortOrder: position }));
+    });
+  };
+
+  const setPrimaryThumbnail = (index: number) => {
+    setImages(prev => prev.map((image, position) => ({
+      ...image,
+      imageType: position === index ? "thumbnail" : image.imageType === "thumbnail" ? "gallery" : image.imageType,
+      sortOrder: position,
+    })));
+    toast.success("Primary thumbnail selected");
+  };
+
   const uploadPendingImages = async (pid: number) => {
     const pending = images.filter(img => img.file && !img.id);
     for (const img of pending) {
@@ -251,6 +271,7 @@ export default function AdminShopForm() {
         base64,
         mimeType: img.file.type as "image/jpeg" | "image/png" | "image/webp",
         imageType: img.imageType,
+        color: img.color || null,
         sortOrder: img.sortOrder,
       });
     }
@@ -336,6 +357,14 @@ export default function AdminShopForm() {
           variants: variantData,
         });
         await uploadPendingImages(productId);
+        await Promise.all(images.filter((image): image is ImageRow & { id: number } => Boolean(image.id)).map(image =>
+          updateImageMetadata.mutateAsync({
+            id: image.id,
+            imageType: image.imageType,
+            color: image.color || null,
+            sortOrder: image.sortOrder,
+          })
+        ));
         toast.success("Product updated!");
       } else {
         const result = await createProduct.mutateAsync({
@@ -475,6 +504,25 @@ export default function AdminShopForm() {
                       >
                         <img src={img.url} alt="" className="w-full h-full object-cover" />
 
+                        {/* Quick image controls */}
+                        <div className="absolute top-1 left-1 z-10 flex items-center gap-1">
+                          <span className="rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">#{index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(index, -1); }}
+                            disabled={index === 0}
+                            className="rounded bg-black/75 px-1.5 py-0.5 text-[10px] text-white hover:bg-red-600 disabled:opacity-30"
+                            title="Move image earlier"
+                          >↑</button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(index, 1); }}
+                            disabled={index === images.length - 1}
+                            className="rounded bg-black/75 px-1.5 py-0.5 text-[10px] text-white hover:bg-red-600 disabled:opacity-30"
+                            title="Move image later"
+                          >↓</button>
+                        </div>
+
                         {/* Delete button */}
                         <button
                           onClick={(e) => {
@@ -497,8 +545,16 @@ export default function AdminShopForm() {
                           )}
                         </button>
 
+                        {/* Make this the product-grid thumbnail */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setPrimaryThumbnail(index); }}
+                          className={`absolute bottom-1 right-1 z-10 rounded px-1.5 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors ${img.imageType === "thumbnail" ? "bg-red-600 text-white" : "bg-black/75 text-white/70 hover:bg-red-600 hover:text-white"}`}
+                          title="Use this image as the product thumbnail"
+                        >{img.imageType === "thumbnail" ? "Thumbnail" : "Use as thumbnail"}</button>
+
                         {/* Type + Color badges */}
-                        <div className="absolute bottom-1 left-1 bg-black/70 text-white/60 text-[9px] px-1 rounded pointer-events-none flex flex-col gap-0.5">
+                        <div className="absolute bottom-1 left-1 max-w-[58%] bg-black/70 text-white/60 text-[9px] px-1 rounded pointer-events-none flex flex-col gap-0.5">
                           <div>{img.imageType}</div>
                           {img.color && <div className="text-white/40 text-[8px]">{img.color}</div>}
                         </div>
@@ -530,7 +586,7 @@ export default function AdminShopForm() {
                   onChange={e => handleImageFiles(e.target.files)}
                 />
                 <p className="text-white/30 text-xs">
-                  Click an image to open the editor. Set the type (thumbnail, front, back, size chart, gallery), assign it to a color/variation, and adjust sort order. The thumbnail is shown in the product grid.
+                  Use ↑ and ↓ to set gallery order. Use <span className="text-white/60">Use as thumbnail</span> for the product-card image. Click any image to assign its role and colorway.
                 </p>
               </div>
             </Section>
