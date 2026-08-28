@@ -205,8 +205,8 @@
 ## Wheel Auto-Remove & Queue Notifications
 - [x] Auto-remove name from wheel after it's spun (mark status "called" on spin)
 - [x] Winners auto-advance: admin "Start Next War" button copies all battle winners back to wheel as new entries
-- [ ] Song play button on each wheel entry card (judges/viewers can listen inline)
-- [ ] Song play button in active battle matchup panel
+- [x] Song play button on each wheel entry card (judges/viewers can listen inline)
+- [x] Song play button in active battle matchup panel
 - [x] Push notification to user when their name is picked: "You've been picked to compete next!"
 - [x] Queue position display for logged-in users: "There are X people ahead of you"
 - [x] Fix VotingPanel TypeScript: use contestant1/contestant2 (actual DB field names) not contestant1Votes/contestant2Votes

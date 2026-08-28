@@ -380,6 +380,21 @@ function SpinWheel({
         ref={canvasRef} width={300} height={300}
         className="rounded-full shadow-[0_0_40px_rgba(209,0,0,0.3)]"
       />
+      {entries.length > 0 && (
+        <div className="w-full max-h-56 overflow-y-auto space-y-1.5 pr-1" aria-label="Wheel entries">
+          {entries.map(entry => (
+            <div key={entry.id} className="flex items-center gap-2 border border-white/10 bg-white/[0.03] px-2 py-1.5">
+              {entry.songUrl ? (
+                <AudioPlayButton url={entry.songUrl} title={entry.songTitle} artist={entry.artistName} artistUserId={entry.userId ?? undefined} sourcePage="Music Wars wheel" size="sm" />
+              ) : (
+                <span className="w-7 text-center text-[10px] text-white/20" aria-label="No audio preview">—</span>
+              )}
+              <span className="text-xs text-white/75 truncate">{entry.artistName}</span>
+              <span className="text-[10px] text-white/30 truncate ml-auto">{entry.songTitle}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {winner && (
         <div className="text-center">
           <div className="text-xs text-red-400 uppercase tracking-widest mb-1">{winnerLabel ?? "Selected"}</div>
