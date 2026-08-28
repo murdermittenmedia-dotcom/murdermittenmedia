@@ -1744,6 +1744,10 @@ export default function MusicWars() {
     enabled: !!user,
     refetchInterval: 10_000,
   });
+  const { data: queuePosition } = trpc.warsWheel.getQueuePosition.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 10_000,
+  });
   const dismissPickedNotification = trpc.warsWheel.dismissNotification.useMutation({
     onSuccess: () => refetchPickedNotification(),
   });
@@ -2222,6 +2226,14 @@ export default function MusicWars() {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+      {queuePosition?.inQueue && (
+        <div className="container pt-3">
+          <div className="border border-white/10 bg-white/[0.03] px-4 py-2.5 text-xs text-white/60 uppercase tracking-wider">
+            Battle queue position: <span className="text-white font-semibold">#{queuePosition.position}</span>
+            <span className="text-white/30"> · {queuePosition.ahead === 0 ? "You are next" : `${queuePosition.ahead} ${queuePosition.ahead === 1 ? "person" : "people"} ahead`}</span>
           </div>
         </div>
       )}
