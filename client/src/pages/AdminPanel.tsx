@@ -1557,8 +1557,9 @@ export default function AdminPanel() {
     setActiveTab(destination);
     setDrawerOpen(false);
   };
-  const sidebarItems: Array<{ id: Tab | "music-review" | "moderation" | "site-stats" | "link-analytics"; label: string; icon: React.ComponentType<{ className?: string }>; description: string }> = [
+  const sidebarItems: Array<{ id: Tab | "music-review" | "moderation" | "site-stats" | "link-analytics" | "merch-management"; label: string; icon: React.ComponentType<{ className?: string }>; description: string }> = [
     { id: "overview", label: "Overview", icon: Activity, description: "Live command center" },
+    { id: "merch-management", label: "Merch Management", icon: ShoppingBag, description: "Add and edit store products" },
     { id: "music-review", label: "Music Review", icon: Radio, description: "Run the live room" },
     { id: "paidsubmissions", label: "Review Queue", icon: Music, description: "Submissions and playback" },
     { id: "streams", label: "Live Playback", icon: PlayCircle, description: "Stream and radio settings" },
@@ -1599,6 +1600,7 @@ export default function AdminPanel() {
                       else if (item.id === "moderation") navigate("/admin/moderation");
                       else if (item.id === "site-stats") navigate("/admin/stats");
                       else if (item.id === "link-analytics") navigate("/admin/link-analytics");
+                      else if (item.id === "merch-management") navigate("/admin/shop");
                       else routeToTab(item.id as AdminOverviewDestination);
                     }}
                     className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${active ? "bg-red-600/15 text-white ring-1 ring-red-500/30" : "text-white/55 hover:bg-white/[0.05] hover:text-white"}`}

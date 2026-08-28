@@ -324,7 +324,7 @@
 
 ## Session 6 — Major Feature Sprint
 - [x] Fix desktop nav: remove ugly horizontal scroll, make clean responsive nav
-- [ ] YouTube in-page player (modal embed) on MurderMittenMic
+- [x] YouTube in-page player (modal embed) on MurderMittenMic
 - [x] MP3 player for uploaded audio on all pages
 - [x] Forum tab: posts, comments, Reddit-style UI
 - [x] Latest Posts tab: Instagram carousel embeds with individual post pages
@@ -1596,3 +1596,5 @@
 - [x] Add regression coverage proving Music Wars link and uploaded-audio submissions auto-link with correct source fields and deduplication
 
 - [x] Fix admin studio save failure: valid optional studio form submission currently fails on INSERT into `studios`
+
+- [x] Restore a clearly visible admin merch-management entry point so administrators can edit merch items
