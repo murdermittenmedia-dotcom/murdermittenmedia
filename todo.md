@@ -241,12 +241,12 @@
 - [x] Approved judge gets judge role and mic access
 
 ## Players Tab (Active vs Eliminated)
-- [ ] Players tab on Music Wars page showing Active and Eliminated sections
-- [ ] Each player card shows: artist name, current war record (W/L this session), lifetime record (all-time W/L)
-- [ ] Active players: still on the wheel, sorted by wheel position
+- [x] Players tab on Music Wars page showing Active and Eliminated sections
+- [x] Each player card shows: artist name, current war record (W/L this session), lifetime record (all-time W/L)
+- [x] Active players: still on the wheel, sorted by wheel position
 - [x] Eliminated players: knocked out this war, sorted by elimination order
 - [x] Clicking a player name opens ArtistStatModal with full profile
-- [ ] Real-time updates as players get eliminated or win battles
+- [x] Real-time updates as players get eliminated or win battles
 
 ## Profile Picture Edit
 - [x] Profile picture upload/edit button visible in ArtistStatModal when viewing own profile

@@ -1601,6 +1601,50 @@ function MusicWarsAdminHub({
   );
 }
 
+// ─── Players Tab ─────────────────────────────────────────────
+function PlayersTab() {
+  const [tab, setTab] = useState<"active" | "eliminated">("active");
+  const { data: players, isLoading } = trpc.players.withStats.useQuery(undefined, { refetchInterval: 5_000 });
+  const active = (players ?? []).filter(player => player.status !== "eliminated").sort((a, b) => (a.wheelPosition ?? 0) - (b.wheelPosition ?? 0));
+  const eliminated = (players ?? []).filter(player => player.status === "eliminated");
+  const shown = tab === "active" ? active : eliminated;
+
+  return (
+    <div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="font-['Anton'] text-xl uppercase tracking-widest">War <span className="text-red-600">Players</span></h2>
+        <span className="text-[10px] text-white/30 uppercase tracking-widest">Live roster</span>
+      </div>
+      <div className="flex gap-1 border-b border-white/10 mb-3">
+        {(["active", "eliminated"] as const).map(value => (
+          <button key={value} onClick={() => setTab(value)} className={`px-3 py-2 text-[10px] uppercase tracking-widest border-b-2 transition-colors ${tab === value ? "border-red-600 text-white" : "border-transparent text-white/35 hover:text-white/70"}`}>
+            {value} ({value === "active" ? active.length : eliminated.length})
+          </button>
+        ))}
+      </div>
+      {isLoading ? <p className="text-white/30 text-xs py-5 text-center">Loading roster…</p> : shown.length === 0 ? <p className="text-white/30 text-xs py-5 text-center">No {tab} players right now.</p> : (
+        <div className="space-y-2 max-h-80 overflow-y-auto">
+          {shown.map(player => (
+            <div key={player.id} className="flex items-center gap-3 border border-white/5 bg-white/[0.02] px-3 py-2">
+              <span className={`text-[10px] font-bold uppercase tracking-widest w-16 ${tab === "active" ? "text-green-400" : "text-red-400"}`}>{tab === "active" ? `Slot ${player.wheelPosition ?? "—"}` : "Out"}</span>
+              <div className="min-w-0 flex-1">
+                <ArtistStatModal artistName={player.artistName} userId={player.userId ?? undefined}>
+                  <button className="text-sm text-white font-semibold hover:text-red-400 transition-colors truncate max-w-full">{player.artistName}</button>
+                </ArtistStatModal>
+                <div className="text-[10px] text-white/35 truncate">{player.songTitle}</div>
+              </div>
+              <div className="text-right shrink-0 text-[10px] uppercase tracking-wider">
+                <div className="text-white/70">{player.currentWins}W / {player.currentLosses}L <span className="text-white/30">session</span></div>
+                <div className="text-white/35">{player.lifetimeWins}W / {player.lifetimeLosses}L all-time</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Leaderboard ──────────────────────────────────────────────
 function Leaderboard() {
   const { data: lb } = trpc.battles.leaderboard.useQuery();
@@ -2460,6 +2504,9 @@ export default function MusicWars() {
               </div>
               <PastBattles />
             </div>
+
+            {/* ── PLAYERS ──────────────────────────────────────── */}
+            <PlayersTab />
 
             {/* ── LEADERBOARD ────────────────────────────────── */}
             <div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5">
