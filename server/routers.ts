@@ -253,6 +253,7 @@ export const appRouter = router({
         updateStreak(opts.ctx.user.id).then(streakDays => {
           if (streakDays > 0) {
             awardXP(opts.ctx.user!.id, "daily_streak", { amount: 10 * streakDays }).catch(() => {});
+            awardXP(opts.ctx.user!.id, "daily_login").catch(() => {});
           }
         }).catch(() => {});
       }

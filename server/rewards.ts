@@ -70,7 +70,7 @@ export function getNextArtistLevel(xp: number) {
 export type XpReason =
   | "song_upload" | "battle_win" | "battle_participation" | "review_submission"
   | "fire_vote_received" | "forum_post" | "forum_comment" | "vote_cast"
-  | "daily_streak" | "referral" | "admin_grant" | "radio_play" | "review_win"
+  | "daily_streak" | "daily_login" | "referral" | "admin_grant" | "radio_play" | "review_win"
   | "stream_watch";
 
 const XP_AMOUNTS: Record<XpReason, number> = {
@@ -82,7 +82,8 @@ const XP_AMOUNTS: Record<XpReason, number> = {
   forum_post:           15,
   forum_comment:        5,
   vote_cast:            5,   // fan XP
-  daily_streak:         10,  // per streak day (multiplied by caller)
+  daily_streak:         10,  // artist XP per streak day
+  daily_login:           2,   // fan XP once per new login day
   referral:             100,
   admin_grant:          0,   // amount passed explicitly
   radio_play:           20,
@@ -106,7 +107,7 @@ export async function awardXP(
   if (amount === 0) return;
 
   // Fan XP reasons: these go to fanXP instead of artist XP
-  const FAN_XP_REASONS: XpReason[] = ["vote_cast", "forum_post", "forum_comment", "stream_watch"];
+  const FAN_XP_REASONS: XpReason[] = ["vote_cast", "forum_post", "forum_comment", "stream_watch", "daily_login"];
   const isFanXP = FAN_XP_REASONS.includes(reason);
 
   // Log the XP event

@@ -898,9 +898,9 @@
 
 ### Fan Supporter System
 - [x] DB schema: add `fanXP` (int), `fanLevel` (enum: supporter/top_supporter/biggest_fan/early_supporter/verified_tastemaker) to users table
-- [ ] Fan XP triggers: award fan XP on vote, forum post, daily login, watching stream
-- [ ] tRPC: `leaderboard.topFans` — returns top fans by XP with level badges
-- [ ] Leaderboard page: add "Top Fans" tab showing fan leaderboard
+- [x] Fan XP triggers: award fan XP on vote, forum post, daily login, watching stream
+- [x] tRPC: `leaderboard.topFans` — returns top fans by XP with level badges
+- [x] Leaderboard page: add "Top Fans" tab showing fan leaderboard
 
 ### Live Platform Activity Indicators
 - [x] Homepage: animated "X users online now" counter (use socket connection count)
