@@ -17,6 +17,7 @@ import { TuneInButton } from "@/components/TuneInButton";
 import { useChat, type ChatMessage } from "@/hooks/useChat";
 import LabelBadge from "@/components/LabelBadge";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
+import BattlePlayer from "@/components/BattlePlayer";
 import { ArtistLink } from "@/components/ArtistLink";
 import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap, Mic, MicOff, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
@@ -2229,6 +2230,12 @@ export default function MusicWars() {
               )
             )}
           </div>
+
+          {!isTripleActive && (
+            <div className="mt-5">
+              <BattlePlayer isAdmin={isAdmin} activeBattle={activeBattle} />
+            </div>
+          )}
 
           {/* Login to vote prompt */}
           {!user && activeBattle.status === "voting" && (

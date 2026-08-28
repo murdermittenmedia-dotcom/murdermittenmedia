@@ -212,17 +212,17 @@
 - [x] Fix VotingPanel TypeScript: use contestant1/contestant2 (actual DB field names) not contestant1Votes/contestant2Votes
 
 ## Battle Song Playback System
-- [ ] Wheel picks 2 contestants → their songs auto-load into BattlePlayer
-- [ ] BattlePlayer: plays contestant 1 song first, then contestant 2 song back to back
-- [ ] Full playback controls: play/pause, seek/scrub bar, current time / duration, volume slider
-- [ ] Shows which contestant's song is currently playing with their name highlighted
-- [ ] Visible to all viewers (judges + audience) simultaneously
-- [ ] Admin can manually trigger playback or skip to next song
-- [ ] Auto-remove picked contestants from wheel after they are loaded into BattlePlayer
+- [x] Wheel picks 2 contestants → their songs auto-load into BattlePlayer
+- [x] BattlePlayer: plays contestant 1 song first, then contestant 2 song back to back
+- [x] Full playback controls: play/pause, seek/scrub bar, current time / duration, volume slider
+- [x] Shows which contestant's song is currently playing with their name highlighted
+- [x] Visible to all viewers (judges + audience) simultaneously
+- [x] Admin can manually trigger playback or skip to next song
+- [x] Auto-remove picked contestants from wheel after they are loaded into BattlePlayer
 
 ## Battle Player Admin Control Clarification
-- [ ] Admin-only playback controls: play/pause, seek, volume, skip to next song
-- [ ] Viewers see read-only player: song name, artist, progress bar (no interaction)
+- [x] Admin-only playback controls: play/pause, seek, volume, skip to next song
+- [x] Viewers see read-only player: song name, artist, progress bar (no interaction)
 - [ ] Admin playback state synced to all viewers via Socket.io (everyone hears same position)
 
 ## Admin Role Elevation

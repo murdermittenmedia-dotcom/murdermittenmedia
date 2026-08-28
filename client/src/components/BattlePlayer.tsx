@@ -246,14 +246,17 @@ export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProp
             onClick={() => isAdmin && (setCurrentTrackIdx(i), setIsPlaying(true))}
             className={`flex-1 p-2 border text-left transition-all ${
               i === currentTrackIdx
-                ? "border-red-600 bg-red-600/10"
+                ? "border-red-600 bg-red-600/10 shadow-[0_0_16px_rgba(209,0,0,0.18)]"
                 : "border-white/10 bg-white/[0.02] hover:border-white/20"
             } ${!isAdmin ? "cursor-default" : "cursor-pointer"}`}
           >
             <div className={`text-[10px] uppercase tracking-widest mb-0.5 ${i === currentTrackIdx ? "text-red-500" : "text-white/30"}`}>
               {i === 0 ? "Contestant 1" : "Contestant 2"}
             </div>
-            <div className="text-white text-xs font-semibold truncate">{t.artistName}</div>
+            <div className={`text-xs font-semibold truncate ${i === currentTrackIdx ? "text-red-300" : "text-white"}`}>
+              {i === currentTrackIdx && <span className="mr-1 text-[9px] uppercase tracking-wider text-red-500">Now Playing</span>}
+              {t.artistName}
+            </div>
             <div className="text-white/50 text-[10px] truncate">{t.songTitle}</div>
           </button>
         ))}
