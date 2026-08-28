@@ -1139,7 +1139,7 @@ function VotingPanel({
 
 function AdminPanel({
   entries, onConfirmPayment, onUpdateStatus, onTogglePaid, onToggleOpen,
-  isPaid, isOpen, isUpdating, onRecord, onRemoveEntry, onResetWar,
+  isPaid, isOpen, isUpdating, onRecord, onRemoveEntry, onResetWar, onAdvanceWinners,
 }: {
   entries: Array<{ id: number; artistName: string; songTitle: string; paid: boolean; paymentConfirmed: boolean; status: string; songUrl?: string | null; userId?: number | null }>;
   onConfirmPayment: (id: number) => void;
@@ -1150,6 +1150,7 @@ function AdminPanel({
   onRecord: () => void;
   onRemoveEntry: (id: number) => void;
   onResetWar: () => void;
+  onAdvanceWinners: () => void;
 }) {
   const [confirmReset, setConfirmReset] = useState(false);
   return (
@@ -1205,6 +1206,13 @@ function AdminPanel({
         ))}
       </div>
       <RecordBattleForm entries={entries} onRecord={onRecord} />
+      <button
+        onClick={onAdvanceWinners}
+        disabled={!entries.some(entry => entry.status === "winner")}
+        className="w-full mt-4 border border-green-600/40 text-green-400 hover:bg-green-600/10 disabled:opacity-30 disabled:hover:bg-transparent py-2 text-xs font-semibold uppercase tracking-wider transition-colors"
+      >
+        Start Next War · Advance Winners
+      </button>
       {/* Reset current war */}
       <div className="mt-4 pt-4 border-t border-white/10">
         {!confirmReset ? (
@@ -1246,7 +1254,7 @@ function MusicWarsAdminHub({
   // Entries tab
   onConfirmPayment, onUpdateStatus, onRemoveEntry,
   // Settings tab
-  isPaid, isOpen, isUpdating, onTogglePaid, onToggleOpen, onRecord, onResetWar,
+  isPaid, isOpen, isUpdating, onTogglePaid, onToggleOpen, onRecord, onResetWar, onAdvanceWinners, isAdvancing,
 }: {
   warsRadioState: ReturnType<typeof import("@/hooks/useWarsRadio").useWarsRadio>["state"];
   adminPause: (currentTime: number) => void;
@@ -1272,6 +1280,8 @@ function MusicWarsAdminHub({
   onToggleOpen: () => void;
   onRecord: () => void;
   onResetWar: () => void;
+  onAdvanceWinners: () => void;
+  isAdvancing: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [c1, setC1] = useState("");
@@ -1543,6 +1553,13 @@ function MusicWarsAdminHub({
                   {isOpen ? "Open" : "Closed"}
                 </button>
               </div>
+              <button
+                onClick={onAdvanceWinners}
+                disabled={isAdvancing || !entries.some(entry => entry.status === "winner")}
+                className="w-full border border-green-600/40 text-green-400 hover:bg-green-600/10 disabled:opacity-30 disabled:hover:bg-transparent py-2 text-xs font-semibold uppercase tracking-wider transition-colors"
+              >
+                {isAdvancing ? "Advancing Winners…" : "Start Next War · Advance Winners"}
+              </button>
               <div className="pt-2 border-t border-white/10">
                 {!confirmReset ? (
                   <button onClick={() => setConfirmReset(true)}
@@ -1738,6 +1755,10 @@ export default function MusicWars() {
   const setSettingsMutation = trpc.warsWheel.setSettings.useMutation();
   const removeEntryMutation = trpc.warsWheel.removeEntry.useMutation();
   const resetWarMutation = trpc.warsWheel.resetCurrentWar.useMutation();
+  const advanceWinnersMutation = trpc.warsWheel.advanceWinners.useMutation({
+    onSuccess: (result) => { refetchAllEntries(); refetchWheel(); toast.success(`${result.advancedCount} winner${result.advancedCount === 1 ? "" : "s"} advanced to the next war.`); },
+    onError: (error) => toast.error(`Could not advance winners: ${error.message}`),
+  });
   const markCalledMutation = trpc.warsWheel.markCalled.useMutation();
   const markCalledAndSaveStateMutation = trpc.warsWheel.markCalledAndSaveState.useMutation();
   const saveSpinStateMutation = trpc.warsWheel.saveSpinState.useMutation();
@@ -2406,7 +2427,10 @@ export default function MusicWars() {
                 onTogglePaid={async () => { await setSettingsMutation.mutateAsync({ isPaid: !wheelData?.isPaid }); refetchWheel(); }}
                 onToggleOpen={async () => { await setSettingsMutation.mutateAsync({ isOpen: !wheelData?.isOpen }); refetchWheel(); }}
                 onRecord={() => { refetchAllEntries(); }}
-                onResetWar={async () => { await resetWarMutation.mutateAsync(); refetchAllEntries(); refetchWheel(); }}
+                                 onResetWar={async () => { await resetWarMutation.mutateAsync(); refetchAllEntries(); refetchWheel(); }}
+                 onAdvanceWinners={async () => { await advanceWinnersMutation.mutateAsync(); }}
+                 isAdvancing={advanceWinnersMutation.isPending}
+
               />
             )}
 

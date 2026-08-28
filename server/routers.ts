@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { z } from "zod";
+import { buildNextWarEntries } from "../shared/next-war";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -1465,20 +1466,9 @@ export const appRouter = router({
     // Advance all winners to next war (copy winner entries as new active entries)
     advanceWinners: adminProcedure.mutation(async () => {
       const entries = await getAllWheelEntries();
-      const winners = entries.filter(e => e.status === "winner");
-      await Promise.all(winners.map(w => addWheelEntry({
-        userId: w.userId ?? null,
-        artistName: w.artistName,
-        songTitle: w.songTitle,
-        songUrl: w.songUrl ?? null,
-        contactInfo: null,
-        paid: false,
-        paymentConfirmed: true,
-        status: "active",
-        wheelPosition: 0,
-        roundNumber: (w.roundNumber ?? 1) + 1,
-      })));
-      return { success: true, advancedCount: winners.length };
+      const nextWarEntries = buildNextWarEntries(entries);
+      await Promise.all(nextWarEntries.map(entry => addWheelEntry(entry)));
+      return { success: true, advancedCount: nextWarEntries.length };
     }),
 
     // Get queue position for the logged-in user
