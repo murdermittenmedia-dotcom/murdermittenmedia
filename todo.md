@@ -120,7 +120,7 @@
 - [x] Music Wars: Audience vote panel — vote for contestant1 or contestant2, show live bar chart
 - [ ] Music Wars: Judge vote panel — judge votes are publicly identified and use the corrected equal-weight design
 - [x] Music Wars: Live vote tracker — live polling updates, show vote counts + percentages
-- [ ] Judge role auto-grants mic access in audio room (no manual activation needed)
+- [x] Judge role auto-grants mic access in audio room (no manual activation needed)
 - [x] Admin can set active battle matchup from admin panel (names + explicit round-number control)
 
 ## Past Wars Tab Fix
