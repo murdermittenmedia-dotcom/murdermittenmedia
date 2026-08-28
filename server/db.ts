@@ -1072,6 +1072,15 @@ export async function getCurrentWarSession(): Promise<number> {
 
 // -- Profile Page: Submission History & Lifetime Stats --------
 
+export async function getPublicSongsByArtistName(artistName: string, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userSongs)
+    .where(and(eq(userSongs.artistName, artistName), eq(userSongs.isPublic, true)))
+    .orderBy(desc(userSongs.updatedAt))
+    .limit(limit);
+}
+
 export async function getSubmissionsByArtistName(artistName: string, limit = 100) {
   const db = await getDb();
   if (!db) return [];

@@ -35,7 +35,7 @@ import {
   createLinkPage, updateLinkPage, deleteLinkPage,
   createLinkItem, updateLinkItem, deleteLinkItem, reorderLinkItems,
   getAllUsers, getAllUsersPage, setUserRole,
-  getSubmissionsByArtistName, getLifetimeStats,
+  getSubmissionsByArtistName, getPublicSongsByArtistName, getLifetimeStats,
   getActiveBattle, setActiveBattle, updateActiveBattleStatus, clearBattleVotes,
   castVote, getVoteResults, getUserVote,
   castSongReaction, getSongReactionCounts, getUserSongReaction,
@@ -369,6 +369,11 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return getUserSongs(input.userId, false);
       }),
+
+    // Get public songs for artists referenced by name without a linked user ID
+    byArtistName: publicProcedure
+      .input(z.object({ artistName: z.string().min(1).max(128) }))
+      .query(async ({ input }) => getPublicSongsByArtistName(input.artistName)),
 
     // Add a song via external URL (YouTube only)
     addExternal: protectedProcedure
