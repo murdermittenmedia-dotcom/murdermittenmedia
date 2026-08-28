@@ -1378,75 +1378,62 @@ export async function searchSongs(query: string, limit = 20) {
 
 // -- Combined Leaderboard ------------------------------------
 
-export async function getCombinedLeaderboard() {
+export type LeaderboardTimeframe = "all" | "monthly" | "weekly";
+
+export async function getLeaderboardCities() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ city: users.city }).from(users);
+  return Array.from(new Set(rows.map(row => row.city?.trim()).filter((city): city is string => Boolean(city))))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export async function getCombinedLeaderboard({ timeframe = "all", city }: { timeframe?: LeaderboardTimeframe; city?: string } = {}) {
   const db = await getDb();
   if (!db) return [];
 
-  // Get all battle records
-  const battles = await db.select().from(battleRecords).orderBy(desc(battleRecords.battleDate));
-  const profileRows = await db.select({ id: users.id, avatarUrl: users.avatarUrl }).from(users);
-  const avatarByUserId = new Map(profileRows.map((profile) => [profile.id, sanitizeChatAvatarUrl(profile.avatarUrl)]));
+  const cutoff = timeframe === "weekly"
+    ? Date.now() - 7 * 24 * 60 * 60 * 1000
+    : timeframe === "monthly"
+      ? Date.now() - 30 * 24 * 60 * 60 * 1000
+      : null;
+  const normalizedCity = city?.trim().toLowerCase();
+  const profileRows = await db.select({ id: users.id, avatarUrl: users.avatarUrl, city: users.city }).from(users);
+  const profileByUserId = new Map(profileRows.map(profile => [profile.id, profile]));
+  const matchesProfile = (userId?: number | null) => {
+    if (!normalizedCity) return true;
+    return Boolean(userId && profileByUserId.get(userId)?.city?.trim().toLowerCase() === normalizedCity);
+  };
+  const isWithinWindow = (date: Date | null) => !cutoff || Boolean(date && date.getTime() >= cutoff);
 
-  // Get all reviewed submissions with fire/trash counts
-  const submissions = await db.select({
+  const battles = (await db.select().from(battleRecords).orderBy(desc(battleRecords.battleDate)))
+    .filter(b => isWithinWindow(b.battleDate) && matchesProfile(b.winnerId) && matchesProfile(b.loserId));
+  const submissions = (await db.select({
     id: reviewSubmissions.id,
     artistName: reviewSubmissions.artistName,
     songTitle: reviewSubmissions.songTitle,
     fireCount: reviewSubmissions.fireCount,
     trashCount: reviewSubmissions.trashCount,
     userId: reviewSubmissions.userId,
-  }).from(reviewSubmissions)
-    .where(eq(reviewSubmissions.status, "reviewed"));
+    createdAt: reviewSubmissions.createdAt,
+  }).from(reviewSubmissions).where(eq(reviewSubmissions.status, "reviewed")))
+    .filter(s => isWithinWindow(s.createdAt) && matchesProfile(s.userId));
+  const avatarByUserId = new Map(profileRows.map(profile => [profile.id, sanitizeChatAvatarUrl(profile.avatarUrl)]));
 
-  // Aggregate by artist name
   const artistMap: Record<string, {
-    artistName: string;
-    userId?: number | null;
-    avatarUrl?: string | null;
-    wins: number;
-    losses: number;
-    totalFire: number;
-    totalTrash: number;
-    totalBattles: number;
-    totalReviews: number;
-    score: number;
+    artistName: string; userId?: number | null; avatarUrl?: string | null;
+    wins: number; losses: number; totalFire: number; totalTrash: number;
+    totalBattles: number; totalReviews: number; score: number;
   }> = {};
-
   const ensureArtist = (name: string, userId?: number | null) => {
     const key = name.toLowerCase().trim();
-    if (!artistMap[key]) {
-      artistMap[key] = { artistName: name, userId: userId ?? null, avatarUrl: userId ? avatarByUserId.get(userId) ?? null : null, wins: 0, losses: 0, totalFire: 0, totalTrash: 0, totalBattles: 0, totalReviews: 0, score: 0 };
-    }
-    // Update userId if we have one and the existing entry doesn't
-    if (userId && !artistMap[key].userId) {
-      artistMap[key].userId = userId;
-      artistMap[key].avatarUrl = avatarByUserId.get(userId) ?? null;
-    }
+    if (!artistMap[key]) artistMap[key] = { artistName: name, userId: userId ?? null, avatarUrl: userId ? avatarByUserId.get(userId) ?? null : null, wins: 0, losses: 0, totalFire: 0, totalTrash: 0, totalBattles: 0, totalReviews: 0, score: 0 };
+    if (userId && !artistMap[key].userId) { artistMap[key].userId = userId; artistMap[key].avatarUrl = avatarByUserId.get(userId) ?? null; }
     return artistMap[key];
   };
-
-  for (const b of battles) {
-    const winner = ensureArtist(b.winnerArtistName, b.winnerId);
-    winner.wins++;
-    winner.totalBattles++;
-    const loser = ensureArtist(b.loserArtistName, b.loserId);
-    loser.losses++;
-    loser.totalBattles++;
-  }
-
-  for (const s of submissions) {
-    const a = ensureArtist(s.artistName, s.userId);
-    a.totalFire += s.fireCount ?? 0;
-    a.totalTrash += s.trashCount ?? 0;
-    a.totalReviews++;
-  }
-
-  // Score = wins*10 + fire*2 - trash*1
-  for (const key of Object.keys(artistMap)) {
-    const a = artistMap[key];
-    a.score = a.wins * 10 + a.totalFire * 2 - a.totalTrash;
-  }
-
+  for (const b of battles) { const winner = ensureArtist(b.winnerArtistName, b.winnerId); winner.wins++; winner.totalBattles++; const loser = ensureArtist(b.loserArtistName, b.loserId); loser.losses++; loser.totalBattles++; }
+  for (const s of submissions) { const a = ensureArtist(s.artistName, s.userId); a.totalFire += s.fireCount ?? 0; a.totalTrash += s.trashCount ?? 0; a.totalReviews++; }
+  for (const a of Object.values(artistMap)) a.score = a.wins * 10 + a.totalFire * 2 - a.totalTrash;
   return Object.values(artistMap).sort((a, b) => b.score - a.score);
 }
 

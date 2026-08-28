@@ -3,7 +3,7 @@
    Style: Dark Editorial matching site theme (#080808, #D10000)
    ============================================================ */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Trophy, Flame, Trash2, Swords, Mic, Star, Heart } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
@@ -71,7 +71,11 @@ function FanXpBar({ fanXP, fanLevel }: { fanXP: number; fanLevel: string }) {
 
 export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState<"artists" | "fans">("artists");
-  const { data: entries, isLoading: artistsLoading } = trpc.leaderboard.combined.useQuery();
+  const [timeframe, setTimeframe] = useState<"all" | "monthly" | "weekly">("all");
+  const [city, setCity] = useState("all");
+  const leaderboardInput = useMemo(() => ({ timeframe, city: city === "all" ? undefined : city }), [timeframe, city]);
+  const { data: entries, isLoading: artistsLoading } = trpc.leaderboard.combined.useQuery(leaderboardInput);
+  const { data: cities } = trpc.leaderboard.cities.useQuery();
   const { data: fans, isLoading: fansLoading } = trpc.leaderboard.topFans.useQuery();
 
   return (
@@ -116,6 +120,28 @@ export default function Leaderboard() {
         {/* ── ARTISTS TAB ──────────────────────────────────────── */}
         {activeTab === "artists" && (
           <>
+            {/* Artist filters */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 border border-white/10 bg-white/[0.02]">
+              <div className="flex gap-1" role="group" aria-label="Leaderboard time period">
+                {([['all', 'All-Time'], ['monthly', 'Monthly'], ['weekly', 'Weekly']] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setTimeframe(value)}
+                    className={`px-3 py-1.5 text-[11px] uppercase tracking-wider border transition-colors ${timeframe === value ? "bg-red-600 border-red-600 text-white" : "border-white/15 text-white/50 hover:text-white"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label className="sm:ml-auto flex items-center gap-2 text-[11px] uppercase tracking-wider text-white/40">
+                City
+                <select value={city} onChange={event => setCity(event.target.value)} className="bg-[#101010] border border-white/15 px-3 py-1.5 text-xs text-white outline-none focus:border-red-500">
+                  <option value="all">All Cities</option>
+                  {(cities ?? []).map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </label>
+            </div>
+
             {/* Score legend */}
             <div className="flex flex-wrap gap-4 mb-6 p-4 border border-white/10 bg-white/[0.02]">
               <div className="text-xs text-white/50">

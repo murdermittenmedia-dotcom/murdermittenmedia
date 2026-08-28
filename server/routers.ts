@@ -47,7 +47,7 @@ import {
   getForumComments, createForumComment, deleteForumComment,
   reactToForumItem, getForumReactionCounts, getUserForumReactions,
   searchUsers, searchSongs,
-  getCombinedLeaderboard,
+  getCombinedLeaderboard, getLeaderboardCities,
   getWheelSpinState, setWheelSpinState, clearWheelSpinState,
   createModerationLog, getModerationLogs,
   banUser, unbanUser,
@@ -2105,9 +2105,10 @@ export const appRouter = router({
 
   // -- Combined Leaderboard ------------------------------------
   leaderboard: router({
-    combined: publicProcedure.query(async () => {
-      return getCombinedLeaderboard();
-    }),
+    combined: publicProcedure
+      .input(z.object({ timeframe: z.enum(["all", "monthly", "weekly"]).default("all"), city: z.string().optional() }).optional())
+      .query(async ({ input }) => getCombinedLeaderboard(input ?? {})),
+    cities: publicProcedure.query(async () => getLeaderboardCities()),
 
     // Top fans by fan XP
     topFans: publicProcedure.query(async () => {

@@ -865,8 +865,8 @@
 - [x] Level badge component: color-coded badge (Bronze=brown, Verified=blue, Trending=orange, City Motion=purple, Mitten Elite=gold, Hall of Fame=red/crimson)
 
 ### Enhanced Leaderboard
-- [ ] DB helper: `getCombinedLeaderboard` — add time filter (weekly/monthly/all-time) and city filter params
-- [ ] Leaderboard page: add filter tabs (All-Time / Monthly / Weekly) and city dropdown
+- [x] DB helper: `getCombinedLeaderboard` — add time filter (weekly/monthly/all-time) and city filter params
+- [x] Leaderboard page: add filter tabs (All-Time / Monthly / Weekly) and city dropdown
 - [ ] Leaderboard: add momentum indicators (↑ trending up, ↓ cooling off, 🔥 exploding) based on rank change
 - [ ] Leaderboard: store previous rank snapshot (weekly) to calculate rank change delta
 - [ ] Leaderboard: add "Trending Now" category tab showing biggest rank movers this week
