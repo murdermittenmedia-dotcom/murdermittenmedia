@@ -4,7 +4,7 @@
    Access: admin role only
    ============================================================ */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import LabelBadge, { ALL_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
@@ -257,6 +257,8 @@ function UserStatsEditor({ userId, user, utils }: { userId: number; user: any; u
 // ─── Users Tab ────────────────────────────────────────────────
 function UsersTab() {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
   const [expandedUser, setExpandedUser] = useState<number | null>(null);
   const [banReason, setBanReason] = useState("");
   const [addCoinsUserId, setAddCoinsUserId] = useState<number | null>(null);
@@ -264,7 +266,17 @@ function UsersTab() {
   const [addCoinsReason, setAddCoinsReason] = useState("");
   const utils = trpc.useUtils();
 
-  const { data: users, isLoading } = trpc.admin.listUsers.useQuery({ search: search || undefined, limit: 200 });
+  useEffect(() => {
+    setPage(1);
+    setExpandedUser(null);
+  }, [search]);
+
+  const { data: userPage, isLoading } = trpc.admin.listUsers.useQuery({
+    search: search || undefined,
+    page,
+    pageSize,
+  });
+  const users = userPage?.items ?? [];
 
   const setRole = trpc.admin.setRole.useMutation({
     onSuccess: () => { utils.admin.listUsers.invalidate(); toast.success("Role updated"); },
@@ -312,14 +324,15 @@ function UsersTab() {
             className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30"
           />
         </div>
-        <span className="text-white/40 text-sm">{users?.length ?? 0} users</span>
+        <span className="text-white/40 text-sm">{userPage?.total ?? 0} users</span>
       </div>
 
       {isLoading ? (
         <div className="text-center py-20 text-white/30">Loading users...</div>
       ) : (
+        <>
         <div className="space-y-2">
-          {users?.map(user => (
+          {users.map(user => (
             <div key={user.id} className="border border-white/10 bg-white/[0.02] rounded-lg overflow-hidden">
               <div
                 className="flex items-center gap-4 p-4 cursor-pointer hover:bg-white/[0.03] transition-colors"
@@ -522,6 +535,34 @@ function UsersTab() {
             </div>
           ))}
         </div>
+        {userPage && userPage.totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 pt-4">
+            <span className="text-xs text-white/40">
+              Page {userPage.page} of {userPage.totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/20 text-white/60 hover:text-white"
+                onClick={() => setPage(current => Math.max(1, current - 1))}
+                disabled={page <= 1 || isLoading}
+              >
+                Previous
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/20 text-white/60 hover:text-white"
+                onClick={() => setPage(current => current + 1)}
+                disabled={!userPage.hasMore || isLoading}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

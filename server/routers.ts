@@ -31,7 +31,7 @@ import {
   recordLinkAnalyticsEvent, getLinkAnalytics,
   createLinkPage, updateLinkPage, deleteLinkPage,
   createLinkItem, updateLinkItem, deleteLinkItem, reorderLinkItems,
-  getAllUsers, setUserRole,
+  getAllUsers, getAllUsersPage, setUserRole,
   getSubmissionsByArtistName, getLifetimeStats,
   getActiveBattle, setActiveBattle, updateActiveBattleStatus, clearBattleVotes,
   castVote, getVoteResults, getUserVote,
@@ -2266,18 +2266,15 @@ export const appRouter = router({
       return getAdminAnalytics();
     }),
 
-    // User management — list all users with search
+    // User management — paginated list with server-side search
     listUsers: adminProcedure
-      .input(z.object({ search: z.string().optional(), limit: z.number().default(100) }))
+      .input(z.object({
+        search: z.string().optional(),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(25),
+      }))
       .query(async ({ input }) => {
-        const all = await getAllUsers(input.limit);
-        if (!input.search) return all;
-        const q = input.search.toLowerCase();
-        return all.filter(u =>
-          (u.name ?? "").toLowerCase().includes(q) ||
-          (u.artistName ?? "").toLowerCase().includes(q) ||
-          (u.email ?? "").toLowerCase().includes(q)
-        );
+        return getAllUsersPage(input);
       }),
 
     // Change user role

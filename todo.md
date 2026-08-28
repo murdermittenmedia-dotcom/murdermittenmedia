@@ -107,15 +107,16 @@
 
 ## Role Management & Voting System
 - [x] DB: extend users.role enum to include "judge" (admin | judge | user)
-- [ ] DB: votes table (id, battleId, voterId, voterRole, candidate, weight, createdAt, battleRound)
-- [ ] DB: active_battle table (id, contestant1, contestant2, round, status, createdAt) for tracking current battle
-- [ ] tRPC: admin.listUsers — paginated list of all users with roles
-- [ ] tRPC: admin.setRole — admin-only promote/demote user to judge/user
-- [ ] tRPC: voting.castVote — authenticated users cast 1 vote per battle; judges cast weighted vote (weight=3)
-- [ ] tRPC: voting.getResults — live vote counts per candidate for current battle
-- [ ] tRPC: voting.setActiveBattle — admin sets current battle matchup (contestant1 vs contestant2)
-- [ ] tRPC: voting.clearVotes — admin resets votes for new battle
-- [ ] Admin panel: User Management tab — list users, search by name, promote/demote judge
+- [x] DB: votes table (id, battleId, voterId, voterRole, candidate, weight, createdAt, battleRound)
+- [x] DB: active_battle table (id, contestant1, contestant2, round, status, createdAt) for tracking current battle
+- [x] tRPC: admin.listUsers — paginated list of all users with roles
+- [x] tRPC: admin.setRole — admin-only promote/demote user to judge/user
+- [x] tRPC: voting.castVote — authenticated users cast 1 vote per battle; all votes use equal weight=1
+- [x] tRPC: voting.getResults — live vote counts per candidate for current battle
+- [x] tRPC: voting.setActiveBattle — admin sets current battle matchup (contestant1 vs contestant2)
+- [x] tRPC: voting.clearVotes — admin resets votes for new battle
+- [x] Admin panel: User Management tab — list users, search by name, promote/demote judge
+- [x] Implement true pagination for admin.listUsers with page metadata and update the user-management UI to consume it
 - [ ] Music Wars: Audience vote panel — vote for contestant1 or contestant2, show live bar chart
 - [ ] Music Wars: Judge vote panel — visible only to judges, weighted vote (counts as 3), separate display
 - [ ] Music Wars: Live vote tracker — real-time Socket.io updates, show vote counts + percentages

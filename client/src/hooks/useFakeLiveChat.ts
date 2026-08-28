@@ -767,10 +767,11 @@ export function useFakeLiveChat({
     }
   }, []);
 
-  const { data: allUsers } = trpc.admin.listUsers.useQuery(
-    { limit: 100 },
+  const { data: allUsersPage } = trpc.admin.listUsers.useQuery(
+    { page: 1, pageSize: 100 },
     { staleTime: 1000 * 60 * 5, retry: false }
   );
+  const allUsers = allUsersPage?.items ?? [];
 
   // Build chat pool: real users with names + some User-style accounts
   useEffect(() => {

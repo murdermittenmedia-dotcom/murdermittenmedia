@@ -50,6 +50,7 @@ import { aggregateLinkAnalyticsDaily } from './link-analytics';
 import { aggregateSiteAnalytics } from './site-analytics';
 import { sanitizeChatAvatarUrl } from "../shared/chat-avatar";
 import { attachSongReactionTotals } from "../shared/song-reaction-totals";
+import { getPageMeta } from "../shared/pagination";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -675,6 +676,42 @@ export async function getAllUsers(limit = 200): Promise<User[]> {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(users).orderBy(asc(users.createdAt)).limit(limit);
+}
+
+export async function getAllUsersPage({
+  page = 1,
+  pageSize = 25,
+  search,
+}: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}) {
+  const db = await getDb();
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.min(100, Math.max(1, Math.floor(pageSize)));
+  if (!db) {
+    return { items: [] as User[], page: safePage, pageSize: safePageSize, total: 0, totalPages: 0, hasMore: false };
+  }
+
+  const normalizedSearch = search?.trim();
+  const searchFilter = normalizedSearch
+    ? or(
+        like(users.name, `%${normalizedSearch}%`),
+        like(users.artistName, `%${normalizedSearch}%`),
+        like(users.email, `%${normalizedSearch}%`),
+      )
+    : undefined;
+  const [items, totalRows] = await Promise.all([
+    db.select().from(users)
+      .where(searchFilter)
+      .orderBy(asc(users.createdAt))
+      .limit(safePageSize)
+      .offset((safePage - 1) * safePageSize),
+    db.select({ total: count() }).from(users).where(searchFilter),
+  ]);
+  const total = Number(totalRows[0]?.total ?? 0);
+  return { items, ...getPageMeta(total, safePage, safePageSize) };
 }
 
 export async function setUserRole(userId: number, role: "user" | "admin" | "judge" | "contestant") {
