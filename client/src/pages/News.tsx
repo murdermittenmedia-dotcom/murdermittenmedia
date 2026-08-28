@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { trpc } from "@/lib/trpc";
 import { ExternalLink, Heart, MessageCircle, RefreshCw, Instagram } from "lucide-react";
+import { selectNewsPosts } from "@shared/news-feed";
 
 // ─── Types ────────────────────────────────────────────────────
 interface NewsPost {
@@ -214,12 +215,13 @@ export default function News() {
     }
   );
 
-  // Use live posts if available, otherwise fall back to static
-  const allPosts: NewsPost[] = (livePosts && livePosts.length > 0)
-    ? livePosts as NewsPost[]
-    : STATIC_POSTS;
+  // Use live posts when available; never present stale curated posts as current.
+  const allPosts: NewsPost[] = selectNewsPosts(
+    livePosts as NewsPost[] | undefined,
+    STATIC_POSTS,
+  );
 
-  const isLive = livePosts && livePosts.length > 0;
+  const isLive = Boolean(livePosts && livePosts.length > 0);
 
   const filtered = allPosts.filter(post => {
     const matchesFilter = filter === "all" || post.mediaType === filter;
@@ -249,8 +251,8 @@ export default function News() {
                 {isLive
                   ? "Live from @murdermittenmedia on Instagram"
                   : isError
-                    ? "Instagram is temporarily unavailable · Showing the latest available posts"
-                    : "Curated posts from @murdermittenmedia · Connect Instagram API for live updates"
+                    ? "Instagram is temporarily unavailable · No stale posts are being shown"
+                    : "No current Instagram posts are available · Connect Instagram API for live updates"
                 }
               </p>
             </div>
@@ -337,12 +339,12 @@ export default function News() {
         )}
 
         {/* Footer note */}
-        {!isLive && (
+        {!isLoading && !isLive && (
           <div className="mt-8 border border-white/5 bg-white/[0.02] p-4 text-center">
             <p className="text-white/30 text-xs">
               {isError
-                ? "Instagram is temporarily unavailable. Showing the latest available posts instead."
-                : "Showing curated posts. For live auto-updating feed, configure Instagram API credentials."
+                ? "Instagram is temporarily unavailable. No stale posts are being shown."
+                : "No current Instagram posts are available. Configure Instagram API credentials for live updates."
               }
             </p>
             <a

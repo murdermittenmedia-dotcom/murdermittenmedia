@@ -1588,6 +1588,6 @@
 - [x] Rename the Three Color System Tee to MITTEN MADE BLADE TEE and set its price to $27.99 across storefront and checkout while preserving Spirit of The Mitten Tee
 - [x] Add a New Arrival badge to the MITTEN MADE BLADE TEE in the single-page merch catalog
 - [x] Fix Latest News Instagram feed loading so posts reliably appear with a safe fallback when the external feed is unavailable
-- [ ] Fix stale Latest News fallback so the page does not present two-month-old posts as current when live Instagram retrieval is unavailable
+- [x] Fix stale Latest News fallback so the page does not present two-month-old posts as current when live Instagram retrieval is unavailable
 - [x] Replace MITTEN MADE BLADE TEE catalog imagery with the supplied board and add a closer crop for each of the ten selectable colorways
 - [x] Apply the shared MITTEN MADE BLADE TEE close-up image map to the live /shop/:slug detail route
