@@ -208,6 +208,18 @@ async function startServer() {
     socket.on("wheel:result", (data: { winner: string }) => {
       io.to("music_wars").emit("wheel:winner", data);
     });
+
+    // Admin BattlePlayer controls are relayed to every other Music Wars viewer.
+    socket.on("wars:battle_playback", (data: {
+      action: "play" | "pause" | "seek" | "next" | "previous";
+      trackIndex?: number;
+      currentTime?: number;
+    }) => {
+      if (room !== "music_wars") return;
+      if (!data || !["play", "pause", "seek", "next", "previous"].includes(data.action)) return;
+      socket.to("music_wars").emit("wars:battle_playback", data);
+    });
+
     // Relay spin state changes (contestant 1 picked, reset, etc.)
     socket.on("wheel:spin_state", (data: { spinCount: number; contestant1Id: number | null; contestant1Name: string | null }) => {
       io.to("music_wars").emit("wheel:spin_state", data);

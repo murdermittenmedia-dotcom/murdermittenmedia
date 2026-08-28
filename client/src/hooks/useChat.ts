@@ -37,6 +37,12 @@ export interface LiveReviewPlayback {
   currentTime?: number;
 }
 
+export interface BattlePlayback {
+  action: "play" | "pause" | "seek" | "next" | "previous";
+  trackIndex?: number;
+  currentTime?: number;
+}
+
 export interface LastSongRestoredData {
   submissionId: number;
   artistName: string;
@@ -72,6 +78,7 @@ interface UseChatOptions {
   onSpinStateChange?: (state: WheelSpinState) => void;
   onReviewActiveChanged?: (item: LiveReviewActiveItem) => void;
   onReviewPlayback?: (data: LiveReviewPlayback) => void;
+  onBattlePlayback?: (data: BattlePlayback) => void;
   onReviewQueueUpdated?: () => void;
   onLastSongRestored?: (data: LastSongRestoredData) => void;
   onRadioPaused?: (data: { pausedAt: number }) => void;
@@ -99,6 +106,7 @@ export function useChat({
   onSpinStateChange,
   onReviewActiveChanged,
   onReviewPlayback,
+  onBattlePlayback,
   onReviewQueueUpdated,
   onLastSongRestored,
   onRadioPaused,
@@ -117,6 +125,8 @@ export function useChat({
   onReviewActiveRef.current = onReviewActiveChanged;
   const onReviewPlaybackRef = useRef(onReviewPlayback);
   onReviewPlaybackRef.current = onReviewPlayback;
+  const onBattlePlaybackRef = useRef(onBattlePlayback);
+  onBattlePlaybackRef.current = onBattlePlayback;
   const onReviewQueueUpdatedRef = useRef(onReviewQueueUpdated);
   onReviewQueueUpdatedRef.current = onReviewQueueUpdated;
   const onLastSongRestoredRef = useRef(onLastSongRestored);
@@ -188,6 +198,9 @@ export function useChat({
     });
     socket.on("review:playback", (data: LiveReviewPlayback) => {
       onReviewPlaybackRef.current?.(data);
+    });
+    socket.on("wars:battle_playback", (data: BattlePlayback) => {
+      onBattlePlaybackRef.current?.(data);
     });
     socket.on("review:queue_updated", () => {
       onReviewQueueUpdatedRef.current?.();
@@ -289,6 +302,10 @@ export function useChat({
     socketRef.current?.emit("review:playback", data);
   }, []);
 
+  const broadcastBattlePlayback = useCallback((data: BattlePlayback) => {
+    if (room === "music_wars") socketRef.current?.emit("wars:battle_playback", data);
+  }, [room]);
+
   // Admin: notify all clients that the queue has been updated
   const broadcastReviewQueueUpdated = useCallback(() => {
     socketRef.current?.emit("review:queue_updated");
@@ -332,6 +349,7 @@ export function useChat({
     broadcastRadioResume,
     broadcastRadioSeek,
     broadcastReviewPlayback,
+    broadcastBattlePlayback,
     broadcastReviewQueueUpdated,
     broadcastReactionsUpdated,
     broadcastLastSong,

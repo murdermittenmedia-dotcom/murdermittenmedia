@@ -14,7 +14,7 @@ import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { TuneInButton } from "@/components/TuneInButton";
-import { useChat, type ChatMessage } from "@/hooks/useChat";
+import { useChat, type ChatMessage, type BattlePlayback } from "@/hooks/useChat";
 import LabelBadge from "@/components/LabelBadge";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
 import BattlePlayer from "@/components/BattlePlayer";
@@ -1866,6 +1866,7 @@ export default function MusicWars() {
   const [selectedWheelEntry, setSelectedWheelEntry] = useState<WheelEntry | null>(null);
   const [contestant1Entry, setContestant1Entry] = useState<WheelEntry | null>(null);
   const [contestant2Entry, setContestant2Entry] = useState<WheelEntry | null>(null);
+  const [remoteBattlePlayback, setRemoteBattlePlayback] = useState<BattlePlayback | null>(null);
 
   // Helper to restore contestant1 from entry list
   const restoreContestant1 = useCallback((id: number, name: string, entries: WheelEntry[]) => {
@@ -1885,7 +1886,7 @@ export default function MusicWars() {
     }
   }, [persistedSpinState, wheelData?.entries, restoreContestant1]);
 
-  const { messages, isConnected: chatConnected, sendMessage, wheelWinner, wheelSpinning, broadcastSpin, broadcastWinner, socket: chatSocket } = useChat({
+  const { messages, isConnected: chatConnected, sendMessage, wheelWinner, wheelSpinning, broadcastSpin, broadcastWinner, broadcastBattlePlayback, socket: chatSocket } = useChat({
     room: "music_wars",
     username,
     userId: user?.id,
@@ -1902,6 +1903,7 @@ export default function MusicWars() {
       id: m.id, username: m.username, message: m.message,
       room: m.room, isAdmin: m.isAdmin, accountLabels: null, avatarUrl: m.avatarUrl ?? null, createdAt: new Date(m.createdAt),
     })),
+    onBattlePlayback: (data) => setRemoteBattlePlayback(data),
     onSpinStateChange: (state) => {
       setSpinCount(state.spinCount);
       if (state.spinCount === 1 && state.contestant1Id) {
@@ -2233,7 +2235,12 @@ export default function MusicWars() {
 
           {!isTripleActive && (
             <div className="mt-5">
-              <BattlePlayer isAdmin={isAdmin} activeBattle={activeBattle} />
+              <BattlePlayer
+                isAdmin={isAdmin}
+                activeBattle={activeBattle}
+                onPlaybackChange={broadcastBattlePlayback}
+                remotePlayback={remoteBattlePlayback}
+              />
             </div>
           )}
 

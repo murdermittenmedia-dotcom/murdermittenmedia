@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import type { BattlePlayback } from "@/hooks/useChat";
 
 interface BattlePlayerProps {
   isAdmin: boolean;
@@ -22,6 +23,8 @@ interface BattlePlayerProps {
     contestant2SongTitle?: string | null;
     contestant2SongUrl?: string | null;
   } | null | undefined;
+  onPlaybackChange?: (data: BattlePlayback) => void;
+  remotePlayback?: BattlePlayback | null;
 }
 
 type TrackInfo = {
@@ -38,7 +41,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProps) {
+export default function BattlePlayer({ isAdmin, activeBattle, onPlaybackChange, remotePlayback }: BattlePlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTrackIdx, setCurrentTrackIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -124,12 +127,15 @@ export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProp
 
   const handleEnded = useCallback(() => {
     if (hasNextTrack) {
-      setCurrentTrackIdx(prev => prev + 1);
+      const nextIndex = currentTrackIdx + 1;
+      setCurrentTrackIdx(nextIndex);
       setIsPlaying(true);
+      if (isAdmin) onPlaybackChange?.({ action: "next", trackIndex: nextIndex, currentTime: 0 });
     } else {
       setIsPlaying(false);
+      if (isAdmin) onPlaybackChange?.({ action: "pause", trackIndex: currentTrackIdx, currentTime: duration });
     }
-  }, [hasNextTrack]);
+  }, [hasNextTrack, currentTrackIdx, isAdmin, onPlaybackChange, duration]);
 
   const handleCanPlay = useCallback(() => {
     setIsLoading(false);
@@ -157,6 +163,30 @@ export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProp
     };
   }, [handleTimeUpdate, handleLoadedMetadata, handleEnded, handleCanPlay, handleError]);
 
+  // Apply admin playback events on viewer clients. The server excludes the sender,
+  // so this never loops back into the admin's own control path.
+  useEffect(() => {
+    if (isAdmin || !remotePlayback) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (typeof remotePlayback.trackIndex === "number" && remotePlayback.trackIndex >= 0 && remotePlayback.trackIndex < tracks.length) {
+      setCurrentTrackIdx(remotePlayback.trackIndex);
+    }
+    if (typeof remotePlayback.currentTime === "number") {
+      audio.currentTime = remotePlayback.currentTime;
+      setCurrentTime(remotePlayback.currentTime);
+    }
+    if (remotePlayback.action === "pause") {
+      audio.pause();
+      setIsPlaying(false);
+    } else if (remotePlayback.action === "play" || remotePlayback.action === "next" || remotePlayback.action === "previous") {
+      audio.play().catch(() => undefined);
+      setIsPlaying(true);
+    } else if (remotePlayback.action === "seek") {
+      setIsPlaying(!audio.paused);
+    }
+  }, [isAdmin, remotePlayback, tracks.length]);
+
   // Admin controls
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -164,12 +194,14 @@ export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProp
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
+      if (isAdmin) onPlaybackChange?.({ action: "pause", trackIndex: currentTrackIdx, currentTime: audio.currentTime });
     } else {
       audio.play().catch(e => {
         setError("Playback blocked. Click play again.");
         console.error(e);
       });
       setIsPlaying(true);
+      if (isAdmin) onPlaybackChange?.({ action: "play", trackIndex: currentTrackIdx, currentTime: audio.currentTime });
     }
   };
 
@@ -179,6 +211,7 @@ export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProp
     const t = parseFloat(e.target.value);
     audio.currentTime = t;
     setCurrentTime(t);
+    if (isAdmin) onPlaybackChange?.({ action: "seek", trackIndex: currentTrackIdx, currentTime: t });
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,19 +221,31 @@ export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProp
 
   const skipToNext = () => {
     if (hasNextTrack) {
-      setCurrentTrackIdx(prev => prev + 1);
+      const nextIndex = currentTrackIdx + 1;
+      setCurrentTrackIdx(nextIndex);
       setIsPlaying(true);
+      if (isAdmin) onPlaybackChange?.({ action: "next", trackIndex: nextIndex, currentTime: 0 });
     }
   };
 
   const skipToPrev = () => {
     if (currentTrackIdx > 0) {
-      setCurrentTrackIdx(prev => prev - 1);
+      const previousIndex = currentTrackIdx - 1;
+      setCurrentTrackIdx(previousIndex);
       setIsPlaying(true);
+      if (isAdmin) onPlaybackChange?.({ action: "previous", trackIndex: previousIndex, currentTime: 0 });
     } else if (audioRef.current) {
       audioRef.current.currentTime = 0;
       setCurrentTime(0);
     }
+  };
+
+  const selectTrack = (index: number) => {
+    if (!isAdmin) return;
+    setCurrentTrackIdx(index);
+    setCurrentTime(0);
+    setIsPlaying(true);
+    onPlaybackChange?.({ action: "next", trackIndex: index, currentTime: 0 });
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -243,7 +288,7 @@ export default function BattlePlayer({ isAdmin, activeBattle }: BattlePlayerProp
           <button
             key={i}
             disabled={!isAdmin}
-            onClick={() => isAdmin && (setCurrentTrackIdx(i), setIsPlaying(true))}
+            onClick={() => selectTrack(i)}
             className={`flex-1 p-2 border text-left transition-all ${
               i === currentTrackIdx
                 ? "border-red-600 bg-red-600/10 shadow-[0_0_16px_rgba(209,0,0,0.18)]"

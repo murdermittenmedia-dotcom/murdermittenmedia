@@ -223,7 +223,7 @@
 ## Battle Player Admin Control Clarification
 - [x] Admin-only playback controls: play/pause, seek, volume, skip to next song
 - [x] Viewers see read-only player: song name, artist, progress bar (no interaction)
-- [ ] Admin playback state synced to all viewers via Socket.io (everyone hears same position)
+- [x] Admin playback state synced to all viewers via Socket.io (everyone hears same position)
 
 ## Admin Role Elevation
 - [x] Admin panel: User Management tab — list all users, search by name/email
