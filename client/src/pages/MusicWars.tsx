@@ -270,6 +270,7 @@ function SpinWheel({
   onSpin,
   isAdmin,
   onSpinComplete,
+  onSliceClick,
   spinCount,
 }: {
   entries: WheelEntry[];
@@ -279,6 +280,7 @@ function SpinWheel({
   onSpin: () => void;
   isAdmin: boolean;
   onSpinComplete?: (winnerName: string) => void;
+  onSliceClick?: (entry: WheelEntry) => void;
   spinCount?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -378,7 +380,18 @@ function SpinWheel({
     <div className="flex flex-col items-center gap-4">
       <canvas
         ref={canvasRef} width={300} height={300}
-        className="rounded-full shadow-[0_0_40px_rgba(209,0,0,0.3)]"
+        onClick={event => {
+          if (!entries.length || isSpinning || !onSliceClick) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          const x = (event.clientX - rect.left) * (event.currentTarget.width / rect.width) - event.currentTarget.width / 2;
+          const y = (event.clientY - rect.top) * (event.currentTarget.height / rect.height) - event.currentTarget.height / 2;
+          const pointerAngle = Math.atan2(y, x);
+          const normalized = ((pointerAngle - rotRef.current) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+          const index = Math.floor(normalized / ((Math.PI * 2) / entries.length)) % entries.length;
+          if (entries[index]) onSliceClick(entries[index]);
+        }}
+        className="rounded-full shadow-[0_0_40px_rgba(209,0,0,0.3)] cursor-pointer"
+        title="Click a wheel slice to view the artist profile"
       />
       {entries.length > 0 && (
         <div className="w-full max-h-56 overflow-y-auto space-y-1.5 pr-1" aria-label="Wheel entries">
@@ -1846,7 +1859,8 @@ export default function MusicWars() {
 
   // Persistent wheel spin state — loaded from DB on mount, synced via socket
   const { data: persistedSpinState, refetch: refetchSpinState } = trpc.warsWheel.getSpinState.useQuery();
-  const [spinCount, setSpinCount] = useState<0 | 1 | 2>(0);
+  const [spinCount, setSpinCount] = useState(0);
+  const [selectedWheelEntry, setSelectedWheelEntry] = useState<WheelEntry | null>(null);
   const [contestant1Entry, setContestant1Entry] = useState<WheelEntry | null>(null);
   const [contestant2Entry, setContestant2Entry] = useState<WheelEntry | null>(null);
 
@@ -2339,8 +2353,19 @@ export default function MusicWars() {
                   onSpin={handleSpin}
                   isAdmin={isAdmin}
                   onSpinComplete={handleSpinComplete}
+                  onSliceClick={setSelectedWheelEntry}
                   spinCount={spinCount}
                 />
+                {selectedWheelEntry && (
+                  <ArtistStatModal
+                    artistName={selectedWheelEntry.artistName}
+                    userId={selectedWheelEntry.userId ?? undefined}
+                    open
+                    onOpenChange={open => { if (!open) setSelectedWheelEntry(null); }}
+                  >
+                    <button className="sr-only">View {selectedWheelEntry.artistName} profile</button>
+                  </ArtistStatModal>
+                )}
 
                 {/* Contestant selection status (admin only) */}
                 {isAdmin && (contestant1Entry || spinCount > 0) && (

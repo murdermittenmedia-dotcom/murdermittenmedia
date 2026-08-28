@@ -15,6 +15,8 @@ interface ArtistStatModalProps {
   artistName: string;
   userId?: number | null;
   children: React.ReactNode; // the clickable trigger element
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface Song {
@@ -268,8 +270,13 @@ function SongUploadForm({ onSuccess, defaultArtistName }: { onSuccess: () => voi
 }
 
 // ─── Main Modal ───────────────────────────────────────────────
-export function ArtistStatModal({ artistName, userId, children }: ArtistStatModalProps) {
-  const [open, setOpen] = useState(false);
+export function ArtistStatModal({ artistName, userId, children, open: controlledOpen, onOpenChange }: ArtistStatModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (next: boolean) => {
+    setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const { user: currentUser } = useAuth();
   const isOwnProfile = !!(currentUser && userId && currentUser.id === userId);
 

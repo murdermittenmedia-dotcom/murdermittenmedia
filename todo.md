@@ -290,7 +290,7 @@
 - [x] Fix Music Wars wheel winner accuracy — winner determined by pointer position after spin, not random pick
 - [x] Fix vote reset on war clear — broadcast war:reset socket event so all clients clear local vote state
 - [x] Add songs.byArtistName tRPC procedure for name-only artists (no userId)
-- [ ] Add clickable wheel slice to show artist profile preview modal
+- [x] Add clickable wheel slice to show artist profile preview modal
 - [x] Fix uploaded file playback - use presigned URLs so audio actually loads in player
 - [x] Fix Music Review file upload to work same as Music Wars (base64 inline upload)
 - [x] Build pop-out floating audio player that appears when a song loads/plays
