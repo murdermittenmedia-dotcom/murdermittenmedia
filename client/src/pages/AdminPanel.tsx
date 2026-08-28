@@ -257,6 +257,7 @@ function UserStatsEditor({ userId, user, utils }: { userId: number; user: any; u
 // ─── Users Tab ────────────────────────────────────────────────
 function UsersTab() {
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"relevant" | "all">("relevant");
   const [page, setPage] = useState(1);
   const pageSize = 25;
   const [expandedUser, setExpandedUser] = useState<number | null>(null);
@@ -269,9 +270,14 @@ function UsersTab() {
   useEffect(() => {
     setPage(1);
     setExpandedUser(null);
-  }, [search]);
+  }, [search, viewMode]);
 
-  const { data: relevantUsers, isLoading } = trpc.users.list.useQuery();
+  const { data: relevantUsers, isLoading: relevantLoading } = trpc.users.list.useQuery(undefined, { enabled: viewMode === "relevant" });
+  const { data: allUsersPage, isLoading: allUsersLoading } = trpc.admin.listUsers.useQuery({
+    search: search.trim() || undefined,
+    page,
+    pageSize,
+  }, { enabled: viewMode === "all" });
   const filteredUsers = (relevantUsers ?? []).filter(user => {
     if (!search.trim()) return true;
     const query = search.trim().toLocaleLowerCase();
@@ -280,14 +286,18 @@ function UsersTab() {
       .some(value => String(value).toLocaleLowerCase().includes(query));
   });
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-  const userPage = {
+  const relevantPage = {
     items: filteredUsers.slice((page - 1) * pageSize, page * pageSize),
     total: filteredUsers.length,
     page,
     totalPages,
     hasMore: page < totalPages,
   };
+  const userPage = viewMode === "all"
+    ? (allUsersPage ?? { items: [], total: 0, page, pageSize, totalPages: 0, hasMore: false })
+    : relevantPage;
   const users = userPage.items;
+  const isLoading = viewMode === "all" ? allUsersLoading : relevantLoading;
 
   const reviewJudgeApplication = trpc.judgeApps.review.useMutation({
     onSuccess: () => { utils.users.list.invalidate(); toast.success("Judge application updated"); },
@@ -329,7 +339,7 @@ function UsersTab() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
           <Input
@@ -340,6 +350,10 @@ function UsersTab() {
           />
         </div>
         <span className="text-white/40 text-sm">{userPage?.total ?? 0} users</span>
+      </div>
+      <div className="flex items-center gap-2 mb-6">
+        <Button size="sm" variant={viewMode === "relevant" ? "default" : "outline"} className={viewMode === "relevant" ? "bg-red-600 hover:bg-red-700 text-white" : "border-white/15 text-white/50"} onClick={() => setViewMode("relevant")}>Wars / Judge Applicants</Button>
+        <Button size="sm" variant={viewMode === "all" ? "default" : "outline"} className={viewMode === "all" ? "bg-red-600 hover:bg-red-700 text-white" : "border-white/15 text-white/50"} onClick={() => setViewMode("all")}>All Registered Users</Button>
       </div>
 
       {isLoading ? (
@@ -392,16 +406,16 @@ function UsersTab() {
               {/* Expanded controls */}
               {expandedUser === user.id && (
                 <div className="border-t border-white/10 p-4 bg-white/[0.02] space-y-4">
-                  {user.judgeApplication?.status === "pending" && (
+                  {(user as any).judgeApplication?.status === "pending" && (
                     <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-yellow-300 text-xs font-semibold uppercase tracking-wider">Judge application pending</p>
-                          {user.judgeApplication.reason && <p className="text-white/40 text-xs mt-1">{user.judgeApplication.reason}</p>}
+                          {(user as any).judgeApplication.reason && <p className="text-white/40 text-xs mt-1">{(user as any).judgeApplication.reason}</p>}
                         </div>
                         <div className="flex gap-2 shrink-0">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => reviewJudgeApplication.mutate({ applicationId: user.judgeApplication!.id, approved: true })} disabled={reviewJudgeApplication.isPending}>Approve</Button>
-                          <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/10" onClick={() => reviewJudgeApplication.mutate({ applicationId: user.judgeApplication!.id, approved: false })} disabled={reviewJudgeApplication.isPending}>Reject</Button>
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => reviewJudgeApplication.mutate({ applicationId: (user as any).judgeApplication!.id, approved: true })} disabled={reviewJudgeApplication.isPending}>Approve</Button>
+                          <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/10" onClick={() => reviewJudgeApplication.mutate({ applicationId: (user as any).judgeApplication!.id, approved: false })} disabled={reviewJudgeApplication.isPending}>Reject</Button>
                         </div>
                       </div>
                     </div>

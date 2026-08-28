@@ -226,7 +226,7 @@
 - [ ] Admin playback state synced to all viewers via Socket.io (everyone hears same position)
 
 ## Admin Role Elevation
-- [ ] Admin panel: User Management tab — list all users, search by name/email
+- [x] Admin panel: User Management tab — list all users, search by name/email
 - [x] Admin can promote user → contestant → judge (and demote back)
 - [x] Judge role = full mic access in audio room (no per-session activation needed)
 - [x] Contestant role = mic access only when admin activates them
