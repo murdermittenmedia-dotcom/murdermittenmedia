@@ -1400,6 +1400,7 @@ export default function MusicReview() {
     userId: user?.id,
     avatarUrl: (user as { avatarUrl?: string | null } | null)?.avatarUrl ?? null,
     isAdmin,
+    role: user?.role === "admin" ? "admin" : user?.role === "judge" ? "judge" : user?.role === "contestant" ? "contestant" : "user",
     onFakeChatMessage: receiveFakeMessage,
     onChatControlsReceived: receiveChatControls,
     onTriggerReaction: (data) => { if (!isAdmin) triggerReaction(data.reaction as any, data.duration); },

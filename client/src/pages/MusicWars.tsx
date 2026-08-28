@@ -14,7 +14,7 @@ import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { TuneInButton } from "@/components/TuneInButton";
-import { useChat } from "@/hooks/useChat";
+import { useChat, type ChatMessage } from "@/hooks/useChat";
 import LabelBadge from "@/components/LabelBadge";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
 import { ArtistLink } from "@/components/ArtistLink";
@@ -479,15 +479,17 @@ function ChatPanel({
         {messages.length === 0 && (
           <p className="text-white/30 text-xs text-center py-8">No messages yet. Be the first!</p>
         )}
-        {messages.map(msg => (
+        {(messages as ChatMessage[]).map(msg => (
           <div key={msg.id} className="flex gap-2 text-sm flex-wrap items-start">
             {msg.avatarUrl ? (
               <img src={msg.avatarUrl} alt="" className="mt-0.5 h-4 w-4 rounded-full object-cover border border-white/15" />
             ) : (
               <span aria-hidden="true" className="mt-0.5 h-4 w-4 rounded-full bg-white/10 border border-white/10" />
             )}
-            <span className={`font-semibold flex-shrink-0 ${msg.isAdmin ? "text-red-400" : "text-white/70"}`}>
-              {msg.isAdmin && "[ADMIN] "}
+            <span className={`font-semibold flex-shrink-0 ${msg.role === "admin" || msg.isAdmin ? "text-red-400" : msg.role === "judge" ? "text-yellow-400" : msg.role === "contestant" ? "text-blue-400" : "text-white/70"}`}>
+              <span className="mr-1 text-[9px] uppercase tracking-wider opacity-80">
+                [{msg.role ?? (msg.isAdmin ? "admin" : "user")}]
+              </span>
               {msg.userId ? (
                 <Link href={`/profile/${msg.userId}`} className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</Link>
               ) : (
@@ -495,7 +497,7 @@ function ChatPanel({
                   <button className="hover:text-red-400 transition-colors cursor-pointer">{msg.username}</button>
                 </ArtistStatModal>
               )}
-              {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}:
+              {msg.accountLabels && msg.accountLabels.length > 0 && <span className="ml-1"><LabelBadge labels={msg.accountLabels} size="xs" /></span>}
             </span>
             <span className="text-white/80 break-words min-w-0">{msg.message}</span>
           </div>
@@ -1888,6 +1890,7 @@ export default function MusicWars() {
     userId: user?.id,
     avatarUrl: (user as { avatarUrl?: string | null } | null)?.avatarUrl ?? null,
     isAdmin,
+    role: audioRole,
     onPickedNotification: (data) => {
       if (data.userId !== user?.id) return;
       refetchPickedNotification();

@@ -166,6 +166,7 @@ async function startServer() {
       avatarUrl?: string | null;
       isAdmin?: boolean;
       accountLabels?: string[] | null;
+      role?: "admin" | "judge" | "contestant" | "user";
     }) => {
       if (!data.message?.trim() || !data.username?.trim()) return;
       if (data.message.length > 500) return;
@@ -176,6 +177,7 @@ async function startServer() {
         message: data.message.slice(0, 500),
         room: data.room,
         isAdmin: data.isAdmin || false,
+        role: data.role ?? (data.isAdmin ? "admin" : "user"),
         accountLabels: Array.isArray(data.accountLabels) ? data.accountLabels.slice(0, 8) : [],
         userId: data.userId ?? null,
         avatarUrl: sanitizeChatAvatarUrl(data.avatarUrl),

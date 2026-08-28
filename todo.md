@@ -227,10 +227,10 @@
 
 ## Admin Role Elevation
 - [ ] Admin panel: User Management tab — list all users, search by name/email
-- [ ] Admin can promote user → contestant → judge (and demote back)
-- [ ] Judge role = full mic access in audio room (no per-session activation needed)
-- [ ] Contestant role = mic access only when admin activates them
-- [ ] Role badge shown next to username in chat and audio room participant list
+- [x] Admin can promote user → contestant → judge (and demote back)
+- [x] Judge role = full mic access in audio room (no per-session activation needed)
+- [x] Contestant role = mic access only when admin activates them
+- [x] Role badge shown next to username in chat and audio room participant list
 
 ## Reset War & User Management Fixes
 - [x] Reset Current War: clears ALL wheel entries (not just non-winners), all votes, active battle, and battle records for current session
@@ -255,11 +255,11 @@
 - [x] Avatar shown in nav, chat messages, leaderboard, and artist popup
 
 ## Audio Room Speaker Indicators & Mute Controls
-- [ ] 🔊 animated speaker emoji on participant card when actively speaking (Web Audio API voice activity detection)
-- [ ] 🔇 muted speaker emoji when participant is intentionally muted
+- [x] 🔊 animated speaker emoji on participant card when actively speaking (Web Audio API voice activity detection)
+- [x] 🔇 muted speaker emoji when participant is intentionally muted
 - [x] Self-mute/unmute button for all participants in the audio room
-- [ ] Admin can mute or unmute any participant from the room panel
-- [ ] Mute state synced via Socket.io so all viewers see current mute status
+- [x] Admin can mute or unmute any participant from the room panel
+- [x] Mute state synced via Socket.io so all viewers see current mute status
 
 ## Artist of the Week — Audio Player
 - [x] Add audio player to Artist of the Week page for direct in-browser playback

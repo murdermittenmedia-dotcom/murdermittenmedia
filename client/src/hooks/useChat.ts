@@ -7,6 +7,7 @@ export interface ChatMessage {
   message: string;
   room: string;
   isAdmin: boolean;
+  role?: "admin" | "judge" | "contestant" | "user";
   accountLabels?: string[] | null;
   userId?: number | null;
   createdAt: Date;
@@ -65,6 +66,7 @@ interface UseChatOptions {
   userId?: number;
   avatarUrl?: string | null;
   isAdmin?: boolean;
+  role?: "admin" | "judge" | "contestant" | "user";
   accountLabels?: string[];
   initialMessages?: ChatMessage[];
   onSpinStateChange?: (state: WheelSpinState) => void;
@@ -91,6 +93,7 @@ export function useChat({
   userId,
   avatarUrl,
   isAdmin,
+  role = isAdmin ? "admin" : "user",
   accountLabels = [],
   initialMessages = [],
   onSpinStateChange,
@@ -247,9 +250,10 @@ export function useChat({
       userId,
       avatarUrl: avatarUrl ?? null,
       isAdmin: isAdmin || false,
+      role,
       accountLabels: accountLabels ?? [],
     });
-  }, [username, room, userId, avatarUrl, isAdmin, accountLabels]);
+  }, [username, room, userId, avatarUrl, isAdmin, role, accountLabels]);
 
   const broadcastSpin = useCallback(() => {
     socketRef.current?.emit("wheel:spin");

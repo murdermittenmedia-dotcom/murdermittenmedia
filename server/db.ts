@@ -401,6 +401,7 @@ export async function getChatMessages(room: "music_wars" | "music_review", limit
     message: chatMessages.message,
     room: chatMessages.room,
     isAdmin: chatMessages.isAdmin,
+    role: users.role,
     deleted: chatMessages.deleted,
     createdAt: chatMessages.createdAt,
     avatarUrl: users.avatarUrl,
