@@ -18,7 +18,7 @@ import { useChat } from "@/hooks/useChat";
 import LabelBadge from "@/components/LabelBadge";
 import { useWarsRadio, type WarsRadioTrack } from "@/hooks/useWarsRadio";
 import { ArtistLink } from "@/components/ArtistLink";
-import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap, Mic, MicOff, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Rewind, FastForward, Square, Zap, Mic, MicOff, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useAdminMicBroadcast } from "@/hooks/useAdminMicBroadcast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -1740,6 +1740,13 @@ export default function MusicWars() {
     { battleId: activeBattle?.id ?? 0 },
     { enabled: !!activeBattle?.id, refetchInterval: 3000 }
   );
+  const { data: pickedNotification, refetch: refetchPickedNotification } = trpc.warsWheel.getMyNotification.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 10_000,
+  });
+  const dismissPickedNotification = trpc.warsWheel.dismissNotification.useMutation({
+    onSuccess: () => refetchPickedNotification(),
+  });
   const { data: myVote } = trpc.voting.getMyVote.useQuery(
     { battleId: activeBattle?.id ?? 0 },
     { enabled: !!activeBattle?.id && !!user }
@@ -1797,6 +1804,11 @@ export default function MusicWars() {
     userId: user?.id,
     avatarUrl: (user as { avatarUrl?: string | null } | null)?.avatarUrl ?? null,
     isAdmin,
+    onPickedNotification: (data) => {
+      if (data.userId !== user?.id) return;
+      refetchPickedNotification();
+      toast.success(data.message);
+    },
     accountLabels: (() => { const raw = (user as { accountLabels?: string | null } | null)?.accountLabels; if (!raw) return []; try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; } })(),
     initialMessages: (chatHistory || []).map(m => ({
       id: m.id, username: m.username, message: m.message,
@@ -2198,6 +2210,21 @@ export default function MusicWars() {
 
       {/* ── LIVE BATTLE QUEUE (shown when battle is active) ──── */}
       <LiveBattleBanner />
+      {pickedNotification && (
+        <div className="container pt-4">
+          <div className="flex items-center gap-3 border border-green-500/30 bg-green-500/10 px-4 py-3 text-green-200">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+            <p className="text-xs uppercase tracking-wider flex-1">{pickedNotification.message}</p>
+            <button
+              onClick={() => dismissPickedNotification.mutate()}
+              className="text-green-200/60 hover:text-white transition-colors"
+              aria-label="Dismiss battle notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── MAIN CONTENT ─────────────────────────────────────── */}
       <div className="container py-8">

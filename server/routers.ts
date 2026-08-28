@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { z } from "zod";
 import { buildNextWarEntries } from "../shared/next-war";
+import { createPickedNotification } from "../shared/picked-notification";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -1488,7 +1489,7 @@ export const appRouter = router({
         contestant3Id: z.number().optional(),
         isTripleThreat: z.boolean().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const entries = await getAllWheelEntries();
         const c1 = entries.find(e => e.id === input.contestant1Id);
         const c2 = entries.find(e => e.id === input.contestant2Id);
@@ -1517,11 +1518,9 @@ export const appRouter = router({
         // Notify users if they have accounts
         const notifyUser = async (entry: typeof c1 | undefined, picked: boolean) => {
           if (!entry?.userId) return;
-          await setSetting(`notify_user_${entry.userId}`, JSON.stringify({
-            type: "picked",
-            message: picked ? "You've been picked to compete next!" : "You're up after the current battle!",
-            timestamp: Date.now(),
-          }));
+          const notification = createPickedNotification(picked);
+          await setSetting(`notify_user_${entry.userId}`, JSON.stringify(notification));
+          ctx.io?.to("music_wars").emit("wheel:notification", { userId: entry.userId, ...notification });
         };
         await notifyUser(c1, true);
         await notifyUser(c2, true);

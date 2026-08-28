@@ -207,7 +207,7 @@
 - [x] Winners auto-advance: admin "Start Next War" button copies all battle winners back to wheel as new entries
 - [ ] Song play button on each wheel entry card (judges/viewers can listen inline)
 - [ ] Song play button in active battle matchup panel
-- [ ] Push notification to user when their name is picked: "You've been picked to compete next!"
+- [x] Push notification to user when their name is picked: "You've been picked to compete next!"
 - [ ] Queue position display for logged-in users: "There are X people ahead of you"
 - [x] Fix VotingPanel TypeScript: use contestant1/contestant2 (actual DB field names) not contestant1Votes/contestant2Votes
 

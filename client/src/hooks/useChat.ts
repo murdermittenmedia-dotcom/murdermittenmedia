@@ -82,6 +82,7 @@ interface UseChatOptions {
   onChatControlsReceived?: (data: ChatControlsData) => void;
   /** Viewer: called when admin triggers a reaction flood */
   onTriggerReaction?: (data: { reaction: string; duration: number }) => void;
+  onPickedNotification?: (data: { userId: number; type: string; message: string; timestamp: number }) => void;
 }
 
 export function useChat({
@@ -104,6 +105,7 @@ export function useChat({
   onFakeChatMessage,
   onChatControlsReceived,
   onTriggerReaction,
+  onPickedNotification,
 }: UseChatOptions) {
   const socketRef = useRef<Socket | null>(null);
   const onSpinStateRef = useRef(onSpinStateChange);
@@ -130,6 +132,8 @@ export function useChat({
   onChatControlsReceivedRef.current = onChatControlsReceived;
   const onTriggerReactionRef = useRef(onTriggerReaction);
   onTriggerReactionRef.current = onTriggerReaction;
+  const onPickedNotificationRef = useRef(onPickedNotification);
+  onPickedNotificationRef.current = onPickedNotification;
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isConnected, setIsConnected] = useState(false);
@@ -158,6 +162,10 @@ export function useChat({
     socket.on("wheel:winner", ({ winner }: { winner: string }) => {
       setWheelSpinning(false);
       setWheelWinner(winner);
+    });
+
+    socket.on("wheel:notification", (data: { userId: number; type: string; message: string; timestamp: number }) => {
+      onPickedNotificationRef.current?.(data);
     });
 
     // War reset: clear winner and spinning state for all clients
