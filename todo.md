@@ -867,9 +867,9 @@
 ### Enhanced Leaderboard
 - [x] DB helper: `getCombinedLeaderboard` — add time filter (weekly/monthly/all-time) and city filter params
 - [x] Leaderboard page: add filter tabs (All-Time / Monthly / Weekly) and city dropdown
-- [ ] Leaderboard: add momentum indicators (↑ trending up, ↓ cooling off, 🔥 exploding) based on rank change
+- [x] Leaderboard: add momentum indicators (↑ trending up, ↓ cooling off, 🔥 exploding) based on rank change
 - [ ] Leaderboard: store previous rank snapshot (weekly) to calculate rank change delta
-- [ ] Leaderboard: add "Trending Now" category tab showing biggest rank movers this week
+- [x] Leaderboard: add "Trending Now" category tab showing biggest rank movers this week
 
 ### Live Activity Feed
 - [ ] DB schema: add `activityFeed` table (id, type, message, metadata JSON, createdAt)

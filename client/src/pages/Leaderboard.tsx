@@ -70,12 +70,21 @@ function FanXpBar({ fanXP, fanLevel }: { fanXP: number; fanLevel: string }) {
 }
 
 export default function Leaderboard() {
-  const [activeTab, setActiveTab] = useState<"artists" | "fans">("artists");
+  const [activeTab, setActiveTab] = useState<"artists" | "trending" | "fans">("artists");
   const [timeframe, setTimeframe] = useState<"all" | "monthly" | "weekly">("all");
   const [city, setCity] = useState("all");
   const leaderboardInput = useMemo(() => ({ timeframe, city: city === "all" ? undefined : city }), [timeframe, city]);
   const { data: entries, isLoading: artistsLoading } = trpc.leaderboard.combined.useQuery(leaderboardInput);
+  const { data: weeklyEntries } = trpc.leaderboard.combined.useQuery(useMemo(() => ({ timeframe: "weekly" as const, city: city === "all" ? undefined : city }), [city]));
+  const { data: allEntries } = trpc.leaderboard.combined.useQuery(useMemo(() => ({ timeframe: "all" as const, city: city === "all" ? undefined : city }), [city]));
   const { data: cities } = trpc.leaderboard.cities.useQuery();
+  const trendingEntries = useMemo(() => {
+    if (!weeklyEntries) return [];
+    const allRank = new Map((allEntries ?? []).map((entry, index) => [entry.artistName.toLowerCase(), index]));
+    return weeklyEntries.map((entry, index) => ({ ...entry, momentum: (allRank.get(entry.artistName.toLowerCase()) ?? index) - index }))
+      .filter(entry => entry.momentum !== 0).sort((a, b) => b.momentum - a.momentum);
+  }, [weeklyEntries, allEntries]);
+  const displayEntries = activeTab === "trending" ? trendingEntries : entries;
   const { data: fans, isLoading: fansLoading } = trpc.leaderboard.topFans.useQuery();
 
   return (
@@ -99,6 +108,12 @@ export default function Leaderboard() {
             >
               <Swords className="w-3 h-3 inline mr-1.5" />
               Artists
+            </button>
+            <button
+              onClick={() => setActiveTab("trending")}
+              className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-widest transition-all ${activeTab === "trending" ? "bg-orange-600 text-white" : "border border-white/20 text-white/50 hover:text-white hover:border-white/40"}`}
+            >
+              <Flame className="w-3 h-3 inline mr-1.5" /> Trending Now
             </button>
             <button
               onClick={() => setActiveTab("fans")}
@@ -172,7 +187,7 @@ export default function Leaderboard() {
               </div>
             )}
 
-            {entries && entries.length > 0 && (
+            {displayEntries && displayEntries.length > 0 && (
               <div className="space-y-1">
                 {/* Desktop header */}
                 <div className="hidden md:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_5rem_5rem] gap-3 px-4 py-2 text-xs text-white/30 uppercase tracking-widest border-b border-white/10">
@@ -186,13 +201,14 @@ export default function Leaderboard() {
                   <span className="text-center">🗑️</span>
                 </div>
 
-                {entries.map((entry, index) => {
+                {displayEntries?.map((entry, index) => {
                   const rank = index + 1;
                   const rankColor = RANK_COLORS[index] ?? "text-white/50";
                   const isTop3 = rank <= 3;
                   const winRate = entry.totalBattles > 0
                     ? Math.round((entry.wins / entry.totalBattles) * 100)
                     : null;
+                  const momentum = (entry as { momentum?: number }).momentum ?? 0;
 
                   return (
                     <div
@@ -213,6 +229,7 @@ export default function Leaderboard() {
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-white inline-flex items-center gap-1">
                               <ArtistLink artistName={entry.artistName} userId={entry.userId} />
+                              {momentum !== 0 && <span className={momentum > 0 ? "text-green-400 text-[10px]" : "text-red-400 text-[10px]"}>{momentum >= 3 ? "🔥" : momentum > 0 ? `↑ ${momentum}` : `↓ ${Math.abs(momentum)}`}</span>}
                               {entry.userId && <UserBadges userId={entry.userId} size="xs" maxVisible={2} />}
                             </div>
                             {winRate !== null && (
@@ -245,6 +262,7 @@ export default function Leaderboard() {
                           <div className="min-w-0">
                             <div className="font-semibold text-white inline-flex items-center gap-1">
                               <ArtistLink artistName={entry.artistName} userId={entry.userId} />
+                              {momentum !== 0 && <span className={momentum > 0 ? "text-green-400 text-[10px]" : "text-red-400 text-[10px]"}>{momentum >= 3 ? "🔥" : momentum > 0 ? `↑ ${momentum}` : `↓ ${Math.abs(momentum)}`}</span>}
                               {entry.userId && <UserBadges userId={entry.userId} size="xs" maxVisible={2} />}
                             </div>
                           {winRate !== null && (
