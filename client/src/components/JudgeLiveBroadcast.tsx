@@ -3,7 +3,7 @@
  * Uses LiveKit client SDK to publish directly from the browser.
  * No OBS or RTMP ingress required.
  */
-import { useEffect, useRef, useState, useCallback } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useCallback } from "react";
 import { Room, RoomEvent, LocalTrack, createLocalVideoTrack, createLocalAudioTrack, Track } from "livekit-client";
 import { Mic, MicOff, Video, VideoOff, Loader2, X, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -188,7 +188,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
           )}
           <div>
             <span className="text-green-400 text-xs font-semibold uppercase tracking-widest">
-              {connecting ? "Green Room · Connecting…" : "🟢 Mitten Panel Live"}
+              {connecting ? "Joining Judge Panel…" : "🟢 Judge Panel Live"}
             </span>
             <span className="ml-2 text-[9px] uppercase tracking-wider text-white/30">Judge broadcast</span>
           </div>
@@ -273,8 +273,13 @@ interface JudgeBroadcastViewerProps {
     judgeName: string;
   judgeUserId: number;
   mutedAll?: boolean;
+  autoEnableAudio?: boolean;
 }
-export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeName, judgeUserId, mutedAll = false }: JudgeBroadcastViewerProps) {
+export type JudgeBroadcastViewerHandle = {
+  enableAudio: () => Promise<void>;
+};
+
+export const JudgeBroadcastViewer = forwardRef<JudgeBroadcastViewerHandle, JudgeBroadcastViewerProps>(function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeName, judgeUserId, mutedAll = false, autoEnableAudio = false }, ref) {
 
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -283,15 +288,9 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
   const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "reconnecting" | "ended">("connecting");
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(0.85);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const audioUnlockedRef = useRef(false);
   audioUnlockedRef.current = audioUnlocked;
-
-  useEffect(() => {
-    if (remoteAudioRef.current) remoteAudioRef.current.volume = volume;
-  }, [volume]);
 
   useEffect(() => {
     let cancelled = false;
@@ -354,10 +353,16 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
     }
   }, []);
 
+  useImperativeHandle(ref, () => ({ enableAudio: enableJudgeAudio }), [enableJudgeAudio]);
+
+  useEffect(() => {
+    if (autoEnableAudio) void enableJudgeAudio();
+  }, [autoEnableAudio, enableJudgeAudio]);
+
   return (
     <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
       {/* Hidden audio element for judge mic; browsers require a user gesture before playback */}
-      <audio ref={remoteAudioRef} autoPlay playsInline muted={muted || mutedAll || !audioUnlocked} />
+      <audio ref={remoteAudioRef} autoPlay playsInline muted={mutedAll || !audioUnlocked} />
       <div className="relative bg-black" style={{ aspectRatio: '16/9', maxHeight: '180px' }}>
         <video
           ref={remoteVideoRef}
@@ -389,43 +394,7 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
           </div>
         )}
         {/* Mic indicator overlay */}
-          {hasAudio && (
-            <div className="absolute bottom-1 right-1 flex items-center gap-1.5">
-              {!audioUnlocked && (
-                <button
-                  onClick={enableJudgeAudio}
-                  className="rounded-full bg-green-600/90 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white"
-                >
-                  Enable audio
-                </button>
-              )}
-              <input
-                aria-label={`Volume for ${judgeName}`}
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={muted ? 0 : volume}
-                onChange={(event) => {
-                  const nextVolume = Number(event.target.value);
-                  setVolume(nextVolume);
-                  setMuted(nextVolume === 0);
-                }}
-                className="h-1 w-16 accent-green-500"
-              />
-              <button
-                onClick={() => setMuted(v => !v)}
-              className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
-                muted ? 'bg-red-600/80' : 'bg-green-600/80'
-              }`}
-              title={muted ? 'Unmute judge' : 'Mute judge'}
-            >
-              {muted
-                ? <MicOff className="w-2.5 h-2.5 text-white" />
-                : <Mic className="w-2.5 h-2.5 text-white" />}
-            </button>
-          </div>
-        )}
+        {hasAudio && <div className={`absolute bottom-1 right-1 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${audioUnlocked && !mutedAll ? "bg-green-600/90 text-white" : "bg-black/80 text-white/55"}`}>{audioUnlocked && !mutedAll ? "Panel sound on" : "Panel sound off"}</div>}
       </div>
       <div className="px-2 py-1.5 border-t border-green-500/20">
         <div className="flex items-center justify-between">
@@ -440,4 +409,4 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
       </div>
     </div>
   );
-}
+});

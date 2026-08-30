@@ -1375,7 +1375,7 @@ export const appRouter = router({
         const identity = `judge-browser-${ctx.user.id}`;
         const displayName = ctx.user.artistName || ctx.user.name || `Judge ${ctx.user.id}`;
         
-        const insertResult = await createJudgeBroadcast({
+        const broadcast = await createJudgeBroadcast({
           userId: ctx.user.id,
           musicReviewSessionId: null,
           roomName,
@@ -1383,8 +1383,8 @@ export const appRouter = router({
           rtmpUrl: null as any,
           rtmpKey: null as any,
           status: "active",
-        }) as any;
-        const broadcastId = insertResult.insertId as number;
+        });
+        const broadcastId = broadcast.id;
         
         // Generate LiveKit publisher token immediately — one click to go live
         const token = await generateStreamerToken(roomName, identity, displayName);

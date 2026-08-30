@@ -21,7 +21,7 @@ import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
-import { JudgeBroadcastViewer } from "@/components/JudgeLiveBroadcast";
+import { JudgeBroadcastViewer, type JudgeBroadcastViewerHandle } from "@/components/JudgeLiveBroadcast";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 import { MUSIC_REVIEW_FREE_SUBMISSION_LIMIT } from "@shared/music-review-paywall";
@@ -57,29 +57,44 @@ const CASHAPP = "$MittenMedia";
 function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
   const { data: broadcasts = [] } = trpc.review.getActive.useQuery(undefined, { enabled: isReviewLive, refetchInterval: isReviewLive ? 5000 : false });
   const [mutedAll, setMutedAll] = useState(false);
+  const [panelAudioEnabled, setPanelAudioEnabled] = useState(false);
+  const viewerRefs = useRef(new Map<number, JudgeBroadcastViewerHandle>());
+  const enablePanelAudio = useCallback(async () => {
+    const viewers = Array.from(viewerRefs.current.values());
+    if (viewers.length === 0) {
+      toast.message("Judge audio is connecting. Try again in a moment.");
+      return;
+    }
+    await Promise.allSettled(viewers.map((viewer) => viewer.enableAudio()));
+    setMutedAll(false);
+    setPanelAudioEnabled(true);
+  }, []);
   if (!isReviewLive || broadcasts.length === 0) return null;
   return (
     <section className="mb-5 rounded-2xl border border-green-500/20 bg-green-500/[0.04] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-300/80">Mitten Panel</p>
-          <p className="mt-1 text-xs text-white/40">Live judge video and voice are independent from the review music player.</p>
+          <p className="mt-1 text-xs text-white/40">Enable Panel Sound once to hear every live judge voice together. The review track keeps playing in sync beside it.</p>
         </div>
-        <button type="button" onClick={() => setMutedAll((value) => !value)} className="shrink-0 rounded-lg border border-white/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:border-white/30 hover:text-white">
-          {mutedAll ? "Unmute Judges" : "Mute All Judges"}
-        </button>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          {!panelAudioEnabled && <button type="button" onClick={() => void enablePanelAudio()} className="rounded-lg border border-green-400/40 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-100 hover:bg-green-500/20">Enable Panel Sound</button>}
+          <button type="button" onClick={() => setMutedAll((value) => !value)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:border-white/30 hover:text-white">
+            {mutedAll ? "Unmute Judges" : "Mute Judges"}
+          </button>
+        </div>
       </div>
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
-        {broadcasts.map((broadcast) => <div key={broadcast.id} className="min-w-[260px] snap-start sm:min-w-0"><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} /></div>)}
+        {broadcasts.map((broadcast) => <div key={broadcast.id} className="min-w-[260px] snap-start sm:min-w-0"><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} /></div>)}
       </div>
     </section>
   );
 }
 
-function JudgePanelCard({ broadcast, mutedAll }: { broadcast: { id: number; roomName: string; userId: number; judgeName?: string | null }; mutedAll: boolean }) {
+function JudgePanelCard({ broadcast, mutedAll, panelAudioEnabled, onViewerReady }: { broadcast: { id: number; roomName: string; userId: number; judgeName?: string | null }; mutedAll: boolean; panelAudioEnabled: boolean; onViewerReady: (viewer: JudgeBroadcastViewerHandle | null) => void }) {
   const { data: tokenData } = trpc.review.getJudgeViewerToken.useQuery({ broadcastId: broadcast.id }, { refetchInterval: 15000 });
   if (!tokenData) return <div className="min-h-[100px] rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-white/35">Connecting to judge…</div>;
-  return <JudgeBroadcastViewer roomName={tokenData.roomName} livekitUrl={tokenData.livekitUrl} viewerToken={tokenData.token} judgeName={broadcast.judgeName || `Judge ${broadcast.userId}`} judgeUserId={broadcast.userId} mutedAll={mutedAll} />;
+  return <JudgeBroadcastViewer ref={onViewerReady} roomName={tokenData.roomName} livekitUrl={tokenData.livekitUrl} viewerToken={tokenData.token} judgeName={broadcast.judgeName || `Judge ${broadcast.userId}`} judgeUserId={broadcast.userId} mutedAll={mutedAll} autoEnableAudio={panelAudioEnabled} />;
 }
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";

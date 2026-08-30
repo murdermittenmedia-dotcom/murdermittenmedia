@@ -18,6 +18,7 @@ export default function JudgeConsole() {
   const { user, loading } = useAuth();
   const [broadcast, setBroadcast] = useState<BroadcastCredentials | null>(null);
   const [requestingMedia, setRequestingMedia] = useState(false);
+  const [mediaStatus, setMediaStatus] = useState<"ready" | "requesting" | "blocked" | "idle">("idle");
   const isJudge = user?.role === "judge" || user?.role === "admin";
   const utils = trpc.useUtils();
   const { data: existingBroadcast } = trpc.review.getMyBroadcast.useQuery(undefined, { enabled: isJudge });
@@ -26,7 +27,7 @@ export default function JudgeConsole() {
       setBroadcast({ broadcastId: result.broadcast.id, token: result.token, livekitUrl: result.livekitUrl });
       void utils.review.getActive.invalidate();
       void utils.review.getMyBroadcast.invalidate();
-      toast.success("Green Room is ready. Allow your microphone and camera to join the Mitten Panel.");
+      toast.success("You are live on the Judge Panel.");
     },
     onError: (error) => toast.error(error.message),
   });
@@ -37,18 +38,22 @@ export default function JudgeConsole() {
     void utils.review.getMyBroadcast.invalidate();
   };
 
-  const enterGreenRoom = async () => {
+  const joinJudgePanel = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       toast.error("This browser does not support camera and microphone broadcasting.");
+      setMediaStatus("blocked");
       return;
     }
     setRequestingMedia(true);
+    setMediaStatus("requesting");
     try {
       const preview = await navigator.mediaDevices.getUserMedia({ video: true, audio: { echoCancellation: true, noiseSuppression: true } });
       preview.getTracks().forEach((track) => track.stop());
+      setMediaStatus("ready");
       startBroadcast.mutate();
     } catch (error: any) {
       const denied = error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError";
+      setMediaStatus("blocked");
       toast.error(denied ? "Camera and microphone access is required to join the Mitten Panel." : "Unable to access your camera or microphone. Please try again.");
     } finally {
       setRequestingMedia(false);
@@ -71,7 +76,7 @@ export default function JudgeConsole() {
               <ShieldCheck className="h-3.5 w-3.5" /> Authorized Judge Access
             </div>
             <h1 className="font-['Anton'] text-4xl uppercase tracking-wide sm:text-5xl">Mitten <span className="text-red-500">Panel</span></h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/50">Enter the Green Room, then use your native microphone and camera to join the live Music Review panel.</p>
+            <p className="mt-2 max-w-2xl text-sm text-white/50">Join the live Music Review panel with your native camera and microphone. Your video and voice appear alongside the review track for viewers.</p>
           </div>
           <Link href="/review" className="rounded-lg border border-white/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white/70 transition-colors hover:border-white/30 hover:text-white">Back to Review</Link>
         </div>
@@ -99,19 +104,23 @@ export default function JudgeConsole() {
           <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
             <div className="rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-500/[0.12] via-[#0c0c0c] to-[#080808] p-7">
               <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-green-500/30 bg-green-500/10"><Radio className="h-6 w-6 text-green-300" /></div>
-              <h2 className="font-['Anton'] text-3xl uppercase">Enter the Green Room</h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/60">When you continue, the browser asks for camera and microphone permission. You control both controls after you connect. The stage has room for up to five live judges.</p>
-              {existingBroadcast && <p className="mt-4 rounded-lg border border-yellow-400/25 bg-yellow-400/[0.06] p-3 text-xs text-yellow-100">A previous panel connection is still marked active. Continuing safely reconnects you with a fresh secure session.</p>}
-              <button type="button" onClick={enterGreenRoom} disabled={requestingMedia || startBroadcast.isPending} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60">
-                <Mic className="h-4 w-4" /> {requestingMedia ? "Checking Camera & Mic…" : startBroadcast.isPending ? "Preparing Green Room…" : "Enter Green Room"}
+              <h2 className="font-['Anton'] text-3xl uppercase">Join Judge Panel</h2>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/60">One button starts the panel: it asks for camera and microphone permission, then opens your live video and voice controls. The stage has room for up to five live judges.</p>
+              {existingBroadcast && <p className="mt-4 rounded-lg border border-yellow-400/25 bg-yellow-400/[0.06] p-3 text-xs text-yellow-100">A previous panel connection is still marked active. Joining now safely replaces it with a fresh secure session.</p>}
+              <div className={`mt-4 rounded-lg border px-3 py-2 text-xs ${mediaStatus === "ready" ? "border-green-400/30 bg-green-400/[0.08] text-green-100" : mediaStatus === "blocked" ? "border-red-400/30 bg-red-400/[0.08] text-red-100" : "border-white/10 bg-black/20 text-white/55"}`}>
+                <span className="font-bold uppercase tracking-wider">Camera & Mic: </span>
+                {mediaStatus === "requesting" ? "Browser permission request open — choose Allow." : mediaStatus === "ready" ? "Allowed — connecting you to the live panel." : mediaStatus === "blocked" ? "Blocked — allow both permissions in your browser, then try again." : "Not requested yet — Join Judge Panel will ask for both."}
+              </div>
+              <button type="button" onClick={joinJudgePanel} disabled={requestingMedia || startBroadcast.isPending} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60">
+                <Video className="h-4 w-4" /> {requestingMedia ? "Checking Camera & Mic…" : startBroadcast.isPending ? "Connecting to Judge Panel…" : "Join Judge Panel"}
               </button>
             </div>
             <aside className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-white">Before You Join</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-white">Camera & Mic Setup</h2>
               <ol className="mt-4 space-y-3 text-xs leading-relaxed text-white/55">
                 <li><span className="mr-2 text-red-300">01</span>Use Chrome, Safari, or another current browser.</li>
                 <li><span className="mr-2 text-red-300">02</span>Allow camera and microphone access when asked.</li>
-                <li><span className="mr-2 text-red-300">03</span>Keep the panel open while you are live.</li>
+                <li><span className="mr-2 text-red-300">03</span>Your live camera preview appears right after joining. Keep the panel open while you are live.</li>
               </ol>
             </aside>
           </section>

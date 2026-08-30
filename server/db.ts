@@ -2127,9 +2127,14 @@ export async function countUserSubmissionsInActiveSession(userId: number): Promi
 export async function createJudgeBroadcast(data: InsertJudgeStream) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  
-  const result = await db.insert(judgeStreams).values(data);
-  return result;
+
+  await db.insert(judgeStreams).values(data);
+  const [broadcast] = await db.select().from(judgeStreams).where(and(
+    eq(judgeStreams.userId, data.userId),
+    eq(judgeStreams.roomName, data.roomName),
+  )).limit(1);
+  if (!broadcast) throw new Error("Judge broadcast was created but could not be loaded");
+  return broadcast;
 }
 
 /** Get active judge broadcasts */
