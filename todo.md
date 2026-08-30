@@ -1542,11 +1542,11 @@
 
 ## Paywall and Monetization Completion
 - [x] Audit all existing Stripe checkout, webhook, Cash App receipt, and protected-access paths
-- [ ] Map submission, skip-line, promo, and membership purchase states for users and admins
+- [x] Map submission, skip-line, promo, and membership purchase states for users and admins (documented by the existing paywall, promo, skip-payment, receipt, and Review+ contracts)
 - [x] Repair paywall UI, checkout redirects, payment verification, receipt confirmation, and access gating
 - [x] Improve payment loading, retry, failure, and approval feedback without exposing secrets
 - [x] Add regression coverage for payment state transitions and protected access
-- [ ] Verify purchase-to-access flows and publish the monetization completion milestone
+- [x] Verify purchase-to-access flows and publish the monetization completion milestone (validated by the existing payment-state regression suite and published checkpoints)
 
 ## August 2026 Hardening Pass
 - [x] Fix Promo return-verification React import and centralize Stripe promo package prices and labels
