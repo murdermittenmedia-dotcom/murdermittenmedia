@@ -8,6 +8,11 @@ import { resolve } from "node:path";
 const adminShopSource = readFileSync(resolve(process.cwd(), "client/src/pages/AdminShop.tsx"), "utf8");
 
 describe("merch shirt colorways", () => {
+  it("keeps Stripe merch checkout receipt email configured", () => {
+    const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    expect(routerSource).toContain("payment_intent_data:");
+    expect(routerSource).toContain("receipt_email: user.email ?? undefined");
+  });
   it("lists all ten reference colorways in display order", () => {
     expect(MERCH_SHIRT_COLORWAYS).toHaveLength(10);
     expect(MERCH_SHIRT_COLORWAY_NAMES).toEqual([

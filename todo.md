@@ -1313,11 +1313,11 @@
 - [x] Cart UI: show cart items in floating panel with real-time updates
 - [x] Cart persistence: save cart to database per user
 - [x] Order confirmation page showing order details and tracking
-- [ ] Order confirmation email sent to customer
+- [x] Order confirmation email sent to customer (Stripe PaymentIntent receipt_email is configured from the authenticated customer account; final delivery follows Stripe receipt settings)
 - [x] Admin dashboard: Product CRUD (add/edit/hide products)
 - [x] Admin dashboard: Order management (view orders, update status)
 - [x] Admin dashboard: Sales analytics (revenue, top products, orders by date)
-- [ ] Product inventory tracking (optional: low stock warnings)
+- [x] Product inventory tracking (optional: low stock warnings) (Admin Shop now surfaces low-stock counts and per-product warnings for 1–5 units)
 - [ ] Product reviews/ratings system (optional)
 
 ## Admin Shop System (Full)

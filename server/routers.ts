@@ -5537,6 +5537,9 @@ export const appRouter = router({
             payment_method_types: ["card"],
             mode: "payment",
           customer_email: user.email ?? undefined,
+          payment_intent_data: {
+            receipt_email: user.email ?? undefined,
+          },
           client_reference_id: user.id.toString(),
           metadata: {
             user_id: user.id.toString(),
