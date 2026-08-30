@@ -1630,3 +1630,5 @@
 - [x] Add persisted review skip-vote records and server procedures with one vote per user/track and a five-vote active-session limit
 
 - [x] Add a visible Vote To Skip control to the active review viewer with remaining-vote state and duplicate-vote protection
+
+- [x] Add a database uniqueness constraint for one Vote To Skip per session, track, and user

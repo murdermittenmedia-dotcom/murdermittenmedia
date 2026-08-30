@@ -1,0 +1,1 @@
+ALTER TABLE `review_skip_votes` ADD CONSTRAINT `review_skip_votes_session_submission_user` UNIQUE(`musicReviewSessionId`,`submissionId`,`userId`);

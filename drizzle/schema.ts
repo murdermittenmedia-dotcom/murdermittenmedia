@@ -666,7 +666,9 @@ export const reviewSkipVotes = mysqlTable("review_skip_votes", {
   submissionId: int("submissionId").notNull(),
   userId: int("userId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  oneVotePerUserTrack: uniqueIndex("review_skip_votes_session_submission_user").on(table.musicReviewSessionId, table.submissionId, table.userId),
+}));
 export type ReviewSkipVote = typeof reviewSkipVotes.$inferSelect;
 export type InsertReviewSkipVote = typeof reviewSkipVotes.$inferInsert;
 

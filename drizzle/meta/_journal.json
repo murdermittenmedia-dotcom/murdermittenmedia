@@ -288,6 +288,13 @@
       "when": 1788051094999,
       "tag": "0040_married_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1788051319265,
+      "tag": "0041_chunky_karen_page",
+      "breakpoints": true
     }
   ]
 }
