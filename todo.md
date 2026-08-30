@@ -1624,3 +1624,5 @@
 - [x] Route the existing review submission form to verified Stripe checkout when PAID ONLY is active
 
 - [x] Enforce one active broadcast per judge and a hard five-judge live stage cap
+
+- [x] Add an independent per-judge viewer volume slider without changing synchronized review-music playback

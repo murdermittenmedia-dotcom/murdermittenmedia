@@ -274,9 +274,14 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.85);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const audioUnlockedRef = useRef(false);
   audioUnlockedRef.current = audioUnlocked;
+
+  useEffect(() => {
+    if (remoteAudioRef.current) remoteAudioRef.current.volume = volume;
+  }, [volume]);
 
   useEffect(() => {
     let cancelled = false;
@@ -370,6 +375,20 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
                   Enable audio
                 </button>
               )}
+              <input
+                aria-label={`Volume for ${judgeName}`}
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={muted ? 0 : volume}
+                onChange={(event) => {
+                  const nextVolume = Number(event.target.value);
+                  setVolume(nextVolume);
+                  setMuted(nextVolume === 0);
+                }}
+                className="h-1 w-16 accent-green-500"
+              />
               <button
                 onClick={() => setMuted(v => !v)}
               className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
