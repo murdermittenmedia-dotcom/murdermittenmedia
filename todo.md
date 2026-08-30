@@ -5075,3 +5075,6 @@
 
 - [x] Add structured metadata to coin-purchase approval and rejection notifications (purchase ID, coin amount, decision, admin ID)
 - [ ] Extend structured metadata to remaining gift, fire-vote, fraud-hold, and stream-summary notification branches as their contracts are finalized
+
+- [x] Add Fire/Trash vote notifications to submission owners with self-reaction protection and structured vote metadata
+- [ ] Remaining economy notification coverage: fraud holds, stream-summary readiness, and any future gift/reward event branches

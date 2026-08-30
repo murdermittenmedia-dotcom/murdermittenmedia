@@ -1183,6 +1183,25 @@ export const appRouter = router({
             }
           }
         }
+        try {
+          const { getDb } = await import("./db");
+          const { reviewSubmissions: rs, notifications: notifTable } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          const db = await getDb();
+          if (db) {
+            const [submission] = await db.select({ userId: rs.userId, songTitle: rs.songTitle, artistName: rs.artistName }).from(rs).where(eq(rs.id, input.submissionId)).limit(1);
+            if (submission?.userId && submission.userId !== ctx.user.id) {
+              await db.insert(notifTable).values({
+                userId: submission.userId,
+                type: "fire_vote_change",
+                title: input.reaction === "fire" ? "Your song got a Fire vote" : "Your song got a Trash vote",
+                body: `${ctx.user.artistName || ctx.user.name || "A listener"} marked ${submission.songTitle} ${input.reaction === "fire" ? "🔥 Fire" : "🗑️ Trash"}.`,
+                metadata: JSON.stringify({ submissionId: input.submissionId, reaction: input.reaction, voterUserId: ctx.user.id, artistName: submission.artistName }),
+                link: "/review",
+              });
+            }
+          }
+        } catch {}
         return { success: true };
       }),
     // Vote To Skip — five free votes per active review session, one vote per user per track.

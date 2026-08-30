@@ -50,6 +50,12 @@ describe("economy notification contracts", () => {
     expect(routerSource).toContain("hasMore: rows.length === input.limit");
   });
 
+  it("keeps Fire/Trash artist alerts scoped and metadata-rich", () => {
+    expect(routerSource).toContain('type: "fire_vote_change"');
+    expect(routerSource).toContain("submission.userId !== ctx.user.id");
+    expect(routerSource).toContain("reaction: input.reaction");
+  });
+
   it("keeps the artist tip action visible on the live review card", () => {
     expect(routerSource).toContain("tipArtist: protectedProcedure");
     expect(musicReviewSource).toContain("Support the artist");
