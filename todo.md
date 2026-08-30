@@ -1622,3 +1622,5 @@
 - [x] Enforce persisted PAID ONLY mode on queue.submit, queue.uploadTrack, and queue.uploadAudio direct API paths
 - [x] Allow verified Stripe paid-submission confirmation during PAID ONLY mode
 - [x] Route the existing review submission form to verified Stripe checkout when PAID ONLY is active
+
+- [x] Enforce one active broadcast per judge and a hard five-judge live stage cap

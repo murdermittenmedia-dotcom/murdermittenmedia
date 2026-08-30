@@ -1200,9 +1200,20 @@ export const appRouter = router({
         if (ctx.user.role !== "judge" && ctx.user.role !== "admin") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Only judges and admins can broadcast" });
         }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        // One active broadcast per judge, with a hard five-judge stage cap.
+        const existing = await getJudgeBroadcast(ctx.user.id);
+        if (!existing) {
+          const activeBroadcasts = await db.select({ id: judgeStreams.id })
+            .from(judgeStreams)
+            .where(eq(judgeStreams.status, "active"));
+          if (activeBroadcasts.length >= 5) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "The Mitten Panel is full. Up to five judges can be live at once." });
+          }
+        }
         
         // Reuse existing active broadcast if present — return a fresh token
-        const existing = await getJudgeBroadcast(ctx.user.id);
         if (existing) {
           const identity = `judge-browser-${ctx.user.id}`;
           const displayName = ctx.user.artistName || ctx.user.name || `Judge ${ctx.user.id}`;
