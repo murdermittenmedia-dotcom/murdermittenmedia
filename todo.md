@@ -1196,9 +1196,9 @@
 - [x] Admin: Notification Logs tab — searchable log of all notifications sent to all users
 
 ## Coin Economy & Live Features (Round 3)
-- [ ] Remove coin cashout section from Wallet page (coins are for gifts/tips only)
-- [ ] Add artist tip procedure: tipArtist (deducts coins from viewer, credits Live Rewards to artist)
-- [ ] Add tip UI on Live Music Review page for currently playing artist
+- [x] Remove coin cashout section from Wallet page (coins are for gifts/tips only; Wallet exposes Live Rewards cashout only)
+- [x] Add artist tip procedure: tipArtist (deducts coins from viewer, credits Live Rewards to artist)
+- [x] Add tip UI on Live Music Review page for currently playing artist (quick coin amounts, custom amount, balance gating, and server mutation)
 - [x] Build live stats overlay panel for Cook Up streams (total gifts, viewer count, top gifters)
 
 ## LiveKit RTMP Ingress Fix

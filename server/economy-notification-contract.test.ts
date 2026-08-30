@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 describe("economy notification contracts", () => {
   const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
   const dbSource = readFileSync(resolve(process.cwd(), "server/db.ts"), "utf8");
+  const musicReviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
 
   it("keeps user-facing alerts for manual coin purchase decisions", () => {
     expect(routerSource).toContain("coin_purchase_approved");
@@ -46,6 +47,13 @@ describe("economy notification contracts", () => {
     expect(routerSource).toContain("getAll: protectedProcedure");
     expect(routerSource).toContain("search: z.string().max(128).default(\"\")");
     expect(routerSource).toContain("hasMore: rows.length === input.limit");
+  });
+
+  it("keeps the artist tip action visible on the live review card", () => {
+    expect(routerSource).toContain("tipArtist: protectedProcedure");
+    expect(musicReviewSource).toContain("Support the artist");
+    expect(musicReviewSource).toContain("tipMutation.mutate");
+    expect(musicReviewSource).toContain("Your balance:");
   });
 });
 

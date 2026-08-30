@@ -2482,6 +2482,65 @@ export default function MusicReview() {
                 </div>
               </div>
 
+              {/* Artist tipping — coins are deducted server-side and credited as Live Rewards */}
+              {activeTrack.userId && activeTrack.userId !== user?.id && (
+                <div className="mb-5 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.04] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-yellow-300">Support the artist</p>
+                      <p className="mt-1 text-[11px] text-white/40">Send coins directly to {activeTrack.artistName}. Your balance: <span className="text-yellow-200">{(coinBalanceData?.balance ?? 0).toLocaleString()}</span></p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user) { toast.error("Login to tip artists"); return; }
+                        setShowTipPanel((value) => !value);
+                      }}
+                      className="rounded-lg border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-200 transition-colors hover:bg-yellow-400/20"
+                    >
+                      {showTipPanel ? "Close tip panel" : "Tip artist"}
+                    </button>
+                  </div>
+                  {showTipPanel && user && (
+                    <div className="mt-3 border-t border-yellow-400/10 pt-3">
+                      <div className="flex flex-wrap gap-2">
+                        {[10, 25, 50, 100].map((amount) => (
+                          <button
+                            key={amount}
+                            type="button"
+                            onClick={() => setTipAmount(String(amount))}
+                            className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${tipAmount === String(amount) ? "border-yellow-300/70 bg-yellow-300/20 text-yellow-100" : "border-white/10 text-white/55 hover:border-yellow-300/40 hover:text-yellow-100"}`}
+                          >
+                            🪙 {amount}
+                          </button>
+                        ))}
+                        <input
+                          inputMode="numeric"
+                          min="1"
+                          max="10000"
+                          value={tipAmount}
+                          onChange={(event) => setTipAmount(event.target.value.replace(/[^0-9]/g, "").slice(0, 5))}
+                          placeholder="Custom"
+                          aria-label="Custom tip amount in coins"
+                          className="min-w-24 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white placeholder-white/25 focus:border-yellow-300/50 focus:outline-none"
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-[10px] text-white/35">1 coin = 1 tip coin. Tips are final once sent.</p>
+                        <button
+                          type="button"
+                          disabled={tipMutation.isPending || !tipAmount || Number(tipAmount) < 1 || Number(tipAmount) > 10000 || Number(tipAmount) > (coinBalanceData?.balance ?? 0)}
+                          onClick={() => tipMutation.mutate({ toUserId: activeTrack.userId!, coins: Number(tipAmount), sessionId: data?.state?.id })}
+                          className="rounded-lg bg-yellow-400 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {tipMutation.isPending ? "Sending..." : `Send ${tipAmount || "0"} coins`}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Audio/YouTube player */}
               {activeTrack.submissionType === "youtube" && activeTrack.youtubeUrl ? (
                 <div className="rounded-xl overflow-hidden mb-5">
