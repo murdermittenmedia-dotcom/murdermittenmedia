@@ -4738,7 +4738,8 @@ export const appRouter = router({
         .where(and(eq(reviewPlusMemberships.userId, ctx.user.id), eq(reviewPlusMemberships.status, "active")))
         .orderBy(desc(reviewPlusMemberships.createdAt)).limit(1);
       const active = !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
-      return { active, membership: active ? membership : null };
+      const lineSkipCredits = active ? await getUserLineSkipCredits(ctx.user.id) : 0;
+      return { active, membership: active ? membership : null, lineSkipCredits };
     }),
 
     createReviewPlusCheckout: protectedProcedure
@@ -4794,7 +4795,8 @@ export const appRouter = router({
           status: "active",
           currentPeriodEnd: null,
         });
-        return { success: true as const, alreadyActive: false as const };
+        await grantLineSkipCredits(ctx.user.id, 5);
+        return { success: true as const, alreadyActive: false as const, lineSkipCreditsGranted: 5 as const };
       }),
 
     preparePaidSubmissionAudio: protectedProcedure

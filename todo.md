@@ -1646,3 +1646,5 @@
 - [x] Add admin Music Review controls for creating, copying, listing, and revoking judge invites
 
 - [x] Clarify judge broadcaster green-room and Mitten Panel live status in the stable LiveKit control card
+
+- [x] Grant five line-skip credits on first verified Review+ activation and expose the active credit balance in membership status
