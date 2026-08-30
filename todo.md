@@ -1047,10 +1047,10 @@
 - [ ] Component: GiftAnimation — floating gift emoji animation when gift is sent
 - [ ] Component: CoinBalance — header coin balance display with "Buy Coins" button
 - [ ] Component: BuyCoinsModal — coin package selector, submits request to admin
-- [ ] Nav: Add "Live" link to SiteNav
-- [ ] Admin: LiveStreamsTab — table of all streams, gift totals, payout status
-- [ ] Admin: GiftLedgerTab — full gift history, USD values, approve/mark paid
-- [ ] Admin: CoinRequestsTab — pending coin purchase requests, approve button
+- [x] Nav: Add "Live" link to SiteNav (satisfied by the existing "GO LIVE" entry linking to /cookup)
+- [x] Admin: LiveStreamsTab — table of all streams, gift totals, payout status (already present in the Live Cook Up admin tab)
+- [x] Admin: GiftLedgerTab — full gift history, USD values, approve/mark paid (gift history and USD values are present; payout resolution is handled in the adjacent Cashouts sub-tab)
+- [x] Admin: CoinRequestsTab — pending coin purchase requests, approve button (already present in the Live Cook Up admin tab)
 
 ## Live Cook Up — Completed (May 2026)
 
