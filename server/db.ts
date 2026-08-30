@@ -20,6 +20,7 @@ import {
   forumComments, InsertForumComment,
   forumReactions,
   moderationLogs,
+  activityFeed, InsertActivityFeedEvent,
   wheelOfNamesEntries, InsertWheelOfNamesEntry,
   wheelOfNamesSpins, InsertWheelOfNamesSpin,
   wheelOfNamesPaidEntries, InsertWheelOfNamesPaidEntry,
@@ -185,7 +186,9 @@ export async function addSubmission(data: InsertReviewSubmission) {
     .where(ne(reviewSubmissions.status, "removed"));
   const maxPos = rows[0]?.maxPos ?? 0;
   const position = (data.position && data.position > 0) ? data.position : maxPos + 1;
-  return db.insert(reviewSubmissions).values({ ...data, position });
+  const result = await db.insert(reviewSubmissions).values({ ...data, position });
+  void createActivityEvent("review", `${data.artistName} entered the review queue`, { detail: data.songTitle });
+  return result;
 }
 
 export async function updateSubmissionStatus(id: number, status: "pending" | "playing" | "reviewed" | "removed") {
@@ -492,7 +495,9 @@ export async function deleteChatMessage(id: number) {
 export async function createBattleRecord(data: InsertBattleRecord) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  return db.insert(battleRecords).values(data);
+  const result = await db.insert(battleRecords).values(data);
+  void createActivityEvent("battle", `${data.winnerArtistName} won a Music War`, { detail: `${data.winnerSongTitle} over ${data.loserArtistName}` });
+  return result;
 }
 
 export async function getAllBattleRecords(limit = 50) {
@@ -1311,6 +1316,7 @@ export async function createForumPost(data: InsertForumPost) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const result = await db.insert(forumPosts).values(data);
+  void createActivityEvent("community", data.title, { detail: `New ${data.category ?? "general"} discussion in the community` });
   return result;
 }
 
@@ -2724,6 +2730,18 @@ export async function getAllLinkPages(limit = 200) {
 }
 
 
+export async function createActivityEvent(type: string, message: string, metadata?: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) return null;
+  const payload: InsertActivityFeedEvent = {
+    type: type.slice(0, 32),
+    message: message.slice(0, 512),
+    metadata: metadata ? JSON.stringify(metadata) : null,
+  };
+  const result = await db.insert(activityFeed).values(payload);
+  return result;
+}
+
 export type PublicActivityEvent = {
   id: string;
   kind: "review" | "battle" | "community";
@@ -2736,6 +2754,22 @@ export type PublicActivityEvent = {
 export async function getPublicActivityFeed(limit = 8): Promise<PublicActivityEvent[]> {
   const db = await getDb();
   if (!db) return [];
+
+  const storedEvents = await db.select({ id: activityFeed.id, type: activityFeed.type, message: activityFeed.message, metadata: activityFeed.metadata, createdAt: activityFeed.createdAt })
+    .from(activityFeed)
+    .orderBy(desc(activityFeed.createdAt))
+    .limit(limit);
+
+  if (storedEvents.length > 0) {
+    return storedEvents.map((event) => ({
+      id: `event-${event.id}`,
+      kind: event.type === "battle" ? "battle" : event.type === "community" ? "community" : "review",
+      title: event.message,
+      detail: event.metadata ?? "Latest activity from Murder Mitten Media",
+      href: event.type === "battle" ? "/music-wars" : event.type === "community" ? "/forum" : "/review",
+      createdAt: event.createdAt,
+    }));
+  }
 
   const [reviews, battles, posts] = await Promise.all([
     db.select({ id: reviewSubmissions.id, artistName: reviewSubmissions.artistName, songTitle: reviewSubmissions.songTitle, verdict: reviewSubmissions.verdict, reviewedAt: reviewSubmissions.reviewedAt, createdAt: reviewSubmissions.createdAt })

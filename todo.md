@@ -872,8 +872,8 @@
 - [x] Leaderboard: add "Trending Now" category tab showing biggest rank movers this week
 
 ### Live Activity Feed
-- [ ] DB schema: add `activityFeed` table (id, type, message, metadata JSON, createdAt)
-- [ ] DB helper: `createActivityEvent(type, message, metadata)` — inserts activity event
+- [x] DB schema: add `activityFeed` table (id, type, message, metadata JSON, createdAt)
+- [x] DB helper: `createActivityEvent(type, message, metadata)` — inserts activity event
 - [ ] Activity triggers: emit events on song submission, battle start/end, review session start, forum post, new user join
 - [ ] Socket: broadcast `activity:new_event` to all clients when activity event is created
 - [ ] ActivityFeed component: scrolling ticker/feed showing live events with icons and timestamps
@@ -1694,7 +1694,7 @@
 - [ ] Validate judge-to-viewer audio/video sync where possible after the judge-feed fix
 - [ ] Preserve direct Join Judge Panel, consolidated Panel Sound, live-only visibility, admin pop-out, freeform resizing, dense packing, mobile carousel, and branded verdict history during the judge-feed fix
 - [ ] Preserve existing auth, LiveKit, audio, queue, verdict, paywall, Review+, Stripe, merch, studio, link-page, news, navigation, and branding behavior during the judge-feed fix
-- [ ] Keep focused judge-feed sizing assertions deterministic and prevent regressions in future layout changes
+- [x] Keep focused judge-feed sizing assertions deterministic and prevent regressions in future layout changes
 - [ ] Review todo.md before saving the final judge-feed checkpoint
 - [ ] Report the published judge-feed checkpoint to the user
 - [ ] Record any remaining judge-feed limitations honestly after validation

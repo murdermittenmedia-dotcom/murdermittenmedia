@@ -400,6 +400,16 @@ export const moderationLogs = mysqlTable("moderation_logs", {
 export type ModerationLog = typeof moderationLogs.$inferSelect;
 export type InsertModerationLog = typeof moderationLogs.$inferInsert;
 
+// Public activity events — stores sanitized platform milestones for the homepage feed.
+export const activityFeed = mysqlTable("activity_feed", {
+  id: int("id").autoincrement().primaryKey(),
+  type: varchar("type", { length: 32 }).notNull(),
+  message: varchar("message", { length: 512 }).notNull(),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ActivityFeedEvent = typeof activityFeed.$inferSelect;
+export type InsertActivityFeedEvent = typeof activityFeed.$inferInsert;
 
 // Wheel of Names — Daily promo giveaway
 export const wheelOfNamesEntries = mysqlTable("wheel_of_names_entries", {
