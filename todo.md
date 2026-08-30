@@ -1644,3 +1644,5 @@
 - [x] Complete judge-invite acceptance from `/review?judge_invite=...` with authenticated role grant and user feedback
 
 - [x] Add admin Music Review controls for creating, copying, listing, and revoking judge invites
+
+- [x] Clarify judge broadcaster green-room and Mitten Panel live status in the stable LiveKit control card

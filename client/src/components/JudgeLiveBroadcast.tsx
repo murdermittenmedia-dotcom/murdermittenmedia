@@ -181,9 +181,12 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
           ) : (
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           )}
-          <span className="text-green-400 text-xs font-semibold uppercase tracking-widest">
-            {connecting ? "Connecting…" : "🟢 Live"}
-          </span>
+          <div>
+            <span className="text-green-400 text-xs font-semibold uppercase tracking-widest">
+              {connecting ? "Green Room · Connecting…" : "🟢 Mitten Panel Live"}
+            </span>
+            <span className="ml-2 text-[9px] uppercase tracking-wider text-white/30">Judge broadcast</span>
+          </div>
         </div>
         <button
           onClick={handleStop}
