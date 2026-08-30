@@ -5081,3 +5081,5 @@
 
 - [x] Add durable fraud-hold notification for rapid-gifting detections with stream and risk metadata
 - [ ] Complete remaining economy notification event coverage for future reward, fraud, and stream-summary branches as their lifecycle contracts are finalized
+
+- [x] Admin Shop: show low-stock warnings for products with 1–5 units remaining (stats bar count plus per-product inventory warning)

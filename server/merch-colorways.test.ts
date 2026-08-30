@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { MERCH_SHIRT_COLORWAYS, MERCH_SHIRT_COLORWAY_NAMES } from "../shared/merch-colorways";
 import { MERCH_BLADE_CLOSEUP_IMAGES } from "../shared/merch-blade-images";
 import { getDb, getShopProductBySlug } from "./db";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const adminShopSource = readFileSync(resolve(process.cwd(), "client/src/pages/AdminShop.tsx"), "utf8");
 
 describe("merch shirt colorways", () => {
   it("lists all ten reference colorways in display order", () => {
@@ -25,6 +29,12 @@ describe("merch shirt colorways", () => {
     for (const url of Object.values(MERCH_BLADE_CLOSEUP_IMAGES)) {
       expect(url).toMatch(/^\/manus-storage\/mitten-made-blade-.+\.(?:jpg|png)$/);
     }
+  });
+
+  it("keeps the admin low-stock warning threshold visible", () => {
+    expect(adminShopSource).toContain("stock > 0 && stock <= 5");
+    expect(adminShopSource).toContain("Low Stock");
+    expect(adminShopSource).toContain("Low stock");
   });
 
   it("keeps every colorway backed by a shirt color and descriptor", () => {

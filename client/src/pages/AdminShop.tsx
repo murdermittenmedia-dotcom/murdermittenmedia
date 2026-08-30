@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
   Plus, Edit2, Trash2, Eye, EyeOff, Copy, Package,
   ChevronUp, ChevronDown, BarChart2, ArrowLeft,
-  CheckCircle, XCircle, AlertCircle, Clock, ShoppingBag
+  CheckCircle, XCircle, AlertCircle, Clock, ShoppingBag, TriangleAlert
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -182,6 +182,10 @@ export default function AdminShop() {
     product.variants.reduce((sum, v) => sum + (v.inventoryQty ?? 0), 0);
 
   const isInStock = (product: ShopProduct) => totalInventory(product) > 0;
+  const isLowStock = (product: ShopProduct) => {
+    const stock = totalInventory(product);
+    return stock > 0 && stock <= 5;
+  };
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
@@ -219,6 +223,7 @@ export default function AdminShop() {
               { label: "Active", value: products.filter(p => p.status === "active").length },
               { label: "Draft", value: products.filter(p => p.status === "draft").length },
               { label: "Total Sales", value: products.reduce((s, p) => s + (p.salesCount ?? 0), 0) },
+              { label: "Low Stock", value: products.filter(isLowStock).length },
             ].map(stat => (
               <div key={stat.label} className="flex items-center gap-2">
                 <span className="text-white/40">{stat.label}:</span>
@@ -267,6 +272,7 @@ export default function AdminShop() {
                   const thumb = product.images.find(i => i.imageType === "thumbnail") ?? product.images[0];
                   const stock = totalInventory(product);
                   const inStock = stock > 0;
+                  const lowStock = isLowStock(product);
                   const createdDate = product.createdAt
                     ? new Date(product.createdAt).toLocaleDateString()
                     : "—";
@@ -345,6 +351,11 @@ export default function AdminShop() {
                         <div className="text-white/30 text-xs">
                           {product.variants.length} variant{product.variants.length !== 1 ? "s" : ""}
                         </div>
+                        {lowStock && (
+                          <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+                            <TriangleAlert size={11} aria-hidden="true" /> Low stock
+                          </div>
+                        )}
                       </td>
 
                       {/* Sales */}
