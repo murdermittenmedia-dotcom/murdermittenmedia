@@ -31,14 +31,18 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
   const activateBroadcastMutation = trpc.review.activateBroadcast.useMutation();
   const endedRef = useRef(false);
   const onStopRef = useRef(onStop);
+  const endBroadcastRef = useRef(endBroadcastMutation.mutateAsync);
+  const activateBroadcastRef = useRef(activateBroadcastMutation.mutateAsync);
   onStopRef.current = onStop;
+  endBroadcastRef.current = endBroadcastMutation.mutateAsync;
+  activateBroadcastRef.current = activateBroadcastMutation.mutateAsync;
 
   const finishBroadcast = useCallback(() => {
     if (endedRef.current) return;
     endedRef.current = true;
-    void endBroadcastMutation.mutateAsync({ broadcastId }).catch(() => undefined);
+    void endBroadcastRef.current({ broadcastId }).catch(() => undefined);
     onStopRef.current();
-  }, [broadcastId, endBroadcastMutation]);
+  }, [broadcastId]);
 
   // Connect to LiveKit room and publish mic + camera
   useEffect(() => {
@@ -85,7 +89,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
         // Publish both tracks
         await room.localParticipant.publishTrack(videoTrack, { source: Track.Source.Camera });
         await room.localParticipant.publishTrack(audioTrack, { source: Track.Source.Microphone });
-        await activateBroadcastMutation.mutateAsync({ broadcastId });
+        await activateBroadcastRef.current({ broadcastId });
 
         if (!cancelled) {
           setConnected(true);
@@ -96,7 +100,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
           // A server broadcast is created before the local connection begins. End it
           // on any media/transport failure so an empty room never occupies a judge slot.
           endedRef.current = true;
-          void endBroadcastMutation.mutateAsync({ broadcastId }).catch(() => undefined);
+          void endBroadcastRef.current({ broadcastId }).catch(() => undefined);
           room.disconnect();
           const msg = err?.message || "Failed to connect";
           setError(msg.includes("Permission") || msg.includes("NotAllowed")
@@ -112,7 +116,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
       room.disconnect();
       finishBroadcast();
     };
-  }, [token, livekitUrl, finishBroadcast, broadcastId, activateBroadcastMutation]);
+  }, [token, livekitUrl, finishBroadcast]);
 
   // Attach local video track to video element after track is set
   useEffect(() => {
