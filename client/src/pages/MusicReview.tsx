@@ -44,12 +44,12 @@ type QueueState = {
 };
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
 
-type ReviewWindowId = "now-playing" | "live-chat" | "mitten-panel" | "review-tools";
+type ReviewWindowId = "now-playing" | "live-chat" | "mitten-panel" | "review-tools" | "voice-room";
 type ReviewWindowSize = { width: number; height: number };
 
 const REVIEW_WINDOW_ORDER_KEY = "murder-mitten-review-window-order";
 const REVIEW_WINDOW_SIZE_KEY = "murder-mitten-review-window-sizes";
-const DEFAULT_REVIEW_WINDOW_ORDER: ReviewWindowId[] = ["now-playing", "live-chat", "mitten-panel", "review-tools"];
+const DEFAULT_REVIEW_WINDOW_ORDER: ReviewWindowId[] = ["now-playing", "live-chat", "mitten-panel", "voice-room", "review-tools"];
 
 import {
   Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
@@ -1494,8 +1494,8 @@ export default function MusicReview() {
     if (typeof window === "undefined") return;
     try {
       const saved = JSON.parse(window.localStorage.getItem(REVIEW_WINDOW_ORDER_KEY) ?? "[]") as unknown[];
-      const restored = saved.filter((value): value is ReviewWindowId => typeof value === "string" && DEFAULT_REVIEW_WINDOW_ORDER.includes(value as ReviewWindowId));
-      if (restored.length === DEFAULT_REVIEW_WINDOW_ORDER.length) setReviewWindowOrder(restored);
+      const restored = Array.from(new Set(saved.filter((value): value is ReviewWindowId => typeof value === "string" && DEFAULT_REVIEW_WINDOW_ORDER.includes(value as ReviewWindowId))));
+      setReviewWindowOrder([...restored, ...DEFAULT_REVIEW_WINDOW_ORDER.filter((id) => !restored.includes(id))]);
       const savedSizes = JSON.parse(window.localStorage.getItem(REVIEW_WINDOW_SIZE_KEY) ?? "{}") as Record<string, unknown>;
       const restoredSizes: Partial<Record<ReviewWindowId, ReviewWindowSize>> = {};
       DEFAULT_REVIEW_WINDOW_ORDER.forEach((id) => {
@@ -3107,10 +3107,7 @@ export default function MusicReview() {
           </div>
         </div>
         </ReviewWorkspaceWindow>
-        </div>
-
-        {/* ── VOICE ROOM (if joined) ──────────────────────────── */}
-        {showVoicePanel && (
+        {showVoicePanel && <ReviewWorkspaceWindow id="voice-room" title="Voice Room" order={reviewWindowOrder.indexOf("voice-room")} size={reviewWindowSizes["voice-room"]} isDragging={draggingWindow === "voice-room"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
           <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -3121,10 +3118,10 @@ export default function MusicReview() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            {/* Voice room content handled by audioRoom hooks */}
             <p className="text-white/40 text-sm text-center py-4">Voice room active — use the controls above to manage your audio.</p>
           </div>
-        )}
+        </ReviewWorkspaceWindow>}
+        </div>
 
         <section className="mt-8 grid gap-3 border-t border-white/10 pt-6 md:grid-cols-3">
           <a href="/merch" className="group rounded-xl border border-red-500/25 bg-red-500/[0.05] p-4 transition-colors hover:bg-red-500/[0.12]">
