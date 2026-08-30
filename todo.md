@@ -1043,7 +1043,7 @@
 - [ ] Component: LiveThumbnailCard — stream card with thumbnail, title, streamer name, viewer count
 - [ ] Component: BroadcastPanel — WebRTC camera/mic broadcast using Cloudflare WHIP
 - [ ] Component: StreamPlayer — WebRTC viewer using Cloudflare WHEP (sub-1s latency)
-- [ ] Component: GiftPanel — scrollable gift buttons with coin cost, send animation
+- [x] Component: GiftPanel — scrollable gift buttons with coin cost, send animation (integrated into Cook Up Stream; live active-stream animation QA remains open)
 - [ ] Component: GiftAnimation — floating gift emoji animation when gift is sent
 - [x] Component: CoinBalance — header coin balance display with "Buy Coins" button (authenticated navigation shows live balance and links to /coins)
 - [x] Component: BuyCoinsModal — coin package selector, submits request to admin (package selection, payment note, request submission, and confirmation modal are now connected)

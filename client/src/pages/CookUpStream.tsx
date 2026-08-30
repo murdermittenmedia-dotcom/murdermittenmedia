@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { SiteNav } from "@/components/SiteNav";
+import GiftPanel from "@/components/GiftPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -1077,28 +1078,13 @@ export default function CookUpStream() {
                   <a href={getLoginUrl(`/cookup/${streamId}`)} className="text-xs text-red-400 hover:text-red-300">Sign in to gift</a>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {giftTypes?.map((gt) => {
-                  const emoji = GIFT_EMOJIS[gt.name] || gt.emoji || "🎁";
-                  const rarity = (gt as any).rarity || "common";
-                  const canAfford = isAuthenticated && (coinBalance?.balance ?? 0) >= gt.coinCost;
-                  const borderClass = canAfford ? RARITY_BORDER[rarity] || RARITY_BORDER.common : "border-white/5 opacity-40";
-                  return (
-                    <button
-                      key={gt.id}
-                      onClick={() => handleSendGift(gt.id)}
-                      disabled={!canAfford || sendGiftMutation.isPending}
-                      title={(gt as any).description || gt.name}
-                      className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg border transition-all bg-white/5
-                        ${canAfford ? `${borderClass} hover:bg-white/10 cursor-pointer` : "border-white/5 bg-white/[0.02] cursor-not-allowed"}`}
-                    >
-                      <span className="text-xl">{emoji}</span>
-                      <span className={`text-xs font-semibold ${RARITY_LABEL[rarity] || "text-white/70"}`}>{gt.name}</span>
-                      <span className="text-yellow-400/70 text-xs">{gt.coinCost} 🪙</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <GiftPanel
+                giftTypes={giftTypes}
+                balance={coinBalance?.balance ?? 0}
+                isAuthenticated={isAuthenticated}
+                isPending={sendGiftMutation.isPending}
+                onSend={handleSendGift}
+              />
             </div>
           )}
         </div>
