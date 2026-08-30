@@ -1668,7 +1668,7 @@
 - [ ] Complete targeted end-to-end regressions for paid-only mode, premium chat, daily skips, bot-off behavior, and judge vote display
 - [x] Reproduce and fix remaining live Music Review and judge join, broadcasting, public viewing, audio, and admin-control failures end to end
 - [x] Surface an admin Judge Management roster in the review control board with promote, revoke, and Cash App receipt verification actions
-- [ ] Add a judge-only review skip-vote action and identify judge role in profile views
+- [x] Add a judge-only review skip-vote action and identify judge role in profile views
 - [x] Replace Green Room wording and flow with a direct Join Judge Panel camera-and-microphone publishing action
 - [x] Make judge camera permission and microphone permission status explicit before joining the live panel
 - [x] Simplify public review audio so one listener control covers judge voices while the synchronized review track continues independently

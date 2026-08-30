@@ -1414,6 +1414,52 @@ export const appRouter = router({
         return { success: true as const };
       }),
 
+    // Judges can cast an unlimited, identified Vote To Skip from the Judge Panel.
+    judgeVoteToSkip: protectedProcedure
+      .input(z.object({ submissionId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "judge" && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only active judges can use the Judge Panel skip vote." });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [session] = await db.select().from(musicReviewSessions).where(eq(musicReviewSessions.isActive, true)).limit(1);
+        if (!session) throw new TRPCError({ code: "BAD_REQUEST", message: "There is no active Music Review session." });
+        const [existingVote] = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
+          eq(reviewSkipVotes.musicReviewSessionId, session.id),
+          eq(reviewSkipVotes.submissionId, input.submissionId),
+          eq(reviewSkipVotes.userId, ctx.user.id),
+        )).limit(1);
+        if (existingVote) throw new TRPCError({ code: "BAD_REQUEST", message: "You have already voted to skip this track." });
+        const [submission] = await db.select({ id: reviewSubmissionsTable.id, status: reviewSubmissionsTable.status })
+          .from(reviewSubmissionsTable).where(eq(reviewSubmissionsTable.id, input.submissionId)).limit(1);
+        if (!submission || (submission.status !== "playing" && submission.status !== "pending")) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "That track is no longer eligible for Vote To Skip." });
+        }
+        await db.insert(reviewSkipVotes).values({ musicReviewSessionId: session.id, submissionId: input.submissionId, userId: ctx.user.id });
+        const votes = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
+          eq(reviewSkipVotes.musicReviewSessionId, session.id),
+          eq(reviewSkipVotes.submissionId, input.submissionId),
+        ));
+        const { queueState: queueStateTable } = await import("../drizzle/schema");
+        const [queueSettings] = await db.select().from(queueStateTable).limit(1);
+        let autoAdvanced = false;
+        if (queueSettings?.autoSkipThreshold && votes.length >= queueSettings.autoSkipThreshold && queueSettings.currentPlayingId === input.submissionId) {
+          await completeReviewSubmission(input.submissionId, { skippedByVote: true });
+          const [nextTrack] = await db.select({ id: reviewSubmissionsTable.id }).from(reviewSubmissionsTable)
+            .where(and(eq(reviewSubmissionsTable.status, "pending"), ne(reviewSubmissionsTable.id, input.submissionId)))
+            .orderBy(asc(reviewSubmissionsTable.position)).limit(1);
+          if (nextTrack) {
+            await db.update(reviewSubmissionsTable).set({ status: "playing" }).where(eq(reviewSubmissionsTable.id, nextTrack.id));
+            await db.update(queueStateTable).set({ currentPlayingId: nextTrack.id });
+          } else {
+            await db.update(queueStateTable).set({ currentPlayingId: null });
+          }
+          autoAdvanced = true;
+        }
+        return { success: true as const, votes: votes.length, autoAdvanced };
+      }),
+
     // End a judge broadcast
     endBroadcast: protectedProcedure
       .input(z.object({ broadcastId: z.number() }))

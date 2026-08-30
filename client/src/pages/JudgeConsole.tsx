@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Mic, Radio, ShieldCheck, Video, Volume2 } from "lucide-react";
+import { Mic, Radio, ShieldCheck, SkipForward, Video, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -22,6 +22,14 @@ export default function JudgeConsole() {
   const isJudge = user?.role === "judge" || user?.role === "admin";
   const utils = trpc.useUtils();
   const { data: existingBroadcast } = trpc.review.getMyBroadcast.useQuery(undefined, { enabled: isJudge });
+  const { data: queueData, refetch: refetchQueue } = trpc.queue.getAll.useQuery(undefined, { enabled: isJudge, refetchInterval: 5000 });
+  const judgeSkipVote = trpc.review.judgeVoteToSkip.useMutation({
+    onSuccess: (result) => {
+      void refetchQueue();
+      toast.success(result.autoAdvanced ? "Judge skip vote reached the threshold — next track loaded." : `Judge skip vote counted (${result.votes}).`);
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const startBroadcast = trpc.review.startBroadcast.useMutation({
     onSuccess: (result) => {
       setBroadcast({ broadcastId: result.broadcast.id, token: result.token, livekitUrl: result.livekitUrl });
@@ -98,6 +106,11 @@ export default function JudgeConsole() {
                 <div className="flex gap-2"><Video className="mt-0.5 h-4 w-4 text-green-400" /><span>Use the camera button to hide or restore your video.</span></div>
                 <div className="flex gap-2"><Volume2 className="mt-0.5 h-4 w-4 text-green-400" /><span>Viewer judge-audio controls do not alter review music playback.</span></div>
               </div>
+              {queueData?.currentPlaying && <div className="mt-5 border-t border-white/10 pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-red-200/70">Current review</p>
+                <p className="mt-1 truncate text-xs text-white/65">{queueData.currentPlaying.songTitle} · {queueData.currentPlaying.artistName}</p>
+                <button type="button" onClick={() => judgeSkipVote.mutate({ submissionId: queueData.currentPlaying!.id })} disabled={judgeSkipVote.isPending} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-yellow-400/35 bg-yellow-400/[0.08] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-100 hover:bg-yellow-400/[0.16] disabled:opacity-50"><SkipForward className="h-3.5 w-3.5" /> {judgeSkipVote.isPending ? "Counting vote…" : "Judge Vote To Skip"}</button>
+              </div>}
             </aside>
           </section>
         ) : (
