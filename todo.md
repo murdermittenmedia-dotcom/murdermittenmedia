@@ -881,13 +881,13 @@
 - [x] SiteNav or FloatingPlayer: add mini activity ticker showing latest event
 
 ### Broadcast Mode Views
-- [ ] Route `/broadcast/review` — full-screen broadcast view for Music Review (large text, high contrast, current song + queue + reactions)
+- [x] Route `/broadcast/review` — full-screen broadcast view for Music Review (large text, high contrast, current song + queue + reactions)
 - [ ] Route `/broadcast/radio` — full-screen broadcast view for Radio (now playing, next up, listener count, reactions)
 - [ ] Route `/broadcast/rankings` — full-screen broadcast view for Rankings (top artists, trending, heat meters)
 - [ ] Route `/broadcast/wars` — full-screen broadcast view for Music Wars (matchup, voting, scores)
-- [ ] Broadcast views: no nav, no footer, no floating player — clean overlay-style layout
-- [ ] Broadcast views: large Anton font, high contrast (#080808 bg, white/red text), animated counters
-- [ ] Broadcast views: safe margins for Instagram crop (16:9 safe zone)
+- [x] Broadcast views: no nav, no footer, no floating player — clean overlay-style layout
+- [x] Broadcast views: large Anton font, high contrast (#080808 bg, white/red text), animated counters
+- [x] Broadcast views: safe margins for Instagram crop (16:9 safe zone)
 - [ ] Add `/broadcast` link in admin panel for easy access during streams
 
 ### FloatingPlayer Enhancements

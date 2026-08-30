@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
@@ -15,6 +15,7 @@ import Promo from "./pages/Promo";
 import MurderMittenMic from "./pages/MurderMittenMic";
 import MeetingWithTheMitten from "./pages/MeetingWithTheMitten";
 import MusicReview from "./pages/MusicReview";
+import BroadcastReview from "./pages/BroadcastReview";
 import JudgeConsole from "./pages/JudgeConsole";
 import ArtistOfWeek from "./pages/ArtistOfWeek";
 import LiveStream from "./pages/LiveStream";
@@ -79,6 +80,7 @@ function Router() {
       <Route path={"/link/:slug"} component={PublicLinkPage} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
+      <Route path={"/broadcast/review"} component={BroadcastReview} />
       <Route path={"/review"} component={MusicReview} />
       <Route path={"/judge"} component={JudgeConsole} />
       <Route path={"/admin-popout"} component={MusicReview} />
@@ -164,6 +166,9 @@ function PageTrackerMount() {
 }
 
 function App() {
+  const [location] = useLocation();
+  const isBroadcastView = location.startsWith("/broadcast/");
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
@@ -175,8 +180,8 @@ function App() {
             {/* Page view tracker for admin analytics */}
             <PageTrackerMount />
             <Router />
-            <FloatingPlayer />
-            <PWAInstallBanner />
+            {!isBroadcastView && <FloatingPlayer />}
+            {!isBroadcastView && <PWAInstallBanner />}
           </TooltipProvider>
         </AudioPlayerProvider>
       </ThemeProvider>
