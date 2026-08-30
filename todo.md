@@ -1628,3 +1628,5 @@
 - [x] Add an independent per-judge viewer volume slider without changing synchronized review-music playback
 
 - [x] Add persisted review skip-vote records and server procedures with one vote per user/track and a five-vote active-session limit
+
+- [x] Add a visible Vote To Skip control to the active review viewer with remaining-vote state and duplicate-vote protection

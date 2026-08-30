@@ -1336,6 +1336,17 @@ export default function MusicReview() {
     { submissionId: currentPlayingId! },
     { enabled: !!currentPlayingId, refetchInterval: 3000 }
   );
+  const { data: skipVoteStatus, refetch: refetchSkipVoteStatus } = trpc.queue.getSkipVoteStatus.useQuery(
+    { submissionId: currentPlayingId! },
+    { enabled: !!user && !!currentPlayingId, refetchInterval: 3000 }
+  );
+  const skipVoteMutation = trpc.queue.voteToSkip.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Skip vote counted (${result.votes}).`);
+      refetchSkipVoteStatus();
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const liveAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -2063,6 +2074,7 @@ export default function MusicReview() {
               {(() => {
                 const pollId = currentPlayingId ?? activeTrack.submissionId;
                 return (
+                  <>
                   <FireTrashPoll
                     submissionId={pollId}
                     songTitle={activeTrack.songTitle}
@@ -2079,6 +2091,21 @@ export default function MusicReview() {
                     isPending={reactMutation.isPending}
                     user={user}
                   />
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Vote To Skip</p>
+                      <p className="mt-1 text-[11px] text-white/40">{skipVoteStatus?.votes ?? 0} votes · {skipVoteStatus?.limit ?? 5} free votes per session</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!user || pollId == null || skipVoteStatus?.hasVoted || skipVoteMutation.isPending || (skipVoteStatus?.votes ?? 0) >= (skipVoteStatus?.limit ?? 5)}
+                      onClick={() => { if (!user) { toast.error("Login to vote to skip"); return; } if (pollId != null) skipVoteMutation.mutate({ submissionId: pollId }); }}
+                      className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-300 transition-colors hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {skipVoteStatus?.hasVoted ? "Vote counted" : skipVoteMutation.isPending ? "Counting…" : "Vote to skip"}
+                    </button>
+                  </div>
+                  </>
                 );
               })()}
             </div>
