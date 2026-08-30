@@ -1007,12 +1007,12 @@
 - [x] tRPC: admin.editUserStats — update fireCount, trashCount, xp, level, streak for a user
 - [x] tRPC: admin.removeSong — delete a specific song from user_songs by songId
 - [x] tRPC: admin.removeSubmission — delete a specific Music Review submission by submissionId
-- [ ] tRPC: admin.clearUserVotes — delete all song_reactions (fire/trash votes) cast by a user (not yet wired to UI)
+- [x] tRPC: admin.clearUserVotes — delete all song_reactions (fire/trash votes) cast by a user
 - [ ] tRPC: admin.removeBattleRecord — delete a specific battle record by battleId
 - [x] Admin UI: expand User card to show stats section with editable fields (fire, trash, xp, level, streak)
 - [x] Admin UI: show user's songs list with delete button per song
 - [x] Admin UI: show user's submissions list with delete button per submission
-- [ ] Admin UI: show user's vote history with clear all votes button (not yet wired)
+- [x] Admin UI: show user's vote history with clear all votes button
 
 ## Live Cook Up — TikTok-Style Live Streaming (May 2026)
 

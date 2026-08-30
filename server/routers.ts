@@ -2835,6 +2835,18 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Admin: clear every Fire/Trash reaction cast by one selected user
+    clearUserVotes: adminProcedure
+      .input(z.object({ userId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { songReactions } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(songReactions).where(eq(songReactions.userId, input.userId));
+        return { success: true };
+      }),
     // Admin: remove a specific song from user catalogue
     adminRemoveSong: adminProcedure
       .input(z.object({ songId: z.number() }))

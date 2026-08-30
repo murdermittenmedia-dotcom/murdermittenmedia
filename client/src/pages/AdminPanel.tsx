@@ -125,6 +125,10 @@ function UserStatsEditor({ userId, user, utils }: { userId: number; user: any; u
     onSuccess: () => { toast.success("Submission removed"); refetchUserData(); utils.user.getStats.invalidate(); utils.user.getStatsByUserId.invalidate(); },
     onError: (e: any) => toast.error(e.message),
   });
+  const clearUserVotesMutation = trpc.admin.clearUserVotes.useMutation({
+    onSuccess: () => { toast.success("All user votes cleared"); utils.user.getStats.invalidate(); utils.user.getStatsByUserId.invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const saveAll = async () => {
     // Save user-level stats
@@ -237,6 +241,10 @@ function UserStatsEditor({ userId, user, utils }: { userId: number; user: any; u
             </div>
           )}
 
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+            <div><p className="text-xs font-semibold text-white/70">Vote history</p><p className="text-[11px] text-white/35">Remove every Fire/Trash vote cast by this user.</p></div>
+            <Button size="sm" variant="outline" className="border-red-600/40 text-red-400 hover:bg-red-600/20" onClick={() => { if (window.confirm("Clear every vote cast by this user? This cannot be undone.")) clearUserVotesMutation.mutate({ userId }); }} disabled={clearUserVotesMutation.isPending}>{clearUserVotesMutation.isPending ? "Clearing…" : "Clear all votes"}</Button>
+          </div>
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
             <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white"
