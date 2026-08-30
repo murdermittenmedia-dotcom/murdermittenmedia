@@ -77,6 +77,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const db = await getDb();
   if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
   try {
+    const existingUser = await db.select({ id: users.id }).from(users).where(eq(users.openId, user.openId)).limit(1);
+    const isNewUser = existingUser.length === 0;
     const values: InsertUser = { openId: user.openId };
     const updateSet: Record<string, unknown> = {};
     const textFields = ["name", "email", "loginMethod"] as const;
@@ -95,6 +97,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (!values.lastSignedIn) values.lastSignedIn = new Date();
     if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
     await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    if (isNewUser) {
+      void createActivityEvent("community", "A new member joined the Mitten", { href: "/explore" });
+    }
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -888,13 +893,18 @@ export async function setActiveBattle(data: {
     roundNumber: data.roundNumber ?? 1,
     status: data.status ?? "pending",
   });
+  void createActivityEvent("battle", `Music Wars matchup: ${data.contestant1Name} vs ${data.contestant2Name}`, { href: "/music-wars", roundNumber: data.roundNumber ?? 1 });
   return result;
 }
 
 export async function updateActiveBattleStatus(id: number, status: "pending" | "voting" | "closed") {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  return db.update(activeBattle).set({ status }).where(eq(activeBattle.id, id));
+  const result = await db.update(activeBattle).set({ status }).where(eq(activeBattle.id, id));
+  if (status === "closed") {
+    void createActivityEvent("battle", "Music Wars matchup reached its verdict", { href: "/music-wars", battleId: id });
+  }
+  return result;
 }
 
 // -- Votes -----------------------------------------------------
@@ -2089,6 +2099,8 @@ export async function getOrCreateActiveMusicReviewSession() {
     isActive: true,
   });
   
+  void createActivityEvent("review", "Music Review is live — tune in now", { href: "/review" });
+
   // Fetch and return the newly created session
   const newSession = await db.select().from(musicReviewSessions)
     .where(eq(musicReviewSessions.isActive, true))
@@ -2102,9 +2114,11 @@ export async function endActiveMusicReviewSession() {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   
-  await db.update(musicReviewSessions)
+  const result = await db.update(musicReviewSessions)
     .set({ isActive: false, endedAt: new Date() })
     .where(eq(musicReviewSessions.isActive, true));
+  void createActivityEvent("review", "Music Review session ended", { href: "/review" });
+  return result;
 }
 
 /** Count free submissions by a user in the last 6 hours (rolling window, session-independent) */
