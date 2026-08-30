@@ -1024,10 +1024,10 @@
 - [ ] DB: add coinBalance column to users table
 - [ ] tRPC: live.create — create Cloudflare live input via API, store stream key + URLs, return to streamer
 - [ ] tRPC: live.list — list all active live streams for browse page
-- [ ] tRPC: live.get — get single live stream details by id
-- [ ] tRPC: live.end — mark stream as ended
-- [ ] tRPC: live.updateTitle — update stream title
-- [ ] tRPC: coins.getBalance — get current user's coin balance
+- [x] tRPC: live.get — get single live stream details by id
+- [x] tRPC: live.end — mark stream as ended
+- [x] tRPC: live.updateTitle — update stream title
+- [x] tRPC: coins.getBalance — get current user's coin balance
 - [x] tRPC: coins.requestPurchase — create a pending coin purchase record (admin approves manually)
 - [x] tRPC: gifts.send — deduct coins from sender, record gift, notify streamer via socket
 - [x] tRPC: gifts.getForStream — get all gifts for a stream
