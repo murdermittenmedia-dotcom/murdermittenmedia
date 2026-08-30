@@ -173,6 +173,22 @@ function AdminPanel({
     onSuccess: () => { judgeInvites.refetch(); toast.success("Invite revoked"); },
     onError: (error) => toast.error(error.message),
   });
+  const judgeRoster = trpc.admin.listUsers.useQuery({ page: 1, pageSize: 100 }, { enabled: currentUser?.role === "admin" });
+  const [selectedJudgeUserId, setSelectedJudgeUserId] = useState("");
+  const [judgeReceiptUrl, setJudgeReceiptUrl] = useState("");
+  const promoteJudge = trpc.admin.promoteToJudge.useMutation({
+    onSuccess: () => {
+      judgeRoster.refetch();
+      setSelectedJudgeUserId("");
+      setJudgeReceiptUrl("");
+      toast.success("Judge access verified and granted");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const revokeJudgeAccess = trpc.admin.revokeJudgeAccess.useMutation({
+    onSuccess: () => { judgeRoster.refetch(); toast.success("Judge access revoked"); },
+    onError: (error) => toast.error(error.message),
+  });
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
 
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
@@ -518,6 +534,34 @@ function AdminPanel({
                   {invite.status === "pending" && <button type="button" onClick={() => revokeJudgeInvite.mutate({ inviteId: invite.id })} className="shrink-0 text-red-300 hover:text-red-200">Revoke</button>}
                 </div>
               ))}
+            </div>
+            <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">Judge access verification</p>
+                  <p className="mt-0.5 text-[10px] text-white/35">Approve a paid judge after checking their Cash App receipt.</p>
+                </div>
+                <span className="text-[10px] text-green-300/70">{(judgeRoster.data?.items ?? []).filter((member) => member.role === "judge").length} active</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <select value={selectedJudgeUserId} onChange={(event) => setSelectedJudgeUserId(event.target.value)} className="min-w-0 rounded-lg border border-white/10 bg-[#111] px-3 py-2 text-xs text-white focus:border-yellow-400/50 focus:outline-none">
+                  <option value="">Select a member</option>
+                  {(judgeRoster.data?.items ?? []).filter((member) => member.role !== "admin" && member.role !== "judge").map((member) => (
+                    <option key={member.id} value={String(member.id)}>{member.artistName || member.name || member.email || `User ${member.id}`}</option>
+                  ))}
+                </select>
+                <input type="url" value={judgeReceiptUrl} onChange={(event) => setJudgeReceiptUrl(event.target.value)} placeholder="Cash App receipt URL" className="min-w-0 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder-white/20 focus:border-yellow-400/50 focus:outline-none" />
+                <button type="button" onClick={() => selectedJudgeUserId && judgeReceiptUrl && promoteJudge.mutate({ userId: Number(selectedJudgeUserId), cashappReceiptUrl: judgeReceiptUrl })} disabled={!selectedJudgeUserId || !judgeReceiptUrl || promoteJudge.isPending} className="rounded-lg border border-green-400/30 bg-green-400/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-green-200 hover:bg-green-400/20 disabled:cursor-not-allowed disabled:opacity-40">{promoteJudge.isPending ? "Saving…" : "Grant judge"}</button>
+              </div>
+              <div className="mt-2 max-h-24 space-y-1 overflow-y-auto">
+                {(judgeRoster.data?.items ?? []).filter((member) => member.role === "judge").map((member) => (
+                  <div key={member.id} className="flex items-center justify-between gap-2 text-[10px] text-white/55">
+                    <span className="truncate"><span className="mr-1 text-yellow-300">JUDGE</span>{member.artistName || member.name || member.email || `User ${member.id}`}</span>
+                    <button type="button" onClick={() => revokeJudgeAccess.mutate({ userId: member.id })} disabled={revokeJudgeAccess.isPending} className="shrink-0 text-red-300 hover:text-red-200 disabled:opacity-40">Revoke</button>
+                  </div>
+                ))}
+                {(judgeRoster.data?.items ?? []).filter((member) => member.role === "judge").length === 0 && <p className="text-[10px] text-white/30">No verified judges yet.</p>}
+              </div>
             </div>
           </div>
         )}

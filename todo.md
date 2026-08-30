@@ -1229,10 +1229,10 @@
 - [x] Add procedure: admin.promoteToJudge(userId, cashappReceiptUrl) — verify receipt link, promote user
 - [x] Add procedure: admin.revokeJudgeAccess(userId) — demote judge back to user
 - [ ] Add procedure: judges.submitSkipVote(reviewId) — only callable by judges
-- [ ] Build AdminPanel Judge Management tab with promote/revoke UI
-- [ ] Build Judge Payment Verification form (CashApp receipt link input)
+- [x] Build AdminPanel Judge Management tab with promote/revoke UI
+- [x] Build Judge Payment Verification form (CashApp receipt link input)
 - [x] Restrict skip button in MusicReview to judges only
-- [ ] Add judge badge to user profiles when viewing
+- [x] Add judge badge to user profiles when viewing
 
 
 ## Judge/Admin Broadcast for Music Review
@@ -1667,6 +1667,8 @@
 - [x] Add a compact branded footer monetization section to /review for merch, promo services, and music submission
 - [ ] Complete targeted end-to-end regressions for paid-only mode, premium chat, daily skips, bot-off behavior, and judge vote display
 - [x] Reproduce and fix remaining live Music Review and judge join, broadcasting, public viewing, audio, and admin-control failures end to end
+- [x] Surface an admin Judge Management roster in the review control board with promote, revoke, and Cash App receipt verification actions
+- [ ] Add a judge-only review skip-vote action and identify judge role in profile views
 - [x] Stabilize Music Review radio playback against stale socket events, duplicate control mounts, accidental pauses, and unintended track skips
 - [x] Clear the synchronized YouTube review player immediately when a track is marked reviewed or skipped
 - [x] Save a branded Murder Mitten Verdict with crowd and Mitten Panel results into the existing review history when a track completes
