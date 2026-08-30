@@ -7,6 +7,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
+import { setActivityBroadcaster } from "../activity";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
@@ -153,6 +154,7 @@ async function startServer() {
   });
 
   (app as any).io = io;
+  setActivityBroadcaster((event) => io.emit("activity:new_event", event));
 
   const broadcastPresence = () => io.emit("presence:count", io.engine.clientsCount);
 

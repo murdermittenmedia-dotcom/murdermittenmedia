@@ -875,7 +875,7 @@
 - [x] DB schema: add `activityFeed` table (id, type, message, metadata JSON, createdAt)
 - [x] DB helper: `createActivityEvent(type, message, metadata)` — inserts activity event
 - [ ] Activity triggers: emit events on song submission, battle start/end, review session start, forum post, new user join
-- [ ] Socket: broadcast `activity:new_event` to all clients when activity event is created
+- [x] Socket: broadcast `activity:new_event` to all clients when activity event is created
 - [ ] ActivityFeed component: scrolling ticker/feed showing live events with icons and timestamps
 - [x] Homepage: add live activity feed section showing recent platform events
 - [x] SiteNav or FloatingPlayer: add mini activity ticker showing latest event

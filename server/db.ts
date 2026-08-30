@@ -50,6 +50,7 @@ import {
 import { ENV } from './_core/env';
 import { aggregateLinkAnalyticsDaily } from './link-analytics';
 import { aggregateSiteAnalytics } from './site-analytics';
+import { broadcastActivityEvent } from './activity';
 import { sanitizeChatAvatarUrl } from "../shared/chat-avatar";
 import { mergeProfileSongs } from "../shared/profile-songs";
 import { summarizeVotes } from "../shared/voting";
@@ -2739,6 +2740,8 @@ export async function createActivityEvent(type: string, message: string, metadat
     metadata: metadata ? JSON.stringify(metadata) : null,
   };
   const result = await db.insert(activityFeed).values(payload);
+  const insertId = Number((result as any)?.[0]?.insertId ?? (result as any)?.insertId ?? 0);
+  broadcastActivityEvent({ id: insertId, type: payload.type, message: payload.message, metadata: payload.metadata ?? null, createdAt: new Date() });
   return result;
 }
 
