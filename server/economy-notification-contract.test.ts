@@ -78,10 +78,22 @@ describe("economy notification contracts", () => {
     expect(musicReviewSource).toContain("Your balance:");
     expect(routerSource).toContain("metadata: JSON.stringify({ coins: input.coins, rewardCents: creatorRewardCents");
   });
-});
 
-/**
- * These contract checks intentionally avoid creating financial test records.
- * Runtime mutation behavior remains covered by the server's existing procedure
- * tests and the production build/typecheck performed for each checkpoint.
- */
+  it("keeps referral code generation and one-time acceptance guarded", () => {
+    expect(dbSource).toContain("ensureUserReferralCode");
+    expect(dbSource).toContain("acceptUserReferralCode");
+    expect(dbSource).toContain("isNull(users.referredByUserId)");
+    expect(routerSource).toContain("getReferralStatus: protectedProcedure");
+    expect(routerSource).toContain("acceptReferral: protectedProcedure");
+    expect(routerSource).toContain('awardXP(result.inviterId, "referral"');
+    expect(routerSource).toContain('type: "referral_accepted"');
+  });
+
+  it("keeps referral controls owner-scoped and copyable", () => {
+    const profileSource = readFileSync(resolve(process.cwd(), "client/src/pages/UserProfile.tsx"), "utf8");
+    expect(profileSource).toContain("trpc.profile.getReferralStatus.useQuery");
+    expect(profileSource).toContain("trpc.profile.acceptReferral.useMutation");
+    expect(profileSource).toContain("navigator.clipboard?.writeText(referralStatus.data.referralCode)");
+    expect(profileSource).toContain("{isOwnProfile && (");
+  });
+});

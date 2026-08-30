@@ -5085,3 +5085,5 @@
 - [x] Admin Shop: show low-stock warnings for products with 1–5 units remaining (stats bar count plus per-product inventory warning)
 
 - [x] Product reviews: real customer submissions only, verified-purchase eligibility, moderation status, ratings summary, public display, and admin moderation controls (no review rows seeded; 143 tests passing; desktop/mobile verified)
+
+- [x] Referral foundation: user-owned referral code, one-time acceptance, verified inviter relationship, and XP reward ledger entries without importing analytics referrers (owner-only profile card, 145 tests passing)

@@ -9,3 +9,8 @@ The authenticated `/admin/shop` route renders the new Review Moderation panel ab
 ## Review section responsive pass
 
 The valid `/shop/blade-tee` route renders the review summary below the product details on desktop and mobile. With no seeded reviews, the page shows a neutral no-ratings state, an explicit empty approved-review state, and the verified-customer eligibility message. The mobile layout stacks selectors, checkout, product details, and review content without horizontal overflow. Admin Shop shows the moderation empty state above the product table.
+
+
+## Referral foundation visual verification — 2026-08-30
+
+The authenticated `/profile` route was captured at 1280px and 390px widths. The owner-only Mitten Referral Network card renders beneath Rewards & Achievements, with a generated referral code, copy action, accepted-count label, and one-time code entry form. Desktop layout places the sharing code and acceptance form side by side. Mobile layout stacks the form cleanly within the card; the copy and Apply controls remain visible without horizontal page overflow. Existing profile statistics, rewards, music catalogue, and submission history remain readable around the new card.

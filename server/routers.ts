@@ -64,7 +64,7 @@ import {
   removeWheelOfNamesEntry,
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
-  getDb,
+  getDb, ensureUserReferralCode, getUserReferralStatus, acceptUserReferralCode,
   createJudgeBroadcast, getActiveJudgeBroadcasts, getJudgeBroadcast, endJudgeBroadcast,
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
@@ -306,6 +306,37 @@ export const appRouter = router({
     me: protectedProcedure.query(async ({ ctx }) => {
       return getArtistProfile(ctx.user.id);
     }),
+
+    // Referral code and one-time referral acceptance. Analytics referrers are intentionally unrelated.
+    getReferralStatus: protectedProcedure.query(async ({ ctx }) => {
+      await ensureUserReferralCode(ctx.user.id);
+      return getUserReferralStatus(ctx.user.id);
+    }),
+
+    acceptReferral: protectedProcedure
+      .input(z.object({ code: z.string().trim().min(8).max(16) }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const result = await acceptUserReferralCode(ctx.user.id, input.code);
+          await awardXP(result.inviterId, "referral", {
+            metadata: { referredUserId: ctx.user.id, code: input.code.trim().toUpperCase() },
+          });
+          const db = await getDb();
+          if (db) {
+            await db.insert(notifications).values({
+              userId: result.inviterId,
+              type: "referral_accepted",
+              title: "Referral accepted",
+              body: `${ctx.user.artistName || ctx.user.name || "A new member"} joined through your referral code. +100 XP awarded.`,
+              link: `/profile/${ctx.user.id}`,
+              metadata: JSON.stringify({ referredUserId: ctx.user.id, reward: 100 }),
+            });
+          }
+          return { success: true, inviterName: result.inviterName };
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to accept referral" });
+        }
+      }),
 
     // Get any artist's public profile by userId
     getById: publicProcedure

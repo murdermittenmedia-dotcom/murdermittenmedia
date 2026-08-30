@@ -1,4 +1,5 @@
-import { eq, asc, desc, ne, and, or, sql, isNotNull, inArray, count, sum, gte, lte, like } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
+import { eq, asc, desc, ne, and, or, sql, isNotNull, isNull, inArray, count, sum, gte, lte, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, User, users,
@@ -138,6 +139,49 @@ export async function getUserById(id: number) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function ensureUserReferralCode(userId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [user] = await db.select({ referralCode: users.referralCode }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) throw new Error("User not found");
+  if (user.referralCode) return user.referralCode;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const code = `MITTEN-${randomBytes(4).toString("hex").toUpperCase()}`;
+    try {
+      await db.update(users).set({ referralCode: code }).where(and(eq(users.id, userId), isNull(users.referralCode)));
+      const [saved] = await db.select({ referralCode: users.referralCode }).from(users).where(eq(users.id, userId)).limit(1);
+      if (saved?.referralCode) return saved.referralCode;
+    } catch (error) {
+      if (attempt === 4) throw error;
+    }
+  }
+  throw new Error("Unable to create referral code");
+}
+
+export async function getUserReferralStatus(userId: number) {
+  const db = await getDb();
+  if (!db) return { referralCode: null, referredByUserId: null, referralRewardedAt: null, referralCount: 0 };
+  const [user] = await db.select({ referralCode: users.referralCode, referredByUserId: users.referredByUserId, referralRewardedAt: users.referralRewardedAt }).from(users).where(eq(users.id, userId)).limit(1);
+  const referrals = await db.select({ id: users.id }).from(users).where(eq(users.referredByUserId, userId));
+  return { ...(user ?? { referralCode: null, referredByUserId: null, referralRewardedAt: null }), referralCount: referrals.length };
+}
+
+export async function acceptUserReferralCode(userId: number, rawCode: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const code = rawCode.trim().toUpperCase();
+  const [currentUser] = await db.select({ id: users.id, referredByUserId: users.referredByUserId }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!currentUser) throw new Error("User not found");
+  if (currentUser.referredByUserId) throw new Error("Referral already accepted");
+  const [inviter] = await db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(eq(users.referralCode, code)).limit(1);
+  if (!inviter) throw new Error("Referral code not found");
+  if (inviter.id === userId) throw new Error("You cannot use your own referral code");
+  const updated = await db.update(users).set({ referredByUserId: inviter.id, referralRewardedAt: new Date() }).where(and(eq(users.id, userId), isNull(users.referredByUserId)));
+  if (!updated) throw new Error("Referral could not be accepted");
+  return { inviterId: inviter.id, inviterName: inviter.artistName || inviter.name || "Mitten member" };
 }
 
 export async function updateUserProfile(userId: number, data: { artistName?: string; instagramHandle?: string; city?: string; avatarUrl?: string }) {

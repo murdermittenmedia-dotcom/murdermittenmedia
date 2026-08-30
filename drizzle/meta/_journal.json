@@ -351,6 +351,13 @@
       "when": 1788077477791,
       "tag": "0049_sparkling_skreet",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1788078153034,
+      "tag": "0050_motionless_shocker",
+      "breakpoints": true
     }
   ]
 }

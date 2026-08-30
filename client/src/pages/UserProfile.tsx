@@ -17,7 +17,7 @@ import { ProfileRewards } from "@/components/ProfileRewards";
 import {
   Flame, Trash2, Music, Play, Pause, Camera, Edit2, Check, X,
   Instagram, Trophy, Mic, MapPin, Upload, Plus, Globe, Eye, EyeOff,
-  Loader2, Crown, Radio,
+  Loader2, Crown, Radio, Copy,
 } from "lucide-react";
 
 type Submission = {
@@ -62,6 +62,7 @@ function UploadSongForm({ onUploaded }: { onUploaded: () => void }) {
     onSuccess: () => {
       toast.success("Song added to your catalogue!");
       setSongTitle(""); setGenre(""); setAudioFile(null); setExternalUrl("");
+      setUploading(false);
       setOpen(false);
       onUploaded();
     },
@@ -72,6 +73,7 @@ function UploadSongForm({ onUploaded }: { onUploaded: () => void }) {
     onSuccess: () => {
       toast.success("Song added to your catalogue!");
       setSongTitle(""); setGenre(""); setExternalUrl("");
+      setUploading(false);
       setOpen(false);
       onUploaded();
     },
@@ -356,6 +358,16 @@ export default function UserProfile() {
   const [cityInput, setCityInput] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [labelInput, setLabelInput] = useState<AccountLabel | "" >("");
+  const [referralCodeInput, setReferralCodeInput] = useState("");
+  const referralStatus = trpc.profile.getReferralStatus.useQuery(undefined, { enabled: isOwnProfile });
+  const acceptReferral = trpc.profile.acceptReferral.useMutation({
+    onSuccess: () => {
+      toast.success("Referral accepted — the inviter earned XP");
+      setReferralCodeInput("");
+      referralStatus.refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   // Avatar upload state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -763,6 +775,34 @@ export default function UserProfile() {
             userId={displayProfile.user.id}
             isOwnProfile={isOwnProfile}
           />
+        )}
+
+        {isOwnProfile && (
+          <section className="mb-10 border border-red-500/20 bg-red-950/10 p-5 sm:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-red-400">Mitten Referral Network</p>
+                <h2 className="mt-1 font-['Anton'] text-2xl uppercase tracking-wide">Bring somebody into the Mitten</h2>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/55">Share your code with a new member. Each account can accept one referral, and your successful invites earn XP.</p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <code className="border border-white/10 bg-black/40 px-3 py-2 font-mono text-sm tracking-wider text-red-200">{referralStatus.data?.referralCode ?? "Generating…"}</code>
+                  <button type="button" onClick={() => referralStatus.data?.referralCode && navigator.clipboard?.writeText(referralStatus.data.referralCode).then(() => toast.success("Referral code copied"))} disabled={!referralStatus.data?.referralCode} className="inline-flex items-center gap-2 border border-white/15 px-3 py-2 text-xs font-bold uppercase tracking-wider text-white/70 transition hover:border-red-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"><Copy className="h-3.5 w-3.5" /> Copy code</button>
+                  <span className="text-xs uppercase tracking-widest text-white/35">{referralStatus.data?.referralCount ?? 0} accepted</span>
+                </div>
+              </div>
+              <div className="w-full max-w-sm border border-white/10 bg-black/20 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Have a referral code?</p>
+                {referralStatus.data?.referredByUserId ? (
+                  <p className="mt-3 text-sm text-emerald-300">Referral already accepted. Your inviter is on your account.</p>
+                ) : (
+                  <div className="mt-3 flex gap-2">
+                    <input value={referralCodeInput} onChange={(event) => setReferralCodeInput(event.target.value.toUpperCase())} placeholder="MITTEN-XXXXXXXX" maxLength={16} className="min-w-0 flex-1 border border-white/15 bg-black/30 px-3 py-2 font-mono text-xs text-white outline-none placeholder:text-white/25 focus:border-red-400" aria-label="Referral code" />
+                    <button type="button" onClick={() => acceptReferral.mutate({ code: referralCodeInput })} disabled={acceptReferral.isPending || referralCodeInput.length < 8} className="bg-red-600 px-3 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">{acceptReferral.isPending ? "…" : "Apply"}</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         )}
         {/* ── Music Catalogue ─────────────────────────────── */}
         <div className="mb-12">

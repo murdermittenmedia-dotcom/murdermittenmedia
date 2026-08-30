@@ -30,6 +30,10 @@ export const users = mysqlTable("users", {
   // Judge verification
   cashappPaymentReceiptUrl: varchar("cashappPaymentReceiptUrl", { length: 512 }),  // CashApp payment receipt link for judge verification
   judgeVerifiedAt: timestamp("judgeVerifiedAt"),  // when user was verified as judge
+  // Referral foundation: code is generated lazily; relationship and reward are one-time and nullable for legacy users.
+  referralCode: varchar("referralCode", { length: 16 }).unique(),
+  referredByUserId: int("referredByUserId"),
+  referralRewardedAt: timestamp("referralRewardedAt"),
 });
 
 export type User = typeof users.$inferSelect;
