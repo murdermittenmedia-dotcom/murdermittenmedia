@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
+import CoinBalance from "@/components/CoinBalance";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -242,6 +243,8 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
             {user ? (
               <>
                 <NotificationBell />
+
+                <CoinBalance />
 
                 <a
                   href="/wallet"
