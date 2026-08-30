@@ -1634,3 +1634,5 @@
 - [x] Add a database uniqueness constraint for one Vote To Skip per session, track, and user
 
 - [x] Add Review+ membership persistence, verified Stripe checkout, and entitlement status for unlimited Vote To Skip and premium chat treatment
+
+- [x] Add a persisted admin-configurable automatic Vote To Skip threshold, with 0 disabling automatic mode

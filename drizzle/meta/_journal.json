@@ -302,6 +302,13 @@
       "when": 1788052869184,
       "tag": "0042_overjoyed_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1788053117609,
+      "tag": "0043_rich_speed_demon",
+      "breakpoints": true
     }
   ]
 }

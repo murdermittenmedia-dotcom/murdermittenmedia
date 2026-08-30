@@ -37,6 +37,7 @@ type QueueState = {
   submitPriceCents?: number | null;
   skipPriceCents?: number | null;
   fullSongPriceCents?: number | null;
+  autoSkipThreshold?: number | null;
   updatedAt: Date;
 };
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
@@ -138,6 +139,7 @@ function AdminPanel({
   const [submitPriceDollars, setSubmitPriceDollars] = useState(String((data?.state?.submitPriceCents ?? 0) / 100));
   const [skipPriceDollars, setSkipPriceDollars] = useState(String((data?.state?.skipPriceCents ?? 1500) / 100));
   const [fullSongPriceDollars, setFullSongPriceDollars] = useState(String((data?.state?.fullSongPriceCents ?? 500) / 100));
+  const [autoSkipThreshold, setAutoSkipThreshold] = useState(String(data?.state?.autoSkipThreshold ?? 0));
   const requeueMutation = trpc.queue.requeue.useMutation({
     onSuccess: () => { refetch(); broadcastReviewQueueUpdated(); toast.success("Song re-queued"); },
     onError: () => toast.error("Failed to re-queue song"),
@@ -752,6 +754,28 @@ function AdminPanel({
                     className="text-[9px] bg-white/10 hover:bg-white/20 px-1.5 rounded text-white/60">✓</button>
                 </div>
               </div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+            <div>
+              <div className="text-white/70 text-[10px] uppercase tracking-wider font-semibold">Automatic Vote To Skip</div>
+              <div className="text-white/30 text-[10px] mt-0.5">Set 0 to require manual admin action.</div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                max={100000}
+                value={autoSkipThreshold}
+                onChange={(event) => setAutoSkipThreshold(event.target.value)}
+                className="w-16 rounded border border-white/10 bg-black/40 px-2 py-1 text-center text-[11px] text-white focus:border-white/30 focus:outline-none"
+                aria-label="Automatic Vote To Skip threshold"
+              />
+              <button
+                type="button"
+                onClick={() => setPlaybackMode.mutate({ playbackMode: data?.state?.playbackMode ?? "90sec", autoSkipThreshold: Math.max(0, Math.floor(Number(autoSkipThreshold) || 0)) })}
+                className="rounded bg-white/10 px-2 py-1 text-[9px] text-white/60 hover:bg-white/20"
+              >✓</button>
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">

@@ -94,6 +94,7 @@ export const queueState = mysqlTable("queue_state", {
   submitPriceCents: int("submitPriceCents").default(0).notNull(),       // cost to submit in paid_only mode
   skipPriceCents: int("skipPriceCents").default(1500).notNull(),        // cost to skip the line ($15 default)
   fullSongPriceCents: int("fullSongPriceCents").default(500).notNull(), // cost to upgrade free->full song ($5 default)
+  autoSkipThreshold: int("autoSkipThreshold").default(0).notNull(), // 0 disables automatic Vote To Skip
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

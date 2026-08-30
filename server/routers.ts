@@ -1227,6 +1227,7 @@ export const appRouter = router({
         submitPriceCents: z.number().min(0).max(100000).optional(),
         skipPriceCents: z.number().min(0).max(100000).optional(),
         fullSongPriceCents: z.number().min(0).max(100000).optional(),
+        autoSkipThreshold: z.number().int().min(0).max(100000).optional(),
       }))
       .mutation(async ({ input }) => {
         const db = await getDb();
@@ -1237,6 +1238,7 @@ export const appRouter = router({
         if (input.submitPriceCents !== undefined) updateData.submitPriceCents = input.submitPriceCents;
         if (input.skipPriceCents !== undefined) updateData.skipPriceCents = input.skipPriceCents;
         if (input.fullSongPriceCents !== undefined) updateData.fullSongPriceCents = input.fullSongPriceCents;
+        if (input.autoSkipThreshold !== undefined) updateData.autoSkipThreshold = input.autoSkipThreshold;
         if (existing.length === 0) {
           await db.insert(qs).values({ isLive: false, ...updateData } as any);
         } else {
