@@ -3442,7 +3442,7 @@
 - [ ] Keep the project’s existing auto-publish and rollback-safe checkpoint workflow intact
 - [ ] Keep current user feedback on judge-feed readability as a regression acceptance criterion
 - [ ] Keep active-stream GiftPanel and GiftAnimation QA open until a real live session is available
-- [ ] Continue remaining Activity Feed lifecycle improvements only where they are not already implemented
+- [x] Continue remaining Activity Feed lifecycle improvements only where they are not already implemented (verified existing review live/end, battle matchup/verdict/win, and community/member triggers)
 - [ ] Continue remaining BroadcastPanel and Cloudflare WHIP/WHEP work only when the required provider contract is available
 - [ ] Continue remaining Referral and reward-system items after the Live Cook Up core backlog is stabilized
 - [ ] Continue remaining site-wide analytics and creator-analytics work after core live features are stable
