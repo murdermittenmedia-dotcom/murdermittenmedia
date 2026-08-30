@@ -1185,7 +1185,7 @@
 ## Feature 15: Permanent Notification System
 - [x] DB: ensure notifications table has permanent storage (no TTL, no auto-delete)
 - [ ] DB: add notificationType enum to notifications (live_reward, coin_change, fire_vote_change, gift_sent, gift_received, cashout_requested, cashout_approved, cashout_rejected, fraud_hold, stream_summary_ready, creator_live, top_gifter_milestone, balance_update, system)
-- [ ] DB: add metadata JSON column to notifications for rich data (amounts, gift names, stream titles, etc.)
+- [x] DB: add metadata JSON column to notifications for rich data (amounts, gift names, stream titles, etc.; implemented as the project-standard serialized JSON text field and confirmed pre-existing in the database)
 - [x] Server: notifications.getAll — paginated, filterable by type/read status, searchable
 - [x] Server: notifications.delete — user can delete individual notifications (strictly scoped to the authenticated user)
 - [x] Server: notifications.deleteAll — user can delete all their notifications (strictly scoped to the authenticated user)

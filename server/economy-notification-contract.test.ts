@@ -54,6 +54,7 @@ describe("economy notification contracts", () => {
     expect(musicReviewSource).toContain("Support the artist");
     expect(musicReviewSource).toContain("tipMutation.mutate");
     expect(musicReviewSource).toContain("Your balance:");
+    expect(routerSource).toContain("metadata: JSON.stringify({ coins: input.coins, rewardCents: creatorRewardCents");
   });
 });
 

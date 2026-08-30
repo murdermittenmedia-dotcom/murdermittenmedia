@@ -732,6 +732,7 @@ export const notifications = mysqlTable("notifications", {
   type: varchar("type", { length: 64 }).notNull(),                     // e.g. "live_stream", "cookup", "coin_approved"
   title: varchar("title", { length: 128 }).notNull(),
   body: varchar("body", { length: 512 }).notNull(),
+  metadata: text("metadata"),                                           // serialized JSON for rich event context
   link: varchar("link", { length: 256 }),                              // optional deep link
   isRead: boolean("isRead").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

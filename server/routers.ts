@@ -4166,6 +4166,7 @@ export const appRouter = router({
             type: 'live_reward',
             title: '💰 You received a tip!',
             body: `${ctx.user.artistName || ctx.user.name} tipped you ${input.coins} coins (+$${(creatorRewardCents / 100).toFixed(2)} Live Rewards)`,
+            metadata: JSON.stringify({ coins: input.coins, rewardCents: creatorRewardCents, sessionId: input.sessionId ?? null, senderUserId: ctx.user.id }),
             link: '/wallet',
           });
         } catch {}
