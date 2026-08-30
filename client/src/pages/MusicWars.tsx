@@ -1710,8 +1710,17 @@ function Leaderboard() {
 }
 
 // ─── Past Battles ───────────────────────────────────────────
-function PastBattles() {
+function PastBattles({ isAdmin }: { isAdmin: boolean }) {
   const { data: records, isLoading } = trpc.battles.getAll.useQuery();
+  const utils = trpc.useUtils();
+  const removeBattleRecord = trpc.battles.remove.useMutation({
+    onSuccess: () => {
+      void utils.battles.getAll.invalidate();
+      void utils.battles.leaderboard.invalidate();
+      toast.success("Battle record removed.");
+    },
+    onError: (error) => toast.error(`Could not remove battle record: ${error.message}`),
+  });
 
   return (
     <div className="bg-[#0d0d0d] border border-white/10 p-5">
@@ -1734,11 +1743,27 @@ function PastBattles() {
       {records && records.length > 0 && (
         <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
           {records.map(r => (
-            <div key={r.id} className="border border-white/10 bg-white/[0.02] p-4 hover:border-white/20 transition-colors">
+              <div key={r.id} className="border border-white/10 bg-white/[0.02] p-4 hover:border-white/20 transition-colors">
               {/* Header row */}
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 gap-3">
                 <span className="text-xs text-white/30 uppercase tracking-widest">Round {r.roundNumber}</span>
-                <span className="text-xs text-white/20">{new Date(r.battleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-white/20">{new Date(r.battleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Remove the Round ${r.roundNumber} battle record? This cannot be undone.`)) {
+                          removeBattleRecord.mutate({ id: r.id });
+                        }
+                      }}
+                      disabled={removeBattleRecord.isPending}
+                      className="text-[10px] uppercase tracking-widest text-red-400/70 hover:text-red-300 disabled:opacity-40"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Battle matchup */}
@@ -2544,7 +2569,7 @@ export default function MusicWars() {
                   Round {wheelData?.currentRound ?? 1}
                 </span>
               </div>
-              <PastBattles />
+              <PastBattles isAdmin={isAdmin} />
             </div>
 
             {/* ── PLAYERS ──────────────────────────────────────── */}

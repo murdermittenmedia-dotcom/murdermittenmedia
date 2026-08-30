@@ -22,6 +22,7 @@ import {
   getAllBattleRecords,
   getBattleRecordsByArtistName,
   getArtistStats,
+  deleteBattleRecord,
 } from "./db";
 
 describe("Battle Records (DB unavailable fallback)", () => {
@@ -41,6 +42,10 @@ describe("Battle Records (DB unavailable fallback)", () => {
     expect(stats.losses).toBe(0);
     expect(stats.total).toBe(0);
     expect(stats.records).toEqual([]);
+  });
+
+  it("deleteBattleRecord rejects safely when DB is null", async () => {
+    await expect(deleteBattleRecord(42)).rejects.toThrow("DB not available");
   });
 });
 

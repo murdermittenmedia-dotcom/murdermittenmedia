@@ -514,6 +514,12 @@ export async function getAllBattleRecords(limit = 50) {
     .limit(limit);
 }
 
+export async function deleteBattleRecord(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.delete(battleRecords).where(eq(battleRecords.id, id));
+}
+
 export async function getBattleRecordsByArtistName(artistName: string) {
   const db = await getDb();
   if (!db) return [];

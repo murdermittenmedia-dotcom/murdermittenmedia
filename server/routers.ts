@@ -29,7 +29,7 @@ import {
   updateWheelEntryStatus, confirmWheelPayment, getUserWheelEntries,
   getSetting, setSetting, getAllSettings,
   getChatMessages, deleteChatMessage,
-  createBattleRecord, getAllBattleRecords, getArtistStats,
+  createBattleRecord, deleteBattleRecord, getAllBattleRecords, getArtistStats,
   getBattleLeaderboard, getBattleRecordsByArtistName,
   addUserSong, addUserSongIfMissing, getUserSongs, deleteUserSong, updateUserSongVisibility,
   getArtistProfile, updateUserProfile, getUserById,
@@ -702,6 +702,13 @@ export const appRouter = router({
     getAll: publicProcedure.query(async () => {
       return getAllBattleRecords(100);
     }),
+
+    remove: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await deleteBattleRecord(input.id);
+        return { success: true };
+      }),
 
     // Leaderboard ranked by wins
     leaderboard: publicProcedure.query(async () => {
