@@ -24,8 +24,10 @@ import {
   wheelSpins,
   users,
   promoCodes,
+  reviewPlusMemberships,
 } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { grantLineSkipCredits } from "./db";
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -325,6 +327,23 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   }
 }
 
+async function handleReviewPlusInvoicePaid(invoice: Stripe.Invoice) {
+  const subscriptionId = (invoice as Stripe.Invoice & { subscription?: string }).subscription;
+  if (invoice.billing_reason !== "subscription_cycle" || typeof subscriptionId !== "string") return;
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [membership] = await db.select().from(reviewPlusMemberships)
+    .where(eq(reviewPlusMemberships.stripeSubscriptionId, subscriptionId)).limit(1);
+  if (!membership) return;
+  const periodEnd = invoice.lines.data[0]?.period?.end;
+  await db.update(reviewPlusMemberships).set({
+    status: "active",
+    currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : membership.currentPeriodEnd,
+  }).where(eq(reviewPlusMemberships.id, membership.id));
+  await grantLineSkipCredits(membership.userId, 5);
+  console.log(`[Review+] Renewal credited five line skips for user ${membership.userId}`);
+}
+
 async function handleDisputeCreated(dispute: Stripe.Dispute) {
   if (!dispute.livemode) return;
 
@@ -427,6 +446,9 @@ export function registerStripeWebhook(app: Express) {
             break;
           case "checkout.session.async_payment_succeeded":
             await handleAsyncPaymentSucceeded(event.data.object as Stripe.Checkout.Session);
+            break;
+          case "invoice.paid":
+            await handleReviewPlusInvoicePaid(event.data.object as Stripe.Invoice);
             break;
           case "charge.refunded":
             await handleChargeRefunded(event.data.object as Stripe.Charge);
