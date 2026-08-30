@@ -101,7 +101,17 @@ function ReviewWorkspaceWindow({ id, title, order, size, isDragging, onDragStart
   const windowRef = useRef<HTMLElement>(null);
   const resizeStartRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const [draftSize, setDraftSize] = useState<ReviewWindowSize | null>(null);
+  const [gridRowSpan, setGridRowSpan] = useState<number | null>(null);
   const currentSize = draftSize ?? size;
+  useEffect(() => {
+    const node = windowRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const updateSpan = () => setGridRowSpan(Math.max(1, Math.ceil((node.getBoundingClientRect().height + 8) / 16)));
+    updateSpan();
+    const observer = new ResizeObserver(updateSpan);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [size?.height]);
   const startResize = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -123,7 +133,7 @@ function ReviewWorkspaceWindow({ id, title, order, size, isDragging, onDragStart
     if (nextSize) onResize(id, nextSize);
     setDraftSize(null);
   }, [draftSize, id, onResize]);
-  return <section ref={windowRef} style={{ order, width: currentSize ? `min(100%, ${currentSize.width}px)` : undefined, height: currentSize ? `${currentSize.height}px` : undefined, overflow: "auto", minWidth: "280px", minHeight: "180px", maxWidth: "100%" }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, id)} className={`relative min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a]/40 ${isDragging ? "opacity-45 ring-1 ring-red-500/70" : ""} ${className}`}>
+  return <section ref={windowRef} style={{ order, width: currentSize ? `min(100%, ${currentSize.width}px)` : undefined, height: currentSize ? `${currentSize.height}px` : undefined, gridRowEnd: gridRowSpan ? `span ${gridRowSpan}` : undefined, overflow: "auto", minWidth: "280px", minHeight: "180px", maxWidth: "100%", alignSelf: "start", justifySelf: "start" }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, id)} className={`relative min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a]/40 ${isDragging ? "opacity-45 ring-1 ring-red-500/70" : ""} ${className}`}>
     <header className="flex items-center justify-between gap-2 border-b border-white/10 bg-white/[0.025] px-3 py-2">
       <div draggable onDragStart={(event) => onDragStart(event, id)} className="flex min-w-0 cursor-grab touch-none items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50 active:cursor-grabbing" title="Drag this window to rearrange the review workspace">
         <GripVertical className="h-4 w-4 shrink-0 text-red-400/80" aria-hidden="true" />
@@ -2397,7 +2407,7 @@ export default function MusicReview() {
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35"><GripVertical className="mr-1 inline h-3.5 w-3.5 text-red-400/80" />Drag headers to arrange · resize freely from lower-right corner</p>
           <button type="button" onClick={resetReviewWindowLayout} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/55 transition-colors hover:border-white/30 hover:text-white"><RotateCcw className="h-3.5 w-3.5" />Reset layout</button>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] lg:items-start">
+        <div className="grid auto-rows-[8px] grid-flow-row-dense items-start gap-x-4 gap-y-2 lg:grid-cols-2">
         <ReviewWorkspaceWindow id="mitten-panel" title="Mitten Panel" order={reviewWindowOrder.indexOf("mitten-panel")} size={reviewWindowSizes["mitten-panel"]} isDragging={draggingWindow === "mitten-panel"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
           <JudgePanelStrip isReviewLive={isLive} />
         </ReviewWorkspaceWindow>
@@ -2698,7 +2708,7 @@ export default function MusicReview() {
         </ReviewWorkspaceWindow>
 
         {/* ── BOTTOM MENU TABS ────────────────────────────────── */}
-        <ReviewWorkspaceWindow id="review-tools" title="Review Tools" order={reviewWindowOrder.indexOf("review-tools")} size={reviewWindowSizes["review-tools"]} isDragging={draggingWindow === "review-tools"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow} className="lg:col-span-2">
+        <ReviewWorkspaceWindow id="review-tools" title="Review Tools" order={reviewWindowOrder.indexOf("review-tools")} size={reviewWindowSizes["review-tools"]} isDragging={draggingWindow === "review-tools"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Tab navigation */}
           <div className="flex overflow-x-auto scrollbar-none border-b border-white/10">
