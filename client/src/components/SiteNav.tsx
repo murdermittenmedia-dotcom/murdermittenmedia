@@ -394,12 +394,18 @@ function NotificationBell() {
     refetchOnWindowFocus: false,
   });
   const markRead = trpc.notifications.markRead.useMutation();
+  const markAllRead = trpc.notifications.markAllRead.useMutation();
   const utils = trpc.useUtils();
   const notifications = data?.notifications ?? [];
   const unreadCount = data?.unreadCount ?? 0;
 
   const handleMarkRead = async (id: number) => {
     await markRead.mutateAsync({ id });
+    await utils.notifications.getMyNotifications.invalidate();
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllRead.mutateAsync();
     await utils.notifications.getMyNotifications.invalidate();
   };
 
@@ -433,7 +439,10 @@ function NotificationBell() {
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500">Inbox</p>
               <p className="mt-1 text-sm font-semibold text-white">Recent notifications</p>
             </div>
-            <a href="/notifications" onClick={() => setOpen(false)} className="text-[10px] font-bold uppercase tracking-widest text-white/45 hover:text-white">View all</a>
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && <button type="button" onClick={() => void handleMarkAllRead()} disabled={markAllRead.isPending} className="text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-white disabled:opacity-50">{markAllRead.isPending ? "Saving…" : "Mark all read"}</button>}
+              <a href="/notifications" onClick={() => setOpen(false)} className="text-[10px] font-bold uppercase tracking-widest text-white/45 hover:text-white">View all</a>
+            </div>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {isLoading ? (

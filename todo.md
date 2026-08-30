@@ -5063,3 +5063,8 @@
 - [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
 - [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
 - [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work
+
+- [x] Focused economy notification contract tests covering coin purchase decisions, gift receipts, and creator cashout status alerts (39 files / 130 tests passing)
+- [ ] Notification preferences remain optional follow-up, not required for the core bell inbox
+- [ ] Active-stream visual QA remains open until a real live stream is available
+- [ ] Provider-dependent WHIP/WHEP broadcast work remains open until the provider contract is available
