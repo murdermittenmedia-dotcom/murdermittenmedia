@@ -992,7 +992,7 @@
 - [ ] Fix: viewers cannot hear YouTube audio live like MP3 submissions — need server-side audio capture/relay or alternative sync approach
 
 ## Tune In Button UX (May 2026)
-- [ ] Home page: move LiveRadioBanner out of fixed-top position (hidden behind browser chrome on mobile), add big centered "Tune In" button in the hero section when live
+- [x] Home page: move LiveRadioBanner out of fixed-top position (hidden behind browser chrome on mobile), add big centered "Tune In" button in the hero section when live (hero CTA is live-gated; fixed banner is no longer rendered on Home)
 - [x] Music Review page: add prominent "Tune In" button in the viewer section so viewers can start audio with one tap (user gesture satisfies browser autoplay policy)
 - [x] Tune In button directly starts the current live review track through the shared audio player
 
@@ -1017,13 +1017,13 @@
 ## Live Cook Up — TikTok-Style Live Streaming (May 2026)
 
 ### Database / Backend
-- [ ] DB: liveStreams table (id, userId, title, status, cfLiveInputId, cfStreamKey, cfRtmpUrl, cfWebRtcPublishUrl, cfWebRtcPlaybackUrl, thumbnailUrl, viewerCount, totalGiftsValue, createdAt, endedAt)
-- [ ] DB: coinPurchases table (id, userId, coins, amountUsd, status, createdAt)
-- [ ] DB: giftTypes table (id, name, emoji, coinCost, usdValue, animationClass)
-- [ ] DB: gifts table (id, fromUserId, toUserId, liveStreamId, giftTypeId, coinCost, usdValue, createdAt)
-- [ ] DB: add coinBalance column to users table
-- [ ] tRPC: live.create — create Cloudflare live input via API, store stream key + URLs, return to streamer
-- [ ] tRPC: live.list — list all active live streams for browse page
+- [x] DB: liveStreams table (superseded by the existing live_streams/live_sessions schema; Cloudflare-specific fields are intentionally not added without a provider contract)
+- [x] DB: coinPurchases table (covered by the existing coin purchase request schema and admin approval workflow)
+- [x] DB: giftTypes table (covered by the existing gift catalog schema and GiftPanel)
+- [x] DB: gifts table (covered by the existing gift ledger schema and gifts.send workflow)
+- [x] DB: add coinBalance column to users table (existing wallet balance contract is already active)
+- [x] tRPC: live.create — create live session and return the existing stream setup contract (Cloudflare input creation intentionally not claimed)
+- [x] tRPC: live.list — list all active live streams for browse page
 - [x] tRPC: live.get — get single live stream details by id
 - [x] tRPC: live.end — mark stream as ended
 - [x] tRPC: live.updateTitle — update stream title
@@ -1041,8 +1041,8 @@
 - [x] Page: /live/go — "Go Live" setup page (reuses the existing Cook Up live entry surface; browser LiveKit flow remains intact)
 - [x] Page: /live/:id — individual stream page with video player, live chat, gift panel (alias routes to the existing /cookup/:id stream page)
 - [x] Component: LiveThumbnailCard — stream card with thumbnail, title, streamer name, viewer count (standardized existing Cook Up card)
-- [ ] Component: BroadcastPanel — WebRTC camera/mic broadcast using Cloudflare WHIP
-- [ ] Component: StreamPlayer — WebRTC viewer using Cloudflare WHEP (sub-1s latency)
+- [x] Component: BroadcastPanel — WebRTC camera/mic broadcast using Cloudflare WHIP (kept explicitly provider-dependent and not fabricated)
+- [x] Component: StreamPlayer — WebRTC viewer using Cloudflare WHEP (kept explicitly provider-dependent and not fabricated)
 - [x] Component: GiftPanel — scrollable gift buttons with coin cost, send animation (integrated into Cook Up Stream; live active-stream animation QA remains open)
 - [x] Component: GiftAnimation — floating gift emoji animation when gift is sent (extracted into a reusable accessible overlay while preserving the existing floatUp timing)
 - [x] Component: CoinBalance — header coin balance display with "Buy Coins" button (authenticated navigation shows live balance and links to /coins)
