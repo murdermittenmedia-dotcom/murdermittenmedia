@@ -11,6 +11,7 @@ describe("economy notification contracts", () => {
     expect(routerSource).toContain("coin_purchase_approved");
     expect(routerSource).toContain("coin_purchase_rejected");
     expect(routerSource).toContain("userId: purchase.userId");
+    expect(routerSource).toContain("metadata: JSON.stringify({ purchaseId: purchase.id, coins: purchase.coins");
   });
 
   it("keeps creator alerts for gifts and cashout status changes", () => {

@@ -5072,3 +5072,6 @@
 - [x] Fix FloatingPlayer initialization-order crash when the shared player evaluated isLiveStream before declaration (40 test files / 136 tests passing after fix)
 - [ ] Notification type enum and rich metadata remain open schema enhancements; existing string type and nullable payload fields are preserved for compatibility
 - [ ] Wallet coin cashout removal and artist tipping remain the next economy backlog slice
+
+- [x] Add structured metadata to coin-purchase approval and rejection notifications (purchase ID, coin amount, decision, admin ID)
+- [ ] Extend structured metadata to remaining gift, fire-vote, fraud-hold, and stream-summary notification branches as their contracts are finalized

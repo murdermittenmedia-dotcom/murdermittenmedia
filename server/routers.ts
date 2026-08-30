@@ -3015,6 +3015,7 @@ export const appRouter = router({
             body: input.approve
               ? `${purchase.coins.toLocaleString()} coins were added to your wallet.`
               : `Your request for ${purchase.coins.toLocaleString()} coins was rejected. Contact the team if you need help.`,
+            metadata: JSON.stringify({ purchaseId: purchase.id, coins: purchase.coins, approved: input.approve, adminUserId: ctx.user.id }),
             link: '/coins',
           });
         } catch {}
