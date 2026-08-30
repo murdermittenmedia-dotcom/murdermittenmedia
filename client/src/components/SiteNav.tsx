@@ -388,25 +388,79 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 }
 
 function NotificationBell() {
-  const { data } = trpc.notifications.getMyNotifications.useQuery(undefined, {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading } = trpc.notifications.getMyNotifications.useQuery({ limit: 5 }, {
     refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
+  const markRead = trpc.notifications.markRead.useMutation();
+  const utils = trpc.useUtils();
+  const notifications = data?.notifications ?? [];
   const unreadCount = data?.unreadCount ?? 0;
 
+  const handleMarkRead = async (id: number) => {
+    await markRead.mutateAsync({ id });
+    await utils.notifications.getMyNotifications.invalidate();
+  };
+
   return (
-    <a
-      href="/notifications"
-      className="relative flex items-center justify-center w-8 h-8 text-white/40 hover:text-white transition-colors"
-      title={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
-      aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
-    >
-      <Bell className="w-4 h-4" />
-      {unreadCount > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 min-w-4 h-4 rounded-full bg-red-600 px-1 text-[9px] leading-4 text-center font-black text-white ring-2 ring-[#080808]">
-          {unreadCount > 99 ? "99+" : unreadCount}
-        </span>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="relative flex items-center justify-center w-8 h-8 text-white/40 hover:text-white transition-colors"
+        title={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+        aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+      >
+        <Bell className="w-4 h-4" />
+        {unreadCount > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 min-w-4 h-4 rounded-full bg-red-600 px-1 text-[9px] leading-4 text-center font-black text-white ring-2 ring-[#080808]">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Recent notifications"
+          className="absolute right-0 top-full mt-3 z-[70] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-white/10 bg-[#0c0c0c] shadow-2xl shadow-black/40"
+        >
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500">Inbox</p>
+              <p className="mt-1 text-sm font-semibold text-white">Recent notifications</p>
+            </div>
+            <a href="/notifications" onClick={() => setOpen(false)} className="text-[10px] font-bold uppercase tracking-widest text-white/45 hover:text-white">View all</a>
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {isLoading ? (
+              <p className="px-4 py-6 text-center text-xs text-white/40">Loading inbox…</p>
+            ) : notifications.length === 0 ? (
+              <p className="px-4 py-6 text-center text-xs text-white/40">You’re all caught up.</p>
+            ) : (
+              notifications.map((notification) => (
+                <div key={notification.id} className={`border-b border-white/5 px-4 py-3 last:border-0 ${notification.isRead ? "bg-transparent" : "bg-red-950/20"}`}>
+                  <a href={notification.link || "/notifications"} onClick={() => setOpen(false)} className="block">
+                    <div className="flex items-start gap-2">
+                      <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${notification.isRead ? "bg-white/20" : "bg-red-500"}`} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white/90">{notification.title}</p>
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/45">{notification.body}</p>
+                      </div>
+                    </div>
+                  </a>
+                  {!notification.isRead && (
+                    <button type="button" onClick={() => void handleMarkRead(notification.id)} className="ml-4 mt-2 text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-white">Mark read</button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       )}
-    </a>
+    </div>
   );
 }

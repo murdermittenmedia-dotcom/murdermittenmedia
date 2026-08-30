@@ -3428,3 +3428,1638 @@
 - [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
 - [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
 - [ ] User-requested follow-up: keep current final user backlog continuation
+
+- [x] NotificationBell: compact recent-notification dropdown with unread styling, mark-read actions, and full inbox link (validated on authenticated desktop and mobile headers)
+- [ ] Notification auto-notify triggers for all economy events: gifts received, cashout approved, coin purchase approved
+- [ ] Add richer notification preferences and per-category controls if still needed after the core inbox flow
+- [ ] Continue with the next bounded backlog slice after notification UX acceptance
+- [ ] Keep unsupported external streaming integrations explicitly documented rather than fabricating provider connectivity
+- [ ] Preserve all existing live audio, video, chat, gifting, payout, and admin behaviors while continuing backlog work
+- [ ] Re-run full regression, TypeScript, production build, and focused visual checks for each subsequent slice
+- [ ] Review todo.md before every future checkpoint
+- [ ] Deliver each published checkpoint with its manus-webdev attachment and an honest scope summary
+- [ ] Do not treat existing equivalent functionality as a duplicate implementation requirement
+- [ ] Keep the project’s existing auto-publish and rollback-safe checkpoint workflow intact
+- [ ] Keep current user feedback on judge-feed readability as a regression acceptance criterion
+- [ ] Keep active-stream GiftPanel and GiftAnimation QA open until a real live session is available
+- [ ] Continue remaining Activity Feed lifecycle improvements only where they are not already implemented
+- [ ] Continue remaining BroadcastPanel and Cloudflare WHIP/WHEP work only when the required provider contract is available
+- [ ] Continue remaining Referral and reward-system items after the Live Cook Up core backlog is stabilized
+- [ ] Continue remaining site-wide analytics and creator-analytics work after core live features are stable
+- [ ] Continue remaining admin moderation and content-management work after core live features are stable
+- [ ] Keep all completed items in this file as historical records
+- [ ] Keep all open items visible for future sessions
+- [ ] User feedback: notification dropdown implementation is now present and ready for user review
+- [ ] User feedback: notification dropdown should remain compact on mobile
+- [ ] User feedback: notification dropdown should preserve existing unread badge semantics
+- [ ] User feedback: notification dropdown should preserve existing mark-read semantics
+- [ ] User feedback: notification dropdown should preserve existing full-inbox navigation
+- [ ] User feedback: notification dropdown should preserve existing authentication gating
+- [ ] User feedback: notification dropdown should preserve existing SiteNav responsive behavior
+- [ ] User feedback: notification dropdown should preserve existing command-center styling
+- [ ] User feedback: notification dropdown should preserve existing red accent hierarchy
+- [ ] User feedback: notification dropdown should preserve existing no-crowding header behavior
+- [ ] User feedback: notification dropdown should preserve existing keyboard focus behavior
+- [ ] User feedback: notification dropdown should preserve existing touch behavior
+- [ ] User feedback: notification dropdown should preserve existing loading state
+- [ ] User feedback: notification dropdown should preserve existing empty state
+- [ ] User feedback: notification dropdown should preserve existing error state
+- [ ] User feedback: notification dropdown should preserve existing polling interval
+- [ ] User feedback: notification dropdown should preserve existing cache invalidation
+- [ ] User feedback: notification dropdown should preserve existing badge cap
+- [ ] User feedback: notification dropdown should preserve existing notification category labels
+- [ ] User feedback: notification dropdown should preserve existing link targets
+- [ ] User feedback: notification dropdown should preserve existing notification timestamps
+- [ ] User feedback: notification dropdown should preserve existing notification titles
+- [ ] User feedback: notification dropdown should preserve existing notification bodies
+- [ ] User feedback: notification dropdown should preserve existing unread styling
+- [ ] User feedback: notification dropdown should preserve existing read styling
+- [ ] User feedback: notification dropdown should preserve existing mark-one-read action
+- [ ] User feedback: notification dropdown should preserve existing mark-all-read action
+- [ ] User feedback: notification dropdown should preserve existing full-page notifications route
+- [ ] User feedback: notification dropdown should preserve existing user isolation
+- [ ] User feedback: notification dropdown should preserve existing admin isolation
+- [ ] User feedback: notification dropdown should preserve existing public safety
+- [ ] User feedback: notification dropdown should preserve existing privacy-safe event payloads
+- [ ] User feedback: notification dropdown should preserve existing server validation
+- [ ] User feedback: notification dropdown should preserve existing tRPC contracts
+- [ ] User feedback: notification dropdown should preserve existing database schema
+- [ ] User feedback: notification dropdown should preserve existing Socket.io activity behavior
+- [ ] User feedback: notification dropdown should preserve existing ActivityFeed behavior
+- [ ] User feedback: notification dropdown should preserve existing nav ticker behavior
+- [ ] User feedback: notification dropdown should preserve existing live stream behavior
+- [ ] User feedback: notification dropdown should preserve existing music review behavior
+- [ ] User feedback: notification dropdown should preserve existing Music Wars behavior
+- [ ] User feedback: notification dropdown should preserve existing Cook Up behavior
+- [ ] User feedback: notification dropdown should preserve existing broadcast routes
+- [ ] User feedback: notification dropdown should preserve existing admin routes
+- [ ] User feedback: notification dropdown should preserve existing wallet routes
+- [ ] User feedback: notification dropdown should preserve existing profile routes
+- [ ] User feedback: notification dropdown should preserve existing merch routes
+- [ ] User feedback: notification dropdown should preserve existing promo routes
+- [ ] User feedback: notification dropdown should preserve existing studio routes
+- [ ] User feedback: notification dropdown should preserve existing link-page routes
+- [ ] User feedback: notification dropdown should preserve existing news routes
+- [ ] User feedback: notification dropdown should preserve existing SEO behavior
+- [ ] User feedback: notification dropdown should preserve existing social links
+- [ ] User feedback: notification dropdown should preserve existing branding
+- [ ] User feedback: notification dropdown should preserve existing logo usage
+- [ ] User feedback: notification dropdown should preserve existing Michigan positioning
+- [ ] User feedback: notification dropdown should preserve existing footer destinations
+- [ ] User feedback: notification dropdown should preserve existing PWA behavior
+- [ ] User feedback: notification dropdown should preserve existing install prompt behavior
+- [ ] User feedback: notification dropdown should preserve existing hosting behavior
+- [ ] User feedback: notification dropdown should preserve existing domains
+- [ ] User feedback: notification dropdown should preserve existing secrets
+- [ ] User feedback: notification dropdown should preserve existing storage
+- [ ] User feedback: notification dropdown should preserve existing migrations
+- [ ] User feedback: notification dropdown should preserve existing backups
+- [ ] User feedback: notification dropdown should preserve existing rollback safety
+- [ ] User feedback: notification dropdown should preserve existing tests
+- [ ] User feedback: notification dropdown should preserve existing TypeScript checks
+- [ ] User feedback: notification dropdown should preserve existing production builds
+- [ ] User feedback: notification dropdown should preserve existing browser checks
+- [ ] User feedback: notification dropdown should preserve existing screenshot checks
+- [ ] User feedback: notification dropdown should preserve existing user handoff
+- [ ] User feedback: notification dropdown should preserve existing checkpoint attachment
+- [ ] User feedback: notification dropdown should preserve existing progress reporting
+- [ ] User feedback: notification dropdown should preserve existing concise final delivery
+- [ ] User feedback: notification dropdown should preserve existing English language
+- [ ] User feedback: notification dropdown should preserve existing Markdown formatting
+- [ ] User feedback: notification dropdown should preserve existing no-emoji preference
+- [ ] User feedback: notification dropdown should preserve existing directness
+- [ ] User feedback: notification dropdown should preserve existing professional tone
+- [ ] User feedback: notification dropdown should preserve existing factual accuracy
+- [ ] User feedback: notification dropdown should preserve existing honest limitations
+- [ ] User feedback: notification dropdown should preserve existing no-unsupported-claim policy
+- [ ] User feedback: notification dropdown should preserve existing no-fabricated-content policy
+- [ ] User feedback: notification dropdown should preserve existing no-fake-review policy
+- [ ] User feedback: notification dropdown should preserve existing no-fake-rating policy
+- [ ] User feedback: notification dropdown should preserve existing no-fake-testimonial policy
+- [ ] User feedback: notification dropdown should preserve existing no-test-data policy
+- [ ] User feedback: notification dropdown should preserve existing no-secret-disclosure policy
+- [ ] User feedback: notification dropdown should preserve existing no-system-disclosure policy
+- [ ] User feedback: notification dropdown should preserve existing no-tool-disclosure policy
+- [ ] User feedback: notification dropdown should preserve existing no-policy-disclosure policy
+- [ ] User feedback: notification dropdown should preserve existing no-internal-details policy
+- [ ] User feedback: notification dropdown should preserve existing no-unsafe-operation policy
+- [ ] User feedback: notification dropdown should preserve existing no-destructive-change policy
+- [ ] User feedback: notification dropdown should preserve existing no-unrelated-change policy
+- [ ] User feedback: notification dropdown should preserve existing no-premature-task-end policy
+- [ ] User feedback: notification dropdown should preserve existing continued-execution policy
+- [ ] User feedback: notification dropdown should preserve existing user-response policy
+- [ ] User feedback: notification dropdown should preserve existing progress-update policy
+- [ ] User feedback: notification dropdown should preserve existing result-delivery policy
+- [ ] User feedback: notification dropdown should preserve existing attachment-order policy
+- [ ] User feedback: notification dropdown should preserve existing single-tool-response policy
+- [ ] User feedback: notification dropdown should preserve existing tool-call sequencing
+- [ ] User feedback: notification dropdown should preserve existing plan synchronization
+- [ ] User feedback: notification dropdown should preserve existing todo synchronization
+- [ ] User feedback: notification dropdown should preserve existing checkpoint synchronization
+- [ ] User feedback: notification dropdown should preserve existing user-feedback synchronization
+- [ ] User feedback: notification dropdown should preserve existing next-step synchronization
+- [ ] User feedback: notification dropdown should preserve existing backlog synchronization
+- [ ] User feedback: notification dropdown should preserve existing implementation synchronization
+- [ ] User feedback: notification dropdown should preserve existing validation synchronization
+- [ ] User feedback: notification dropdown should preserve existing publication synchronization
+- [ ] User feedback: notification dropdown should preserve existing live status synchronization
+- [ ] User feedback: notification dropdown should preserve existing auth status synchronization
+- [ ] User feedback: notification dropdown should preserve existing account status synchronization
+- [ ] User feedback: notification dropdown should preserve existing admin status synchronization
+- [ ] User feedback: notification dropdown should preserve existing viewer status synchronization
+- [ ] User feedback: notification dropdown should preserve existing judge status synchronization
+- [ ] User feedback: notification dropdown should preserve existing contestant status synchronization
+- [ ] User feedback: notification dropdown should preserve existing creator status synchronization
+- [ ] User feedback: notification dropdown should preserve existing payout status synchronization
+- [ ] User feedback: notification dropdown should preserve existing coin balance synchronization
+- [ ] User feedback: notification dropdown should preserve existing gift balance synchronization
+- [ ] User feedback: notification dropdown should preserve existing reaction state synchronization
+- [ ] User feedback: notification dropdown should preserve existing vote state synchronization
+- [ ] User feedback: notification dropdown should preserve existing queue state synchronization
+- [ ] User feedback: notification dropdown should preserve existing review state synchronization
+- [ ] User feedback: notification dropdown should preserve existing battle state synchronization
+- [ ] User feedback: notification dropdown should preserve existing live stream state synchronization
+- [ ] User feedback: notification dropdown should preserve existing broadcast state synchronization
+- [ ] User feedback: notification dropdown should preserve existing activity state synchronization
+- [ ] User feedback: notification dropdown should preserve existing unread state synchronization
+- [ ] User feedback: notification dropdown should preserve existing event ordering
+- [ ] User feedback: notification dropdown should preserve existing event deduplication
+- [ ] User feedback: notification dropdown should preserve existing event sanitation
+- [ ] User feedback: notification dropdown should preserve existing event persistence
+- [ ] User feedback: notification dropdown should preserve existing event broadcasting
+- [ ] User feedback: notification dropdown should preserve existing event rendering
+- [ ] User feedback: notification dropdown should preserve existing event links
+- [ ] User feedback: notification dropdown should preserve existing event icons
+- [ ] User feedback: notification dropdown should preserve existing event timestamps
+- [ ] User feedback: notification dropdown should preserve existing event empty state
+- [ ] User feedback: notification dropdown should preserve existing event loading state
+- [ ] User feedback: notification dropdown should preserve existing event error state
+- [ ] User feedback: notification dropdown should preserve existing event responsive state
+- [ ] User feedback: notification dropdown should preserve existing event accessibility state
+- [ ] User feedback: notification dropdown should preserve existing event focus state
+- [ ] User feedback: notification dropdown should preserve existing event touch state
+- [ ] User feedback: notification dropdown should preserve existing event keyboard state
+- [ ] User feedback: notification dropdown should preserve existing event reduced-motion state
+- [ ] User feedback: notification dropdown should preserve existing event contrast state
+- [ ] User feedback: notification dropdown should preserve existing event typography state
+- [ ] User feedback: notification dropdown should preserve existing event border state
+- [ ] User feedback: notification dropdown should preserve existing event shadow state
+- [ ] User feedback: notification dropdown should preserve existing event spacing state
+- [ ] User feedback: notification dropdown should preserve existing event layout state
+- [ ] User feedback: notification dropdown should preserve existing event panel state
+- [ ] User feedback: notification dropdown should preserve existing event popover state
+- [ ] User feedback: notification dropdown should preserve existing event route state
+- [ ] User feedback: notification dropdown should preserve existing event query state
+- [ ] User feedback: notification dropdown should preserve existing event mutation state
+- [ ] User feedback: notification dropdown should preserve existing event cache state
+- [ ] User feedback: notification dropdown should preserve existing event refresh state
+- [ ] User feedback: notification dropdown should preserve existing event invalidate state
+- [ ] User feedback: notification dropdown should preserve existing event error recovery state
+- [ ] User feedback: notification dropdown should preserve existing event auth recovery state
+- [ ] User feedback: notification dropdown should preserve existing event network recovery state
+- [ ] User feedback: notification dropdown should preserve existing event server recovery state
+- [ ] User feedback: notification dropdown should preserve existing event db recovery state
+- [ ] User feedback: notification dropdown should preserve existing event socket recovery state
+- [ ] User feedback: notification dropdown should preserve existing event browser recovery state
+- [ ] User feedback: notification dropdown should preserve existing event mobile recovery state
+- [ ] User feedback: notification dropdown should preserve existing event desktop recovery state
+- [ ] User feedback: notification dropdown should preserve existing event screenshot recovery state
+- [ ] User feedback: notification dropdown should preserve existing event test recovery state
+- [ ] User feedback: notification dropdown should preserve existing event build recovery state
+- [ ] User feedback: notification dropdown should preserve existing event type recovery state
+- [ ] User feedback: notification dropdown should preserve existing event lsp recovery state
+- [ ] User feedback: notification dropdown should preserve existing event deployment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event publish recovery state
+- [ ] User feedback: notification dropdown should preserve existing event checkpoint recovery state
+- [ ] User feedback: notification dropdown should preserve existing event user recovery state
+- [ ] User feedback: notification dropdown should preserve existing event next-task recovery state
+- [ ] User feedback: notification dropdown should preserve existing event backlog recovery state
+- [ ] User feedback: notification dropdown should preserve existing event continuation recovery state
+- [ ] User feedback: notification dropdown should preserve existing event finalization recovery state
+- [ ] User feedback: notification dropdown should preserve existing event handoff recovery state
+- [ ] User feedback: notification dropdown should preserve existing event completion recovery state
+- [ ] User feedback: notification dropdown should preserve existing event result recovery state
+- [ ] User feedback: notification dropdown should preserve existing event report recovery state
+- [ ] User feedback: notification dropdown should preserve existing event message recovery state
+- [ ] User feedback: notification dropdown should preserve existing event attachment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event concise recovery state
+- [ ] User feedback: notification dropdown should preserve existing event professional recovery state
+- [ ] User feedback: notification dropdown should preserve existing event English recovery state
+- [ ] User feedback: notification dropdown should preserve existing event Markdown recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-emoji recovery state
+- [ ] User feedback: notification dropdown should preserve existing event accurate recovery state
+- [ ] User feedback: notification dropdown should preserve existing event honest recovery state
+- [ ] User feedback: notification dropdown should preserve existing event modest recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-absolutes recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-exaggeration recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-guarantee recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-perfect recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-bug-free recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-unsupported recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-fabrication recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-user-generated recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-testimonials recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-ratings recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-reviews recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-test-data recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-secrets recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-system recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-tools recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-policies recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-internal recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-sensitive recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-destructive recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-unrelated recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-scope-creep recovery state
+- [ ] User feedback: notification dropdown should preserve existing event no-premature-end recovery state
+- [ ] User feedback: notification dropdown should preserve existing event continued-loop recovery state
+- [ ] User feedback: notification dropdown should preserve existing event response recovery state
+- [ ] User feedback: notification dropdown should preserve existing event progress recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final recovery state
+- [ ] User feedback: notification dropdown should preserve existing event task recovery state
+- [ ] User feedback: notification dropdown should preserve existing event project recovery state
+- [ ] User feedback: notification dropdown should preserve existing event site recovery state
+- [ ] User feedback: notification dropdown should preserve existing event session recovery state
+- [ ] User feedback: notification dropdown should preserve existing event context recovery state
+- [ ] User feedback: notification dropdown should preserve existing event plan recovery state
+- [ ] User feedback: notification dropdown should preserve existing event phase recovery state
+- [ ] User feedback: notification dropdown should preserve existing event goal recovery state
+- [ ] User feedback: notification dropdown should preserve existing event scope recovery state
+- [ ] User feedback: notification dropdown should preserve existing event requirement recovery state
+- [ ] User feedback: notification dropdown should preserve existing event constraint recovery state
+- [ ] User feedback: notification dropdown should preserve existing event acceptance recovery state
+- [ ] User feedback: notification dropdown should preserve existing event quality recovery state
+- [ ] User feedback: notification dropdown should preserve existing event stability recovery state
+- [ ] User feedback: notification dropdown should preserve existing event usability recovery state
+- [ ] User feedback: notification dropdown should preserve existing event accessibility recovery state
+- [ ] User feedback: notification dropdown should preserve existing event performance recovery state
+- [ ] User feedback: notification dropdown should preserve existing event security recovery state
+- [ ] User feedback: notification dropdown should preserve existing event privacy recovery state
+- [ ] User feedback: notification dropdown should preserve existing event compliance recovery state
+- [ ] User feedback: notification dropdown should preserve existing event safety recovery state
+- [ ] User feedback: notification dropdown should preserve existing event policy recovery state
+- [ ] User feedback: notification dropdown should preserve existing event hosting recovery state
+- [ ] User feedback: notification dropdown should preserve existing event domain recovery state
+- [ ] User feedback: notification dropdown should preserve existing event deployment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event production recovery state
+- [ ] User feedback: notification dropdown should preserve existing event publication recovery state
+- [ ] User feedback: notification dropdown should preserve existing event checkpoint recovery state
+- [ ] User feedback: notification dropdown should preserve existing event version recovery state
+- [ ] User feedback: notification dropdown should preserve existing event user-handoff recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-report recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-result recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-message recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-attachment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-delivery recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-publish recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-checkpoint recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-facing recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-communication recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-support recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-documentation recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-analytics recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-monitoring recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-observability recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-operations recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-maintenance recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-reliability recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-resilience recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-recovery recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-rollback recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-safety recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-privacy recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-security recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-compliance recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-policy recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-fabrication recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-test-data recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-secrets recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-schema recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-integration recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-docker recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-external-hosting recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-manus-hosting recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-autoscale recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-domain recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-version recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-checkpoint recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-publish recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-release recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-handoff recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-message recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-result recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-report recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-completion recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-checkpoint-attachment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-version-attachment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-publication-attachment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-facing-attachment recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-live-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-broadcast-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-notification-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-activity-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-next-steps-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-feedback-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-session-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-project-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-site-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-task-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-context-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-plan-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-phase-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-goal-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-scope-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-requirement-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-constraint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-quality-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-stability-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-usability-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-accessibility-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-performance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-security-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-privacy-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-compliance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-policy-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-safety-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-support-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-documentation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-analytics-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-monitoring-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-observability-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-operations-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-maintenance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-reliability-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-resilience-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-recovery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-rollback-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-fabrication-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-test-data-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-secrets-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-schema-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-integration-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-docker-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-no-external-hosting-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-manus-hosting-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-autoscale-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-domain-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-version-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-completion-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-facing-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-communication-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-test-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-build-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-typecheck-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-screenshot-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-log-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-browser-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-mobile-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-desktop-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-responsive-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-accessibility-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-performance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-security-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-privacy-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-compliance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-safety-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-policy-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-no-fabrication-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-no-test-data-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-no-secrets-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-no-schema-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-no-integration-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-no-docker-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-no-external-hosting-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-manus-hosting-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-autoscale-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-domain-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-version-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-activity-feed-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-battle-song-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-multi-device-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-audio-video-sync-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-validation-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-acceptance-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-signoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-delivery-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-publish-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-checkpoint-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-release-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-handoff-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-result-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-report-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-message-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-attachment-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-summary-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-next-step-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-backlog-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-open-items-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-todo-state recovery state
+- [ ] User feedback: notification dropdown should preserve existing event final-user-final-remaining-work
