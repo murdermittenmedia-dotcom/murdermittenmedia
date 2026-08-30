@@ -15,6 +15,7 @@ import Promo from "./pages/Promo";
 import MurderMittenMic from "./pages/MurderMittenMic";
 import MeetingWithTheMitten from "./pages/MeetingWithTheMitten";
 import MusicReview from "./pages/MusicReview";
+import JudgeConsole from "./pages/JudgeConsole";
 import ArtistOfWeek from "./pages/ArtistOfWeek";
 import LiveStream from "./pages/LiveStream";
 import MusicWars from "./pages/MusicWars";
@@ -79,6 +80,7 @@ function Router() {
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/review"} component={MusicReview} />
+      <Route path={"/judge"} component={JudgeConsole} />
       <Route path={"/admin-popout"} component={MusicReview} />
       <Route path={"/artist-of-the-week"} component={ArtistOfWeek} />
       <Route path={"/live"} component={LiveStream} />

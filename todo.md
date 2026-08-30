@@ -1666,6 +1666,7 @@
 - [x] Show separate Mitten Panel FIRE/TRASH tallies and highlighted judge votes without changing the existing crowd-vote weighting
 - [x] Add a compact branded footer monetization section to /review for merch, promo services, and music submission
 - [ ] Complete targeted end-to-end regressions for paid-only mode, premium chat, daily skips, bot-off behavior, and judge vote display
+- [x] Reproduce and fix remaining live Music Review and judge join, broadcasting, public viewing, audio, and admin-control failures end to end
 - [x] Save a branded Murder Mitten Verdict with crowd and Mitten Panel results into the existing review history when a track completes
 - [x] Ensure the public Judge Windows use an accessible horizontal carousel on mobile instead of compressing the Mitten Panel
 - [x] Provide an explicit Enter Live Review interaction that unlocks browser audio when autoplay is blocked

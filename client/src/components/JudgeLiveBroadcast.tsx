@@ -91,6 +91,11 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
         }
       } catch (err: any) {
         if (!cancelled) {
+          // A server broadcast is created before the local connection begins. End it
+          // on any media/transport failure so an empty room never occupies a judge slot.
+          endedRef.current = true;
+          void endBroadcastMutation.mutateAsync({ broadcastId }).catch(() => undefined);
+          room.disconnect();
           const msg = err?.message || "Failed to connect";
           setError(msg.includes("Permission") || msg.includes("NotAllowed")
             ? "Camera/mic permission denied. Please allow access in your browser."

@@ -2137,7 +2137,15 @@ export async function getActiveJudgeBroadcasts() {
   const db = await getDb();
   if (!db) return [];
   
-  return db.select().from(judgeStreams)
+  return db.select({
+    id: judgeStreams.id,
+    userId: judgeStreams.userId,
+    roomName: judgeStreams.roomName,
+    status: judgeStreams.status,
+    createdAt: judgeStreams.createdAt,
+    judgeName: sql<string>`COALESCE(NULLIF(${users.artistName}, ''), ${users.name}, CONCAT('Judge ', ${judgeStreams.userId}))`,
+  }).from(judgeStreams)
+    .leftJoin(users, eq(judgeStreams.userId, users.id))
     .where(eq(judgeStreams.status, "active"))
     .orderBy(desc(judgeStreams.createdAt));
 }

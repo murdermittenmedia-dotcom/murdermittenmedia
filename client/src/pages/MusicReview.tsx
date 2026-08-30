@@ -54,10 +54,10 @@ import {
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 const CASHAPP = "$MittenMedia";
 
-function JudgePanelStrip() {
-  const { data: broadcasts = [] } = trpc.review.getActive.useQuery(undefined, { refetchInterval: 5000 });
+function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
+  const { data: broadcasts = [] } = trpc.review.getActive.useQuery(undefined, { enabled: isReviewLive, refetchInterval: isReviewLive ? 5000 : false });
   const [mutedAll, setMutedAll] = useState(false);
-  if (broadcasts.length === 0) return null;
+  if (!isReviewLive || broadcasts.length === 0) return null;
   return (
     <section className="mb-5 rounded-2xl border border-green-500/20 bg-green-500/[0.04] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -76,10 +76,10 @@ function JudgePanelStrip() {
   );
 }
 
-function JudgePanelCard({ broadcast, mutedAll }: { broadcast: { id: number; roomName: string; userId: number }; mutedAll: boolean }) {
+function JudgePanelCard({ broadcast, mutedAll }: { broadcast: { id: number; roomName: string; userId: number; judgeName?: string | null }; mutedAll: boolean }) {
   const { data: tokenData } = trpc.review.getJudgeViewerToken.useQuery({ broadcastId: broadcast.id }, { refetchInterval: 15000 });
   if (!tokenData) return <div className="min-h-[100px] rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-white/35">Connecting to judge…</div>;
-  return <JudgeBroadcastViewer roomName={tokenData.roomName} livekitUrl={tokenData.livekitUrl} viewerToken={tokenData.token} judgeName={`Judge ${broadcast.userId}`} judgeUserId={broadcast.userId} mutedAll={mutedAll} />;
+  return <JudgeBroadcastViewer roomName={tokenData.roomName} livekitUrl={tokenData.livekitUrl} viewerToken={tokenData.token} judgeName={broadcast.judgeName || `Judge ${broadcast.userId}`} judgeUserId={broadcast.userId} mutedAll={mutedAll} />;
 }
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
@@ -1346,7 +1346,10 @@ export default function MusicReview() {
     }
   }, [user]);
   const acceptJudgeInvite = trpc.review.acceptJudgeInvite.useMutation({
-    onSuccess: () => toast.success("Judge access granted. You can now join the Mitten Panel."),
+    onSuccess: () => {
+      toast.success("Judge access granted. Opening the Mitten Panel…");
+      window.setTimeout(() => window.location.assign("/judge"), 500);
+    },
     onError: (error) => toast.error("Judge invite failed: " + error.message),
   });
   useEffect(() => {
@@ -2064,6 +2067,7 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={enterLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Audio Ready" : "Enter Live Review"}
             </button>}
+            {(isAdmin || user?.role === "judge") && <Link href="/judge" className="rounded-full border border-green-500/35 bg-green-500/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-green-200 transition-colors hover:bg-green-500/20">Judge Console</Link>}
           </div>
         </div>
       </div>
@@ -2192,7 +2196,7 @@ export default function MusicReview() {
         </div>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] lg:items-start">
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
-        <JudgePanelStrip />
+        <JudgePanelStrip isReviewLive={isLive} />
         {activeTrack ? (
           <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
             {/* Glow corners */}

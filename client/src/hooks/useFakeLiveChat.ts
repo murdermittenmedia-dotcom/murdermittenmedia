@@ -777,7 +777,7 @@ export function useFakeLiveChat({
     { page: 1, pageSize: 100 },
     { staleTime: 1000 * 60 * 5, retry: false }
   );
-  const allUsers = allUsersPage?.items ?? [];
+  const allUsers = allUsersPage?.items;
 
   // Build chat pool: real users with names + some User-style accounts
   useEffect(() => {
@@ -795,7 +795,7 @@ export function useFakeLiveChat({
     const shuffledFake = [...FAKE_USER_ACCOUNTS].sort(() => Math.random() - 0.5).slice(0, fakeCount);
 
     setChatPool([...shuffledFake, ...shuffledReal]);
-  }, [allUsers]);
+  }, [allUsersPage?.items]);
 
   // Viewer count fluctuation — respects viewerMin/viewerMax
   useEffect(() => {
