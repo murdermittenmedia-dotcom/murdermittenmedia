@@ -103,6 +103,7 @@ function Router() {
       {/* Live Cook Up */}
       <Route path={"/cookup"} component={LiveCookUp} />
       <Route path={"/cookup/:id"} component={CookUpStream} />
+      <Route path={"/live/:id"} component={CookUpStream} />
       <Route path={"/coins"} component={Coins} />
       <Route path={"/fire-or-trash"} component={FireOrTrash} />
       <Route path={"/cashout"} component={Wallet} />

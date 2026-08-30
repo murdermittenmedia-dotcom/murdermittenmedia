@@ -1039,8 +1039,8 @@
 ### Frontend
 - [ ] Page: /live — browse page with thumbnail grid of active streams
 - [ ] Page: /live/go — "Go Live" setup page (set title, choose broadcast method: browser cam or RTMP key)
-- [ ] Page: /live/:id — individual stream page with video player, live chat, gift panel
-- [ ] Component: LiveThumbnailCard — stream card with thumbnail, title, streamer name, viewer count
+- [x] Page: /live/:id — individual stream page with video player, live chat, gift panel (alias routes to the existing /cookup/:id stream page)
+- [x] Component: LiveThumbnailCard — stream card with thumbnail, title, streamer name, viewer count (standardized existing Cook Up card)
 - [ ] Component: BroadcastPanel — WebRTC camera/mic broadcast using Cloudflare WHIP
 - [ ] Component: StreamPlayer — WebRTC viewer using Cloudflare WHEP (sub-1s latency)
 - [x] Component: GiftPanel — scrollable gift buttons with coin cost, send animation (integrated into Cook Up Stream; live active-stream animation QA remains open)

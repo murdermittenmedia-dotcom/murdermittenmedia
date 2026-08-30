@@ -159,7 +159,7 @@ export default function LiveCookUp() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {streams.map((stream) => (
-                <StreamCard key={stream.id} stream={stream} />
+                <LiveThumbnailCard key={stream.id} stream={stream} />
               ))}
             </div>
           </>
@@ -169,7 +169,7 @@ export default function LiveCookUp() {
   );
 }
 
-function StreamCard({ stream }: { stream: any }) {
+function LiveThumbnailCard({ stream }: { stream: any }) {
   const displayName = stream.streamer?.artistName || stream.streamer?.name || "Unknown Artist";
   const initials = displayName.slice(0, 2).toUpperCase();
 
