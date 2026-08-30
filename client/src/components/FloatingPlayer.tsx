@@ -46,6 +46,8 @@ export default function FloatingPlayer() {
 
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  // Whether the current track is a live stream (admin-controlled)
+  const isLiveStream = !!track?.isStream;
   // Listen for admin mic broadcast (listener side — non-admin users hear the admin's mic)
   const adminMicBroadcast = useAdminMicBroadcast({
     room: "music_review",
@@ -58,8 +60,6 @@ export default function FloatingPlayer() {
   const [showVolume, setShowVolume] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showExpanded, setShowExpanded] = useState(false);
-  // Whether the current track is a live stream (admin-controlled)
-  const isLiveStream = !!track?.isStream;
   const [myReaction, setMyReaction] = useState<"fire" | "trash" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragProgress, setDragProgress] = useState(0);

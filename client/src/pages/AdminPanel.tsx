@@ -4,7 +4,7 @@
    Access: admin role only
    ============================================================ */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import LabelBadge, { ALL_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
@@ -2079,45 +2079,37 @@ function EconomyAdminTab() {
 // ─── Notifications Admin Tab ───────────────────────────────────
 function NotificationsAdminTab() {
   const [search, setSearch] = useState("");
-  const [userIdFilter, setUserIdFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-
-  const { data: allUsers } = trpc.users.listAll.useQuery();
-
-  // Build a filtered list of users for search
-  const matchedUser = allUsers?.find((u: any) =>
-    u.name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase()) ||
-    String(u.id) === search
-  );
-
-  const targetUserId = userIdFilter ? parseInt(userIdFilter) : (matchedUser?.id ?? 0);
-
-  const { data: userNotifs, isLoading, refetch } = trpc.notifications.getMyNotifications.useQuery(
-    { limit: 50 },
-    { enabled: false } // Admin views their own for now — extend with admin procedure later
-  );
-
+  const [readFilter, setReadFilter] = useState<"all" | "read" | "unread">("all");
+  const [page, setPage] = useState(1);
   const TYPE_OPTIONS = [
     "all", "coin_balance_change", "coin_purchase", "gift_sent", "gift_received",
     "cashout_requested", "cashout_approved", "cashout_rejected", "live_rewards_earned",
     "fire_vote_change", "suspicious_activity", "stream_summary_ready", "someone_live",
-    "top_gifter_milestone", "admin_message", "system",
+    "top_gifter_milestone", "admin_message", "system", "forum_like",
+    "admin_new_user", "admin_new_submission", "admin_coin_purchase", "live_cookup",
+    "cashout_resolved", "coin_purchase_approved", "coin_purchase_rejected",
   ];
+  const queryInput = useMemo(() => ({ page, limit: 30, search, type: typeFilter, read: readFilter }), [page, search, typeFilter, readFilter]);
+  const { data, isLoading, refetch } = trpc.notifications.adminGetLogs.useQuery(queryInput);
+  const rows = data?.rows ?? [];
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, typeFilter, readFilter]);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-['Anton'] text-2xl uppercase mb-1">Notification Logs</h2>
-        <p className="text-white/40 text-sm">View and monitor all user notifications. Notifications are permanent and never auto-deleted.</p>
+        <p className="text-white/40 text-sm">Search the permanent notification ledger across every user and monitor delivery state.</p>
       </div>
 
-      {/* Info panel */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: "Permanent Storage", desc: "All notifications persist in DB forever unless manually deleted by user" },
-          { label: "Real-time Delivery", desc: "Notifications are created server-side on every economy event" },
-          { label: "Types Tracked", desc: "16 notification types across coins, gifts, cashouts, streams, and security" },
+          { label: "Permanent Storage", desc: "Notifications persist in the database until a user removes them." },
+          { label: "Cross-User View", desc: "Admins can inspect recipient, type, read state, and deep link." },
+          { label: "Operational Search", desc: "Search title, body, type, name, artist name, or email." },
         ].map(item => (
           <div key={item.label} className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
             <div className="text-sm font-semibold text-white mb-1">{item.label}</div>
@@ -2126,40 +2118,51 @@ function NotificationsAdminTab() {
         ))}
       </div>
 
-      {/* Notification types reference */}
-      <div className="border border-white/10 bg-white/[0.03] rounded-lg p-5">
-        <h3 className="font-semibold text-white mb-3 text-sm uppercase tracking-widest">Notification Types</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {[
-            { type: "live_rewards_earned", emoji: "💰", desc: "Creator earns from gifts" },
-            { type: "coin_balance_change", emoji: "🪙", desc: "Coin balance updated" },
-            { type: "fire_vote_change", emoji: "🔥", desc: "Fire Vote balance updated" },
-            { type: "gift_sent", emoji: "🎁", desc: "User sent a gift" },
-            { type: "gift_received", emoji: "🎁", desc: "Creator received a gift" },
-            { type: "cashout_requested", emoji: "💸", desc: "Cashout submitted" },
-            { type: "cashout_approved", emoji: "✅", desc: "Cashout approved" },
-            { type: "cashout_rejected", emoji: "❌", desc: "Cashout rejected" },
-            { type: "suspicious_activity", emoji: "⚠️", desc: "Fraud flag triggered" },
-            { type: "stream_summary_ready", emoji: "📊", desc: "Post-live summary ready" },
-            { type: "someone_live", emoji: "📡", desc: "Followed creator went live" },
-            { type: "top_gifter_milestone", emoji: "🏆", desc: "Top gifter milestone hit" },
-            { type: "coin_purchase", emoji: "🛒", desc: "Coin bundle purchased" },
-            { type: "coin_approved", emoji: "✅", desc: "Coin purchase approved" },
-            { type: "coin_rejected", emoji: "❌", desc: "Coin purchase rejected" },
-            { type: "admin_message", emoji: "📢", desc: "Admin broadcast" },
-          ].map(item => (
-            <div key={item.type} className="flex items-start gap-2 text-xs">
-              <span>{item.emoji}</span>
-              <div>
-                <div className="text-white/70 font-mono">{item.type}</div>
-                <div className="text-white/30">{item.desc}</div>
+      <div className="border border-white/10 bg-white/[0.03] rounded-lg overflow-hidden">
+        <div className="p-4 border-b border-white/10 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-2">
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notifications or recipients..." className="bg-black/20 border-white/10" />
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="h-10 rounded-md border border-white/10 bg-[#111] px-3 text-xs text-white/70">
+            {TYPE_OPTIONS.map(type => <option key={type} value={type}>{type === "all" ? "All types" : type}</option>)}
+          </select>
+          <select value={readFilter} onChange={e => setReadFilter(e.target.value as typeof readFilter)} className="h-10 rounded-md border border-white/10 bg-[#111] px-3 text-xs text-white/70">
+            <option value="all">All states</option>
+            <option value="unread">Unread</option>
+            <option value="read">Read</option>
+          </select>
+          <Button type="button" variant="outline" onClick={() => void refetch()} className="border-white/15 text-white/60 hover:text-white"><RefreshCw className="w-3.5 h-3.5 mr-2" />Refresh</Button>
+        </div>
+
+        <div className="divide-y divide-white/5">
+          {isLoading ? (
+            <div className="px-4 py-12 text-center text-sm text-white/35">Loading notification log...</div>
+          ) : rows.length === 0 ? (
+            <div className="px-4 py-12 text-center text-sm text-white/35">No notifications match the current filters.</div>
+          ) : rows.map(({ notification, user }) => (
+            <div key={notification.id} className="px-4 py-4 flex items-start gap-4 hover:bg-white/[0.02]">
+              <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${notification.isRead ? "bg-white/15" : "bg-red-500"}`} title={notification.isRead ? "Read" : "Unread"} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-[10px] uppercase tracking-widest text-red-400 font-bold">{notification.type}</span>
+                  <span className="text-[10px] text-white/25">{notification.isRead ? "READ" : "UNREAD"}</span>
+                </div>
+                <p className="text-sm font-semibold text-white truncate">{notification.title}</p>
+                <p className="text-xs text-white/45 mt-1 break-words">{notification.body}</p>
+                <p className="text-[10px] text-white/25 mt-2">To: {user?.artistName || user?.name || user?.email || `User ${notification.userId}`} · {new Date(notification.createdAt).toLocaleString()}</p>
               </div>
+              {notification.link && <a href={notification.link} className="shrink-0 text-[10px] uppercase tracking-widest text-white/35 hover:text-white">Open</a>}
             </div>
           ))}
         </div>
+
+        <div className="p-3 border-t border-white/10 flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-widest text-white/25">Page {data?.page ?? page}</span>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage(value => Math.max(1, value - 1))} className="border-white/15 text-white/60">Previous</Button>
+            <Button type="button" variant="outline" size="sm" disabled={!data?.hasMore || isLoading} onClick={() => setPage(value => value + 1)} className="border-white/15 text-white/60">Next</Button>
+          </div>
+        </div>
       </div>
 
-      {/* Send admin broadcast */}
       <AdminBroadcastPanel />
     </div>
   );

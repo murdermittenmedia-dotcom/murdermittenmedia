@@ -4291,7 +4291,7 @@ export const appRouter = router({
   // ─── Notifications ──────────────────────────────────────────
   notifications: router({
     getMyNotifications: protectedProcedure
-      .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }).optional())
+      .input(z.object({ limit: z.number().int().min(1).max(200).default(20) }).optional())
       .query(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
@@ -4303,6 +4303,36 @@ export const appRouter = router({
           .limit(limit);
         const unreadCount = rows.filter(n => !n.isRead).length;
         return { notifications: rows, unreadCount };
+      }),
+
+    getAll: protectedProcedure
+      .input(z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(50),
+        search: z.string().max(128).default(""),
+        type: z.string().max(64).default("all"),
+        read: z.enum(["all", "read", "unread"]).default("all"),
+      }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { notifications } = await import("../drizzle/schema");
+        const filters = [eq(notifications.userId, ctx.user.id)];
+        if (input.type !== "all") filters.push(eq(notifications.type, input.type));
+        if (input.read !== "all") filters.push(eq(notifications.isRead, input.read === "read"));
+        if (input.search.trim()) {
+          const pattern = `%${input.search.trim()}%`;
+          filters.push(sql`(${notifications.title} LIKE ${pattern} OR ${notifications.body} LIKE ${pattern} OR ${notifications.type} LIKE ${pattern})`);
+        }
+        const where = and(...filters);
+        const rows = await db.select().from(notifications)
+          .where(where)
+          .orderBy(desc(notifications.createdAt))
+          .limit(input.limit)
+          .offset((input.page - 1) * input.limit);
+        const unreadRows = await db.select({ id: notifications.id }).from(notifications)
+          .where(and(eq(notifications.userId, ctx.user.id), eq(notifications.isRead, false)));
+        return { notifications: rows, unreadCount: unreadRows.length, page: input.page, limit: input.limit, hasMore: rows.length === input.limit };
       }),
 
     markRead: protectedProcedure
@@ -4322,6 +4352,56 @@ export const appRouter = router({
       await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, ctx.user.id));
       return { success: true };
     }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { notifications } = await import("../drizzle/schema");
+        await db.delete(notifications).where(and(eq(notifications.id, input.id), eq(notifications.userId, ctx.user.id)));
+        return { success: true };
+      }),
+
+    deleteAll: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const { notifications } = await import("../drizzle/schema");
+      await db.delete(notifications).where(eq(notifications.userId, ctx.user.id));
+      return { success: true };
+    }),
+
+    adminGetLogs: adminProcedure
+      .input(z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(50),
+        search: z.string().max(128).default(""),
+        type: z.string().max(64).default("all"),
+        read: z.enum(["all", "read", "unread"]).default("all"),
+      }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const { notifications, users: usersTable } = await import("../drizzle/schema");
+        const filters = [];
+        if (input.type !== "all") filters.push(eq(notifications.type, input.type));
+        if (input.read !== "all") filters.push(eq(notifications.isRead, input.read === "read"));
+        if (input.search.trim()) {
+          const pattern = `%${input.search.trim()}%`;
+          filters.push(sql`(${notifications.title} LIKE ${pattern} OR ${notifications.body} LIKE ${pattern} OR ${notifications.type} LIKE ${pattern} OR ${usersTable.name} LIKE ${pattern} OR ${usersTable.artistName} LIKE ${pattern} OR ${usersTable.email} LIKE ${pattern})`);
+        }
+        const where = filters.length > 0 ? and(...filters) : undefined;
+        const rows = await db.select({
+          notification: notifications,
+          user: { id: usersTable.id, name: usersTable.name, artistName: usersTable.artistName, email: usersTable.email },
+        }).from(notifications)
+          .leftJoin(usersTable, eq(notifications.userId, usersTable.id))
+          .where(where)
+          .orderBy(desc(notifications.createdAt))
+          .limit(input.limit)
+          .offset((input.page - 1) * input.limit);
+        return { rows, page: input.page, limit: input.limit, hasMore: rows.length === input.limit };
+      }),
   }),
 
   // ─── Fire or Trash Swipe Game ────────────────────────────────

@@ -30,6 +30,23 @@ describe("economy notification contracts", () => {
     expect(routerSource).toContain('type: "admin_coin_purchase"');
     expect(dbSource).toContain('link: "/admin"');
   });
+
+  it("keeps notification deletion scoped to the authenticated user", () => {
+    expect(routerSource).toContain("delete: protectedProcedure");
+    expect(routerSource).toContain("deleteAll: protectedProcedure");
+    expect(routerSource).toContain("eq(notifications.userId, ctx.user.id)");
+  });
+
+  it("keeps the full inbox request within the supported server limit", () => {
+    expect(routerSource).toContain("getMyNotifications: protectedProcedure");
+    expect(routerSource).toContain("max(200).default(20)");
+  });
+
+  it("keeps a filtered, paginated user inbox procedure", () => {
+    expect(routerSource).toContain("getAll: protectedProcedure");
+    expect(routerSource).toContain("search: z.string().max(128).default(\"\")");
+    expect(routerSource).toContain("hasMore: rows.length === input.limit");
+  });
 });
 
 /**

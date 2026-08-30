@@ -14,7 +14,7 @@ import { getLoginUrl } from "@/const";
 import {
   Bell, BellOff, CheckCheck, ExternalLink, Search,
   Coins, DollarSign, Flame, Gift, Radio, TrendingUp,
-  AlertTriangle, CheckCircle, XCircle, RefreshCw,
+  AlertTriangle, CheckCircle, XCircle, RefreshCw, Trash2,
 } from "lucide-react";
 
 // ── Type icon + color map ─────────────────────────────────────
@@ -97,6 +97,19 @@ export default function Notifications() {
   const markAllReadMutation = trpc.notifications.markAllRead.useMutation({
     onSuccess: () => refetch(),
   });
+  const deleteMutation = trpc.notifications.delete.useMutation({
+    onSuccess: () => refetch(),
+  });
+  const deleteAllMutation = trpc.notifications.deleteAll.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const handleDeleteAll = () => {
+    if (allNotifs.length === 0) return;
+    if (window.confirm("Delete all of your notifications? This cannot be undone.")) {
+      deleteAllMutation.mutate();
+    }
+  };
 
   const allNotifs = data?.notifications ?? [];
   const unreadCount = data?.unreadCount ?? 0;
@@ -181,6 +194,18 @@ export default function Notifications() {
               >
                 <CheckCheck className="w-4 h-4" />
                 Mark all read
+              </Button>
+            )}
+            {allNotifs.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDeleteAll}
+                disabled={deleteAllMutation.isPending}
+                className="border-red-600/30 text-red-400/70 hover:text-red-300 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete all
               </Button>
             )}
           </div>
@@ -291,6 +316,15 @@ export default function Notifications() {
                             Mark read
                           </button>
                         )}
+                        <button
+                          onClick={() => deleteMutation.mutate({ id: notif.id })}
+                          disabled={deleteMutation.isPending}
+                          className="text-white/25 hover:text-red-400 text-xs transition-colors inline-flex items-center gap-1"
+                          aria-label={`Delete notification: ${notif.title}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Delete
+                        </button>
                       </div>
                     </div>
                   </div>

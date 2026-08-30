@@ -1123,15 +1123,15 @@
 - [x] Admin notifications: new music submission
 
 ## Fire or Trash Swipe Game
-- [ ] fireTrashVotes table (userId, submissionId, vote: fire|trash, createdAt)
-- [ ] fireTrash.getQueue procedure (random unvoted submissions for user)
-- [ ] fireTrash.vote procedure (cast fire/trash vote, update stats)
-- [ ] fireTrash.getLeaderboard procedure (most fire submissions)
-- [ ] fireTrash.getMyStats procedure (user fire/trash ratio)
-- [ ] /fire-or-trash page with swipe left=trash right=fire (mobile touch + keyboard)
-- [ ] Fire/Trash stats shown on submission cards
-- [ ] Fire/Trash leaderboard page
-- [ ] Nav link added for Fire or Trash game
+- [x] fireTrashVotes table (userId, submissionId, vote: fire|trash, createdAt)
+- [x] fireTrash.getQueue procedure (random unvoted submissions for user)
+- [x] fireTrash.vote procedure (cast fire/trash vote, update stats)
+- [x] fireTrash.getLeaderboard procedure (most fire submissions)
+- [x] fireTrash.getMyStats procedure (user fire/trash ratio)
+- [x] /fire-or-trash page with swipe left=trash right=fire (mobile touch + keyboard)
+- [x] Fire/Trash stats shown on submission cards and leaderboard cards
+- [x] Fire/Trash leaderboard page (leaderboard tab on /fire-or-trash)
+- [x] Nav link added for Fire or Trash game
 
 ## Virtual Economy & Livestream Gift System
 - [x] DB schema: liveRewards table (creator earnings wallet — separate from coinBalances)
@@ -1183,23 +1183,23 @@
 - [ ] Frontend: Chat messages — show LIVE badge next to name if user is currently live
 
 ## Feature 15: Permanent Notification System
-- [ ] DB: ensure notifications table has permanent storage (no TTL, no auto-delete)
+- [x] DB: ensure notifications table has permanent storage (no TTL, no auto-delete)
 - [ ] DB: add notificationType enum to notifications (live_reward, coin_change, fire_vote_change, gift_sent, gift_received, cashout_requested, cashout_approved, cashout_rejected, fraud_hold, stream_summary_ready, creator_live, top_gifter_milestone, balance_update, system)
 - [ ] DB: add metadata JSON column to notifications for rich data (amounts, gift names, stream titles, etc.)
-- [ ] Server: notifications.getAll — paginated, filterable by type/read status, searchable
-- [ ] Server: notifications.delete — user can delete individual notifications
-- [ ] Server: notifications.deleteAll — user can delete all their notifications
-- [ ] Server: admin.getNotificationLogs — admin view of all notifications across all users
+- [x] Server: notifications.getAll — paginated, filterable by type/read status, searchable
+- [x] Server: notifications.delete — user can delete individual notifications (strictly scoped to the authenticated user)
+- [x] Server: notifications.deleteAll — user can delete all their notifications (strictly scoped to the authenticated user)
+- [x] Server: admin.getNotificationLogs — admin view of all notifications across all users (implemented as notifications.adminGetLogs)
 - [ ] Server: auto-notify on all economy events (gifts, FV earned, cashouts, fraud holds, stream summary ready)
-- [ ] Frontend: /notifications page — full inbox with search bar, type filter, read/unread filter, delete buttons, permanent history
-- [ ] Frontend: Notification bell — unread count badge, dropdown preview of latest 5, "View all" link
-- [ ] Admin: Notification Logs tab — searchable log of all notifications sent to all users
+- [x] Frontend: /notifications page — full inbox with search bar, type filter, read/unread filter, delete buttons, permanent history
+- [x] Frontend: Notification bell — unread count badge, dropdown preview of latest 5, "View all" link, per-alert mark-read, and mark-all-read
+- [x] Admin: Notification Logs tab — searchable log of all notifications sent to all users
 
 ## Coin Economy & Live Features (Round 3)
 - [ ] Remove coin cashout section from Wallet page (coins are for gifts/tips only)
 - [ ] Add artist tip procedure: tipArtist (deducts coins from viewer, credits Live Rewards to artist)
 - [ ] Add tip UI on Live Music Review page for currently playing artist
-- [ ] Build live stats overlay panel for Cook Up streams (total gifts, viewer count, top gifters)
+- [x] Build live stats overlay panel for Cook Up streams (total gifts, viewer count, top gifters)
 
 ## LiveKit RTMP Ingress Fix
 - [x] Fix LiveKit RTMP ingress: use IngressClient.createIngress() instead of manually building RTMP URL
@@ -5068,3 +5068,7 @@
 - [ ] Notification preferences remain optional follow-up, not required for the core bell inbox
 - [ ] Active-stream visual QA remains open until a real live stream is available
 - [ ] Provider-dependent WHIP/WHEP broadcast work remains open until the provider contract is available
+
+- [x] Fix FloatingPlayer initialization-order crash when the shared player evaluated isLiveStream before declaration (40 test files / 136 tests passing after fix)
+- [ ] Notification type enum and rich metadata remain open schema enhancements; existing string type and nullable payload fields are preserved for compatibility
+- [ ] Wallet coin cashout removal and artist tipping remain the next economy backlog slice
