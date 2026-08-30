@@ -892,7 +892,7 @@
 
 ### FloatingPlayer Enhancements
 - [x] FloatingPlayer: show live listener count when a live stream is active
-- [ ] FloatingPlayer: add expanded mode (click to expand showing queue, reactions, chat preview)
+- [x] FloatingPlayer: add expanded mode (click to expand showing queue, reactions, chat preview)
 - [x] FloatingPlayer: animated pulsing LIVE badge when radio is live
 - [x] FloatingPlayer: show "Murder Mitten Radio" branding when in live stream mode
 

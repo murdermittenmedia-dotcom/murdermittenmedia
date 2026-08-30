@@ -17,7 +17,7 @@
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import {
   Pause, Play, Square, Volume2, VolumeX, Radio, Flame, Trash2, User,
-  ChevronDown, List, X, SkipBack, SkipForward, ExternalLink, Music2, Mic,
+  ChevronDown, ChevronUp, List, X, SkipBack, SkipForward, ExternalLink, Music2, Mic, MessageCircle,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect, useRef } from "react";
@@ -57,13 +57,18 @@ export default function FloatingPlayer() {
   });
   const [showVolume, setShowVolume] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [showExpanded, setShowExpanded] = useState(false);
+  // Whether the current track is a live stream (admin-controlled)
+  const isLiveStream = !!track?.isStream;
   const [myReaction, setMyReaction] = useState<"fire" | "trash" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragProgress, setDragProgress] = useState(0);
+  const { data: chatHistory } = trpc.chat.getHistory.useQuery(
+    { room: "music_review" },
+    { enabled: showExpanded, refetchInterval: showExpanded ? 10_000 : false }
+  );
   const progressRef = useRef<HTMLDivElement>(null);
 
-  // Whether the current track is a live stream (admin-controlled)
-  const isLiveStream = !!track?.isStream;
   // Whether the current live track is a YouTube submission
   const isYouTubeTrack = isLiveStream && !!track?.youtubeUrl;
   const [showYouTubeEmbed, setShowYouTubeEmbed] = useState(false);
@@ -213,6 +218,16 @@ export default function FloatingPlayer() {
         );
       })()}
 
+      {showExpanded && (
+        <div className="fixed bottom-[72px] left-2 right-2 z-[101] max-h-[58vh] overflow-y-auto rounded-t-2xl border border-white/10 bg-[#0d0d0d]/95 p-4 shadow-2xl backdrop-blur-xl sm:left-auto sm:right-4 sm:w-[420px] sm:p-5">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-400">Expanded player</p><p className="mt-1 text-sm font-semibold text-white">{isLiveStream ? "Live room" : "Now playing"}</p></div>
+            <button type="button" onClick={() => setShowExpanded(false)} className="rounded-lg p-2 text-white/45 hover:bg-white/10 hover:text-white" aria-label="Close expanded player"><X className="h-4 w-4" /></button>
+          </div>
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3"><p className="truncate text-sm font-semibold text-white">{track.title}</p><p className="mt-1 truncate text-xs text-white/45">{track.artist ? <ArtistLink artistName={track.artist} userId={track.artistUserId ?? null} /> : "Murder Mitten Media"}</p><div className="mt-3 flex items-center gap-2"><button type="button" onClick={() => handleReact("fire")} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-widest transition ${myReaction === "fire" ? "border-orange-400/60 bg-orange-400/15 text-orange-300" : "border-white/10 text-white/55 hover:border-orange-400/40 hover:text-orange-300"}`}><Flame className="mr-1 inline h-3.5 w-3.5" /> Fire</button><button type="button" onClick={() => handleReact("trash")} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-widest transition ${myReaction === "trash" ? "border-red-400/60 bg-red-400/15 text-red-300" : "border-white/10 text-white/55 hover:border-red-400/40 hover:text-red-300"}`}><Trash2 className="mr-1 inline h-3.5 w-3.5" /> Trash</button></div></div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-white/10 bg-white/[0.02] p-3"><div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-widest text-white/45">Queue</p><span className="text-[10px] text-white/30">{playlist.length}</span></div><div className="mt-2 max-h-32 space-y-2 overflow-y-auto">{playlist.length ? playlist.slice(0, 5).map((item, idx) => <button type="button" key={`${item.url}-${idx}`} onClick={() => !isLiveStream && playPlaylist(playlist, idx)} className={`block w-full truncate rounded-md px-2 py-1.5 text-left text-xs ${idx === playlistIndex ? "bg-red-500/15 text-red-300" : "text-white/55 hover:bg-white/5 hover:text-white"}`}>{item.title}</button>) : <p className="text-xs text-white/30">Queue is empty</p>}</div></div><div className="rounded-xl border border-white/10 bg-white/[0.02] p-3"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45"><MessageCircle className="h-3.5 w-3.5 text-red-400" /> Chat preview</p><div className="mt-2 max-h-32 space-y-2 overflow-y-auto">{Array.isArray(chatHistory) && chatHistory.length ? chatHistory.slice(-3).map((message: { id?: number | string; username?: string | null; userName?: string | null; content?: string | null; message?: string | null }, idx: number) => <div key={message.id ?? idx} className="text-xs"><span className="font-semibold text-white/65">{message.username ?? message.userName ?? "Listener"}</span><span className="ml-1 text-white/40">{message.content ?? message.message ?? ""}</span></div>) : <p className="text-xs text-white/30">No recent messages</p>}</div></div></div>
+        </div>
+      )}
       {/* ── Queue panel (only for personal playlist, not live stream) ──── */}
       {showQueue && !isLiveStream && (
         <div className="fixed bottom-[72px] left-0 right-0 z-[99] bg-[#0f0f0f] border border-white/10 border-b-0 shadow-2xl max-h-[45vh] overflow-y-auto">
@@ -525,7 +540,15 @@ export default function FloatingPlayer() {
 
               {/* Queue */}
               <button
-                onClick={() => setShowQueue(v => !v)}
+                onClick={() => setShowExpanded((value) => !value)}
+                className={`p-1.5 rounded-lg transition-colors ${showExpanded ? "text-red-500 bg-red-500/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}
+                title="Expand player"
+                aria-label="Expand player"
+              >
+                {showExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => setShowQueue(!showQueue)}
                 className={`p-1.5 rounded-lg transition-colors ${showQueue ? "text-red-500 bg-red-500/10" : "text-white/40 hover:text-white hover:bg-white/5"}`}
                 aria-label="Queue"
                 title={`Queue (${playlist.length})`}
