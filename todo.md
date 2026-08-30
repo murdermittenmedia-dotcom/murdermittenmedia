@@ -689,7 +689,7 @@
 ## Audio Fix — Live Stream Pause, Mic Broadcast, Voice+Radio Mix
 - [x] Fix: Live stream pause/stop in FloatingPlayer should only mute local audio, not broadcast a pause to all listeners
 - [ ] Fix: Admin Mic → Radio broadcast pipeline not working (investigate useAdminMicBroadcast + socket server)
-- [ ] Feature: Allow voice chat (WebRTC audio room) and radio feed to play simultaneously
+- [x] Feature: Allow voice chat (WebRTC audio room) and radio feed to play simultaneously
 - [ ] Feature: Add voice chat mix volume knob so users can balance voice chat vs radio volume
 
 ## Audio Fix — Live Stream Pause, Admin Mic, Voice+Radio Mix (May 2026)
@@ -984,7 +984,7 @@
 ## Music Review — Auto-Advance Issues (May 2026 v2)
 - [ ] Fix: auto-advance uses original load order, not current drag-reordered queue position order
 - [ ] Fix: YouTube video submissions break auto-advance (no onEnded fires for YouTube iframes)
-- [ ] Fix: YouTube video embed not auto-cleared/dismissed after track is marked reviewed
+- [x] Fix: YouTube video embed not auto-cleared/dismissed after track is marked reviewed
 - [ ] Fix: YouTube video not synced for viewers — each viewer plays independently out of sync
 
 ## Music Review — YouTube Audio Issues (May 2026)
@@ -993,11 +993,11 @@
 
 ## Tune In Button UX (May 2026)
 - [ ] Home page: move LiveRadioBanner out of fixed-top position (hidden behind browser chrome on mobile), add big centered "Tune In" button in the hero section when live
-- [ ] Music Review page: add prominent "Tune In" button in the viewer section so viewers can start audio with one tap (user gesture satisfies browser autoplay policy)
+- [x] Music Review page: add prominent "Tune In" button in the viewer section so viewers can start audio with one tap (user gesture satisfies browser autoplay policy)
 - [ ] Tune In button must call audioPlayer.play() with the current live track directly
 
 ## CRITICAL: Live Radio Bugs (May 2026)
-- [ ] Fix: live radio randomly skips to next song or pauses during sessions — likely stale socket event, onEnded firing incorrectly, or multiple AdminPanel instances
+- [x] Fix: live radio randomly skips to next song or pauses during sessions — likely stale socket event, onEnded firing incorrectly, or multiple AdminPanel instances
 - [ ] Fix: YouTube audio does not play through live radio — viewers must go back to site to watch independently
 - [ ] Implement: YouTube timestamp sync — admin's current playback position broadcast to viewers so video is synced when they open the site
 
@@ -1244,7 +1244,7 @@
 - [x] Build JudgeBroadcastPanel in MusicReview with Start/Stop button
 - [x] Build OBS Setup modal for judges (same as GO LIVE)
 - [x] Build judge video grid in Music Review (responsive, max 4 judges visible)
-- [ ] Wire judge stream status polling and real-time video display (LiveKit VideoTrack)
+- [x] Wire judge stream status polling and real-time video display (LiveKit VideoTrack)
 - [x] Add judge name badge to each broadcast video
 
 ## Major UI Redesign — Music Review Page
@@ -1667,6 +1667,8 @@
 - [x] Add a compact branded footer monetization section to /review for merch, promo services, and music submission
 - [ ] Complete targeted end-to-end regressions for paid-only mode, premium chat, daily skips, bot-off behavior, and judge vote display
 - [x] Reproduce and fix remaining live Music Review and judge join, broadcasting, public viewing, audio, and admin-control failures end to end
+- [x] Stabilize Music Review radio playback against stale socket events, duplicate control mounts, accidental pauses, and unintended track skips
+- [x] Clear the synchronized YouTube review player immediately when a track is marked reviewed or skipped
 - [x] Save a branded Murder Mitten Verdict with crowd and Mitten Panel results into the existing review history when a track completes
 - [x] Ensure the public Judge Windows use an accessible horizontal carousel on mobile instead of compressing the Mitten Panel
 - [x] Provide an explicit Enter Live Review interaction that unlocks browser audio when autoplay is blocked

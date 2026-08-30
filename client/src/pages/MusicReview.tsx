@@ -199,6 +199,7 @@ function AdminPanel({
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [localQueue, setLocalQueue] = useState<ReviewSubmission[]>([]);
   const localQueueRef = useRef<ReviewSubmission[]>([]);
+  const completionInFlightRef = useRef<number | null>(null);
   localQueueRef.current = localQueue;
   useEffect(() => {
     if (draggedId === null) setLocalQueue(queue);
@@ -296,12 +297,27 @@ function AdminPanel({
     }
   };
 
+  const completeAndAdvance = (submissionId: number, playbackAction?: "skip") => {
+    if (completionInFlightRef.current === submissionId) return false;
+    completionInFlightRef.current = submissionId;
+    setSelectedYouTube(null);
+    updateStatus.mutate({ id: submissionId, status: "reviewed" }, {
+      onSuccess: () => {
+        refetch();
+        if (playbackAction) broadcastReviewPlayback({ action: playbackAction });
+        advanceToNext(submissionId);
+      },
+      onError: (error) => {
+        completionInFlightRef.current = null;
+        toast.error("Unable to complete this track: " + error.message);
+      },
+    });
+    return true;
+  };
+
   const handleSkip = async () => {
     if (!currentPlaying) return;
-    updateStatus.mutate({ id: currentPlaying.id, status: "reviewed" });
-    advanceToNext(currentPlaying.id);
-    broadcastReviewPlayback({ action: "skip" });
-    toast.success("Skipped to next track");
+    if (completeAndAdvance(currentPlaying.id, "skip")) toast.success("Skipped to next track");
   };
 
   const handleRemove = (id: number) => {
@@ -315,6 +331,12 @@ function AdminPanel({
   advanceToNextRef.current = advanceToNext;
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
+  const completeAndAdvanceRef = useRef(completeAndAdvance);
+  completeAndAdvanceRef.current = completeAndAdvance;
+
+  useEffect(() => {
+    if (completionInFlightRef.current !== data?.currentPlaying?.id) completionInFlightRef.current = null;
+  }, [data?.currentPlaying?.id]);
 
   // ── 90-second cap: auto-advance when mode is "90sec" and track is not paid ──
   const playbackMode = data?.state?.playbackMode ?? "90sec";
@@ -334,13 +356,7 @@ function AdminPanel({
     let timer: ReturnType<typeof setTimeout> | null = null;
     const checkTime = () => {
       if (audioEl.currentTime >= 90) {
-        // Auto-advance
-        updateStatusRef.current.mutate({ id: cp.id, status: "reviewed" }, {
-          onSuccess: () => {
-            refetchRef.current();
-            advanceToNextRef.current(cp.id);
-          }
-        });
+        completeAndAdvanceRef.current(cp.id);
       } else {
         const remaining = 90 - audioEl.currentTime;
         timer = setTimeout(checkTime, remaining * 1000);
@@ -370,20 +386,11 @@ function AdminPanel({
 
   useEffect(() => {
     const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
-      if (!finishedTrack.isStream || finishedTrack.sourcePage !== "Music Review") return;
+      if (finishedTrack.sourcePage !== "Music Review" || !finishedTrack.submissionId) return;
       const currentQueue = localQueueRef.current;
-      const match = currentQueue.find(
-        s => (s.status === "pending" || s.status === "playing") &&
-          s.songTitle === finishedTrack.title &&
-          s.artistName === finishedTrack.artist
-      );
+      const match = currentQueue.find((submission) => submission.id === finishedTrack.submissionId);
       if (!match) return;
-      updateStatusRef.current.mutate({ id: match.id, status: "reviewed" }, {
-        onSuccess: () => {
-          refetchRef.current();
-          advanceToNextRef.current(match.id);
-        }
-      });
+      completeAndAdvanceRef.current(match.id);
     });
     return unsubscribe;
   }, [audioPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1573,6 +1580,7 @@ export default function MusicReview() {
     broadcastRadioResume,
     broadcastRadioSeek,
     broadcastReviewPlayback,
+    broadcastReviewTrackEnded,
     broadcastReviewQueueUpdated,
     broadcastLastSong,
     broadcastReactionsUpdated,
@@ -2268,13 +2276,14 @@ export default function MusicReview() {
               {/* Audio/YouTube player */}
               {activeTrack.submissionType === "youtube" && activeTrack.youtubeUrl ? (
                 <div className="rounded-xl overflow-hidden mb-5">
-                  <SyncedYouTubePlayer
-                    videoId={extractYouTubeId(activeTrack.youtubeUrl) ?? ""}
-                    submissionId={activeTrack.submissionId}
-                    initialCurrentTime={ytSyncState?.currentTime ?? null}
-                    initialUpdatedAt={ytSyncState?.updatedAt ?? null}
-                    isAdmin={isAdmin}
-                  />
+                <SyncedYouTubePlayer
+                  videoId={extractYouTubeId(activeTrack.youtubeUrl) ?? ""}
+                  submissionId={activeTrack.submissionId}
+                  initialCurrentTime={ytSyncState?.currentTime ?? null}
+                  initialUpdatedAt={ytSyncState?.updatedAt ?? null}
+                  isAdmin={isAdmin}
+                  onEnded={isAdmin ? () => broadcastReviewTrackEnded(activeTrack.submissionId) : undefined}
+                />
                 </div>
               ) : activeTrack.submissionType === "file" && activeTrack.fileUrl ? (
                 <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-xl px-5 py-4 mb-5">

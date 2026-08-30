@@ -91,6 +91,7 @@ interface SyncedYouTubePlayerProps {
   /** For late-joiner sync: initial currentTime from radio:state */
   initialCurrentTime?: number | null;
   initialUpdatedAt?: number | null;
+  onEnded?: () => void;
   className?: string;
 }
 
@@ -100,6 +101,7 @@ export function SyncedYouTubePlayer({
   isAdmin,
   initialCurrentTime,
   initialUpdatedAt,
+  onEnded,
   className = "",
 }: SyncedYouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,6 +114,8 @@ export function SyncedYouTubePlayer({
   submissionIdRef.current = submissionId;
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
 
   // Track latest tick for seeking after player becomes ready
   const latestTickRef = useRef<{ currentTime: number; updatedAt: number } | null>(null);
@@ -227,6 +231,10 @@ export function SyncedYouTubePlayer({
           },
           onStateChange: (e) => {
             if (destroyed || !isAdmin) return;
+            if (e.data === window.YT.PlayerState.ENDED) {
+              onEndedRef.current?.();
+              return;
+            }
             // Emit tick immediately on state change so viewers sync faster
             if (socketRef.current?.connected) {
               socketRef.current.emit("youtube:tick", {

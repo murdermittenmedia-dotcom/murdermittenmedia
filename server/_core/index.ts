@@ -12,7 +12,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages, reviewPlusMemberships } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
-import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, setCurrentPlaying } from "../db";
+import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, setCurrentPlaying } from "../db";
 import { registerStripeWebhook } from "../stripe-webhook";
 import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
 import { sdk } from "./sdk";
@@ -80,6 +80,7 @@ let radioState: RadioState = {
 
 // Track the last played song so admin can put it back on the deck
 let lastRadioState: RadioState | null = null;
+let reviewTrackTransitionInFlight: number | null = null;
 
 // ─── Music Wars Radio State ────────────────────────────────────────────────────
 type WarsRadioTrack = {
@@ -541,8 +542,11 @@ async function startServer() {
     });
 
     // Track ended — auto-advance to next pending track in queue
-    socket.on("radio:track_ended", async () => {
-      if (!radioState.submissionId) return;
+    socket.on("radio:track_ended", async (data?: { submissionId?: number }) => {
+      const completedId = radioState.submissionId;
+      if (!completedId || reviewTrackTransitionInFlight === completedId) return;
+      if (data?.submissionId && data.submissionId !== completedId) return;
+      reviewTrackTransitionInFlight = completedId;
       try {
         const db = await getDb();
         if (!db) return;
@@ -550,10 +554,10 @@ async function startServer() {
         const { reviewSubmissions } = await import("../../drizzle/schema");
         const { eq, ne, asc, and } = await import("drizzle-orm");
         // Mark current track as reviewed
-        await db.update(reviewSubmissions).set({ status: "reviewed" }).where(eq(reviewSubmissions.id, radioState.submissionId));
+        await completeReviewSubmission(completedId);
         // Find next pending track
         const pending = await db.select().from(reviewSubmissions)
-          .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, radioState.submissionId)))
+          .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, completedId)))
           .orderBy(asc(reviewSubmissions.createdAt))
           .limit(1);
         if (pending.length > 0) {
@@ -603,6 +607,8 @@ async function startServer() {
         }
       } catch (err) {
         console.error("[radio:track_ended] Error:", err);
+      } finally {
+        reviewTrackTransitionInFlight = null;
       }
     });
 

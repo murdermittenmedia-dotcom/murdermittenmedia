@@ -219,23 +219,15 @@ describe("YouTube Timestamp Sync", () => {
 });
 
 describe("Auto-advance Guard (onEnded filter)", () => {
-  it("only processes Music Review stream tracks", () => {
-    const processTrack = (track: { isStream?: boolean; sourcePage?: string }) => {
-      // This mirrors the guard in AdminPanel's onEnded handler
-      if (!track.isStream || track.sourcePage !== "Music Review") return false;
-      return true;
+  it("processes any identified Music Review submission and ignores unrelated audio", () => {
+    const processTrack = (track: { submissionId?: number; sourcePage?: string }) => {
+      // This mirrors the guarded Music Review onEnded handler. Uploaded review
+      // tracks are not streams, so submission identity—not isStream—is decisive.
+      return track.sourcePage === "Music Review" && typeof track.submissionId === "number";
     };
 
-    // Should process
-    expect(processTrack({ isStream: true, sourcePage: "Music Review" })).toBe(true);
-
-    // Should NOT process — not a stream
-    expect(processTrack({ isStream: false, sourcePage: "Music Review" })).toBe(false);
-
-    // Should NOT process — wrong page
-    expect(processTrack({ isStream: true, sourcePage: "Forum" })).toBe(false);
-
-    // Should NOT process — no metadata
-    expect(processTrack({})).toBe(false);
+    expect(processTrack({ submissionId: 42, sourcePage: "Music Review" })).toBe(true);
+    expect(processTrack({ submissionId: 42, sourcePage: "Forum" })).toBe(false);
+    expect(processTrack({ sourcePage: "Music Review" })).toBe(false);
   });
 });

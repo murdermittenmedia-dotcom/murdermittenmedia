@@ -308,6 +308,11 @@ export function useChat({
     socketRef.current?.emit("review:playback", data);
   }, []);
 
+  // Admin: complete the current radio track through the server-side idempotent transition.
+  const broadcastReviewTrackEnded = useCallback((submissionId: number) => {
+    socketRef.current?.emit("radio:track_ended", { submissionId });
+  }, []);
+
   const broadcastBattlePlayback = useCallback((data: BattlePlayback) => {
     if (room === "music_wars") socketRef.current?.emit("wars:battle_playback", data);
   }, [room]);
@@ -355,6 +360,7 @@ export function useChat({
     broadcastRadioResume,
     broadcastRadioSeek,
     broadcastReviewPlayback,
+    broadcastReviewTrackEnded,
     broadcastBattlePlayback,
     broadcastReviewQueueUpdated,
     broadcastReactionsUpdated,
