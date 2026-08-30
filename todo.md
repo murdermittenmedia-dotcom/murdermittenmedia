@@ -1626,3 +1626,5 @@
 - [x] Enforce one active broadcast per judge and a hard five-judge live stage cap
 
 - [x] Add an independent per-judge viewer volume slider without changing synchronized review-music playback
+
+- [x] Add persisted review skip-vote records and server procedures with one vote per user/track and a five-vote active-session limit

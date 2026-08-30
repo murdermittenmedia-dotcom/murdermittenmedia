@@ -659,6 +659,17 @@ export const musicReviewSessions = mysqlTable("music_review_sessions", {
 export type MusicReviewSession = typeof musicReviewSessions.$inferSelect;
 export type InsertMusicReviewSession = typeof musicReviewSessions.$inferInsert;
 
+// Vote To Skip — one viewer vote per active review session and submission.
+export const reviewSkipVotes = mysqlTable("review_skip_votes", {
+  id: int("id").autoincrement().primaryKey(),
+  musicReviewSessionId: int("musicReviewSessionId").notNull(),
+  submissionId: int("submissionId").notNull(),
+  userId: int("userId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ReviewSkipVote = typeof reviewSkipVotes.$inferSelect;
+export type InsertReviewSkipVote = typeof reviewSkipVotes.$inferInsert;
+
 // ─── Cashout Requests ─────────────────────────────────────────
 export const cashoutRequests = mysqlTable("cashout_requests", {
   id: int("id").autoincrement().primaryKey(),

@@ -75,7 +75,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -1152,6 +1152,55 @@ export const appRouter = router({
         }
         return { success: true };
       }),
+    // Vote To Skip — five free votes per active review session, one vote per user per track.
+    getSkipVoteStatus: protectedProcedure
+      .input(z.object({ submissionId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [session] = await db.select().from(musicReviewSessions).where(eq(musicReviewSessions.isActive, true)).limit(1);
+        if (!session) return { votes: 0, limit: 5, hasVoted: false, sessionId: null as number | null };
+        const votes = await db.select().from(reviewSkipVotes).where(and(
+          eq(reviewSkipVotes.musicReviewSessionId, session.id),
+          eq(reviewSkipVotes.submissionId, input.submissionId),
+        ));
+        const mine = votes.some((vote) => vote.userId === ctx.user.id);
+        return { votes: votes.length, limit: 5, hasVoted: mine, sessionId: session.id };
+      }),
+
+    voteToSkip: protectedProcedure
+      .input(z.object({ submissionId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [session] = await db.select().from(musicReviewSessions).where(eq(musicReviewSessions.isActive, true)).limit(1);
+        if (!session) throw new TRPCError({ code: "BAD_REQUEST", message: "There is no active Music Review session." });
+        const mineThisSession = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
+          eq(reviewSkipVotes.musicReviewSessionId, session.id),
+          eq(reviewSkipVotes.userId, ctx.user.id),
+        ));
+        if (mineThisSession.length >= 5) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You have used all five free Vote To Skip votes for this live session." });
+        }
+        const existing = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
+          eq(reviewSkipVotes.musicReviewSessionId, session.id),
+          eq(reviewSkipVotes.submissionId, input.submissionId),
+          eq(reviewSkipVotes.userId, ctx.user.id),
+        )).limit(1);
+        if (existing[0]) throw new TRPCError({ code: "BAD_REQUEST", message: "You already voted to skip this track." });
+        const [submission] = await db.select({ id: reviewSubmissionsTable.id, status: reviewSubmissionsTable.status })
+          .from(reviewSubmissionsTable).where(eq(reviewSubmissionsTable.id, input.submissionId)).limit(1);
+        if (!submission || (submission.status !== "playing" && submission.status !== "pending")) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "That track is no longer eligible for Vote To Skip." });
+        }
+        await db.insert(reviewSkipVotes).values({ musicReviewSessionId: session.id, submissionId: input.submissionId, userId: ctx.user.id });
+        const votes = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
+          eq(reviewSkipVotes.musicReviewSessionId, session.id),
+          eq(reviewSkipVotes.submissionId, input.submissionId),
+        ));
+        return { success: true as const, votes: votes.length, limit: 5, sessionId: session.id };
+      }),
+
     // Get fire/trash counts for a submissionn
     getReactions: publicProcedure
       .input(z.object({ submissionId: z.number() }))
