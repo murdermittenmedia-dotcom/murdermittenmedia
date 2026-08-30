@@ -275,6 +275,7 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
   const [connected, setConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "reconnecting" | "ended">("connecting");
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -318,10 +319,19 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
     });
 
     room.on(RoomEvent.Connected, () => {
-      if (!cancelled) setConnected(true);
+      if (!cancelled) { setConnected(true); setConnectionState("connected"); }
+    });
+    room.on(RoomEvent.Reconnecting, () => {
+      if (!cancelled) setConnectionState("reconnecting");
+    });
+    room.on(RoomEvent.Reconnected, () => {
+      if (!cancelled) { setConnected(true); setConnectionState("connected"); }
+    });
+    room.on(RoomEvent.Disconnected, () => {
+      if (!cancelled) { setConnected(false); setConnectionState("ended"); }
     });
 
-    room.connect(livekitUrl, viewerToken).catch(() => {});
+    room.connect(livekitUrl, viewerToken).catch(() => { if (!cancelled) setConnectionState("ended"); });
 
     return () => {
       cancelled = true;
@@ -354,7 +364,12 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
         {!hasVideo && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              {connected ? (
+              {connectionState === "reconnecting" ? (
+                <>
+                  <Loader2 className="w-4 h-4 text-yellow-400 animate-spin mx-auto mb-1" />
+                  <div className="text-white/40 text-xs">Reconnecting to judge…</div>
+                </>
+              ) : connected ? (
                 <>
                   <VideoOff className="w-5 h-5 text-white/30 mx-auto mb-1" />
                   <div className="text-white/30 text-xs">Camera off</div>
@@ -412,9 +427,9 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
           <a href={`/profile/${judgeUserId}`} className="text-white/70 text-xs font-semibold hover:text-white truncate">
             {judgeName}
           </a>
-          <div className="text-green-400 text-[10px] flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            Live
+          <div className={`text-[10px] flex items-center gap-1 ${connectionState === "reconnecting" ? "text-yellow-300" : connectionState === "connected" ? "text-green-400" : "text-white/35"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${connectionState === "reconnecting" ? "bg-yellow-400 animate-pulse" : connectionState === "connected" ? "bg-green-500 animate-pulse" : "bg-white/25"}`} />
+            {connectionState === "reconnecting" ? "Reconnecting" : connectionState === "connected" ? "Live" : "Offline"}
           </div>
         </div>
       </div>
