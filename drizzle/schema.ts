@@ -659,6 +659,20 @@ export const musicReviewSessions = mysqlTable("music_review_sessions", {
 export type MusicReviewSession = typeof musicReviewSessions.$inferSelect;
 export type InsertMusicReviewSession = typeof musicReviewSessions.$inferInsert;
 
+// Review+ membership — verified Stripe entitlement for premium Music Review features.
+export const reviewPlusMemberships = mysqlTable("review_plus_memberships", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }).notNull().unique(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  status: mysqlEnum("status", ["active", "expired", "canceled"]).default("active").notNull(),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ReviewPlusMembership = typeof reviewPlusMemberships.$inferSelect;
+export type InsertReviewPlusMembership = typeof reviewPlusMemberships.$inferInsert;
+
 // Vote To Skip — one viewer vote per active review session and submission.
 export const reviewSkipVotes = mysqlTable("review_skip_votes", {
   id: int("id").autoincrement().primaryKey(),

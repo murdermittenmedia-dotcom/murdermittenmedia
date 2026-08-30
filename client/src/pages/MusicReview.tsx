@@ -1193,6 +1193,27 @@ export default function MusicReview() {
   const confirmSkipStripeCheckout = trpc.stripe.confirmSkipCheckout.useMutation();
 
   const { user } = useAuth();
+  const { data: reviewPlusStatus, refetch: refetchReviewPlusStatus } = trpc.stripe.getReviewPlusStatus.useQuery(undefined, { enabled: !!user });
+  const createReviewPlusCheckout = trpc.stripe.createReviewPlusCheckout.useMutation({
+    onSuccess: ({ checkoutUrl }) => { window.location.href = checkoutUrl; },
+    onError: (error) => toast.error(error.message),
+  });
+  const confirmReviewPlusCheckout = trpc.stripe.confirmReviewPlusCheckout.useMutation({
+    onSuccess: () => { refetchReviewPlusStatus(); toast.success("Review+ is active — unlimited Vote To Skip is now enabled."); },
+    onError: (error) => toast.error("Review+ verification failed: " + error.message),
+  });
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("review_plus_success") === "true" && sessionId) {
+      window.history.replaceState({}, "", "/review");
+      confirmReviewPlusCheckout.mutate({ sessionId });
+    } else if (params.get("review_plus_canceled") === "true") {
+      window.history.replaceState({}, "", "/review");
+      toast.error("Review+ checkout was canceled.");
+    }
+  }, [user]);
   const isAdmin = user?.role === "admin";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
   const audioPlayer = useAudioPlayer();
@@ -2271,6 +2292,26 @@ export default function MusicReview() {
                 <div className="text-center mb-6">
                   <h2 className="font-['Anton'] text-3xl uppercase mb-1">Submit Your <span className="text-red-600">Track</span></h2>
                   <p className="text-white/40 text-sm">Get your music reviewed live on air</p>
+                  <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-left">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Review+</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/55">Unlimited Vote To Skip for $9.99/month.</p>
+                      </div>
+                      {reviewPlusStatus?.active ? (
+                        <span className="rounded-full border border-green-400/40 bg-green-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-green-300">Active</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => createReviewPlusCheckout.mutate({ origin: window.location.origin })}
+                          disabled={createReviewPlusCheckout.isPending}
+                          className="rounded-lg bg-amber-400 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-amber-300 disabled:opacity-50"
+                        >
+                          {createReviewPlusCheckout.isPending ? "Opening…" : "Join Review+"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {!user ? (

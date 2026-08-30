@@ -75,7 +75,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -1159,13 +1159,16 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const [session] = await db.select().from(musicReviewSessions).where(eq(musicReviewSessions.isActive, true)).limit(1);
-        if (!session) return { votes: 0, limit: 5, hasVoted: false, sessionId: null as number | null };
+        const [membership] = await db.select().from(reviewPlusMemberships).where(and(eq(reviewPlusMemberships.userId, ctx.user.id), eq(reviewPlusMemberships.status, "active"))).orderBy(desc(reviewPlusMemberships.createdAt)).limit(1);
+        const reviewPlusActive = !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
+        const limit = reviewPlusActive ? 999999 : 5;
+        if (!session) return { votes: 0, limit, hasVoted: false, sessionId: null as number | null };
         const votes = await db.select().from(reviewSkipVotes).where(and(
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
           eq(reviewSkipVotes.submissionId, input.submissionId),
         ));
         const mine = votes.some((vote) => vote.userId === ctx.user.id);
-        return { votes: votes.length, limit: 5, hasVoted: mine, sessionId: session.id };
+        return { votes: votes.length, limit, hasVoted: mine, sessionId: session.id, reviewPlusActive };
       }),
 
     voteToSkip: protectedProcedure
@@ -1175,12 +1178,15 @@ export const appRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const [session] = await db.select().from(musicReviewSessions).where(eq(musicReviewSessions.isActive, true)).limit(1);
         if (!session) throw new TRPCError({ code: "BAD_REQUEST", message: "There is no active Music Review session." });
+        const [membership] = await db.select().from(reviewPlusMemberships).where(and(eq(reviewPlusMemberships.userId, ctx.user.id), eq(reviewPlusMemberships.status, "active"))).orderBy(desc(reviewPlusMemberships.createdAt)).limit(1);
+        const reviewPlusActive = !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
+        const voteLimit = reviewPlusActive ? 999999 : 5;
         const mineThisSession = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
           eq(reviewSkipVotes.userId, ctx.user.id),
         ));
-        if (mineThisSession.length >= 5) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You have used all five free Vote To Skip votes for this live session." });
+        if (mineThisSession.length >= voteLimit) {
+          throw new TRPCError({ code: "FORBIDDEN", message: reviewPlusActive ? "Vote To Skip is temporarily unavailable." : "You have used all five free Vote To Skip votes for this live session." });
         }
         const existing = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
@@ -1198,7 +1204,7 @@ export const appRouter = router({
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
           eq(reviewSkipVotes.submissionId, input.submissionId),
         ));
-        return { success: true as const, votes: votes.length, limit: 5, sessionId: session.id };
+        return { success: true as const, votes: votes.length, limit: voteLimit, sessionId: session.id, reviewPlusActive };
       }),
 
     // Get fire/trash counts for a submissionn
@@ -4663,6 +4669,72 @@ export const appRouter = router({
 
   // Stripe payment integration
   stripe: router({
+    getReviewPlusStatus: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [membership] = await db.select().from(reviewPlusMemberships)
+        .where(and(eq(reviewPlusMemberships.userId, ctx.user.id), eq(reviewPlusMemberships.status, "active")))
+        .orderBy(desc(reviewPlusMemberships.createdAt)).limit(1);
+      const active = !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
+      return { active, membership: active ? membership : null };
+    }),
+
+    createReviewPlusCheckout: protectedProcedure
+      .input(z.object({ origin: z.string().url() }))
+      .mutation(async ({ ctx, input }) => {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer_email: ctx.user.email ?? undefined,
+          client_reference_id: String(ctx.user.id),
+          metadata: { kind: "music_review_plus", user_id: String(ctx.user.id) },
+          line_items: [{
+            price_data: {
+              currency: "usd",
+              product_data: { name: "Murder Mitten Review+", description: "Unlimited Vote To Skip and premium live-review access" },
+              unit_amount: 999,
+              recurring: { interval: "month" },
+            },
+            quantity: 1,
+          }],
+          success_url: `${input.origin}/review?review_plus_success=true&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${input.origin}/review?review_plus_canceled=true`,
+        });
+        if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL" });
+        return { checkoutUrl: session.url };
+      }),
+
+    confirmReviewPlusCheckout: protectedProcedure
+      .input(z.object({ sessionId: z.string().min(10) }))
+      .mutation(async ({ ctx, input }) => {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+        let session: Stripe.Checkout.Session;
+        try {
+          session = await stripe.checkout.sessions.retrieve(input.sessionId);
+        } catch {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Review+ payment session could not be found." });
+        }
+        if (session.payment_status !== "paid" || session.mode !== "subscription" || session.metadata?.kind !== "music_review_plus") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Review+ payment has not been completed." });
+        }
+        if (session.metadata.user_id !== String(ctx.user.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This payment does not belong to your account." });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const existing = await db.select({ id: reviewPlusMemberships.id }).from(reviewPlusMemberships)
+          .where(eq(reviewPlusMemberships.stripeCheckoutSessionId, input.sessionId)).limit(1);
+        if (existing[0]) return { success: true as const, alreadyActive: true as const };
+        await db.insert(reviewPlusMemberships).values({
+          userId: ctx.user.id,
+          stripeCheckoutSessionId: input.sessionId,
+          stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : null,
+          status: "active",
+          currentPeriodEnd: null,
+        });
+        return { success: true as const, alreadyActive: false as const };
+      }),
+
     preparePaidSubmissionAudio: protectedProcedure
       .input(z.object({
         fileBase64: z.string().min(1),

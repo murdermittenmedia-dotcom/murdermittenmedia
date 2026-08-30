@@ -1632,3 +1632,5 @@
 - [x] Add a visible Vote To Skip control to the active review viewer with remaining-vote state and duplicate-vote protection
 
 - [x] Add a database uniqueness constraint for one Vote To Skip per session, track, and user
+
+- [x] Add Review+ membership persistence, verified Stripe checkout, and entitlement status for unlimited Vote To Skip and premium chat treatment
