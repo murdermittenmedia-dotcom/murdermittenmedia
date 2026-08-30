@@ -1193,7 +1193,10 @@ function FireTrashPoll({
     <div className="rounded-xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between">
-        <span className="text-white/50 text-[10px] uppercase tracking-[0.2em] font-semibold">Rate This Track</span>
+        <div>
+          <span className="text-white/70 text-[10px] uppercase tracking-[0.2em] font-semibold">Crowd Reaction · FIRE / TRASH</span>
+          <span className="mt-0.5 block text-[9px] text-white/30">Mitten Panel voices are shown separately above</span>
+        </div>
         {hasVoted && (
           <span className="text-[10px] font-semibold">
             {myReaction === "fire" ? <span className="text-orange-400">🔥 You voted Fire</span> : <span className="text-blue-400">🗑️ You voted Trash</span>}
