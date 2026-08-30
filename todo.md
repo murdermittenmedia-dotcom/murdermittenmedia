@@ -1097,13 +1097,13 @@
 - [x] Desktop audio captured and published to viewers
 
 ## Cashout Requests
-- [ ] cashoutRequests table (userId, coins, paymentMethod, paymentDetails, status, adminNote)
-- [ ] cashout.request procedure (user submits cashout)
-- [ ] cashout.getMyRequests procedure
-- [ ] admin.getCashoutRequests procedure
-- [ ] admin.processCashout procedure (approve/deny, deduct coins)
-- [ ] Cashout request UI in user wallet/coins page
-- [ ] Admin cashout management tab in AdminPanel
+- [x] cashoutRequests table (userId, coins, paymentMethod, paymentDetails, status, adminNote)
+- [x] cashout.request procedure (user submits cashout)
+- [x] cashout.getMyRequests procedure
+- [x] admin.getCashoutRequests procedure
+- [x] admin.processCashout procedure (approve/deny, deduct coins)
+- [x] Cashout request UI in user wallet/coins page
+- [x] Admin cashout management tab in AdminPanel
 
 ## Notification System
 - [ ] notifications table (userId, type, title, body, link, isRead, createdAt)
