@@ -3,7 +3,7 @@ import { FloatingWindow } from "@/components/FloatingWindow";
    MURDER MITTEN MEDIA — Music Review (V2 Major Redesign)
    Premium "Studio Control Room" aesthetic
    ============================================================ */
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type DragEvent, type ReactNode } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -44,6 +44,11 @@ type QueueState = {
 };
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
 
+type ReviewWindowId = "now-playing" | "live-chat" | "mitten-panel" | "review-tools";
+
+const REVIEW_WINDOW_ORDER_KEY = "murder-mitten-review-window-order";
+const DEFAULT_REVIEW_WINDOW_ORDER: ReviewWindowId[] = ["now-playing", "live-chat", "mitten-panel", "review-tools"];
+
 import {
   Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
@@ -69,26 +74,41 @@ function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
     setMutedAll(false);
     setPanelAudioEnabled(true);
   }, []);
-  if (!isReviewLive || broadcasts.length === 0) return null;
   return (
-    <section className="mb-5 rounded-2xl border border-green-500/20 bg-green-500/[0.04] p-4">
+    <section className="rounded-2xl border border-green-500/20 bg-green-500/[0.04] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-300/80">Mitten Panel</p>
-          <p className="mt-1 text-xs text-white/40">Enable Panel Sound once to hear every live judge voice together. The review track keeps playing in sync beside it.</p>
+          <p className="mt-1 text-xs text-white/40">{isReviewLive ? "Enable Panel Sound once to hear every live judge voice together. The review track keeps playing in sync beside it." : "The review is offline. Judge video windows will appear here when the show starts."}</p>
         </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          {!panelAudioEnabled && <button type="button" onClick={() => void enablePanelAudio()} className="rounded-lg border border-green-400/40 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-100 hover:bg-green-500/20">Enable Panel Sound</button>}
-          <button type="button" onClick={() => setMutedAll((value) => !value)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:border-white/30 hover:text-white">
-            {mutedAll ? "Unmute Judges" : "Mute Judges"}
-          </button>
-        </div>
+        {isReviewLive && broadcasts.length > 0 && <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {!panelAudioEnabled && <button type="button" onClick={() => void enablePanelAudio()} className="rounded-lg border border-green-400/40 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-100 hover:bg-green-500/20">Enable Panel Sound</button>}
+            <button type="button" onClick={() => setMutedAll((value) => !value)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:border-white/30 hover:text-white">
+              {mutedAll ? "Unmute Judges" : "Mute Judges"}
+            </button>
+          </div>}
       </div>
-      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
-        {broadcasts.map((broadcast) => <div key={broadcast.id} className="min-w-[260px] snap-start sm:min-w-0"><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} /></div>)}
-      </div>
+      {!isReviewLive || broadcasts.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-green-500/20 bg-black/10 px-4 text-center text-xs text-white/35">No judges are live yet. Verified judges can join from the Judge Panel when this review session is live.</div> : <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
+          {broadcasts.map((broadcast) => <div key={broadcast.id} className="min-w-[260px] snap-start sm:min-w-0"><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} /></div>)}
+        </div>}
     </section>
   );
+}
+
+function ReviewWorkspaceWindow({ id, title, order, isDragging, onDragStart, onDrop, onMove, children, className = "" }: { id: ReviewWindowId; title: string; order: number; isDragging: boolean; onDragStart: (event: DragEvent<HTMLElement>, id: ReviewWindowId) => void; onDrop: (event: DragEvent<HTMLElement>, id: ReviewWindowId) => void; onMove: (id: ReviewWindowId, direction: -1 | 1) => void; children: ReactNode; className?: string }) {
+  return <section style={{ order }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, id)} className={`min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a]/40 ${isDragging ? "opacity-45 ring-1 ring-red-500/70" : ""} ${className}`}>
+    <header className="flex items-center justify-between gap-2 border-b border-white/10 bg-white/[0.025] px-3 py-2">
+      <div draggable onDragStart={(event) => onDragStart(event, id)} className="flex min-w-0 cursor-grab touch-none items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50 active:cursor-grabbing" title="Drag this window to rearrange the review workspace">
+        <GripVertical className="h-4 w-4 shrink-0 text-red-400/80" aria-hidden="true" />
+        <span className="truncate">{title}</span>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <button type="button" onClick={() => onMove(id, -1)} className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white/45 hover:border-white/30 hover:text-white" aria-label={`Move ${title} earlier in the workspace`}>←</button>
+        <button type="button" onClick={() => onMove(id, 1)} className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white/45 hover:border-white/30 hover:text-white" aria-label={`Move ${title} later in the workspace`}>→</button>
+      </div>
+    </header>
+    <div className="p-0">{children}</div>
+  </section>;
 }
 
 function JudgePanelCard({ broadcast, mutedAll, panelAudioEnabled, onViewerReady }: { broadcast: { id: number; roomName: string; userId: number; judgeName?: string | null }; mutedAll: boolean; panelAudioEnabled: boolean; onViewerReady: (viewer: JudgeBroadcastViewerHandle | null) => void }) {
@@ -1439,6 +1459,57 @@ export default function MusicReview() {
   }, [user]);
   const isAdmin = user?.role === "admin";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
+  const [reviewWindowOrder, setReviewWindowOrder] = useState<ReviewWindowId[]>(DEFAULT_REVIEW_WINDOW_ORDER);
+  const [draggingWindow, setDraggingWindow] = useState<ReviewWindowId | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(REVIEW_WINDOW_ORDER_KEY) ?? "[]") as unknown[];
+      const restored = saved.filter((value): value is ReviewWindowId => typeof value === "string" && DEFAULT_REVIEW_WINDOW_ORDER.includes(value as ReviewWindowId));
+      if (restored.length === DEFAULT_REVIEW_WINDOW_ORDER.length) setReviewWindowOrder(restored);
+    } catch {
+      window.localStorage.removeItem(REVIEW_WINDOW_ORDER_KEY);
+    }
+  }, []);
+  const reorderReviewWindows = useCallback((source: ReviewWindowId, target: ReviewWindowId) => {
+    if (source === target) return;
+    setReviewWindowOrder((current) => {
+      const next = [...current];
+      const sourceIndex = next.indexOf(source);
+      const targetIndex = next.indexOf(target);
+      if (sourceIndex < 0 || targetIndex < 0) return current;
+      next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, source);
+      window.localStorage.setItem(REVIEW_WINDOW_ORDER_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const moveReviewWindow = useCallback((id: ReviewWindowId, direction: -1 | 1) => {
+    setReviewWindowOrder((current) => {
+      const currentIndex = current.indexOf(id);
+      const targetIndex = currentIndex + direction;
+      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.length) return current;
+      const next = [...current];
+      [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+      window.localStorage.setItem(REVIEW_WINDOW_ORDER_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const resetReviewWindowLayout = useCallback(() => {
+    setReviewWindowOrder(DEFAULT_REVIEW_WINDOW_ORDER);
+    window.localStorage.removeItem(REVIEW_WINDOW_ORDER_KEY);
+  }, []);
+  const beginWindowDrag = useCallback((event: DragEvent<HTMLElement>, id: ReviewWindowId) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+    setDraggingWindow(id);
+  }, []);
+  const dropWindow = useCallback((event: DragEvent<HTMLElement>, target: ReviewWindowId) => {
+    event.preventDefault();
+    const source = event.dataTransfer.getData("text/plain") as ReviewWindowId || draggingWindow;
+    if (source && DEFAULT_REVIEW_WINDOW_ORDER.includes(source)) reorderReviewWindows(source, target);
+    setDraggingWindow(null);
+  }, [draggingWindow, reorderReviewWindows]);
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
@@ -2273,9 +2344,16 @@ export default function MusicReview() {
           <a href="/promo" className="rounded-lg border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-200 hover:bg-yellow-400/10">Get Promoted</a>
           <button type="button" onClick={() => setTab("submit")} className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Submit a Track</button>
         </div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35"><GripVertical className="mr-1 inline h-3.5 w-3.5 text-red-400/80" />Drag a window header to arrange your review view</p>
+          <button type="button" onClick={resetReviewWindowLayout} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/55 transition-colors hover:border-white/30 hover:text-white"><RotateCcw className="h-3.5 w-3.5" />Reset layout</button>
+        </div>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] lg:items-start">
+        <ReviewWorkspaceWindow id="mitten-panel" title="Mitten Panel" order={reviewWindowOrder.indexOf("mitten-panel")} isDragging={draggingWindow === "mitten-panel"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow}>
+          <JudgePanelStrip isReviewLive={isLive} />
+        </ReviewWorkspaceWindow>
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
-        <JudgePanelStrip isReviewLive={isLive} />
+        <ReviewWorkspaceWindow id="now-playing" title="Now Playing" order={reviewWindowOrder.indexOf("now-playing")} isDragging={draggingWindow === "now-playing"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow}>
         {activeTrack ? (
           <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
             {/* Glow corners */}
@@ -2435,8 +2513,10 @@ export default function MusicReview() {
             <p className="text-white/20 text-sm">{isLive ? "Waiting for admin to start the next track..." : "Session is offline"}</p>
           </div>
         )}
+        </ReviewWorkspaceWindow>
 
         {/* ── LIVE CHAT ───────────────────────────────────────── */}
+        <ReviewWorkspaceWindow id="live-chat" title="Live Chat" order={reviewWindowOrder.indexOf("live-chat")} isDragging={draggingWindow === "live-chat"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow}>
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Chat header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
@@ -2566,10 +2646,10 @@ export default function MusicReview() {
             )}
           </div>
         </div>
-
-        </div>
+        </ReviewWorkspaceWindow>
 
         {/* ── BOTTOM MENU TABS ────────────────────────────────── */}
+        <ReviewWorkspaceWindow id="review-tools" title="Review Tools" order={reviewWindowOrder.indexOf("review-tools")} isDragging={draggingWindow === "review-tools"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} className="lg:col-span-2">
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Tab navigation */}
           <div className="flex overflow-x-auto scrollbar-none border-b border-white/10">
@@ -2976,6 +3056,8 @@ export default function MusicReview() {
             )}
 
           </div>
+        </div>
+        </ReviewWorkspaceWindow>
         </div>
 
         {/* ── VOICE ROOM (if joined) ──────────────────────────── */}
