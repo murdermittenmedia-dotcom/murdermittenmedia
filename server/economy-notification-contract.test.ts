@@ -50,6 +50,12 @@ describe("economy notification contracts", () => {
     expect(routerSource).toContain("hasMore: rows.length === input.limit");
   });
 
+  it("keeps rapid-gifting fraud alerts durable and metadata-rich", () => {
+    expect(routerSource).toContain('type: "fraud_hold"');
+    expect(routerSource).toContain("giftsInLastMinute: rapidCount");
+    expect(routerSource).toContain('link: "/wallet"');
+  });
+
   it("keeps Fire/Trash artist alerts scoped and metadata-rich", () => {
     expect(routerSource).toContain('type: "fire_vote_change"');
     expect(routerSource).toContain("submission.userId !== ctx.user.id");

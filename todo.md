@@ -5078,3 +5078,6 @@
 
 - [x] Add Fire/Trash vote notifications to submission owners with self-reaction protection and structured vote metadata
 - [ ] Remaining economy notification coverage: fraud holds, stream-summary readiness, and any future gift/reward event branches
+
+- [x] Add durable fraud-hold notification for rapid-gifting detections with stream and risk metadata
+- [ ] Complete remaining economy notification event coverage for future reward, fraud, and stream-summary branches as their lifecycle contracts are finalized

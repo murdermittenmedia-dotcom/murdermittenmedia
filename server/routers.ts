@@ -78,7 +78,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -4074,6 +4074,14 @@ export const appRouter = router({
             type: "rapid_gifting",
             riskScore: "high",
             details: JSON.stringify({ streamId: input.streamId, giftsInLastMinute: rapidCount }),
+          });
+          await db.insert(notifications).values({
+            userId: ctx.user.id,
+            type: "fraud_hold",
+            title: "Gift activity needs review",
+            body: "Your recent gifting activity was flagged for review. Your account remains protected while the team checks the activity.",
+            metadata: JSON.stringify({ streamId: input.streamId, giftsInLastMinute: rapidCount, riskScore: "high" }),
+            link: "/wallet",
           });
         }
         // Emit gift event via socket
