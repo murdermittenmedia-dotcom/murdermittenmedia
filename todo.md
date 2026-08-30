@@ -878,7 +878,7 @@
 - [ ] Socket: broadcast `activity:new_event` to all clients when activity event is created
 - [ ] ActivityFeed component: scrolling ticker/feed showing live events with icons and timestamps
 - [x] Homepage: add live activity feed section showing recent platform events
-- [ ] SiteNav or FloatingPlayer: add mini activity ticker showing latest event
+- [x] SiteNav or FloatingPlayer: add mini activity ticker showing latest event
 
 ### Broadcast Mode Views
 - [ ] Route `/broadcast/review` — full-screen broadcast view for Music Review (large text, high contrast, current song + queue + reactions)

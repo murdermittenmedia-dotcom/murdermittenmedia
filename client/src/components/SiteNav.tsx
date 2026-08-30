@@ -80,6 +80,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
   const navRef = useRef<HTMLElement>(null);
   const { user, logout } = useAuth();
   const { reviewIsLive, warsIsLive } = useLiveStatus();
+  const { data: latestActivity = [] } = trpc.activity.getRecent.useQuery({ limit: 1 }, { refetchInterval: 30_000, refetchOnWindowFocus: false });
   const anyLive = reviewIsLive || warsIsLive;
 
   const isLive = (key?: string) =>
@@ -140,6 +141,12 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
               )}
             </div>
           </div>
+        )}
+
+        {latestActivity[0] && (
+          <a href={latestActivity[0].href} className="hidden border-b border-white/5 bg-[#101010] px-4 py-1 text-center text-[9px] uppercase tracking-[0.18em] text-white/45 transition-colors hover:text-white md:block">
+            <span className="text-red-500">LATEST</span><span className="mx-2 text-white/20">·</span>{latestActivity[0].title}
+          </a>
         )}
 
         <div className="container flex items-center justify-between h-16">
