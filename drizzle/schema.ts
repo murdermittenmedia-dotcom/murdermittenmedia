@@ -1086,6 +1086,24 @@ export const shopVariants = mysqlTable("shop_variants", {
 export type ShopVariant = typeof shopVariants.$inferSelect;
 export type InsertShopVariant = typeof shopVariants.$inferInsert;
 
+// Real-customer product reviews. Rows are created only by authenticated users
+// who have a completed order containing the reviewed product; nothing is seeded.
+export const shopProductReviews = mysqlTable("shop_product_reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull(),
+  userId: int("userId").notNull(),
+  orderId: int("orderId"),
+  rating: int("rating").notNull(),
+  title: varchar("title", { length: 160 }),
+  body: text("body"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  verifiedPurchase: boolean("verifiedPurchase").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ShopProductReview = typeof shopProductReviews.$inferSelect;
+export type InsertShopProductReview = typeof shopProductReviews.$inferInsert;
+
 // ─── Golden Wheel System ──────────────────────────────────────────────────────
 // Tracks Stripe-verified merch orders for wheel eligibility
 export const goldenWheelOrders = mysqlTable("golden_wheel_orders", {

@@ -42,6 +42,7 @@ import {
   shopProducts, InsertShopProduct, ShopProduct,
   shopProductImages, InsertShopProductImage, ShopProductImage,
   shopVariants, InsertShopVariant, ShopVariant,
+  shopProductReviews, InsertShopProductReview, ShopProductReview,
   studios, InsertStudio, Studio,
   studioReviews, InsertStudioReview, StudioReview,
   articles, InsertArticle, Article,
@@ -2375,6 +2376,81 @@ export async function getShopProductBySlug(slug: string) {
     .where(and(eq(shopProducts.slug, slug), sql`${shopProducts.deletedAt} IS NULL`))
     .limit(1);
   return rows[0] ?? null;
+}
+
+export async function getApprovedShopProductReviews(productId: number, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: shopProductReviews.id,
+    productId: shopProductReviews.productId,
+    userId: shopProductReviews.userId,
+    rating: shopProductReviews.rating,
+    title: shopProductReviews.title,
+    body: shopProductReviews.body,
+    verifiedPurchase: shopProductReviews.verifiedPurchase,
+    createdAt: shopProductReviews.createdAt,
+    artistName: users.artistName,
+    displayName: users.name,
+    avatarUrl: users.avatarUrl,
+  }).from(shopProductReviews)
+    .leftJoin(users, eq(users.id, shopProductReviews.userId))
+    .where(and(eq(shopProductReviews.productId, productId), eq(shopProductReviews.status, "approved")))
+    .orderBy(desc(shopProductReviews.createdAt))
+    .limit(Math.min(Math.max(limit, 1), 100));
+}
+
+export async function getShopProductReviewByUser(productId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(shopProductReviews)
+    .where(and(eq(shopProductReviews.productId, productId), eq(shopProductReviews.userId, userId)))
+    .orderBy(desc(shopProductReviews.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function userHasCompletedOrderForProduct(userId: number, productId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db.select({ id: orders.id, items: orders.items })
+    .from(orders)
+    .where(and(eq(orders.userId, userId), eq(orders.status, "completed")));
+  return rows.some((order) => {
+    try {
+      const items = JSON.parse(order.items) as Array<{ productId?: number }>;
+      return items.some((item) => Number(item.productId) === productId);
+    } catch {
+      return false;
+    }
+  });
+}
+
+export async function createShopProductReview(data: InsertShopProductReview) {
+  const db = await getDb();
+  if (!db) return null;
+  return db.insert(shopProductReviews).values(data);
+}
+
+export async function listShopProductReviewsForAdmin(limit = 200) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    review: shopProductReviews,
+    productName: shopProducts.name,
+    artistName: users.artistName,
+    displayName: users.name,
+  }).from(shopProductReviews)
+    .leftJoin(shopProducts, eq(shopProducts.id, shopProductReviews.productId))
+    .leftJoin(users, eq(users.id, shopProductReviews.userId))
+    .orderBy(desc(shopProductReviews.createdAt))
+    .limit(Math.min(Math.max(limit, 1), 200));
+}
+
+export async function updateShopProductReviewStatus(id: number, status: ShopProductReview["status"]) {
+  const db = await getDb();
+  if (!db) return null;
+  return db.update(shopProductReviews).set({ status }).where(eq(shopProductReviews.id, id));
 }
 
 export async function createShopProduct(data: InsertShopProduct) {

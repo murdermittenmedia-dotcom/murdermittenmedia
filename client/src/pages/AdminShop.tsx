@@ -115,6 +115,14 @@ export default function AdminShop() {
   const { data: products, isLoading } = trpc.shop.adminGetProducts.useQuery(undefined, {
     enabled: user?.role === "admin",
   });
+  const { data: reviews, isLoading: reviewsLoading } = trpc.shop.adminGetReviews.useQuery(undefined, {
+    enabled: user?.role === "admin",
+  });
+
+  const setReviewStatus = trpc.shop.adminSetReviewStatus.useMutation({
+    onSuccess: () => { utils.shop.adminGetReviews.invalidate(); toast.success("Review status updated"); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const updateStatus = trpc.shop.updateStatus.useMutation({
     onSuccess: () => { utils.shop.adminGetProducts.invalidate(); toast.success("Status updated"); },
@@ -233,6 +241,47 @@ export default function AdminShop() {
           </div>
         </div>
       )}
+
+      {/* Customer Review Moderation */}
+      <div className="container pt-8">
+        <section className="border border-white/10 bg-white/[0.03] rounded-lg overflow-hidden" aria-labelledby="shop-reviews-heading">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-red-500 font-semibold">Real customer signal</p>
+              <h2 id="shop-reviews-heading" className="font-['Anton'] text-2xl uppercase">Review moderation</h2>
+            </div>
+            <span className="text-xs text-white/40">{reviews?.length ?? 0} submitted</span>
+          </div>
+          {reviewsLoading ? (
+            <div className="px-5 py-6 text-sm text-white/45">Loading customer reviews...</div>
+          ) : !reviews?.length ? (
+            <div className="px-5 py-6 text-sm text-white/45">No customer reviews have been submitted yet. Nothing is seeded or published automatically.</div>
+          ) : (
+            <div className="divide-y divide-white/10">
+              {reviews.map(({ review, productName, artistName, displayName }) => (
+                <article key={review.id} className="px-5 py-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold text-white">{productName || "Unknown product"}</span>
+                      <span className="text-[10px] uppercase tracking-widest text-white/40">by {artistName || displayName || "Customer"}</span>
+                      <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${review.status === "approved" ? "border-emerald-500/30 text-emerald-400" : review.status === "rejected" ? "border-red-500/30 text-red-400" : "border-amber-500/30 text-amber-400"}`}>{review.status}</span>
+                      {review.verifiedPurchase && <span className="text-[10px] uppercase tracking-widest text-emerald-400">Verified purchase</span>}
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-400 mb-2" aria-label={`${review.rating} out of 5 stars`}>{"★".repeat(review.rating)}<span className="text-white/20">{"★".repeat(5 - review.rating)}</span></div>
+                    {review.title && <h3 className="font-semibold text-white">{review.title}</h3>}
+                    {review.body && <p className="text-sm text-white/60 leading-relaxed max-w-3xl mt-1">{review.body}</p>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {review.status !== "approved" && <button onClick={() => setReviewStatus.mutate({ id: review.id, status: "approved" })} disabled={setReviewStatus.isPending} className="rounded border border-emerald-500/30 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50">Approve</button>}
+                    {review.status !== "rejected" && <button onClick={() => confirm("Reject review?", "This review will remain hidden from the public product page.", () => setReviewStatus.mutate({ id: review.id, status: "rejected" }), true)} disabled={setReviewStatus.isPending} className="rounded border border-red-500/30 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-red-400 hover:bg-red-500/10 disabled:opacity-50">Reject</button>}
+                    {review.status !== "pending" && <button onClick={() => setReviewStatus.mutate({ id: review.id, status: "pending" })} disabled={setReviewStatus.isPending} className="rounded border border-white/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-white/60 hover:text-white disabled:opacity-50">Hold</button>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* Product Table */}
       <div className="container py-8">

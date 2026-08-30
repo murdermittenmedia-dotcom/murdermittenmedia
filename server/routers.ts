@@ -74,6 +74,8 @@ import {
   getUserCartItems, addCartItem, updateCartItem, removeCartItem, clearUserCart,
   createOrder, getOrderById, getOrderByStripeSessionId, getUserOrders, updateOrderStatus,
   getShopProducts, getShopProductById, getShopProductBySlug,
+  getApprovedShopProductReviews, getShopProductReviewByUser, userHasCompletedOrderForProduct,
+  createShopProductReview, listShopProductReviewsForAdmin, updateShopProductReviewStatus,
   createShopProduct, updateShopProduct, softDeleteShopProduct,
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
@@ -5664,6 +5666,64 @@ export const appRouter = router({
         const images = await getShopProductImages(product.id);
         const variants = await getShopVariants(product.id);
         return { ...product, images, variants };
+      }),
+
+    // Public: approved customer reviews and aggregate rating
+    getReviews: publicProcedure
+      .input(z.object({ productId: z.number().int().positive(), limit: z.number().int().min(1).max(100).optional() }))
+      .query(async ({ input }) => {
+        const reviews = await getApprovedShopProductReviews(input.productId, input.limit ?? 100);
+        const ratingTotal = reviews.reduce((sum, review) => sum + review.rating, 0);
+        return {
+          reviews,
+          count: reviews.length,
+          averageRating: reviews.length ? Math.round((ratingTotal / reviews.length) * 10) / 10 : null,
+        };
+      }),
+
+    // Authenticated customers may review products they purchased in a completed order.
+    getMyReview: protectedProcedure
+      .input(z.object({ productId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => ({
+        review: await getShopProductReviewByUser(input.productId, ctx.user.id),
+        eligible: await userHasCompletedOrderForProduct(ctx.user.id, input.productId),
+      })),
+
+    submitReview: protectedProcedure
+      .input(z.object({
+        productId: z.number().int().positive(),
+        rating: z.number().int().min(1).max(5),
+        title: z.string().trim().max(160).optional(),
+        body: z.string().trim().max(4000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const product = await getShopProductById(input.productId);
+        if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+        if (!(await userHasCompletedOrderForProduct(ctx.user.id, input.productId))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "A completed purchase is required to review this product" });
+        }
+        if (await getShopProductReviewByUser(input.productId, ctx.user.id)) {
+          throw new TRPCError({ code: "CONFLICT", message: "You have already submitted a review for this product" });
+        }
+        await createShopProductReview({
+          productId: input.productId,
+          userId: ctx.user.id,
+          rating: input.rating,
+          title: input.title || null,
+          body: input.body || null,
+          status: "pending",
+          verifiedPurchase: true,
+        });
+        return { submitted: true, status: "pending" as const };
+      }),
+
+    // Admin moderation queue for real customer reviews.
+    adminGetReviews: adminProcedure.query(async () => listShopProductReviewsForAdmin()),
+    adminSetReviewStatus: adminProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["pending", "approved", "rejected"]) }))
+      .mutation(async ({ input }) => {
+        await updateShopProductReviewStatus(input.id, input.status);
+        return { updated: true };
       }),
 
     // Admin: list ALL products (including hidden/draft)

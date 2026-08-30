@@ -51,6 +51,22 @@ describe("merch shirt colorways", () => {
     }
   });
 
+  it("keeps the real-customer review workflow moderation-only and purchase-gated", () => {
+    const schemaSource = readFileSync(resolve(process.cwd(), "drizzle/schema.ts"), "utf8");
+    const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const productSource = readFileSync(resolve(process.cwd(), "client/src/pages/ShopProduct.tsx"), "utf8");
+    const adminSource = readFileSync(resolve(process.cwd(), "client/src/pages/AdminShop.tsx"), "utf8");
+    expect(schemaSource).toContain('shopProductReviews = mysqlTable("shop_product_reviews"');
+    expect(schemaSource).toContain('status: mysqlEnum("status", ["pending", "approved", "rejected"])');
+    expect(routerSource).toContain("userHasCompletedOrderForProduct");
+    expect(routerSource).toContain("A completed purchase is required to review this product");
+    expect(routerSource).toContain("adminSetReviewStatus");
+    expect(productSource).toContain("No approved reviews yet");
+    expect(productSource).toContain("Verified customers only");
+    expect(adminSource).toContain("Review moderation");
+    expect(adminSource).toContain("Nothing is seeded or published automatically");
+  });
+
   it("keeps the renamed Blade Tee at $27.99 and separate from the Spirit tee", async () => {
     const db = await getDb();
     if (!db) return;

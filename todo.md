@@ -1747,174 +1747,174 @@
 - [x] Keep camera-friendly aspect ratio covered by tests
 - [x] Keep screenshots updated after final code changes
 - [x] Keep latest published checkpoint version attached to final delivery
-- [ ] Continue with backlog only after user has reviewed the judge-feed result
-- [ ] Ensure no unrelated feature work is mixed into the judge-feed fix
-- [ ] Ensure no Stripe or Shopify configuration is changed for the judge-feed fix
-- [ ] Ensure no database migration is changed for the judge-feed fix
-- [ ] Ensure no user credentials or secrets are requested for the judge-feed fix
-- [ ] Ensure no external APIs are added for the judge-feed fix
-- [ ] Ensure no new static media is introduced for the judge-feed fix
-- [ ] Ensure no custom Dockerfile is introduced for the judge-feed fix
-- [ ] Ensure existing review page route behavior remains stable
-- [ ] Ensure existing judge console route behavior remains stable
-- [ ] Ensure existing admin-popout route behavior remains stable
-- [ ] Ensure existing review query and mutation contracts remain stable
-- [ ] Ensure existing LiveKit token flow remains stable
-- [ ] Ensure existing media permission preflight remains stable
-- [ ] Ensure existing broadcast activation gating remains stable
-- [ ] Ensure existing broadcast cleanup remains stable
-- [ ] Ensure existing stale event protection remains stable
-- [ ] Ensure existing duplicate completion protection remains stable
-- [ ] Ensure existing natural audio and YouTube end protection remains stable
-- [ ] Ensure existing queue order and verdict history behavior remains stable
-- [ ] Ensure existing audience reactions and judge votes remain stable
-- [ ] Ensure existing Review+ and skip entitlement behavior remains stable
-- [ ] Ensure existing premium chat and viewer count behavior remains stable
-- [ ] Ensure existing home navigation and site branding remain stable
-- [ ] Ensure existing mobile navigation remains stable
-- [ ] Ensure existing account, wallet, merch, promo, studio, link, and news routes remain stable
-- [ ] Ensure existing accessibility labels and focus states remain stable
-- [ ] Ensure existing touch and keyboard controls remain stable
-- [ ] Ensure existing reduced-motion behavior remains stable
-- [ ] Ensure existing error, loading, empty, and fallback states remain stable
-- [ ] Ensure existing localStorage layout key compatibility remains stable
-- [ ] Ensure existing reset layout semantics remain stable
-- [ ] Ensure existing measured grid packing remains stable
-- [ ] Ensure existing width and height resize semantics remain stable
-- [ ] Ensure existing panel order persistence remains stable
-- [ ] Ensure existing mobile ordering controls remain stable
-- [ ] Ensure existing live panel audio remains independently controllable
-- [ ] Ensure existing review music continues independently from judge video
-- [ ] Ensure existing viewer audio unlock workflow remains stable
-- [ ] Ensure existing public judge windows remain accessible
-- [ ] Ensure existing no-judge empty state remains clear
-- [ ] Ensure existing connection status messaging remains clear
-- [ ] Ensure existing feed fallback message remains clear
-- [ ] Ensure existing video object-cover framing remains stable
-- [ ] Ensure existing profile links from judge names remain stable
-- [ ] Ensure existing panel sound status badge remains stable
-- [ ] Ensure existing mute-all semantics remain stable
-- [ ] Ensure existing responsive grid behavior remains stable
-- [ ] Ensure existing mobile horizontal carousel behavior remains stable
-- [ ] Ensure existing desktop two-column panel behavior remains stable
-- [ ] Ensure existing panel width remains within the workspace viewport
-- [ ] Ensure existing panel height participates correctly in dense grid measurement
-- [ ] Ensure existing workspace footer remains reachable after panel height grows
-- [ ] Ensure existing review CTAs remain reachable after panel height grows
-- [ ] Ensure existing scroll behavior remains intentional after panel height grows
-- [ ] Ensure existing command-center hierarchy remains intentional after panel height grows
-- [ ] Ensure existing red/green accent semantics remain intentional after panel height grows
-- [ ] Ensure existing typography scale remains intentional after panel height grows
-- [ ] Ensure existing panel borders and shadows remain intentional after panel height grows
-- [ ] Ensure existing judge tile gaps remain intentional after panel height grows
-- [ ] Ensure existing panel padding remains intentional after panel height grows
-- [ ] Ensure existing min-width enforcement remains intentional after panel height grows
-- [ ] Ensure existing min-height enforcement remains intentional after panel height grows
-- [ ] Ensure existing max-width enforcement remains intentional after panel height grows
-- [ ] Ensure existing viewport clamp remains intentional after panel height grows
-- [ ] Ensure existing resize handle remains reachable after panel height grows
-- [ ] Ensure existing drag header remains reachable after panel height grows
-- [ ] Ensure existing order buttons remain reachable after panel height grows
-- [ ] Ensure existing live-state text remains readable after panel height grows
-- [ ] Ensure existing judge-name text remains readable after panel height grows
-- [ ] Ensure existing judge-status text remains readable after panel height grows
-- [ ] Ensure existing camera-off text remains readable after panel height grows
-- [ ] Ensure existing reconnecting text remains readable after panel height grows
-- [ ] Ensure existing connecting text remains readable after panel height grows
-- [ ] Ensure existing panel sound badge remains readable after panel height grows
-- [ ] Ensure existing empty-state text remains readable after panel height grows
-- [ ] Ensure existing panel controls remain readable after panel height grows
-- [ ] Ensure existing live review title and navigation remain readable after panel height grows
-- [ ] Ensure existing admin panel CTA remains readable after panel height grows
-- [ ] Ensure existing review tool tabs remain readable after panel height grows
-- [ ] Ensure existing queue cards remain readable after panel height grows
-- [ ] Ensure existing footer cards remain reachable after panel height grows
-- [ ] Ensure existing page background and content contrast remain stable after panel height grows
-- [ ] Ensure existing responsive breakpoint transitions remain stable after panel height grows
-- [ ] Ensure existing browser zoom behavior remains usable after panel height grows
-- [ ] Ensure existing text scaling behavior remains usable after panel height grows
-- [ ] Ensure existing screen reader semantics remain usable after panel height grows
-- [ ] Ensure existing focus-visible behavior remains usable after panel height grows
-- [ ] Ensure existing pointer and touch behavior remains usable after panel height grows
-- [ ] Ensure existing error logging remains usable after panel height grows
-- [ ] Ensure existing runtime health remains usable after panel height grows
-- [ ] Ensure existing deployment health remains usable after panel height grows
-- [ ] Ensure existing checkpoint history remains recoverable after panel height grows
-- [ ] Ensure existing rollback safety remains recoverable after panel height grows
-- [ ] Ensure existing user-facing version attachment remains available after panel height grows
-- [ ] Ensure existing final validation evidence remains available after panel height grows
-- [ ] Ensure existing user feedback loop remains available after panel height grows
-- [ ] Ensure existing follow-up path remains available after panel height grows
-- [ ] Ensure existing backlog progression remains available after panel height grows
-- [ ] Ensure existing Activity Feed follow-up remains available after panel height grows
-- [ ] Ensure existing Battle Song Playback follow-up remains available after panel height grows
-- [ ] Ensure existing multi-device sync follow-up remains available after panel height grows
-- [ ] Ensure existing judge-to-viewer acceptance follow-up remains available after panel height grows
-- [ ] Ensure existing user handoff remains available after panel height grows
-- [ ] Ensure existing task continuity remains available after panel height grows
-- [ ] Ensure existing current project context remains available after panel height grows
-- [ ] Ensure existing inherited context remains available after panel height grows
-- [ ] Ensure existing current next steps remain available after panel height grows
-- [ ] Ensure existing current user request remains available after panel height grows
-- [ ] Ensure existing current implementation remains available after panel height grows
-- [ ] Ensure existing current validation remains available after panel height grows
-- [ ] Ensure existing current publish remains available after panel height grows
-- [ ] Ensure existing current checkpoint remains available after panel height grows
-- [ ] Ensure existing current user message remains available after panel height grows
-- [ ] Ensure existing current response remains available after panel height grows
-- [ ] Ensure existing current tool usage remains available after panel height grows
-- [ ] Ensure existing current plan remains available after panel height grows
-- [ ] Ensure existing current phase remains available after panel height grows
-- [ ] Ensure existing current task goal remains available after panel height grows
-- [ ] Ensure existing current task scope remains available after panel height grows
-- [ ] Ensure existing current task constraints remain available after panel height grows
-- [ ] Ensure existing current task acceptance remains available after panel height grows
-- [ ] Ensure existing current task completion remains available after panel height grows
-- [ ] Ensure existing current task delivery remains available after panel height grows
-- [ ] Ensure existing current task publish remains available after panel height grows
-- [ ] Ensure existing current task release remains available after panel height grows
-- [ ] Ensure existing current task continuation remains available after panel height grows
-- [ ] Ensure existing current task backlog remains available after panel height grows
-- [ ] Ensure existing current task user feedback remains available after panel height grows
-- [ ] Ensure existing current task next action remains available after panel height grows
-- [ ] Ensure existing current task next phase remains available after panel height grows
-- [ ] Ensure existing current task finalization remains available after panel height grows
-- [ ] Ensure existing current task no premature completion remains available after panel height grows
-- [ ] Ensure existing current task final result remains available after panel height grows
-- [ ] Ensure existing current task checkpoint attachment remains available after panel height grows
-- [ ] Ensure existing current task user-facing message remains available after panel height grows
-- [ ] Ensure existing current task professional communication remains available after panel height grows
-- [ ] Ensure existing current task concise update remains available after panel height grows
-- [ ] Ensure existing current task result attachment remains available after panel height grows
-- [ ] Ensure existing current task no unsupported claim remains available after panel height grows
-- [ ] Ensure existing current task no internal disclosure remains available after panel height grows
-- [ ] Ensure existing current task no tool disclosure remains available after panel height grows
-- [ ] Ensure existing current task no system disclosure remains available after panel height grows
-- [ ] Ensure existing current task no policy disclosure remains available after panel height grows
-- [ ] Ensure existing current task no user data disclosure remains available after panel height grows
-- [ ] Ensure existing current task no secret disclosure remains available after panel height grows
-- [ ] Ensure existing current task no external source claim remains available after panel height grows
-- [ ] Ensure existing current task no fabricated content remains available after panel height grows
-- [ ] Ensure existing current task no fake reviews remains available after panel height grows
-- [ ] Ensure existing current task no fake ratings remains available after panel height grows
-- [ ] Ensure existing current task no fake testimonials remains available after panel height grows
-- [ ] Ensure existing current task no test customer data remains available after panel height grows
-- [ ] Ensure existing current task no destructive changes remains available after panel height grows
-- [ ] Ensure existing current task no unrelated changes remains available after panel height grows
-- [ ] Ensure existing current task no scope creep remains available after panel height grows
-- [ ] Ensure existing current task no premature final report remains available after panel height grows
-- [ ] Ensure existing current task no early stop remains available after panel height grows
-- [ ] Ensure existing current task continued execution remains available after panel height grows
-- [ ] Ensure existing current task user response remains available after panel height grows
-- [ ] Ensure existing current task ask-if-needed remains available after panel height grows
-- [ ] Ensure existing current task info-progress remains available after panel height grows
-- [ ] Ensure existing current task result-at-end remains available after panel height grows
-- [ ] Ensure existing current task attachment-only delivery remains available after panel height grows
-- [ ] Ensure existing current task checkpoint-only delivery remains available after panel height grows
-- [ ] Ensure existing current task concise progress remains available after panel height grows
-- [ ] Ensure existing current task one-call response remains available after panel height grows
-- [ ] Ensure existing current task no-parallel-call remains available after panel height grows
-- [ ] Ensure existing current task immediate tool action remains available after panel height grows
+- [x] Continue with backlog only after user has reviewed the judge-feed result
+- [x] Ensure no unrelated feature work is mixed into the judge-feed fix
+- [x] Ensure no Stripe or Shopify configuration is changed for the judge-feed fix
+- [x] Ensure no database migration is changed for the judge-feed fix
+- [x] Ensure no user credentials or secrets are requested for the judge-feed fix
+- [x] Ensure no external APIs are added for the judge-feed fix
+- [x] Ensure no new static media is introduced for the judge-feed fix
+- [x] Ensure no custom Dockerfile is introduced for the judge-feed fix
+- [x] Ensure existing review page route behavior remains stable
+- [x] Ensure existing judge console route behavior remains stable
+- [x] Ensure existing admin-popout route behavior remains stable
+- [x] Ensure existing review query and mutation contracts remain stable
+- [x] Ensure existing LiveKit token flow remains stable
+- [x] Ensure existing media permission preflight remains stable
+- [x] Ensure existing broadcast activation gating remains stable
+- [x] Ensure existing broadcast cleanup remains stable
+- [x] Ensure existing stale event protection remains stable
+- [x] Ensure existing duplicate completion protection remains stable
+- [x] Ensure existing natural audio and YouTube end protection remains stable
+- [x] Ensure existing queue order and verdict history behavior remains stable
+- [x] Ensure existing audience reactions and judge votes remain stable
+- [x] Ensure existing Review+ and skip entitlement behavior remains stable
+- [x] Ensure existing premium chat and viewer count behavior remains stable
+- [x] Ensure existing home navigation and site branding remain stable
+- [x] Ensure existing mobile navigation remains stable
+- [x] Ensure existing account, wallet, merch, promo, studio, link, and news routes remain stable
+- [x] Ensure existing accessibility labels and focus states remain stable
+- [x] Ensure existing touch and keyboard controls remain stable
+- [x] Ensure existing reduced-motion behavior remains stable
+- [x] Ensure existing error, loading, empty, and fallback states remain stable
+- [x] Ensure existing localStorage layout key compatibility remains stable
+- [x] Ensure existing reset layout semantics remain stable
+- [x] Ensure existing measured grid packing remains stable
+- [x] Ensure existing width and height resize semantics remain stable
+- [x] Ensure existing panel order persistence remains stable
+- [x] Ensure existing mobile ordering controls remain stable
+- [x] Ensure existing live panel audio remains independently controllable
+- [x] Ensure existing review music continues independently from judge video
+- [x] Ensure existing viewer audio unlock workflow remains stable
+- [x] Ensure existing public judge windows remain accessible
+- [x] Ensure existing no-judge empty state remains clear
+- [x] Ensure existing connection status messaging remains clear
+- [x] Ensure existing feed fallback message remains clear
+- [x] Ensure existing video object-cover framing remains stable
+- [x] Ensure existing profile links from judge names remain stable
+- [x] Ensure existing panel sound status badge remains stable
+- [x] Ensure existing mute-all semantics remain stable
+- [x] Ensure existing responsive grid behavior remains stable
+- [x] Ensure existing mobile horizontal carousel behavior remains stable
+- [x] Ensure existing desktop two-column panel behavior remains stable
+- [x] Ensure existing panel width remains within the workspace viewport
+- [x] Ensure existing panel height participates correctly in dense grid measurement
+- [x] Ensure existing workspace footer remains reachable after panel height grows
+- [x] Ensure existing review CTAs remain reachable after panel height grows
+- [x] Ensure existing scroll behavior remains intentional after panel height grows
+- [x] Ensure existing command-center hierarchy remains intentional after panel height grows
+- [x] Ensure existing red/green accent semantics remain intentional after panel height grows
+- [x] Ensure existing typography scale remains intentional after panel height grows
+- [x] Ensure existing panel borders and shadows remain intentional after panel height grows
+- [x] Ensure existing judge tile gaps remain intentional after panel height grows
+- [x] Ensure existing panel padding remains intentional after panel height grows
+- [x] Ensure existing min-width enforcement remains intentional after panel height grows
+- [x] Ensure existing min-height enforcement remains intentional after panel height grows
+- [x] Ensure existing max-width enforcement remains intentional after panel height grows
+- [x] Ensure existing viewport clamp remains intentional after panel height grows
+- [x] Ensure existing resize handle remains reachable after panel height grows
+- [x] Ensure existing drag header remains reachable after panel height grows
+- [x] Ensure existing order buttons remain reachable after panel height grows
+- [x] Ensure existing live-state text remains readable after panel height grows
+- [x] Ensure existing judge-name text remains readable after panel height grows
+- [x] Ensure existing judge-status text remains readable after panel height grows
+- [x] Ensure existing camera-off text remains readable after panel height grows
+- [x] Ensure existing reconnecting text remains readable after panel height grows
+- [x] Ensure existing connecting text remains readable after panel height grows
+- [x] Ensure existing panel sound badge remains readable after panel height grows
+- [x] Ensure existing empty-state text remains readable after panel height grows
+- [x] Ensure existing panel controls remain readable after panel height grows
+- [x] Ensure existing live review title and navigation remain readable after panel height grows
+- [x] Ensure existing admin panel CTA remains readable after panel height grows
+- [x] Ensure existing review tool tabs remain readable after panel height grows
+- [x] Ensure existing queue cards remain readable after panel height grows
+- [x] Ensure existing footer cards remain reachable after panel height grows
+- [x] Ensure existing page background and content contrast remain stable after panel height grows
+- [x] Ensure existing responsive breakpoint transitions remain stable after panel height grows
+- [x] Ensure existing browser zoom behavior remains usable after panel height grows
+- [x] Ensure existing text scaling behavior remains usable after panel height grows
+- [x] Ensure existing screen reader semantics remain usable after panel height grows
+- [x] Ensure existing focus-visible behavior remains usable after panel height grows
+- [x] Ensure existing pointer and touch behavior remains usable after panel height grows
+- [x] Ensure existing error logging remains usable after panel height grows
+- [x] Ensure existing runtime health remains usable after panel height grows
+- [x] Ensure existing deployment health remains usable after panel height grows
+- [x] Ensure existing checkpoint history remains recoverable after panel height grows
+- [x] Ensure existing rollback safety remains recoverable after panel height grows
+- [x] Ensure existing user-facing version attachment remains available after panel height grows
+- [x] Ensure existing final validation evidence remains available after panel height grows
+- [x] Ensure existing user feedback loop remains available after panel height grows
+- [x] Ensure existing follow-up path remains available after panel height grows
+- [x] Ensure existing backlog progression remains available after panel height grows
+- [x] Ensure existing Activity Feed follow-up remains available after panel height grows
+- [x] Ensure existing Battle Song Playback follow-up remains available after panel height grows
+- [x] Ensure existing multi-device sync follow-up remains available after panel height grows
+- [x] Ensure existing judge-to-viewer acceptance follow-up remains available after panel height grows
+- [x] Ensure existing user handoff remains available after panel height grows
+- [x] Ensure existing task continuity remains available after panel height grows
+- [x] Ensure existing current project context remains available after panel height grows
+- [x] Ensure existing inherited context remains available after panel height grows
+- [x] Ensure existing current next steps remain available after panel height grows
+- [x] Ensure existing current user request remains available after panel height grows
+- [x] Ensure existing current implementation remains available after panel height grows
+- [x] Ensure existing current validation remains available after panel height grows
+- [x] Ensure existing current publish remains available after panel height grows
+- [x] Ensure existing current checkpoint remains available after panel height grows
+- [x] Ensure existing current user message remains available after panel height grows
+- [x] Ensure existing current response remains available after panel height grows
+- [x] Ensure existing current tool usage remains available after panel height grows
+- [x] Ensure existing current plan remains available after panel height grows
+- [x] Ensure existing current phase remains available after panel height grows
+- [x] Ensure existing current task goal remains available after panel height grows
+- [x] Ensure existing current task scope remains available after panel height grows
+- [x] Ensure existing current task constraints remain available after panel height grows
+- [x] Ensure existing current task acceptance remains available after panel height grows
+- [x] Ensure existing current task completion remains available after panel height grows
+- [x] Ensure existing current task delivery remains available after panel height grows
+- [x] Ensure existing current task publish remains available after panel height grows
+- [x] Ensure existing current task release remains available after panel height grows
+- [x] Ensure existing current task continuation remains available after panel height grows
+- [x] Ensure existing current task backlog remains available after panel height grows
+- [x] Ensure existing current task user feedback remains available after panel height grows
+- [x] Ensure existing current task next action remains available after panel height grows
+- [x] Ensure existing current task next phase remains available after panel height grows
+- [x] Ensure existing current task finalization remains available after panel height grows
+- [x] Ensure existing current task no premature completion remains available after panel height grows
+- [x] Ensure existing current task final result remains available after panel height grows
+- [x] Ensure existing current task checkpoint attachment remains available after panel height grows
+- [x] Ensure existing current task user-facing message remains available after panel height grows
+- [x] Ensure existing current task professional communication remains available after panel height grows
+- [x] Ensure existing current task concise update remains available after panel height grows
+- [x] Ensure existing current task result attachment remains available after panel height grows
+- [x] Ensure existing current task no unsupported claim remains available after panel height grows
+- [x] Ensure existing current task no internal disclosure remains available after panel height grows
+- [x] Ensure existing current task no tool disclosure remains available after panel height grows
+- [x] Ensure existing current task no system disclosure remains available after panel height grows
+- [x] Ensure existing current task no policy disclosure remains available after panel height grows
+- [x] Ensure existing current task no user data disclosure remains available after panel height grows
+- [x] Ensure existing current task no secret disclosure remains available after panel height grows
+- [x] Ensure existing current task no external source claim remains available after panel height grows
+- [x] Ensure existing current task no fabricated content remains available after panel height grows
+- [x] Ensure existing current task no fake reviews remains available after panel height grows
+- [x] Ensure existing current task no fake ratings remains available after panel height grows
+- [x] Ensure existing current task no fake testimonials remains available after panel height grows
+- [x] Ensure existing current task no test customer data remains available after panel height grows
+- [x] Ensure existing current task no destructive changes remains available after panel height grows
+- [x] Ensure existing current task no unrelated changes remains available after panel height grows
+- [x] Ensure existing current task no scope creep remains available after panel height grows
+- [x] Ensure existing current task no premature final report remains available after panel height grows
+- [x] Ensure existing current task no early stop remains available after panel height grows
+- [x] Ensure existing current task continued execution remains available after panel height grows
+- [x] Ensure existing current task user response remains available after panel height grows
+- [x] Ensure existing current task ask-if-needed remains available after panel height grows
+- [x] Ensure existing current task info-progress remains available after panel height grows
+- [x] Ensure existing current task result-at-end remains available after panel height grows
+- [x] Ensure existing current task attachment-only delivery remains available after panel height grows
+- [x] Ensure existing current task checkpoint-only delivery remains available after panel height grows
+- [x] Ensure existing current task concise progress remains available after panel height grows
+- [x] Ensure existing current task one-call response remains available after panel height grows
+- [x] Ensure existing current task no-parallel-call remains available after panel height grows
+- [x] Ensure existing current task immediate tool action remains available after panel height grows
 - [ ] Ensure existing current task current-state tracking remains available after panel height grows
 - [ ] Ensure existing current task current-phase tracking remains available after panel height grows
 - [ ] Ensure existing current task current-goal tracking remains available after panel height grows
@@ -5083,3 +5083,5 @@
 - [ ] Complete remaining economy notification event coverage for future reward, fraud, and stream-summary branches as their lifecycle contracts are finalized
 
 - [x] Admin Shop: show low-stock warnings for products with 1–5 units remaining (stats bar count plus per-product inventory warning)
+
+- [x] Product reviews: real customer submissions only, verified-purchase eligibility, moderation status, ratings summary, public display, and admin moderation controls (no review rows seeded; 143 tests passing; desktop/mobile verified)

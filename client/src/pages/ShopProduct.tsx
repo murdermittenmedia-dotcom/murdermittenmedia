@@ -101,6 +101,29 @@ export default function ShopProduct() {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [addedFeedback, setAddedFeedback] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewBody, setReviewBody] = useState("");
+
+  const { data: reviewData } = trpc.shop.getReviews.useQuery(
+    { productId: product?.id ?? 0, limit: 100 },
+    { enabled: !!product }
+  );
+  const { data: myReviewData } = trpc.shop.getMyReview.useQuery(
+    { productId: product?.id ?? 0 },
+    { enabled: !!product && !!user }
+  );
+  const submitReview = trpc.shop.submitReview.useMutation({
+    onSuccess: () => {
+      toast.success("Review submitted for moderation.");
+      setReviewTitle("");
+      setReviewBody("");
+      setReviewRating(5);
+      utils.shop.getReviews.invalidate({ productId: product?.id ?? 0 });
+      utils.shop.getMyReview.invalidate({ productId: product?.id ?? 0 });
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   // Derive available colors and sizes from variants
   const colors = product ? Array.from(new Set(product.variants.map((v: any) => v.color as string))) : [];
@@ -407,6 +430,74 @@ export default function ShopProduct() {
             )}
           </div>
         </div>
+
+        {/* Real customer reviews: empty until customers submit and admins approve them. */}
+        <section className="mt-12 border-t border-white/10 pt-10" aria-labelledby="reviews-heading">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-6">
+            <div>
+              <p className="text-xs text-red-500 uppercase tracking-[0.25em] font-semibold">Customer signal</p>
+              <h2 id="reviews-heading" className="font-['Anton'] text-3xl uppercase tracking-wide">Reviews</h2>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-white/60">
+              <div className="flex items-center gap-0.5" aria-label={reviewData?.averageRating ? `${reviewData.averageRating} out of 5 stars` : "No ratings yet"}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star key={star} size={15} className={reviewData?.averageRating && star <= Math.round(reviewData.averageRating) ? "fill-amber-400 text-amber-400" : "text-white/20"} />
+                ))}
+              </div>
+              <span>{reviewData?.averageRating ? `${reviewData.averageRating} / 5` : "No ratings yet"}</span>
+              <span className="text-white/30">({reviewData?.count ?? 0})</span>
+            </div>
+          </div>
+
+          {reviewData?.reviews?.length ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {reviewData.reviews.map((review) => (
+                <article key={review.id} className="border border-white/10 bg-white/[0.03] rounded-lg p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      {review.avatarUrl ? <img src={review.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" /> : <div className="h-8 w-8 rounded-full bg-red-600/20" />}
+                      <div>
+                        <p className="text-sm font-semibold text-white">{review.artistName || review.displayName || "Verified customer"}</p>
+                        <p className="text-[11px] text-white/40">{new Date(review.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    {review.verifiedPurchase && <span className="text-[10px] uppercase tracking-widest text-emerald-400">Verified purchase</span>}
+                  </div>
+                  <div className="flex items-center gap-0.5 mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => <Star key={star} size={14} className={star <= review.rating ? "fill-amber-400 text-amber-400" : "text-white/20"} />)}
+                  </div>
+                  {review.title && <h3 className="font-semibold text-white mb-1">{review.title}</h3>}
+                  {review.body && <p className="text-sm text-white/65 leading-relaxed">{review.body}</p>}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="border border-dashed border-white/15 rounded-lg p-6 text-sm text-white/50">No approved reviews yet. Be the first verified customer to share your experience.</div>
+          )}
+
+          <div className="mt-8 border border-white/10 bg-black/20 rounded-lg p-5">
+            {!user ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div><h3 className="font-semibold text-white">Purchased this drop?</h3><p className="text-sm text-white/50">Sign in to check your review eligibility.</p></div>
+                <a href={getLoginUrl()} className="inline-flex items-center justify-center rounded bg-red-600 px-4 py-2 text-sm font-semibold uppercase tracking-widest hover:bg-red-700">Sign in</a>
+              </div>
+            ) : myReviewData?.review ? (
+              <div><h3 className="font-semibold text-white">Your review is {myReviewData.review.status}.</h3><p className="text-sm text-white/50 mt-1">Thanks for helping keep the shop feedback real. Reviews appear publicly after moderation.</p></div>
+            ) : !myReviewData?.eligible ? (
+              <div><h3 className="font-semibold text-white">Verified customers only</h3><p className="text-sm text-white/50 mt-1">Complete a purchase of this product to unlock a review.</p></div>
+            ) : (
+              <form onSubmit={(event) => { event.preventDefault(); submitReview.mutate({ productId: product.id, rating: reviewRating, title: reviewTitle || undefined, body: reviewBody || undefined }); }} className="space-y-4">
+                <div><h3 className="font-semibold text-white">Leave a verified review</h3><p className="text-sm text-white/50 mt-1">Your review will be held for moderation before publication.</p></div>
+                <div className="flex items-center gap-2" aria-label="Choose a rating">
+                  {[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" onClick={() => setReviewRating(star)} aria-label={`${star} star${star === 1 ? "" : "s"}`} className="p-1"><Star size={22} className={star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-white/25 hover:text-amber-300"} /></button>)}
+                </div>
+                <input value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} maxLength={160} placeholder="Review title (optional)" className="w-full rounded border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-red-500 focus:outline-none" />
+                <textarea value={reviewBody} onChange={(event) => setReviewBody(event.target.value)} maxLength={4000} rows={4} placeholder="Tell the community what you think (optional)" className="w-full resize-y rounded border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-red-500 focus:outline-none" />
+                <button type="submit" disabled={submitReview.isPending} className="rounded bg-red-600 px-4 py-2 text-sm font-semibold uppercase tracking-widest hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">{submitReview.isPending ? "Submitting..." : "Submit for review"}</button>
+              </form>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
