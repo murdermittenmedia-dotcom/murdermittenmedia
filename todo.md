@@ -1228,7 +1228,7 @@
 - [x] Add cashapp_payment_receipt_url column to users table for judge verification
 - [x] Add procedure: admin.promoteToJudge(userId, cashappReceiptUrl) — verify receipt link, promote user
 - [x] Add procedure: admin.revokeJudgeAccess(userId) — demote judge back to user
-- [ ] Add procedure: judges.submitSkipVote(reviewId) — only callable by judges
+- [x] Add procedure: judges.submitSkipVote(reviewId) — only callable by judges (covered by review.judgeVoteToSkip with active-judge authorization and JudgeConsole UI)
 - [x] Build AdminPanel Judge Management tab with promote/revoke UI
 - [x] Build Judge Payment Verification form (CashApp receipt link input)
 - [x] Restrict skip button in MusicReview to judges only
@@ -1260,14 +1260,14 @@
 - [x] Removed unused imports and cleaned up code
 
 ## Music Wars Revamp
-- [ ] Remove YouTube stream panel from Music Wars page
-- [ ] Move wheel to prominent center position at top of main content
-- [ ] Add live battle queue/matchup display at top when contestants are selected
-- [ ] Improve Triple Threat mode UI with clear 3-way battle display
-- [ ] Move live chat to bottom of page (full width)
-- [ ] Add round results section showing current battle results
-- [ ] Make submission form more prominent with song entry for wheel
-- [ ] Clean up overall layout and visual hierarchy
+- [x] Remove YouTube stream panel from Music Wars page
+- [x] Move wheel to prominent center position at top of main content
+- [x] Add live battle queue/matchup display at top when contestants are selected
+- [x] Improve Triple Threat mode UI with clear 3-way battle display
+- [x] Move live chat to bottom of page (full width)
+- [x] Add round results section showing current battle results
+- [x] Make submission form more prominent with song entry for wheel
+- [x] Clean up overall layout and visual hierarchy
 
 ## Music Wars Revamp (Jul 11, 2026)
 - [x] Remove YouTube stream embed from Music Wars page
