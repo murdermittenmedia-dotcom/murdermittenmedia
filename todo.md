@@ -3430,7 +3430,7 @@
 - [ ] User-requested follow-up: keep current final user backlog continuation
 
 - [x] NotificationBell: compact recent-notification dropdown with unread styling, mark-read actions, and full inbox link (validated on authenticated desktop and mobile headers)
-- [ ] Notification auto-notify triggers for all economy events: gifts received, cashout approved, coin purchase approved
+- [x] Notification auto-notify triggers for all economy events: gifts received, cashout approved, coin purchase approved (including creator cashout status changes and rejected coin requests)
 - [ ] Add richer notification preferences and per-category controls if still needed after the core inbox flow
 - [ ] Continue with the next bounded backlog slice after notification UX acceptance
 - [ ] Keep unsupported external streaming integrations explicitly documented rather than fabricating provider connectivity

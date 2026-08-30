@@ -2985,6 +2985,18 @@ export const appRouter = router({
             await db.insert(coinBalances).values({ userId: purchase.userId, balance: purchase.coins });
           }
         }
+        try {
+          const { notifications: notifTable } = await import('../drizzle/schema');
+          await db.insert(notifTable).values({
+            userId: purchase.userId,
+            type: input.approve ? 'coin_purchase_approved' : 'coin_purchase_rejected',
+            title: input.approve ? 'Coin purchase approved' : 'Coin purchase needs attention',
+            body: input.approve
+              ? `${purchase.coins.toLocaleString()} coins were added to your wallet.`
+              : `Your request for ${purchase.coins.toLocaleString()} coins was rejected. Contact the team if you need help.`,
+            link: '/coins',
+          });
+        } catch {}
         return { success: true };
       }),
 
@@ -3970,6 +3982,7 @@ export const appRouter = router({
             note: `${input.quantity}x ${giftType.name} from viewer`,
           });
         }
+        const senderDisplayName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
         // Record the gift
         const [insertedGift] = await db.insert(gifts).values({
           liveStreamId: input.streamId,
@@ -3979,6 +3992,16 @@ export const appRouter = router({
           coinCost: totalCost,
           usdValueCents: giftType.usdValueCents * input.quantity,
         });
+        try {
+          const { notifications: notifTable } = await import('../drizzle/schema');
+          await db.insert(notifTable).values({
+            userId: stream.userId,
+            type: 'live_reward',
+            title: `${senderDisplayName} sent you a gift`,
+            body: `${input.quantity}x ${giftType.name} added $${(creatorRewardCents / 100).toFixed(2)} to your Live Rewards.`,
+            link: `/live/${input.streamId}`,
+          });
+        } catch {}
         // Update stream totals
         await db.update(liveStreams).set({
           totalGiftCoins: (stream.totalGiftCoins ?? 0) + totalCost,
@@ -4534,6 +4557,17 @@ export const appRouter = router({
             }).where(eq(liveRewards.userId, cashout.userId));
           }
         }
+        try {
+          const { notifications: notifTable } = await import('../drizzle/schema');
+          const statusLabel = newStatus === 'paid' ? 'paid' : newStatus === 'approved' ? 'approved' : newStatus === 'on_hold' ? 'put on hold' : 'rejected';
+          await db.insert(notifTable).values({
+            userId: cashout.userId,
+            type: 'cashout_resolved',
+            title: `Cashout ${statusLabel}`,
+            body: `Your $${(cashout.amountCents / 100).toFixed(2)} creator cashout was ${statusLabel}.${input.note ? ` Note: ${input.note}` : ''}`,
+            link: '/wallet',
+          });
+        } catch {}
         return { success: true };
       }),
 
