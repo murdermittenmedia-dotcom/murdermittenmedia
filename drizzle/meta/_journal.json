@@ -309,6 +309,13 @@
       "when": 1788053117609,
       "tag": "0043_rich_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "5",
+      "when": 1788053431800,
+      "tag": "0044_legal_mystique",
+      "breakpoints": true
     }
   ]
 }

@@ -933,6 +933,19 @@ export const judgeStreams = mysqlTable("judge_streams", {
 export type JudgeStream = typeof judgeStreams.$inferSelect;
 export type InsertJudgeStream = typeof judgeStreams.$inferInsert;
 
+// Judge invitations — admin-created tokens for controlled judge roster entry.
+export const reviewJudgeInvites = mysqlTable("review_judge_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  createdByUserId: int("createdByUserId").notNull(),
+  invitedEmail: varchar("invitedEmail", { length: 320 }),
+  acceptedByUserId: int("acceptedByUserId"),
+  status: mysqlEnum("status", ["pending", "accepted", "revoked"]).default("pending").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ReviewJudgeInvite = typeof reviewJudgeInvites.$inferSelect;
+export type InsertReviewJudgeInvite = typeof reviewJudgeInvites.$inferInsert;
 
 // ─── Merch Store ─────────────────────────────────────────
 // Products in the merch store

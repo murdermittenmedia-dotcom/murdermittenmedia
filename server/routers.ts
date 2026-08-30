@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { buildNextWarEntries } from "../shared/next-war";
 import { createPickedNotification } from "../shared/picked-notification";
@@ -75,7 +76,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -1266,6 +1267,49 @@ export const appRouter = router({
 
   // -- Music Review Judge Broadcasts --------------------------------
   review: router({
+    createJudgeInvite: adminProcedure
+      .input(z.object({ invitedEmail: z.string().email().optional(), expiresInHours: z.number().int().min(1).max(168).default(72) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const token = randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + input.expiresInHours * 60 * 60 * 1000);
+        await db.insert(reviewJudgeInvites).values({ token, createdByUserId: ctx.user.id, invitedEmail: input.invitedEmail ?? null, expiresAt });
+        return { token, expiresAt, inviteUrl: `/review?judge_invite=${token}` };
+      }),
+
+    getJudgeInvites: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      return db.select().from(reviewJudgeInvites).orderBy(desc(reviewJudgeInvites.createdAt)).limit(100);
+    }),
+
+    revokeJudgeInvite: adminProcedure
+      .input(z.object({ inviteId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        await db.update(reviewJudgeInvites).set({ status: "revoked" }).where(eq(reviewJudgeInvites.id, input.inviteId));
+        return { success: true as const };
+      }),
+
+    acceptJudgeInvite: protectedProcedure
+      .input(z.object({ token: z.string().min(32).max(128) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [invite] = await db.select().from(reviewJudgeInvites).where(eq(reviewJudgeInvites.token, input.token)).limit(1);
+        if (!invite || invite.status !== "pending" || invite.expiresAt.getTime() <= Date.now()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This judge invitation is invalid or expired." });
+        }
+        if (invite.invitedEmail && invite.invitedEmail.toLowerCase() !== (ctx.user.email ?? "").toLowerCase()) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This invitation was issued for a different email address." });
+        }
+        await db.update(users).set({ role: "judge" }).where(eq(users.id, ctx.user.id));
+        await db.update(reviewJudgeInvites).set({ status: "accepted", acceptedByUserId: ctx.user.id }).where(eq(reviewJudgeInvites.id, invite.id));
+        return { success: true as const, role: "judge" as const };
+      }),
+
     // Start a judge/admin broadcast during music review (browser WebRTC — no RTMP ingress)
     startBroadcast: protectedProcedure
       .mutation(async ({ ctx }) => {
