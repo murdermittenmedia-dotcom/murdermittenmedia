@@ -17,6 +17,7 @@ import MeetingWithTheMitten from "./pages/MeetingWithTheMitten";
 import MusicReview from "./pages/MusicReview";
 import BroadcastReview from "./pages/BroadcastReview";
 import BroadcastRadio from "./pages/BroadcastRadio";
+import BroadcastRankings from "./pages/BroadcastRankings";
 import JudgeConsole from "./pages/JudgeConsole";
 import ArtistOfWeek from "./pages/ArtistOfWeek";
 import LiveStream from "./pages/LiveStream";
@@ -83,6 +84,7 @@ function Router() {
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/broadcast/review"} component={BroadcastReview} />
       <Route path={"/broadcast/radio"} component={BroadcastRadio} />
+      <Route path={"/broadcast/rankings"} component={BroadcastRankings} />
       <Route path={"/review"} component={MusicReview} />
       <Route path={"/judge"} component={JudgeConsole} />
       <Route path={"/admin-popout"} component={MusicReview} />
