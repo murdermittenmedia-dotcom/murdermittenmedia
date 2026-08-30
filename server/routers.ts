@@ -7,7 +7,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, ne } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
@@ -1204,7 +1204,23 @@ export const appRouter = router({
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
           eq(reviewSkipVotes.submissionId, input.submissionId),
         ));
-        return { success: true as const, votes: votes.length, limit: voteLimit, sessionId: session.id, reviewPlusActive };
+        const { queueState: queueStateTable } = await import("../drizzle/schema");
+        const [queueSettings] = await db.select().from(queueStateTable).limit(1);
+        let autoAdvanced = false;
+        if (queueSettings?.autoSkipThreshold && votes.length >= queueSettings.autoSkipThreshold && queueSettings.currentPlayingId === input.submissionId) {
+          await db.update(reviewSubmissionsTable).set({ status: "reviewed" }).where(eq(reviewSubmissionsTable.id, input.submissionId));
+          const [nextTrack] = await db.select({ id: reviewSubmissionsTable.id }).from(reviewSubmissionsTable)
+            .where(and(eq(reviewSubmissionsTable.status, "pending"), ne(reviewSubmissionsTable.id, input.submissionId)))
+            .orderBy(asc(reviewSubmissionsTable.position)).limit(1);
+          if (nextTrack) {
+            await db.update(reviewSubmissionsTable).set({ status: "playing" }).where(eq(reviewSubmissionsTable.id, nextTrack.id));
+            await db.update(queueStateTable).set({ currentPlayingId: nextTrack.id });
+          } else {
+            await db.update(queueStateTable).set({ currentPlayingId: null });
+          }
+          autoAdvanced = true;
+        }
+        return { success: true as const, votes: votes.length, limit: voteLimit, sessionId: session.id, reviewPlusActive, autoAdvanced };
       }),
 
     // Get fire/trash counts for a submissionn

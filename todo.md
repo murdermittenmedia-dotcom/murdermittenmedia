@@ -1636,3 +1636,5 @@
 - [x] Add Review+ membership persistence, verified Stripe checkout, and entitlement status for unlimited Vote To Skip and premium chat treatment
 
 - [x] Add a persisted admin-configurable automatic Vote To Skip threshold, with 0 disabling automatic mode
+
+- [x] Automatically advance the active review track when the configured Vote To Skip threshold is reached
