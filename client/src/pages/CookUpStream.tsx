@@ -629,9 +629,14 @@ export default function CookUpStream() {
   const [broadcasterFullscreen, setBroadcasterFullscreen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [broadcastMode, setBroadcastMode] = useState<"browser" | "obs" | null>(null);
+  const [endedSummaryId, setEndedSummaryId] = useState<number | null>(null);
+  const { data: endedSummary } = trpc.stream.getSummary.useQuery(
+    { summaryId: endedSummaryId ?? 0 },
+    { enabled: endedSummaryId !== null }
+  );
 
   const endMutation = trpc.live.end.useMutation({
-    onSuccess: () => { toast.success("Stream ended"); navigate("/cookup"); },
+    onSuccess: (data) => { toast.success("Stream ended"); setEndedSummaryId(data.summaryId); refetchStream(); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -725,8 +730,36 @@ export default function CookUpStream() {
     return (
       <div className="min-h-screen bg-[#080808] text-white">
         <SiteNav />
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <Radio className="w-12 h-12 text-white/10 mb-4" />
+                  {endedSummaryId !== null && (
+            <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-[#111] p-6 shadow-2xl shadow-black/60">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-red-400">Post-live report</p>
+                    <h2 className="mt-1 font-['Anton'] text-2xl tracking-wide text-white">STREAM SUMMARY READY</h2>
+                  </div>
+                  <CheckCircle2 className="h-6 w-6 text-green-400" aria-hidden="true" />
+                </div>
+                {endedSummary ? (
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Duration</span><strong>{Math.floor(endedSummary.durationSeconds / 60)}m</strong></div>
+                    <div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Peak viewers</span><strong>{endedSummary.peakViewers ?? 0}</strong></div>
+                    <div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Gifts</span><strong>{endedSummary.totalGifts ?? 0}</strong></div>
+                    <div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Coins gifted</span><strong>{endedSummary.totalCoinsGifted ?? 0}</strong></div>
+                  </div>
+                ) : <p className="text-sm text-white/50">Loading your saved stream report…</p>}
+                <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+                  <Link href="/stream-history" className="flex-1">
+                    <Button className="w-full bg-red-600 text-white hover:bg-red-700">View Stream History</Button>
+                  </Link>
+                  <Button variant="outline" className="flex-1 border-white/15 bg-transparent text-white/70 hover:bg-white/5 hover:text-white" onClick={() => { setEndedSummaryId(null); navigate("/cookup"); }}>Close</Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <Radio className="w-12 h-12 text-white/10 mb-4" />
+
           <h2 className="text-white/50 text-xl font-semibold mb-2">Stream Ended</h2>
           <Link href="/cookup">
             <Button className="mt-4 bg-red-600 hover:bg-red-700 text-white">
@@ -743,6 +776,17 @@ export default function CookUpStream() {
   return (
     <div className="min-h-screen bg-[#080808] text-white flex flex-col">
       <SiteNav />
+
+      {endedSummaryId !== null && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-[#111] p-6 shadow-2xl shadow-black/60">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-red-400">Post-live report</p>
+            <h2 className="mt-1 font-['Anton'] text-2xl tracking-wide text-white">STREAM SUMMARY READY</h2>
+            {endedSummary ? <div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Duration</span><strong>{Math.floor(endedSummary.durationSeconds / 60)}m</strong></div><div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Peak viewers</span><strong>{endedSummary.peakViewers ?? 0}</strong></div><div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Gifts</span><strong>{endedSummary.totalGifts ?? 0}</strong></div><div className="rounded-lg bg-white/[0.04] p-3"><span className="block text-xs text-white/40">Coins gifted</span><strong>{endedSummary.totalCoinsGifted ?? 0}</strong></div></div> : <p className="mt-5 text-sm text-white/50">Loading your saved stream report…</p>}
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row"><Link href="/stream-history" className="flex-1"><Button className="w-full bg-red-600 text-white hover:bg-red-700">View Stream History</Button></Link><Button variant="outline" className="flex-1 border-white/15 bg-transparent text-white/70 hover:bg-white/5 hover:text-white" onClick={() => { setEndedSummaryId(null); navigate("/cookup"); }}>Close</Button></div>
+          </div>
+        </div>
+      )}
 
       <div className={`flex-1 flex flex-col lg:flex-row max-w-[1600px] mx-auto w-full lg:px-4 lg:py-4 gap-0 lg:gap-4 ${broadcasterFullscreen ? 'lg:flex-col' : ''}`}>
 

@@ -1164,23 +1164,23 @@
 - [x] Admin: creator cashout approval panel
 
 ## Feature 13: Post-Live Stream Summary
-- [ ] DB: stream_summaries table (id, creatorId, streamTitle, startedAt, endedAt, duration, totalViews, peakViewers, avgViewers, totalGifts, totalCoinsGifted, totalLiveRewards, totalFireVotes, totalLikes, newFollowers, topGifters JSON, giftBreakdown JSON, likeBreakdown JSON, engagementSummary JSON, createdAt)
-- [ ] DB: live_sessions table (id, creatorId, streamTitle, youtubeUrl, startedAt, endedAt, isActive, viewerLog JSON, likeLog JSON)
-- [ ] Server: stream.start — admin starts a live session (records startedAt, sets isActive=true)
-- [ ] Server: stream.end — admin ends live session, auto-generates summary from all session data, saves to stream_summaries, sends notification to creator
-- [ ] Server: stream.getSummary — get a single stream summary by id
-- [ ] Server: stream.getHistory — get all stream summaries for a creator (paginated)
-- [ ] Server: stream.getLatestSummary — get most recent summary (for post-live modal)
-- [ ] Frontend: Post-Live Summary modal — shown to creator immediately after stream ends (auto-triggered by notification)
-- [ ] Frontend: /stream-history page — creator's full stream history with summary cards
-- [ ] Frontend: Stream summary card — duration, views, gifts, coins, Fire Votes, top gifters, gift breakdown chart
+- [x] DB: stream_summaries table (id, creatorId, streamTitle, startedAt, endedAt, duration, totalViews, peakViewers, avgViewers, totalGifts, totalCoinsGifted, totalLiveRewards, totalFireVotes, totalLikes, newFollowers, topGifters JSON, giftBreakdown JSON, likeBreakdown JSON, engagementSummary JSON, createdAt)
+- [x] DB: live_sessions table (id, creatorId, streamTitle, youtubeUrl, startedAt, endedAt, isActive, viewerLog JSON, likeLog JSON)
+- [x] Server: stream.start — admin starts a live session (records startedAt, sets isActive=true)
+- [x] Server: stream.end — admin ends live session, auto-generates summary from all session data, saves to stream_summaries, sends notification to creator
+- [x] Server: stream.getSummary — get a single stream summary by id
+- [x] Server: stream.getHistory — get all stream summaries for a creator (paginated)
+- [x] Server: stream.getLatestSummary — get most recent summary (for post-live modal)
+- [x] Frontend: Post-Live Summary modal — shown to creator immediately after stream ends (end-flow triggered, durable summary loaded, stream-history link)
+- [x] Frontend: /stream-history page — creator's full stream history with summary cards
+- [x] Frontend: Stream summary card — duration, views, gifts, coins, Fire Votes, top gifters, gift breakdown chart
 
 ## Feature 14: Live Now Profile Badge
-- [ ] Server: profile.getLiveStatus — returns whether a user is currently live (checks live_sessions.isActive)
-- [ ] Frontend: Profile page — show LIVE NOW badge + "Watch Live" button when creator is live
-- [ ] Frontend: Live badge polls every 15s for real-time status
-- [ ] Frontend: ArtistStatModal — show LIVE NOW badge if artist is currently live
-- [ ] Frontend: Chat messages — show LIVE badge next to name if user is currently live
+- [x] Server: profile.getLiveStatus — returns whether a user is currently live (checks live_sessions.isActive)
+- [x] Frontend: Profile page — show LIVE NOW badge + "Watch Live" button when creator is live
+- [x] Frontend: Live badge polls every 15s for real-time status
+- [x] Frontend: ArtistStatModal — show LIVE NOW badge if artist is currently live
+- [x] Frontend: Chat messages — show LIVE badge next to name if user is currently live
 
 ## Feature 15: Permanent Notification System
 - [x] DB: ensure notifications table has permanent storage (no TTL, no auto-delete)

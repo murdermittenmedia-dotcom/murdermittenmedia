@@ -6,6 +6,7 @@ describe("economy notification contracts", () => {
   const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
   const dbSource = readFileSync(resolve(process.cwd(), "server/db.ts"), "utf8");
   const musicReviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
+  const cookUpSource = readFileSync(resolve(process.cwd(), "client/src/pages/CookUpStream.tsx"), "utf8");
 
   it("keeps user-facing alerts for manual coin purchase decisions", () => {
     expect(routerSource).toContain("coin_purchase_approved");
@@ -60,6 +61,14 @@ describe("economy notification contracts", () => {
     expect(routerSource).toContain('type: "fire_vote_change"');
     expect(routerSource).toContain("submission.userId !== ctx.user.id");
     expect(routerSource).toContain("reaction: input.reaction");
+  });
+
+  it("keeps the post-live summary modal connected to durable stream history", () => {
+    expect(cookUpSource).toContain("endedSummaryId");
+    expect(cookUpSource).toContain("trpc.stream.getSummary.useQuery");
+    expect(cookUpSource).toContain("STREAM SUMMARY READY");
+    expect(cookUpSource).toContain("/stream-history");
+    expect(cookUpSource).toContain("setEndedSummaryId(data.summaryId)");
   });
 
   it("keeps the artist tip action visible on the live review card", () => {
