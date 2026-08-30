@@ -1646,6 +1646,14 @@ export default function MusicReview() {
     }
   }, [chatMessages, fakeMessages]);
 
+  const handleShareReview = async () => {
+    const shareData = { title: "Murder Mitten Music Review", text: "Tune into the Murder Mitten Media live music review.", url: window.location.href };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else { await navigator.clipboard?.writeText(window.location.href); toast.success("Review link copied"); }
+    } catch { /* share dismissed */ }
+  };
+
   const handleSendChat = () => {
     if (!chatInput.trim() || !user) return;
     sendMessage(chatInput.trim());
@@ -2104,6 +2112,13 @@ export default function MusicReview() {
           </FloatingWindow>
         )}
 
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+          <button type="button" onClick={handleShareReview} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Share Review</button>
+          <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-pink-400/25 bg-pink-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-pink-200 hover:bg-pink-400/10">Instagram</a>
+          <a href="/merch" className="rounded-lg border border-red-500/25 bg-red-500/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-200 hover:bg-red-500/10">Shop Merch</a>
+          <a href="/promo" className="rounded-lg border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-200 hover:bg-yellow-400/10">Get Promoted</a>
+          <button type="button" onClick={() => setTab("submit")} className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Submit a Track</button>
+        </div>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] lg:items-start">
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
         <JudgePanelStrip />
