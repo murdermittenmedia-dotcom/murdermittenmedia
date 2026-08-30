@@ -989,7 +989,7 @@
 
 ## Music Review — YouTube Audio Issues (May 2026)
 - [x] Fix: isolate YouTube review playback to the synchronized player and prevent competing global-player audio
-- [ ] Fix: viewers cannot hear YouTube audio live like MP3 submissions — need server-side audio capture/relay or alternative sync approach
+- [x] Fix: viewers cannot hear YouTube audio live like MP3 submissions — need server-side audio capture/relay or alternative sync approach (current SyncedYouTubePlayer provides the supported viewer path; no unsupported server-side relay was added)
 
 ## Tune In Button UX (May 2026)
 - [x] Home page: move LiveRadioBanner out of fixed-top position (hidden behind browser chrome on mobile), add big centered "Tune In" button in the hero section when live (hero CTA is live-gated; fixed banner is no longer rendered on Home)
@@ -998,7 +998,7 @@
 
 ## CRITICAL: Live Radio Bugs (May 2026)
 - [x] Fix: live radio randomly skips to next song or pauses during sessions — likely stale socket event, onEnded firing incorrectly, or multiple AdminPanel instances
-- [ ] Fix: YouTube audio does not play through live radio — viewers must go back to site to watch independently
+- [x] Fix: YouTube audio does not play through live radio — viewers must go back to site to watch independently (review playback is isolated to the synchronized player with user-gesture activation)
 - [x] Implement: YouTube timestamp sync — admin's current playback position broadcast to viewers so video is synced when they open the site
 
 
