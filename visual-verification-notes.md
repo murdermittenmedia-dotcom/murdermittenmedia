@@ -14,3 +14,9 @@ The valid `/shop/blade-tee` route renders the review summary below the product d
 ## Referral foundation visual verification — 2026-08-30
 
 The authenticated `/profile` route was captured at 1280px and 390px widths. The owner-only Mitten Referral Network card renders beneath Rewards & Achievements, with a generated referral code, copy action, accepted-count label, and one-time code entry form. Desktop layout places the sharing code and acceptance form side by side. Mobile layout stacks the form cleanly within the card; the copy and Apply controls remain visible without horizontal page overflow. Existing profile statistics, rewards, music catalogue, and submission history remain readable around the new card.
+
+## Murder Mitten Mic interview catalog — 2026-08-30
+
+The desktop `/mic` full-page capture shows the four verified interviews at the top of the grid in latest-first order: Shaudy Kash, DJStr8Cash, Art Decco, and BandGang Javar. Each uses a real YouTube thumbnail, a red Interview badge, a modal-play affordance, and the existing card styling. Existing One Mic and Mic Drop entries remain below them. The page count updates to 25 performances. One older Loud Pack John thumbnail visibly falls back to YouTube’s gray placeholder, which is pre-existing catalog behavior and outside this update.
+
+The narrow 390px capture keeps the two-column card grid intact, with all four interview cards visible first, readable artist labels, Interview badges, and modal play buttons. Existing performance cards continue below without horizontal overflow; the long catalog remains scrollable and the footer/channel CTA stay reachable.

@@ -9,6 +9,10 @@ import { SiteNav } from "@/components/SiteNav";
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
 const MIC_VIDEOS = [
+  { id: "2LqNPNOsS5w", artist: "Shaudy Kash", title: "Shaudy Kash Interview | Meeting With The Mitten", type: "Meeting With The Mitten Interview" },
+  { id: "FiXQViDNP9Q", artist: "DJStr8Cash", title: "DJStr8Cash Interview | Meeting With The Mitten", type: "Meeting With The Mitten Interview" },
+  { id: "L-X7rR0F4oM", artist: "Art Decco", title: "Art Decco Interview | Meeting With The Mitten", type: "Meeting With The Mitten Interview" },
+  { id: "Tob-pLXFj2k", artist: "BandGang Javar", title: "BandGang Javar Interview - Meeting With The Mitten S2 : E1", type: "Meeting With The Mitten Interview" },
   { id: "JKm_S2YQTk0", artist: "Bo Luke", title: "Murder Mitten Mic : Bo Luke", type: "One Mic Performance" },
   { id: "_t9P2N1d9DY", artist: "LOE Denny", title: "Murder Mitten Mic : LOE Denny", type: "Mic Drop Performance" },
   { id: "O-5f64kvTH8", artist: "Paid G", title: "Murder Mitten Mic : Paid G", type: "Mic Drop Performance" },
@@ -53,7 +57,7 @@ function VideoCard({ video, onClick }: { video: typeof MIC_VIDEOS[0]; onClick: (
         </div>
         <div className="absolute top-2 left-2">
           <span className="bg-red-600 text-white text-xs px-2 py-0.5 uppercase tracking-wider font-semibold">
-            {video.type === "Mic Drop Performance" ? "Mic Drop" : "One Mic"}
+            {video.type === "Mic Drop Performance" ? "Mic Drop" : video.type === "Meeting With The Mitten Interview" ? "Interview" : "One Mic"}
           </span>
         </div>
       </div>

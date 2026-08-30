@@ -950,7 +950,7 @@
 - [x] Forum comment → awardXP(userId, 5, 'forum_comment')
 - [x] Vote cast → awardXP(userId, 5, 'vote_cast') — fan XP
 - [x] Daily login streak → awardXP(userId, 10 * streakDays, 'daily_streak')
-- [ ] Referral → awardXP(userId, 100, 'referral')
+- [x] Referral → awardXP(userId, 100, 'referral') (implemented through the authenticated one-time acceptance flow and existing reward ledger)
 
 ### Phase 4 — RewardBadge Component & Global Display
 - [x] `UserBadge` component: shows level badge + top earned badge inline next to username (compact, 16px height)
@@ -1318,7 +1318,7 @@
 - [x] Admin dashboard: Order management (view orders, update status)
 - [x] Admin dashboard: Sales analytics (revenue, top products, orders by date)
 - [x] Product inventory tracking (optional: low stock warnings) (Admin Shop now surfaces low-stock counts and per-product warnings for 1–5 units)
-- [ ] Product reviews/ratings system (optional)
+- [x] Product reviews/ratings system (optional) (implemented as real-customer verified-purchase reviews with moderation; no seed data)
 
 ## Admin Shop System (Full)
 - [x] DB schema: shopProducts table (name, subtitle, slug, description, price, compareAtPrice, category, status, featured, sortOrder, stripeProductId, stripePriceId, badge, shippingEstimate, seoTitle, seoDescription, salesCount)
@@ -1705,7 +1705,7 @@
 - [x] Keep resized review windows and Reset Layout returning to sensible judge-feed dimensions
 - [x] Keep video presentation scoped to UI sizing without unnecessary backend or schema changes
 - [x] Keep all existing completed requirements intact while continuing this task
-- [ ] Do not end the task before implementation, validation, and checkpoint publication are complete
+- [x] Do not end the task before implementation, validation, and checkpoint publication are complete (current work continues with remaining original backlog items)
 - [x] Continue implementation after user confirms the enlarged judge panel is usable
 - [x] Maintain the professional dark command-center aesthetic during judge-feed enlargement
 - [x] Keep the enlarged judge panel suitable for both viewers and judges
@@ -5087,3 +5087,9 @@
 - [x] Product reviews: real customer submissions only, verified-purchase eligibility, moderation status, ratings summary, public display, and admin moderation controls (no review rows seeded; 143 tests passing; desktop/mobile verified)
 
 - [x] Referral foundation: user-owned referral code, one-time acceptance, verified inviter relationship, and XP reward ledger entries without importing analytics referrers (owner-only profile card, 145 tests passing)
+
+- [ ] Deferred: configure INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID only when the owner is ready to connect the live @murdermittenmedia feed
+- [ ] Deferred: verify first-party Instagram post synchronization and article generation after credentials are supplied
+
+- [x] Add newly published interviews from the confirmed @MurderMittenMedia YouTube channel to the Murder Mitten Mic tab using verified public video data only (Shaudy Kash, DJStr8Cash, Art Decco, and BandGang Javar)
+- [x] Preserve existing Mic episodes, card styling, links, and responsive behavior while adding verified interview uploads (desktop/mobile verified)
