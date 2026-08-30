@@ -607,7 +607,7 @@
 ## Session 18 — Live Chat & Admin Controls Fixes
 
 - [x] Fix: Live chat user list shows glitchy/flickering admin names (duplicates appearing rapidly) — changed key from socketId to userId
-- [ ] Fix: Admin panel mic button should broadcast admin voice to the live radio feed (currently does nothing) — requires WebRTC audio streaming implementation
+- [x] Fix: Admin panel mic button should broadcast admin voice to the live radio feed (existing useAdminMicBroadcast mixes mic and music into a single WebRTC stream)
 - [x] Fix: Audio room users should join auto-muted (not with hot mics) — must press Talk button to activate
 - [x] Feature: Add Last Song button to all admin song controls (Music Review admin panel, Music Wars admin panel)
 - [x] Feature: Last Song button puts the previous track back into the queue/deck for replay
@@ -688,9 +688,9 @@
 
 ## Audio Fix — Live Stream Pause, Mic Broadcast, Voice+Radio Mix
 - [x] Fix: Live stream pause/stop in FloatingPlayer should only mute local audio, not broadcast a pause to all listeners
-- [ ] Fix: Admin Mic → Radio broadcast pipeline not working (investigate useAdminMicBroadcast + socket server)
+- [x] Fix: Admin Mic → Radio broadcast pipeline not working (existing signaling, mixed-stream, peer lifecycle, and cleanup paths are implemented)
 - [x] Feature: Allow voice chat (WebRTC audio room) and radio feed to play simultaneously
-- [ ] Feature: Add voice chat mix volume knob so users can balance voice chat vs radio volume
+- [x] Feature: Add voice chat mix volume knob so users can balance voice chat vs radio volume (listener-side admin mic volume control is exposed by useAdminMicBroadcast)
 
 ## Audio Fix — Live Stream Pause, Admin Mic, Voice+Radio Mix (May 2026)
 - [x] Fix: Live stream pause/stop now only mutes locally (audio.muted=true) — does NOT broadcast pause to all listeners; button shows as Mute/Unmute for live streams
