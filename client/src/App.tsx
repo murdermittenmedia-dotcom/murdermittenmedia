@@ -103,6 +103,8 @@ function Router() {
       {/* Live Cook Up */}
       <Route path={"/cookup"} component={LiveCookUp} />
       <Route path={"/cookup/:id"} component={CookUpStream} />
+      {/* Dedicated Go Live alias must precede the dynamic /live/:id route. */}
+      <Route path={"/live/go"} component={LiveCookUp} />
       <Route path={"/live/:id"} component={CookUpStream} />
       <Route path={"/coins"} component={Coins} />
       <Route path={"/fire-or-trash"} component={FireOrTrash} />
