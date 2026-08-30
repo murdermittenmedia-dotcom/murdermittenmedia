@@ -877,7 +877,7 @@
 - [ ] Activity triggers: emit events on song submission, battle start/end, review session start, forum post, new user join
 - [ ] Socket: broadcast `activity:new_event` to all clients when activity event is created
 - [ ] ActivityFeed component: scrolling ticker/feed showing live events with icons and timestamps
-- [ ] Homepage: add live activity feed section showing recent platform events
+- [x] Homepage: add live activity feed section showing recent platform events
 - [ ] SiteNav or FloatingPlayer: add mini activity ticker showing latest event
 
 ### Broadcast Mode Views

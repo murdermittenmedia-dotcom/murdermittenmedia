@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ShoppingBag } from "lucide-react";
+import { Activity, ArrowUpRight, ShoppingBag } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { useLiveStatus } from "@/hooks/useLiveStatus";
@@ -197,6 +197,48 @@ function ArtistOfMonthSection() {
             </Link>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function ActivityFeedSection() {
+  const { data: events = [], isLoading } = trpc.activity.getRecent.useQuery({ limit: 8 }, { refetchInterval: 30_000, refetchOnWindowFocus: false });
+
+  return (
+    <section className="border-t border-white/10 bg-[#080808] py-16">
+      <div className="container">
+        <div className="mb-10 flex items-end justify-between gap-6">
+          <div>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="h-px w-8 bg-red-600" />
+              <span className="text-xs font-semibold uppercase tracking-[0.3em] text-red-500">The Mitten is Moving</span>
+            </div>
+            <h2 className="font-['Anton'] text-5xl uppercase leading-none md:text-6xl">Latest <span className="text-red-600">Activity</span></h2>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/45">Fresh reviews, Music Wars results, and community conversations from across the platform.</p>
+          </div>
+          <Activity className="hidden h-9 w-9 text-red-600/50 sm:block" aria-hidden="true" />
+        </div>
+
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-36 animate-pulse border border-white/10 bg-white/[0.03]" />)}</div>
+        ) : events.length === 0 ? (
+          <div className="border border-dashed border-white/15 bg-white/[0.02] p-8 text-center text-sm text-white/40">New platform activity will appear here as the community moves.</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {events.map((event) => (
+              <Link key={event.id} href={event.href} className="group flex min-h-36 flex-col border border-white/10 bg-white/[0.02] p-5 transition-all hover:border-red-600/50 hover:bg-red-950/10">
+                <div className="mb-5 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-red-500">
+                  <span>{event.kind === "review" ? "Music Review" : event.kind === "battle" ? "Music Wars" : "Community"}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-white/30 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+                </div>
+                <h3 className="line-clamp-2 font-['Anton'] text-xl uppercase leading-tight text-white transition-colors group-hover:text-red-400">{event.title}</h3>
+                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-white/40">{event.detail}</p>
+                <time className="mt-auto pt-4 text-[10px] uppercase tracking-widest text-white/25">{new Date(event.createdAt).toLocaleDateString()}</time>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -666,6 +708,8 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      <ActivityFeedSection />
 
       {/* ══════════════════════════════════════════════════════
           MUSIC REVIEW QUEUE -- Standalone CTA

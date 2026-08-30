@@ -2722,3 +2722,63 @@ export async function getAllLinkPages(limit = 200) {
     updatedAt: linkPages.updatedAt,
   }).from(linkPages).orderBy(desc(linkPages.updatedAt)).limit(Math.min(limit, 500));
 }
+
+
+export type PublicActivityEvent = {
+  id: string;
+  kind: "review" | "battle" | "community";
+  title: string;
+  detail: string;
+  href: string;
+  createdAt: Date;
+};
+
+export async function getPublicActivityFeed(limit = 8): Promise<PublicActivityEvent[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const [reviews, battles, posts] = await Promise.all([
+    db.select({ id: reviewSubmissions.id, artistName: reviewSubmissions.artistName, songTitle: reviewSubmissions.songTitle, verdict: reviewSubmissions.verdict, reviewedAt: reviewSubmissions.reviewedAt, createdAt: reviewSubmissions.createdAt })
+      .from(reviewSubmissions)
+      .where(eq(reviewSubmissions.status, "reviewed"))
+      .orderBy(desc(reviewSubmissions.reviewedAt), desc(reviewSubmissions.createdAt))
+      .limit(limit),
+    db.select({ id: battleRecords.id, winnerArtistName: battleRecords.winnerArtistName, winnerSongTitle: battleRecords.winnerSongTitle, loserArtistName: battleRecords.loserArtistName, loserSongTitle: battleRecords.loserSongTitle, battleDate: battleRecords.battleDate })
+      .from(battleRecords)
+      .orderBy(desc(battleRecords.battleDate))
+      .limit(limit),
+    db.select({ id: forumPosts.id, title: forumPosts.title, category: forumPosts.category, createdAt: forumPosts.createdAt })
+      .from(forumPosts)
+      .orderBy(desc(forumPosts.createdAt))
+      .limit(limit),
+  ]);
+
+  const events: PublicActivityEvent[] = [
+    ...reviews.map((row) => ({
+      id: `review-${row.id}`,
+      kind: "review" as const,
+      title: `${row.artistName} got reviewed`,
+      detail: `${row.songTitle}${row.verdict ? ` · ${row.verdict}` : " · Murder Mitten verdict pending"}`,
+      href: "/review",
+      createdAt: row.reviewedAt ?? row.createdAt,
+    })),
+    ...battles.map((row) => ({
+      id: `battle-${row.id}`,
+      kind: "battle" as const,
+      title: `${row.winnerArtistName} won a Music War`,
+      detail: `${row.winnerSongTitle} over ${row.loserArtistName} · ${row.loserSongTitle}`,
+      href: "/music-wars",
+      createdAt: row.battleDate,
+    })),
+    ...posts.map((row) => ({
+      id: `community-${row.id}`,
+      kind: "community" as const,
+      title: row.title,
+      detail: `New ${row.category} discussion in the community`,
+      href: "/forum",
+      createdAt: row.createdAt,
+    })),
+  ];
+
+  return events.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
+}

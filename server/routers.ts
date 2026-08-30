@@ -55,7 +55,7 @@ import {
   createModerationLog, getModerationLogs,
   banUser, unbanUser,
   getSkipLineOrders, getWheelPaidOrders,
-  getAdminAnalytics,
+  getAdminAnalytics, getPublicActivityFeed,
   deleteUser, resetAllStats, resetAllSubmissions,
   addWheelOfNamesEntry, getWheelOfNamesEntries, getUserWheelOfNamesEntry,
   clearWheelOfNamesEntries, getLastWheelOfNamesWinner, createWheelOfNamesSpin,
@@ -248,6 +248,9 @@ const studiosRouter = router({
 });
 
 export const appRouter = router({
+  activity: router({
+    getRecent: publicProcedure.input(z.object({ limit: z.number().int().min(1).max(12).default(8) }).optional()).query(async ({ input }) => getPublicActivityFeed(input?.limit ?? 8)),
+  }),
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(async (opts) => {
