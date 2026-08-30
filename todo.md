@@ -5096,3 +5096,6 @@
 
 - [x] Music Review workspace: remove grid packing and make all windows truly free-positioned in 2D (absolute x/y canvas with pointer dragging and no dense-grid repacking)
 - [x] Music Review workspace: preserve independent unlocked width/height resizing, persistence, reset behavior, viewport clamping, and mobile usability without grid snapping (desktop/mobile verified; 146 tests passing)
+
+- [x] Audit the canonical https://www.youtube.com/@MurderMittenMedia public uploads for missing Mic episodes and newer interviews (verified public channel list and canonical URLs saved)
+- [x] Compare verified canonical uploads with the existing Murder Mitten Mic catalog before adding entries (Young Hoova was missing and is now included)

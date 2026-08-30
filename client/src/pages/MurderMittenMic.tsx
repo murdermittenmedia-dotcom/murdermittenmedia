@@ -13,6 +13,7 @@ const MIC_VIDEOS = [
   { id: "FiXQViDNP9Q", artist: "DJStr8Cash", title: "DJStr8Cash Interview | Meeting With The Mitten", type: "Meeting With The Mitten Interview" },
   { id: "L-X7rR0F4oM", artist: "Art Decco", title: "Art Decco Interview | Meeting With The Mitten", type: "Meeting With The Mitten Interview" },
   { id: "Tob-pLXFj2k", artist: "BandGang Javar", title: "BandGang Javar Interview - Meeting With The Mitten S2 : E1", type: "Meeting With The Mitten Interview" },
+  { id: "EmL92tOALtA", artist: "Young Hoova", title: "Meeting With The Mitten : Young Hoova Full Raw /Uncut Interview", type: "Meeting With The Mitten Interview" },
   { id: "JKm_S2YQTk0", artist: "Bo Luke", title: "Murder Mitten Mic : Bo Luke", type: "One Mic Performance" },
   { id: "_t9P2N1d9DY", artist: "LOE Denny", title: "Murder Mitten Mic : LOE Denny", type: "Mic Drop Performance" },
   { id: "O-5f64kvTH8", artist: "Paid G", title: "Murder Mitten Mic : Paid G", type: "Mic Drop Performance" },
@@ -92,7 +93,7 @@ export default function MurderMittenMic() {
             MURDER MITTEN <span className="text-red-600">MIC</span>
           </h1>
           <p className="text-white/50 text-lg max-w-2xl mx-auto">
-            Michigan artists. One mic. No excuses. Watch raw, unfiltered performances from the trenches.
+            Michigan artists. One mic. No excuses. Watch raw, unfiltered performances and interviews from the trenches.
           </p>
           <div className="mt-4 text-white/30 text-sm">{MIC_VIDEOS.length} performances</div>
         </div>

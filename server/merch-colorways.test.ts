@@ -67,6 +67,13 @@ describe("merch shirt colorways", () => {
     expect(adminSource).toContain("Nothing is seeded or published automatically");
   });
 
+  it("keeps the verified canonical Mic catalog additions intact", () => {
+    const micSource = readFileSync(resolve(process.cwd(), "client/src/pages/MurderMittenMic.tsx"), "utf8");
+    expect(micSource).toContain('EmL92tOALtA');
+    expect(micSource).toContain('Young Hoova Full Raw /Uncut Interview');
+    expect(micSource).toContain('Watch raw, unfiltered performances and interviews from the trenches.');
+  });
+
   it("keeps the renamed Blade Tee at $27.99 and separate from the Spirit tee", async () => {
     const db = await getDb();
     if (!db) return;
