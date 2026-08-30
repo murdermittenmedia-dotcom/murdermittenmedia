@@ -1614,10 +1614,10 @@
 - [x] Implement server-enforced Vote To Skip limits, realtime skip state, auto-skip settings, and Review+ membership gating
 - [x] Add Review+ membership purchase and entitlement handling using existing Stripe infrastructure
 - [x] Build dedicated judge join/green-room/session interfaces and responsive Mitten Panel viewer presentation
-- [ ] Add distinct crowd and Mitten Panel voting display while preserving existing FIRE/TRASH behavior
+- [x] Add distinct crowd and Mitten Panel voting display while preserving existing FIRE/TRASH behavior
 - [x] Add review admin controls, pop-out control board, live status, chat/viewer moderation, and judge management
 - [x] Add review sharing, social preview, and past-played artist/profile continuity where missing
-- [ ] Add end-to-end regression tests and validate /review user flows across admin, judge, viewer, audio, voting, skip, and membership paths
+- [x] Add end-to-end regression tests and validate /review user flows across admin, judge, viewer, audio, voting, skip, and membership paths
 
 - [x] Enforce persisted PAID ONLY mode on queue.submit, queue.uploadTrack, and queue.uploadAudio direct API paths
 - [x] Allow verified Stripe paid-submission confirmation during PAID ONLY mode
