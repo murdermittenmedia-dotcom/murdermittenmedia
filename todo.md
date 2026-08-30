@@ -1032,9 +1032,9 @@
 - [ ] tRPC: gifts.send — deduct coins from sender, record gift, notify streamer via socket
 - [ ] tRPC: gifts.getForStream — get all gifts for a stream
 - [ ] tRPC: admin.getLiveStreams — list all streams with gift totals
-- [ ] tRPC: admin.getGiftLedger — full gift history with USD values
-- [ ] tRPC: admin.approveCoinPurchase — mark purchase approved, add coins to user balance
-- [ ] tRPC: admin.markPayoutSent — mark a streamer's gift earnings as paid out
+- [x] tRPC: admin.getGiftLedger — full gift history with USD values (implemented as admin.adminGetGiftLedger)
+- [x] tRPC: admin.approveCoinPurchase — mark purchase approved, add coins to user balance (implemented as admin.adminApproveCoinPurchase)
+- [x] tRPC: admin.markPayoutSent — mark a streamer's gift earnings as paid out (implemented through economy.adminResolveCreatorCashout with the pay action)
 
 ### Frontend
 - [x] Page: /live — browse page with thumbnail grid of active streams (active Cook Up discovery now appears on the existing radio/live page)
