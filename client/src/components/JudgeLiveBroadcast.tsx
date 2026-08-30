@@ -28,6 +28,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalTrack | null>(null);
   const [localAudioTrack, setLocalAudioTrack] = useState<LocalTrack | null>(null);
   const endBroadcastMutation = trpc.review.endBroadcast.useMutation();
+  const activateBroadcastMutation = trpc.review.activateBroadcast.useMutation();
   const endedRef = useRef(false);
   const onStopRef = useRef(onStop);
   onStopRef.current = onStop;
@@ -84,6 +85,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
         // Publish both tracks
         await room.localParticipant.publishTrack(videoTrack, { source: Track.Source.Camera });
         await room.localParticipant.publishTrack(audioTrack, { source: Track.Source.Microphone });
+        await activateBroadcastMutation.mutateAsync({ broadcastId });
 
         if (!cancelled) {
           setConnected(true);
@@ -110,7 +112,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
       room.disconnect();
       finishBroadcast();
     };
-  }, [token, livekitUrl, finishBroadcast]);
+  }, [token, livekitUrl, finishBroadcast, broadcastId, activateBroadcastMutation]);
 
   // Attach local video track to video element after track is set
   useEffect(() => {

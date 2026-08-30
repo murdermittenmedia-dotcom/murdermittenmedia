@@ -1,0 +1,1 @@
+ALTER TABLE `judge_streams` MODIFY COLUMN `status` enum('pending','active','ended','error') NOT NULL DEFAULT 'pending';

@@ -1672,6 +1672,8 @@
 - [x] Replace Green Room wording and flow with a direct Join Judge Panel camera-and-microphone publishing action
 - [x] Make judge camera permission and microphone permission status explicit before joining the live panel
 - [x] Simplify public review audio so one listener control covers judge voices while the synchronized review track continues independently
+- [x] Keep new judge broadcasts off the public panel until camera and microphone tracks are successfully published
+- [x] Add an admin control to end a stuck or abandoned live judge panel safely
 - [x] Stabilize Music Review radio playback against stale socket events, duplicate control mounts, accidental pauses, and unintended track skips
 - [x] Clear the synchronized YouTube review player immediately when a track is marked reviewed or skipped
 - [x] Save a branded Murder Mitten Verdict with crowd and Mitten Panel results into the existing review history when a track completes

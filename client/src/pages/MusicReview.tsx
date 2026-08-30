@@ -204,6 +204,11 @@ function AdminPanel({
     onSuccess: () => { judgeRoster.refetch(); toast.success("Judge access revoked"); },
     onError: (error) => toast.error(error.message),
   });
+  const activeJudgePanels = trpc.review.getActive.useQuery(undefined, { enabled: currentUser?.role === "admin", refetchInterval: 10_000 });
+  const forceEndJudgePanel = trpc.review.forceEnd.useMutation({
+    onSuccess: () => { activeJudgePanels.refetch(); toast.success("Judge panel ended"); },
+    onError: (error) => toast.error(error.message),
+  });
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
 
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
@@ -577,6 +582,13 @@ function AdminPanel({
                 ))}
                 {(judgeRoster.data?.items ?? []).filter((member) => member.role === "judge").length === 0 && <p className="text-[10px] text-white/30">No verified judges yet.</p>}
               </div>
+              {(activeJudgePanels.data ?? []).length > 0 && <div className="mt-3 border-t border-white/10 pt-2">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-red-200/70">Live panel cleanup</p>
+                {(activeJudgePanels.data ?? []).map((panel) => <div key={panel.id} className="flex items-center justify-between gap-2 text-[10px] text-white/55">
+                  <span className="truncate">{panel.judgeName || `Judge ${panel.userId}`}</span>
+                  <button type="button" onClick={() => forceEndJudgePanel.mutate({ broadcastId: panel.id })} disabled={forceEndJudgePanel.isPending} className="shrink-0 text-red-300 hover:text-red-200 disabled:opacity-40">End panel</button>
+                </div>)}
+              </div>}
             </div>
           </div>
         )}

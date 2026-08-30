@@ -1382,7 +1382,7 @@ export const appRouter = router({
           ingressId: null as any,
           rtmpUrl: null as any,
           rtmpKey: null as any,
-          status: "active",
+          status: "pending",
         });
         const broadcastId = broadcast.id;
         
@@ -1392,6 +1392,26 @@ export const appRouter = router({
         console.log(`[Judge Broadcast] ${ctx.user.name} started browser broadcast in room ${roomName} (id=${broadcastId})`);
         
         return { success: true, broadcast: { id: broadcastId, userId: ctx.user.id, roomName, status: "active" }, token, livekitUrl: ENV.livekitUrl };
+      }),
+
+    // A browser broadcast becomes public only after its camera and microphone tracks publish successfully.
+    activateBroadcast: protectedProcedure
+      .input(z.object({ broadcastId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "judge" && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only judges and admins can activate a broadcast" });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [broadcast] = await db.select().from(judgeStreams).where(eq(judgeStreams.id, input.broadcastId)).limit(1);
+        if (!broadcast || broadcast.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Not your broadcast" });
+        }
+        if (broadcast.status === "ended" || broadcast.status === "error") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This broadcast is no longer available" });
+        }
+        await db.update(judgeStreams).set({ status: "active" }).where(eq(judgeStreams.id, input.broadcastId));
+        return { success: true as const };
       }),
 
     // End a judge broadcast

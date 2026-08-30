@@ -936,7 +936,7 @@ export const judgeStreams = mysqlTable("judge_streams", {
   ingressId: varchar("ingressId", { length: 256 }),  // LiveKit ingress ID (null for browser-only broadcasts)
   rtmpUrl: varchar("rtmpUrl", { length: 512 }),  // RTMP server URL for OBS
   rtmpKey: varchar("rtmpKey", { length: 256 }),  // stream key for OBS
-  status: mysqlEnum("status", ["active", "ended", "error"]).default("active").notNull(),
+  status: mysqlEnum("status", ["pending", "active", "ended", "error"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   endedAt: timestamp("endedAt"),
 });
