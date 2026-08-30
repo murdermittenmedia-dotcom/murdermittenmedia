@@ -84,6 +84,11 @@ export function AdminOverview({ onNavigate }: { onNavigate: (destination: AdminO
         <SummaryCard label="Members" value={metrics.memberCount ?? "—"} detail={`${metrics.recentSignups} recent signups`} icon={Users} tone="blue" onClick={() => onNavigate("users")} />
       </div>
 
+      <div className="flex flex-col gap-3 rounded-2xl border border-red-500/25 bg-red-500/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-red-300">Broadcast mode</p><p className="mt-1 text-sm text-white/50">Open a clean capture-ready feed for review, radio, rankings, or Music Wars.</p></div>
+        <a href="/broadcast" target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-red-600 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300">Open Broadcast Hub ↗</a>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
         <button type="button" onClick={() => onNavigate("live")} className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 text-left transition hover:border-red-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">
           <div className="flex items-center justify-between gap-4">

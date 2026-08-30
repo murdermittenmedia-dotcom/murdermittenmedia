@@ -888,7 +888,7 @@
 - [x] Broadcast views: no nav, no footer, no floating player — clean overlay-style layout
 - [x] Broadcast views: large Anton font, high contrast (#080808 bg, white/red text), animated counters
 - [x] Broadcast views: safe margins for Instagram crop (16:9 safe zone)
-- [ ] Add `/broadcast` link in admin panel for easy access during streams
+- [x] Add `/broadcast` link in admin panel for easy access during streams
 
 ### FloatingPlayer Enhancements
 - [x] FloatingPlayer: show live listener count when a live stream is active
