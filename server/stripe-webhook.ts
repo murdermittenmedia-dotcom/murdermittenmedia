@@ -16,6 +16,7 @@
 import type { Express, Request, Response } from "express";
 import express from "express";
 import Stripe from "stripe";
+import { REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS } from "../shared/review-plus-entitlement";
 import { getDb } from "./db";
 import {
   goldenWheelOrders,
@@ -340,7 +341,7 @@ async function handleReviewPlusInvoicePaid(invoice: Stripe.Invoice) {
     status: "active",
     currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : membership.currentPeriodEnd,
   }).where(eq(reviewPlusMemberships.id, membership.id));
-  await grantLineSkipCredits(membership.userId, 5);
+  await grantLineSkipCredits(membership.userId, REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS);
   console.log(`[Review+] Renewal credited five line skips for user ${membership.userId}`);
 }
 

@@ -62,6 +62,14 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   // Career reaction totals (incremented on each vote)
   fireCount: int("fireCount").default(0).notNull(),
   trashCount: int("trashCount").default(0).notNull(),
+  verdict: varchar("verdict", { length: 64 }),
+  crowdFirePct: int("crowdFirePct"),
+  crowdTrashPct: int("crowdTrashPct"),
+  judgeFireCount: int("judgeFireCount").default(0).notNull(),
+  judgeTrashCount: int("judgeTrashCount").default(0).notNull(),
+  totalVoteCount: int("totalVoteCount").default(0).notNull(),
+  skipVoteTriggered: boolean("skipVoteTriggered").default(false).notNull(),
+  reviewedAt: timestamp("reviewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -668,6 +676,9 @@ export const reviewPlusMemberships = mysqlTable("review_plus_memberships", {
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
   status: mysqlEnum("status", ["active", "expired", "canceled"]).default("active").notNull(),
   currentPeriodEnd: timestamp("currentPeriodEnd"),
+  chatAccent: mysqlEnum("chatAccent", ["gold", "crimson", "violet"]).default("gold").notNull(),
+  chatIcon: mysqlEnum("chatIcon", ["crown", "fire", "star"]).default("crown").notNull(),
+  chatStyle: mysqlEnum("chatStyle", ["banner", "outline"]).default("banner").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

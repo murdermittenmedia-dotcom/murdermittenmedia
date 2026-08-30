@@ -316,6 +316,20 @@
       "when": 1788053431800,
       "tag": "0044_legal_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1788056331751,
+      "tag": "0045_square_shard",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "5",
+      "when": 1788057249708,
+      "tag": "0046_red_frightful_four",
+      "breakpoints": true
     }
   ]
 }

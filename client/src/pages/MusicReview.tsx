@@ -27,7 +27,8 @@ import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 import { MUSIC_REVIEW_FREE_SUBMISSION_LIMIT } from "@shared/music-review-paywall";
 
 // Types inferred from tRPC query
-type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string | null; paidSubmissionType?: "reentry5" | "reentry10" | "skip" | null };
+type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; verdict?: string | null; crowdFirePct?: number | null; crowdTrashPct?: number | null; judgeFireCount: number; judgeTrashCount: number; totalVoteCount?: number; skipVoteTriggered?: boolean; reviewedAt?: Date | null; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string |
+ null; paidSubmissionType?: "reentry5" | "reentry10" | "skip" | null };
 type QueueState = {
   id: number;
   isLive: boolean;
@@ -68,8 +69,8 @@ function JudgePanelStrip() {
           {mutedAll ? "Unmute Judges" : "Mute All Judges"}
         </button>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {broadcasts.map((broadcast) => <JudgePanelCard key={broadcast.id} broadcast={broadcast} mutedAll={mutedAll} />)}
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
+        {broadcasts.map((broadcast) => <div key={broadcast.id} className="min-w-[260px] snap-start sm:min-w-0"><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} /></div>)}
       </div>
     </section>
   );
@@ -109,6 +110,7 @@ function StatusBadge({ status }: { status: string }) {
 // ── Admin Panel ───────────────────────────────────────────────
 function AdminPanel({
   data, refetch, audioRoom, videoRoom, broadcastReviewActive, broadcastRadioPause, broadcastRadioResume, broadcastRadioSeek, broadcastReviewPlayback, broadcastReviewQueueUpdated, broadcastLastSong, adminMicBroadcast, playTrack, setSelectedYouTube, reviewedTracks, triggerReaction,
+  botEnabled, setBotEnabled, botFrequency, setBotFrequency,
   commentIntervalMs, setCommentIntervalMs, viewerMin, setViewerMin, viewerMax, setViewerMax,
   ghostFireCount, setGhostFireCount, ghostTrashCount, setGhostTrashCount,
   ghostFireIntervalSec, setGhostFireIntervalSec, ghostTrashIntervalSec, setGhostTrashIntervalSec,
@@ -130,6 +132,10 @@ function AdminPanel({
   setSelectedYouTube: (val: { url: string; title: string; artist: string } | null) => void;
   reviewedTracks?: ReviewSubmission[];
   triggerReaction: (reaction: "hype" | "trash" | "knife" | "bars" | "weak" | "next", duration?: number) => void;
+  botEnabled: boolean;
+  setBotEnabled: (v: boolean) => void;
+  botFrequency: "low" | "normal" | "high";
+  setBotFrequency: (v: "low" | "normal" | "high") => void;
   commentIntervalMs: number;
   setCommentIntervalMs: (v: number) => void;
   viewerMin: number;
@@ -618,6 +624,16 @@ function AdminPanel({
         <div className="border border-white/10 bg-white/[0.02] rounded-lg p-3 space-y-3">
           <div className="text-white/40 text-[10px] uppercase tracking-wider font-bold flex items-center gap-1.5">
             <span>💬</span> Chat &amp; Viewer Controls
+          </div>
+
+          <div className="rounded-md border border-white/10 bg-black/20 p-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="text-[10px] font-bold uppercase tracking-wider text-white/60">Auto Bot Chat</p><p className="mt-0.5 text-[9px] text-white/30">Controls generated comments only.</p></div>
+              <button type="button" onClick={() => setBotEnabled(!botEnabled)} className={`rounded px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider ${botEnabled ? "border border-green-500/35 bg-green-500/10 text-green-300" : "border border-white/15 bg-white/[0.03] text-white/45"}`}>{botEnabled ? "On" : "Off"}</button>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-1">
+              {(["low", "normal", "high"] as const).map((frequency) => <button key={frequency} type="button" onClick={() => setBotFrequency(frequency)} disabled={!botEnabled} className={`rounded py-1.5 text-[9px] font-bold uppercase tracking-wider ${botFrequency === frequency ? "bg-red-600 text-white" : "bg-white/[0.04] text-white/45 hover:text-white"} disabled:opacity-35`}>{frequency}</button>)}
+            </div>
           </div>
 
           {/* Comment speed slider */}
@@ -1172,6 +1188,7 @@ function FireTrashPoll({
   onVote,
   isPending,
   user,
+  isJudge,
 }: {
   submissionId: number;
   songTitle: string;
@@ -1183,6 +1200,7 @@ function FireTrashPoll({
   onVote: (reaction: "fire" | "trash") => void;
   isPending: boolean;
   user: { id: number } | null;
+  isJudge: boolean;
 }) {
   const total = fireCount + trashCount;
   const firePct = total > 0 ? Math.round((fireCount / total) * 100) : 50;
@@ -1199,7 +1217,7 @@ function FireTrashPoll({
         </div>
         {hasVoted && (
           <span className="text-[10px] font-semibold">
-            {myReaction === "fire" ? <span className="text-orange-400">🔥 You voted Fire</span> : <span className="text-blue-400">🗑️ You voted Trash</span>}
+            {myReaction === "fire" ? <span className="text-orange-400">🔥 {isJudge ? "Mitten Panel voted Fire" : "You voted Fire"}</span> : <span className="text-blue-400">🗑️ {isJudge ? "Mitten Panel voted Trash" : "You voted Trash"}</span>}
           </span>
         )}
       </div>
@@ -1278,6 +1296,7 @@ export default function MusicReview() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [voiceJoined, setVoiceJoined] = useState(false);
   const [showVoicePanel, setShowVoicePanel] = useState(false);
@@ -1297,6 +1316,10 @@ export default function MusicReview() {
   const confirmSkipStripeCheckout = trpc.stripe.confirmSkipCheckout.useMutation();
 
   const { user } = useAuth();
+  const { data: savedBotSettings } = trpc.queue.getReviewBotSettings.useQuery(undefined, { refetchInterval: 5000 });
+  const saveReviewBotSettings = trpc.queue.setReviewBotSettings.useMutation({
+    onError: (error) => toast.error(error.message),
+  });
   const { data: reviewPlusStatus, refetch: refetchReviewPlusStatus } = trpc.stripe.getReviewPlusStatus.useQuery(undefined, { enabled: !!user });
   const createReviewPlusCheckout = trpc.stripe.createReviewPlusCheckout.useMutation({
     onSuccess: ({ checkoutUrl }) => { window.location.href = checkoutUrl; },
@@ -1305,6 +1328,10 @@ export default function MusicReview() {
   const confirmReviewPlusCheckout = trpc.stripe.confirmReviewPlusCheckout.useMutation({
     onSuccess: () => { refetchReviewPlusStatus(); toast.success("Review+ is active — unlimited Vote To Skip is now enabled."); },
     onError: (error) => toast.error("Review+ verification failed: " + error.message),
+  });
+  const updateReviewPlusChatBanner = trpc.stripe.updateReviewPlusChatBanner.useMutation({
+    onSuccess: () => { refetchReviewPlusStatus(); toast.success("Review+ chat banner updated"); },
+    onError: (error) => toast.error(error.message),
   });
   useEffect(() => {
     if (!user || typeof window === "undefined") return;
@@ -1493,6 +1520,7 @@ export default function MusicReview() {
 
   const {
     viewerCount, viewerCountVisible, setViewerCountVisible, fakeMessages, triggerReaction,
+    botEnabled, setBotEnabled, botFrequency, setBotFrequency,
     commentIntervalMs, setCommentIntervalMs,
     viewerMin, setViewerMin, viewerMax, setViewerMax,
     ghostFireCount, setGhostFireCount,
@@ -1503,10 +1531,17 @@ export default function MusicReview() {
     receiveFakeMessage,
     receiveChatControls,
   } = useFakeLiveChat({
+    isReviewLive: data?.state?.isLive ?? false,
     isAdmin,
     emitFakeChatMessage: (data) => fakeChatEmitRef.current?.(data),
     emitChatControls: (data) => chatControlsEmitRef.current?.(data),
   });
+
+  useEffect(() => {
+    if (!savedBotSettings) return;
+    setBotEnabled(savedBotSettings.botEnabled);
+    setBotFrequency(savedBotSettings.botFrequency as "low" | "normal" | "high");
+  }, [savedBotSettings?.botEnabled, savedBotSettings?.botFrequency]);
 
   const chatUsername = user?.artistName || user?.name || "Anonymous";
 
@@ -1964,6 +1999,27 @@ export default function MusicReview() {
         }
       : null;
 
+  const enterLiveReview = () => {
+    setAudioUnlocked(true);
+    const loadedTrack = audioPlayer.track;
+    if (loadedTrack) {
+      audioPlayer.unlockAndPlay(loadedTrack);
+      return;
+    }
+    if (activeTrack?.fileUrl) {
+      audioPlayer.unlockAndPlay({
+        url: activeTrack.fileUrl,
+        title: activeTrack.songTitle,
+        artist: activeTrack.artistName,
+        sourcePage: "Music Review",
+        submissionId: activeTrack.submissionId,
+        artistUserId: activeTrack.userId ?? undefined,
+      });
+      return;
+    }
+    toast.success("Live Review audio is ready. Tap the player when the next track begins.");
+  };
+
   // ── Merged chat messages (real + fake) sorted chronologically ───
   const allMessages = [...chatMessages, ...fakeMessages].sort((a, b) => {
     const ta = "timestamp" in a ? a.timestamp : new Date(a.createdAt).getTime();
@@ -2005,6 +2061,9 @@ export default function MusicReview() {
                 <span className="text-green-400 text-xs font-bold uppercase tracking-widest">LIVE</span>
               </div>
             )}
+            {isLive && <button type="button" onClick={enterLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
+              {audioUnlocked ? "Audio Ready" : "Enter Live Review"}
+            </button>}
           </div>
         </div>
       </div>
@@ -2045,6 +2104,10 @@ export default function MusicReview() {
             setSelectedYouTube={setSelectedYouTube}
             reviewedTracks={reviewedTracks}
             triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
+            botEnabled={botEnabled}
+            setBotEnabled={(v) => { setBotEnabled(v); emitChatControls({ botEnabled: v }); saveReviewBotSettings.mutate({ botEnabled: v, botFrequency }); }}
+            botFrequency={botFrequency}
+            setBotFrequency={(v) => { setBotFrequency(v); emitChatControls({ botFrequency: v }); saveReviewBotSettings.mutate({ botEnabled, botFrequency: v }); }}
             commentIntervalMs={commentIntervalMs}
             setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); }}
             viewerMin={viewerMin}
@@ -2093,6 +2156,10 @@ export default function MusicReview() {
               setSelectedYouTube={setSelectedYouTube}
               reviewedTracks={reviewedTracks}
               triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
+              botEnabled={botEnabled}
+              setBotEnabled={(v) => { setBotEnabled(v); emitChatControls({ botEnabled: v }); saveReviewBotSettings.mutate({ botEnabled: v, botFrequency }); }}
+              botFrequency={botFrequency}
+              setBotFrequency={(v) => { setBotFrequency(v); emitChatControls({ botEnabled, botFrequency: v }); saveReviewBotSettings.mutate({ botEnabled, botFrequency: v }); }}
               commentIntervalMs={commentIntervalMs}
               setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); }}
               viewerMin={viewerMin}
@@ -2116,8 +2183,9 @@ export default function MusicReview() {
         )}
 
         <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
-          <button type="button" onClick={handleShareReview} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Share Review</button>
-          <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-pink-400/25 bg-pink-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-pink-200 hover:bg-pink-400/10">Instagram</a>
+          <button type="button" onClick={handleShareReview} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Share Live Review</button>
+          <button type="button" onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => toast.success("Review link copied"))} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Copy Link</button>
+          <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-pink-400/25 bg-pink-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-pink-200 hover:bg-pink-400/10">Watch Instagram</a>
           <a href="/merch" className="rounded-lg border border-red-500/25 bg-red-500/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-200 hover:bg-red-500/10">Shop Merch</a>
           <a href="/promo" className="rounded-lg border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-200 hover:bg-yellow-400/10">Get Promoted</a>
           <button type="button" onClick={() => setTab("submit")} className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Submit a Track</button>
@@ -2242,19 +2310,31 @@ export default function MusicReview() {
                     }}
                     isPending={reactMutation.isPending}
                     user={user}
+                    isJudge={user?.role === "judge"}
                   />
+                  <div className="mt-2 flex items-center justify-between rounded-lg border border-yellow-400/20 bg-yellow-400/[0.05] px-3 py-2 text-[10px]">
+                    <span className="font-bold uppercase tracking-[0.16em] text-yellow-300">The Mitten Panel</span>
+                    <span className="text-white/60"><span className="text-orange-300">🔥 {reactionCounts?.judgeFire ?? 0}</span><span className="mx-2 text-white/20">/</span><span className="text-blue-300">🗑️ {reactionCounts?.judgeTrash ?? 0}</span></span>
+                  </div>
+                  {(reactionCounts?.judgeVotes?.length ?? 0) > 0 && <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {reactionCounts?.judgeVotes.map((vote) => <Link key={`${vote.userId}-${vote.reaction}`} href={`/profile/${vote.userId}`} className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${vote.reaction === "fire" ? "border-orange-400/35 bg-orange-400/10 text-orange-200" : "border-blue-400/35 bg-blue-400/10 text-blue-200"}`}>
+                      {vote.avatarUrl ? <img src={vote.avatarUrl} alt="" className="h-3 w-3 rounded-full object-cover" /> : null}{vote.reaction === "fire" ? "🔥" : "🗑️"} {vote.username}
+                    </Link>)}
+                  </div>}
                   <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Vote To Skip</p>
-                      <p className="mt-1 text-[11px] text-white/40">{skipVoteStatus?.votes ?? 0} votes · {skipVoteStatus?.limit ?? 5} free votes per session</p>
+                      <p className="mt-1 text-[11px] text-white/40">
+                        {skipVoteStatus?.votes ?? 0} track votes · {skipVoteStatus?.unlimited ? "Unlimited skips" : `${skipVoteStatus?.dailyVotesRemaining ?? 5} of 5 free skips left today`}
+                      </p>
                     </div>
                     <button
                       type="button"
-                      disabled={!user || pollId == null || skipVoteStatus?.hasVoted || skipVoteMutation.isPending || (skipVoteStatus?.votes ?? 0) >= (skipVoteStatus?.limit ?? 5)}
+                      disabled={!user || pollId == null || skipVoteStatus?.hasVoted || skipVoteMutation.isPending || (!skipVoteStatus?.unlimited && (skipVoteStatus?.dailyVotesRemaining ?? 0) <= 0)}
                       onClick={() => { if (!user) { toast.error("Login to vote to skip"); return; } if (pollId != null) skipVoteMutation.mutate({ submissionId: pollId }); }}
                       className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-300 transition-colors hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {skipVoteStatus?.hasVoted ? "Vote counted" : skipVoteMutation.isPending ? "Counting…" : "Vote to skip"}
+                      {skipVoteStatus?.hasVoted ? "Vote counted" : skipVoteMutation.isPending ? "Counting…" : (!skipVoteStatus?.unlimited && (skipVoteStatus?.dailyVotesRemaining ?? 0) <= 0) ? "Join Review+" : "Vote to skip"}
                     </button>
                   </div>
                   </>
@@ -2302,8 +2382,19 @@ export default function MusicReview() {
                 .map((entry, i) => {
                   if (entry._type === 'real') {
                     const msg = entry.real;
+                    const premiumTone = msg.chatAccent === "crimson"
+                      ? msg.chatStyle === "outline" ? "border-red-500/55 bg-transparent" : "border-red-500/45 bg-red-500/10"
+                      : msg.chatAccent === "violet"
+                        ? msg.chatStyle === "outline" ? "border-violet-400/55 bg-transparent" : "border-violet-400/45 bg-violet-500/10"
+                        : msg.chatStyle === "outline" ? "border-amber-300/55 bg-transparent" : "border-amber-300/45 bg-amber-300/10";
+                    const premiumText = msg.chatAccent === "crimson"
+                      ? "text-red-200"
+                      : msg.chatAccent === "violet"
+                        ? "text-violet-200"
+                        : "text-amber-100";
+                    const premiumIcon = msg.chatIcon === "fire" ? "🔥" : msg.chatIcon === "star" ? "✦" : "♛";
                     return (
-                      <div key={`real-${i}`} className="text-xs leading-relaxed">
+                      <div key={`real-${i}`} className={`text-xs leading-relaxed ${msg.isReviewPlus ? `rounded-lg border px-2 py-1.5 ${premiumTone}` : ""}`}>
                         {(msg as any).type === 'system' ? (
                           <div className="text-white/20 text-center text-[10px] py-1">{(msg as any).text ?? msg.message}</div>
                         ) : (
@@ -2324,7 +2415,8 @@ export default function MusicReview() {
                             </Link>
                             {(msg.isAdmin || (msg as any).role === 'admin') && <span className="ml-1 text-[8px] text-red-500 uppercase">Admin</span>}
                             {(msg as any).role === 'judge' && <span className="ml-1 text-[8px] text-yellow-500 uppercase">Judge</span>}
-                            <span className="text-white/50 ml-1.5">{(msg as any).text ?? msg.message}</span>
+                            {msg.isReviewPlus && <span className={`ml-1 rounded px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider ${premiumText}`}>{premiumIcon} Review+</span>}
+                            <span className={`${msg.isReviewPlus ? "text-white/80" : "text-white/50"} ml-1.5`}>{(msg as any).text ?? msg.message}</span>
                             </div>
                           </div>
                         )}
@@ -2427,10 +2519,25 @@ export default function MusicReview() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Review+</p>
-                        <p className="mt-1 text-xs leading-relaxed text-white/55">Unlimited Vote To Skip for $9.99/month.</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/55">$25/month · unlimited Vote To Skip · five Line Skips every billing cycle.</p>
                       </div>
                       {reviewPlusStatus?.active ? (
-                        <span className="rounded-full border border-green-400/40 bg-green-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-green-300">Active</span>
+                        <div className="text-right">
+                          <span className="rounded-full border border-green-400/40 bg-green-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-green-300">Review+ Active</span>
+                          <p className="mt-2 text-[10px] text-white/45">Line Skips: {reviewPlusStatus.lineSkipCredits} / 5 · Vote To Skip: Unlimited</p>
+                          {reviewPlusStatus.membership?.currentPeriodEnd && <p className="mt-1 text-[10px] text-white/35">Next renewal: {new Date(reviewPlusStatus.membership.currentPeriodEnd).toLocaleDateString()}</p>}
+                          <div className="mt-3 grid grid-cols-3 gap-1.5 text-left">
+                            <select aria-label="Review+ chat accent" value={reviewPlusStatus.membership?.chatAccent ?? "gold"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: event.target.value as "gold" | "crimson" | "violet", chatIcon: reviewPlusStatus.membership?.chatIcon ?? "crown", chatStyle: reviewPlusStatus.membership?.chatStyle ?? "banner" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
+                              <option value="gold">Gold</option><option value="crimson">Crimson</option><option value="violet">Violet</option>
+                            </select>
+                            <select aria-label="Review+ chat icon" value={reviewPlusStatus.membership?.chatIcon ?? "crown"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: reviewPlusStatus.membership?.chatAccent ?? "gold", chatIcon: event.target.value as "crown" | "fire" | "star", chatStyle: reviewPlusStatus.membership?.chatStyle ?? "banner" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
+                              <option value="crown">Crown</option><option value="fire">Fire</option><option value="star">Star</option>
+                            </select>
+                            <select aria-label="Review+ chat banner style" value={reviewPlusStatus.membership?.chatStyle ?? "banner"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: reviewPlusStatus.membership?.chatAccent ?? "gold", chatIcon: reviewPlusStatus.membership?.chatIcon ?? "crown", chatStyle: event.target.value as "banner" | "outline" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
+                              <option value="banner">Banner</option><option value="outline">Outline</option>
+                            </select>
+                          </div>
+                        </div>
                       ) : (
                         <button
                           type="button"
@@ -2609,10 +2716,12 @@ export default function MusicReview() {
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-sm truncate">{sub.songTitle}</div>
                           <div className="text-white/40 text-xs truncate">{sub.artistName}</div>
+                          {sub.verdict && <div className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${sub.verdict === "Certified Fire" ? "border-orange-400/35 bg-orange-400/10 text-orange-200" : sub.verdict === "Fire" ? "border-red-400/35 bg-red-400/10 text-red-200" : sub.verdict === "Skipped by audience" ? "border-amber-300/35 bg-amber-300/10 text-amber-100" : "border-blue-400/35 bg-blue-400/10 text-blue-200"}`}>Murder Mitten Verdict · {sub.verdict}</div>}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-white/40">
                           <span className="flex items-center gap-1">🔥 {sub.fireCount}</span>
                           <span className="flex items-center gap-1">🗑️ {sub.trashCount}</span>
+                          {(sub.judgeFireCount > 0 || sub.judgeTrashCount > 0) && <span className="hidden sm:inline text-yellow-300/75">Panel 🔥 {sub.judgeFireCount} · 🗑️ {sub.judgeTrashCount}</span>}
                         </div>
                       </div>
                     ))}
@@ -2801,6 +2910,21 @@ export default function MusicReview() {
             <p className="text-white/40 text-sm text-center py-4">Voice room active — use the controls above to manage your audio.</p>
           </div>
         )}
+
+        <section className="mt-8 grid gap-3 border-t border-white/10 pt-6 md:grid-cols-3">
+          <a href="/merch" className="group rounded-xl border border-red-500/25 bg-red-500/[0.05] p-4 transition-colors hover:bg-red-500/[0.12]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-300">Murder Mitten Merch</p>
+            <p className="mt-2 font-['Anton'] text-xl uppercase text-white">Shop Merch <span className="text-red-400 transition-transform group-hover:translate-x-1 inline-block">→</span></p>
+          </a>
+          <a href="/promo" className="group rounded-xl border border-amber-400/25 bg-amber-400/[0.05] p-4 transition-colors hover:bg-amber-400/[0.12]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200">Murder Mitten Promo Services</p>
+            <p className="mt-2 font-['Anton'] text-xl uppercase text-white">Get Promoted <span className="text-amber-300 transition-transform group-hover:translate-x-1 inline-block">→</span></p>
+          </a>
+          <button type="button" onClick={() => setTab("submit")} className="group rounded-xl border border-white/15 bg-white/[0.03] p-4 text-left transition-colors hover:bg-white/[0.08]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Submit Your Music</p>
+            <p className="mt-2 font-['Anton'] text-xl uppercase text-white">Submit Now <span className="text-white/70 transition-transform group-hover:translate-x-1 inline-block">→</span></p>
+          </button>
+        </section>
 
       </div>
     </div>

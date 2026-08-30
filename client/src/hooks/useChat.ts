@@ -12,6 +12,10 @@ export interface ChatMessage {
   userId?: number | null;
   createdAt: Date;
   avatarUrl?: string | null;
+  isReviewPlus?: boolean;
+  chatAccent?: "gold" | "crimson" | "violet" | null;
+  chatIcon?: "crown" | "fire" | "star" | null;
+  chatStyle?: "banner" | "outline" | null;
 }
 
 export interface WheelSpinState {
@@ -58,6 +62,8 @@ export interface FakeChatMessageData {
 }
 
 export interface ChatControlsData {
+  botEnabled?: boolean;
+  botFrequency?: "low" | "normal" | "high";
   commentIntervalMs?: number;
   sentimentBias?: number;
   ghostFireIntervalSec?: number;

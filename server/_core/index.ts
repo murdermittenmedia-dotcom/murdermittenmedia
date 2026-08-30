@@ -10,11 +10,13 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
-import { chatMessages } from "../../drizzle/schema";
+import { chatMessages, reviewPlusMemberships } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
 import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, setCurrentPlaying } from "../db";
 import { registerStripeWebhook } from "../stripe-webhook";
 import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
+import { sdk } from "./sdk";
+import { and, desc, eq } from "drizzle-orm";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -175,24 +177,43 @@ async function startServer() {
       if (!data.message?.trim() || !data.username?.trim()) return;
       if (data.message.length > 500) return;
 
+      const sender = await sdk.authenticateRequest(socket.request as any).catch(() => null);
+      if (!sender || sender.id !== data.userId || data.room !== room || !validRooms.includes(data.room)) return;
+
+      const db = await getDb();
+      const [membership] = db ? await db.select({
+        status: reviewPlusMemberships.status,
+        currentPeriodEnd: reviewPlusMemberships.currentPeriodEnd,
+        chatAccent: reviewPlusMemberships.chatAccent,
+        chatIcon: reviewPlusMemberships.chatIcon,
+        chatStyle: reviewPlusMemberships.chatStyle,
+      }).from(reviewPlusMemberships).where(and(
+        eq(reviewPlusMemberships.userId, sender.id),
+        eq(reviewPlusMemberships.status, "active"),
+      )).orderBy(desc(reviewPlusMemberships.createdAt)).limit(1) : [];
+      const isReviewPlus = data.room === "music_review" && !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
+
       const msg = {
         id: Date.now(),
-        username: data.username.slice(0, 32),
+        username: (sender.artistName || sender.name || data.username).slice(0, 32),
         message: data.message.slice(0, 500),
         room: data.room,
-        isAdmin: data.isAdmin || false,
-        role: data.role ?? (data.isAdmin ? "admin" : "user"),
+        isAdmin: sender.role === "admin",
+        role: sender.role,
         accountLabels: Array.isArray(data.accountLabels) ? data.accountLabels.slice(0, 8) : [],
-        userId: data.userId ?? null,
-        avatarUrl: sanitizeChatAvatarUrl(data.avatarUrl),
+        userId: sender.id,
+        avatarUrl: sanitizeChatAvatarUrl(sender.avatarUrl),
+        isReviewPlus,
+        chatAccent: isReviewPlus ? membership.chatAccent : null,
+        chatIcon: isReviewPlus ? membership.chatIcon : null,
+        chatStyle: isReviewPlus ? membership.chatStyle : null,
         createdAt: new Date(),
       };
 
       try {
-        const db = await getDb();
         if (db) {
           await db.insert(chatMessages).values({
-            userId: data.userId || null,
+            userId: sender.id,
             username: msg.username,
             message: msg.message,
             room: data.room as "music_wars" | "music_review",
@@ -693,13 +714,17 @@ async function startServer() {
     });
 
     // ── Review: Chat controls relay (admin → all viewers) ──────
-    // Admin changes speed/sentiment/ghost vote settings; relay to all viewers
-    socket.on("review:chat_controls", (data: {
+    // Admin changes bot, speed, sentiment, and ghost vote settings; relay to viewers
+    socket.on("review:chat_controls", async (data: {
+      botEnabled?: boolean;
+      botFrequency?: "low" | "normal" | "high";
       commentIntervalMs?: number;
       sentimentBias?: number;
       ghostFireIntervalSec?: number;
       ghostTrashIntervalSec?: number;
     }) => {
+      const sender = await sdk.authenticateRequest(socket.request as any).catch(() => null);
+      if (!sender || sender.role !== "admin") return;
       socket.to("music_review").emit("review:chat_controls", data);
     });
 

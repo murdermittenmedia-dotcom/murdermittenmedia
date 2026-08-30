@@ -1658,3 +1658,15 @@
 - [x] Show reconnecting, live, and offline states for judge viewers without interrupting review music playback
 
 - [x] Distinguish Crowd Reaction FIRE/TRASH presentation from the separate Mitten Panel voice experience
+
+- [x] Align Review+ pricing and membership summary with the strict $25/month, next-renewal, and entitlement requirements
+- [x] Change Vote To Skip enforcement from per-session to five free uses per calendar day, with judge and Review+ unlimited access
+- [x] Add constrained premium Review+ chat-banner customization and visible treatment
+- [x] Add a server-enforced master bot-chat on/off control with simple low/normal/high frequency settings
+- [x] Show separate Mitten Panel FIRE/TRASH tallies and highlighted judge votes without changing the existing crowd-vote weighting
+- [x] Add a compact branded footer monetization section to /review for merch, promo services, and music submission
+- [ ] Complete targeted end-to-end regressions for paid-only mode, premium chat, daily skips, bot-off behavior, and judge vote display
+- [x] Save a branded Murder Mitten Verdict with crowd and Mitten Panel results into the existing review history when a track completes
+- [x] Ensure the public Judge Windows use an accessible horizontal carousel on mobile instead of compressing the Mitten Panel
+- [x] Provide an explicit Enter Live Review interaction that unlocks browser audio when autoplay is blocked
+- [x] Add targeted acceptance coverage for strict paid-only transitions, premium banner eligibility, bot-off behavior, and judge verdict presentation

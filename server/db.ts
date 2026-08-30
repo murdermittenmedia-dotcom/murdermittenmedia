@@ -33,6 +33,7 @@ import {
   rewardLogs,
   lineSkipCredits,
   musicReviewSessions,
+  reviewPlusMemberships,
   judgeStreams, InsertJudgeStream, JudgeStream,
   merchProducts, InsertMerchProduct, MerchProduct,
   cartItems, InsertCartItem, CartItem,
@@ -52,6 +53,7 @@ import { sanitizeChatAvatarUrl } from "../shared/chat-avatar";
 import { mergeProfileSongs } from "../shared/profile-songs";
 import { summarizeVotes } from "../shared/voting";
 import { attachSongReactionTotals } from "../shared/song-reaction-totals";
+import { calculateReviewVerdict } from "../shared/review-verdict";
 import { getPageMeta } from "../shared/pagination";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -197,6 +199,30 @@ export async function updateSubmissionStatus(id: number, status: "pending" | "pl
       .where(and(eq(reviewSubmissions.status, "playing"), ne(reviewSubmissions.id, id)));
   }
   return db.update(reviewSubmissions).set({ status }).where(eq(reviewSubmissions.id, id));
+}
+
+export async function completeReviewSubmission(id: number, options: { skippedByVote?: boolean } = {}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const counts = await getSongReactionCounts(id);
+  const reviewVerdict = calculateReviewVerdict({
+    crowdFire: counts.fire,
+    crowdTrash: counts.trash,
+    judgeFire: counts.judgeFire,
+    judgeTrash: counts.judgeTrash,
+    skippedByVote: options.skippedByVote,
+  });
+  return db.update(reviewSubmissions).set({
+    status: "reviewed",
+    verdict: reviewVerdict.verdict,
+    crowdFirePct: reviewVerdict.crowdFirePct,
+    crowdTrashPct: reviewVerdict.crowdTrashPct,
+    judgeFireCount: counts.judgeFire,
+    judgeTrashCount: counts.judgeTrash,
+    totalVoteCount: reviewVerdict.totalVoteCount,
+    skipVoteTriggered: options.skippedByVote ?? false,
+    reviewedAt: new Date(),
+  }).where(eq(reviewSubmissions.id, id));
 }
 
 /**
@@ -423,10 +449,36 @@ export async function getChatMessages(room: "music_wars" | "music_review", limit
     ))
     .orderBy(desc(chatMessages.createdAt))
     .limit(limit);
-  return rows.reverse().map((row) => ({
-    ...row,
-    avatarUrl: sanitizeChatAvatarUrl(row.avatarUrl),
-  }));
+  const userIds = Array.from(new Set(rows.map((row) => row.userId).filter((id): id is number => typeof id === "number")));
+  const memberships = userIds.length === 0 ? [] : await db.select({
+    userId: reviewPlusMemberships.userId,
+    status: reviewPlusMemberships.status,
+    currentPeriodEnd: reviewPlusMemberships.currentPeriodEnd,
+    chatAccent: reviewPlusMemberships.chatAccent,
+    chatIcon: reviewPlusMemberships.chatIcon,
+    chatStyle: reviewPlusMemberships.chatStyle,
+    createdAt: reviewPlusMemberships.createdAt,
+  }).from(reviewPlusMemberships).where(and(
+    inArray(reviewPlusMemberships.userId, userIds),
+    eq(reviewPlusMemberships.status, "active"),
+  )).orderBy(desc(reviewPlusMemberships.createdAt));
+  const activeMemberByUserId = new Map<number, typeof memberships[number]>();
+  for (const membership of memberships) {
+    if (!activeMemberByUserId.has(membership.userId) && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now())) {
+      activeMemberByUserId.set(membership.userId, membership);
+    }
+  }
+  return rows.reverse().map((row) => {
+    const membership = row.userId ? activeMemberByUserId.get(row.userId) : null;
+    return {
+      ...row,
+      avatarUrl: sanitizeChatAvatarUrl(row.avatarUrl),
+      isReviewPlus: !!membership,
+      chatAccent: membership?.chatAccent ?? null,
+      chatIcon: membership?.chatIcon ?? null,
+      chatStyle: membership?.chatStyle ?? null,
+    };
+  });
 }
 
 export async function deleteChatMessage(id: number) {
@@ -919,12 +971,32 @@ export async function getUserSongReaction(submissionId: number, userId: number) 
 
 export async function getSongReactionCounts(submissionId: number) {
   const db = await getDb();
-  if (!db) return { fire: 0, trash: 0 };
+  if (!db) return { fire: 0, trash: 0, judgeFire: 0, judgeTrash: 0, judgeVotes: [] };
   const rows = await db.select().from(reviewSubmissions)
     .where(eq(reviewSubmissions.id, submissionId))
     .limit(1);
-  if (!rows.length) return { fire: 0, trash: 0 };
-  return { fire: rows[0].fireCount, trash: rows[0].trashCount };
+  if (!rows.length) return { fire: 0, trash: 0, judgeFire: 0, judgeTrash: 0, judgeVotes: [] };
+  const judgeReactions = await db.select({
+    reaction: songReactions.reaction,
+    userId: users.id,
+    artistName: users.artistName,
+    name: users.name,
+    avatarUrl: users.avatarUrl,
+  }).from(songReactions)
+    .innerJoin(users, eq(users.id, songReactions.userId))
+    .where(and(eq(songReactions.submissionId, submissionId), eq(users.role, "judge")));
+  return {
+    fire: rows[0].fireCount,
+    trash: rows[0].trashCount,
+    judgeFire: judgeReactions.filter((reaction) => reaction.reaction === "fire").length,
+    judgeTrash: judgeReactions.filter((reaction) => reaction.reaction === "trash").length,
+    judgeVotes: judgeReactions.map((reaction) => ({
+      userId: reaction.userId,
+      username: reaction.artistName || reaction.name || "Mitten Panel Judge",
+      reaction: reaction.reaction,
+      avatarUrl: sanitizeChatAvatarUrl(reaction.avatarUrl),
+    })),
+  };
 }
 
 // ── Judge Applications ────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { canGenerateReviewBotMessage } from "@shared/review-plus-entitlement";
 import type { FakeChatMessageData, ChatControlsData } from "./useChat";
 
 export interface FakeChatMessage {
@@ -698,6 +699,8 @@ export interface FakeLiveChatConfig {
 }
 
 interface UseFakeLiveChatOptions {
+  /** The review must be live before automatic messages can be generated. */
+  isReviewLive?: boolean;
   /** When true, this client is the admin — fake messages are emitted to all viewers via socket */
   isAdmin?: boolean;
   /** Socket emit function from useChat — used by admin to broadcast fake messages */
@@ -707,6 +710,7 @@ interface UseFakeLiveChatOptions {
 }
 
 export function useFakeLiveChat({
+  isReviewLive = false,
   isAdmin = false,
   emitFakeChatMessage,
   emitChatControls,
@@ -717,6 +721,8 @@ export function useFakeLiveChat({
   const [triggeredReaction, setTriggeredReaction] = useState<ReactionType | null>(null);
   const [chatPool, setChatPool] = useState<any[]>([]);
   // Configurable controls
+  const [botEnabled, setBotEnabled] = useState(true);
+  const [botFrequency, setBotFrequency] = useState<"low" | "normal" | "high">("normal");
   const [commentIntervalMs, setCommentIntervalMs] = useState(6000); // default ~6s between msgs
   const [viewerMin, setViewerMin] = useState(50);
   const [viewerMax, setViewerMax] = useState(250);
@@ -813,7 +819,7 @@ export function useFakeLiveChat({
 
   // Auto-chat messages with per-user cooldown
   useEffect(() => {
-    if (chatPool.length === 0) return;
+    if (!canGenerateReviewBotMessage(isReviewLive, botEnabled) || chatPool.length === 0) return;
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -877,10 +883,10 @@ export function useFakeLiveChat({
           userId: randomUser.id,
         });
 
-    }, triggeredReaction ? commentIntervalMs : commentIntervalMs * (0.7 + Math.random() * 0.6));
+    }, (triggeredReaction ? commentIntervalMs : commentIntervalMs * (0.7 + Math.random() * 0.6)) * (botFrequency === "low" ? 2 : botFrequency === "high" ? 0.55 : 1));
 
     return () => clearInterval(interval);
-  }, [chatPool, triggeredReaction, commentIntervalMs, sentimentBias, addFakeMessage]);
+  }, [chatPool, triggeredReaction, commentIntervalMs, sentimentBias, isReviewLive, botEnabled, botFrequency, addFakeMessage]);
 
   const triggerReaction = (reaction: ReactionType, duration = 3000) => {
     setTriggeredReaction(reaction);
@@ -903,6 +909,8 @@ export function useFakeLiveChat({
   // Receive chat control settings from admin via socket (all users including admin)
   const receiveChatControls = useCallback((data: ChatControlsData) => {
     // All users apply the relay settings
+    if (data.botEnabled !== undefined) setBotEnabled(data.botEnabled);
+    if (data.botFrequency !== undefined) setBotFrequency(data.botFrequency);
     if (data.commentIntervalMs !== undefined) setCommentIntervalMs(data.commentIntervalMs);
     if (data.sentimentBias !== undefined) setSentimentBias(data.sentimentBias);
     if (data.ghostFireIntervalSec !== undefined) setGhostFireIntervalSec(data.ghostFireIntervalSec);
@@ -922,6 +930,10 @@ export function useFakeLiveChat({
     fakeMessages,
     triggerReaction,
     triggeredReaction,
+    botEnabled,
+    setBotEnabled,
+    botFrequency,
+    setBotFrequency,
     // Slider controls
     commentIntervalMs,
     setCommentIntervalMs,

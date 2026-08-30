@@ -8,7 +8,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { eq, and, inArray, desc, asc, ne } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, ne, gte, lt } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
@@ -17,10 +17,12 @@ import { geocodeStudioAddress } from "./studio-geocode";
 import { getSkipLinePriceCents, getSkipLineLabel } from "./skip-payments";
 import { getPromoPackagePriceCents, getPromoPackageLabel } from "./promo-payments";
 import { getMusicReviewSessionLimitMessage, MUSIC_REVIEW_PAID_OPTIONS, hasCashAppPaymentProof } from "../shared/music-review-paywall";
+import { STANDARD_DAILY_SKIP_VOTE_LIMIT, getDailySkipVotesRemaining, getUtcCalendarDayWindow, hasUnlimitedReviewSkipAccess } from "../shared/review-skip-entitlement";
+import { REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS, REVIEW_PLUS_MONTHLY_PRICE_CENTS } from "../shared/review-plus-entitlement";
 import { normalizeStudioInput } from "./studio-input";
 import { buildWheelCatalogueSong } from "../shared/wheel-catalogue";
 import {
-  getQueueSubmissions, getTodaySubmissionCount, getReviewedSubmissions, addSubmission, updateSubmissionStatus,
+  getQueueSubmissions, getTodaySubmissionCount, getReviewedSubmissions, addSubmission, updateSubmissionStatus, completeReviewSubmission,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
@@ -768,6 +770,25 @@ export const appRouter = router({
   // -- Review Queue ---------------------------------------------
   queue: router({
     getTodayCount: publicProcedure.query(async () => getTodaySubmissionCount()),
+    getReviewBotSettings: publicProcedure.query(async () => {
+      const [enabledRaw, frequencyRaw] = await Promise.all([
+        getSetting("review_bot_enabled"),
+        getSetting("review_bot_frequency"),
+      ]);
+      return {
+        botEnabled: enabledRaw !== "false",
+        botFrequency: frequencyRaw === "low" || frequencyRaw === "high" ? frequencyRaw : "normal" as const,
+      };
+    }),
+    setReviewBotSettings: adminProcedure
+      .input(z.object({ botEnabled: z.boolean(), botFrequency: z.enum(["low", "normal", "high"]) }))
+      .mutation(async ({ input }) => {
+        await Promise.all([
+          setSetting("review_bot_enabled", String(input.botEnabled)),
+          setSetting("review_bot_frequency", input.botFrequency),
+        ]);
+        return { success: true as const, ...input };
+      }),
     getAll: publicProcedure.query(async () => {
       const [submissions, state] = await Promise.all([
         getQueueSubmissions(),
@@ -890,7 +911,8 @@ export const appRouter = router({
         status: z.enum(["pending", "playing", "reviewed", "removed"]),
       }))
       .mutation(async ({ input }) => {
-        await updateSubmissionStatus(input.id, input.status);
+        if (input.status === "reviewed") await completeReviewSubmission(input.id);
+        else await updateSubmissionStatus(input.id, input.status);
         return { success: true };
       }),
 
@@ -1162,14 +1184,21 @@ export const appRouter = router({
         const [session] = await db.select().from(musicReviewSessions).where(eq(musicReviewSessions.isActive, true)).limit(1);
         const [membership] = await db.select().from(reviewPlusMemberships).where(and(eq(reviewPlusMemberships.userId, ctx.user.id), eq(reviewPlusMemberships.status, "active"))).orderBy(desc(reviewPlusMemberships.createdAt)).limit(1);
         const reviewPlusActive = !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
-        const limit = reviewPlusActive ? 999999 : 5;
-        if (!session) return { votes: 0, limit, hasVoted: false, sessionId: null as number | null };
+        const unlimited = hasUnlimitedReviewSkipAccess(ctx.user.role, reviewPlusActive);
+        const { start, end } = getUtcCalendarDayWindow();
+        const dailyVotes = unlimited ? [] : await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
+          eq(reviewSkipVotes.userId, ctx.user.id),
+          gte(reviewSkipVotes.createdAt, start),
+          lt(reviewSkipVotes.createdAt, end),
+        ));
+        const limit = unlimited ? null : STANDARD_DAILY_SKIP_VOTE_LIMIT;
+        if (!session) return { votes: 0, limit, dailyVotesUsed: dailyVotes.length, dailyVotesRemaining: getDailySkipVotesRemaining(dailyVotes.length, unlimited), hasVoted: false, sessionId: null as number | null, reviewPlusActive, unlimited, resetsAt: end };
         const votes = await db.select().from(reviewSkipVotes).where(and(
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
           eq(reviewSkipVotes.submissionId, input.submissionId),
         ));
         const mine = votes.some((vote) => vote.userId === ctx.user.id);
-        return { votes: votes.length, limit, hasVoted: mine, sessionId: session.id, reviewPlusActive };
+        return { votes: votes.length, limit, dailyVotesUsed: dailyVotes.length, dailyVotesRemaining: getDailySkipVotesRemaining(dailyVotes.length, unlimited), hasVoted: mine, sessionId: session.id, reviewPlusActive, unlimited, resetsAt: end };
       }),
 
     voteToSkip: protectedProcedure
@@ -1181,13 +1210,16 @@ export const appRouter = router({
         if (!session) throw new TRPCError({ code: "BAD_REQUEST", message: "There is no active Music Review session." });
         const [membership] = await db.select().from(reviewPlusMemberships).where(and(eq(reviewPlusMemberships.userId, ctx.user.id), eq(reviewPlusMemberships.status, "active"))).orderBy(desc(reviewPlusMemberships.createdAt)).limit(1);
         const reviewPlusActive = !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
-        const voteLimit = reviewPlusActive ? 999999 : 5;
-        const mineThisSession = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
-          eq(reviewSkipVotes.musicReviewSessionId, session.id),
+        const unlimited = hasUnlimitedReviewSkipAccess(ctx.user.role, reviewPlusActive);
+        const voteLimit = unlimited ? null : STANDARD_DAILY_SKIP_VOTE_LIMIT;
+        const { start, end } = getUtcCalendarDayWindow();
+        const dailyVotes = unlimited ? [] : await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
           eq(reviewSkipVotes.userId, ctx.user.id),
+          gte(reviewSkipVotes.createdAt, start),
+          lt(reviewSkipVotes.createdAt, end),
         ));
-        if (mineThisSession.length >= voteLimit) {
-          throw new TRPCError({ code: "FORBIDDEN", message: reviewPlusActive ? "Vote To Skip is temporarily unavailable." : "You have used all five free Vote To Skip votes for this live session." });
+        if (!unlimited && dailyVotes.length >= STANDARD_DAILY_SKIP_VOTE_LIMIT) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You have used all five free Vote To Skip actions for today. Join Review+ for unlimited skip voting." });
         }
         const existing = await db.select({ id: reviewSkipVotes.id }).from(reviewSkipVotes).where(and(
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
@@ -1209,7 +1241,7 @@ export const appRouter = router({
         const [queueSettings] = await db.select().from(queueStateTable).limit(1);
         let autoAdvanced = false;
         if (queueSettings?.autoSkipThreshold && votes.length >= queueSettings.autoSkipThreshold && queueSettings.currentPlayingId === input.submissionId) {
-          await db.update(reviewSubmissionsTable).set({ status: "reviewed" }).where(eq(reviewSubmissionsTable.id, input.submissionId));
+          await completeReviewSubmission(input.submissionId, { skippedByVote: true });
           const [nextTrack] = await db.select({ id: reviewSubmissionsTable.id }).from(reviewSubmissionsTable)
             .where(and(eq(reviewSubmissionsTable.status, "pending"), ne(reviewSubmissionsTable.id, input.submissionId)))
             .orderBy(asc(reviewSubmissionsTable.position)).limit(1);
@@ -1221,7 +1253,7 @@ export const appRouter = router({
           }
           autoAdvanced = true;
         }
-        return { success: true as const, votes: votes.length, limit: voteLimit, sessionId: session.id, reviewPlusActive, autoAdvanced };
+        return { success: true as const, votes: votes.length, limit: voteLimit, dailyVotesUsed: unlimited ? 0 : dailyVotes.length + 1, dailyVotesRemaining: getDailySkipVotesRemaining(dailyVotes.length + 1, unlimited), sessionId: session.id, reviewPlusActive, unlimited, resetsAt: end, autoAdvanced };
       }),
 
     // Get fire/trash counts for a submissionn
@@ -4742,6 +4774,24 @@ export const appRouter = router({
       return { active, membership: active ? membership : null, lineSkipCredits };
     }),
 
+    updateReviewPlusChatBanner: protectedProcedure
+      .input(z.object({
+        chatAccent: z.enum(["gold", "crimson", "violet"]),
+        chatIcon: z.enum(["crown", "fire", "star"]),
+        chatStyle: z.enum(["banner", "outline"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [membership] = await db.select().from(reviewPlusMemberships)
+          .where(and(eq(reviewPlusMemberships.userId, ctx.user.id), eq(reviewPlusMemberships.status, "active")))
+          .orderBy(desc(reviewPlusMemberships.createdAt)).limit(1);
+        const active = !!membership && (!membership.currentPeriodEnd || membership.currentPeriodEnd.getTime() > Date.now());
+        if (!active || !membership) throw new TRPCError({ code: "FORBIDDEN", message: "An active Review+ membership is required to customize chat." });
+        await db.update(reviewPlusMemberships).set(input).where(eq(reviewPlusMemberships.id, membership.id));
+        return { success: true as const, ...input };
+      }),
+
     createReviewPlusCheckout: protectedProcedure
       .input(z.object({ origin: z.string().url() }))
       .mutation(async ({ ctx, input }) => {
@@ -4755,7 +4805,7 @@ export const appRouter = router({
             price_data: {
               currency: "usd",
               product_data: { name: "Murder Mitten Review+", description: "Unlimited Vote To Skip and premium live-review access" },
-              unit_amount: 999,
+              unit_amount: REVIEW_PLUS_MONTHLY_PRICE_CENTS,
               recurring: { interval: "month" },
             },
             quantity: 1,
@@ -4788,15 +4838,21 @@ export const appRouter = router({
         const existing = await db.select({ id: reviewPlusMemberships.id }).from(reviewPlusMemberships)
           .where(eq(reviewPlusMemberships.stripeCheckoutSessionId, input.sessionId)).limit(1);
         if (existing[0]) return { success: true as const, alreadyActive: true as const };
+        const subscriptionId = typeof session.subscription === "string" ? session.subscription : null;
+        let currentPeriodEnd: Date | null = null;
+        if (subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription & { current_period_end?: number };
+          if (typeof subscription.current_period_end === "number") currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+        }
         await db.insert(reviewPlusMemberships).values({
           userId: ctx.user.id,
           stripeCheckoutSessionId: input.sessionId,
-          stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : null,
+          stripeSubscriptionId: subscriptionId,
           status: "active",
-          currentPeriodEnd: null,
+          currentPeriodEnd,
         });
-        await grantLineSkipCredits(ctx.user.id, 5);
-        return { success: true as const, alreadyActive: false as const, lineSkipCreditsGranted: 5 as const };
+        await grantLineSkipCredits(ctx.user.id, REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS);
+        return { success: true as const, alreadyActive: false as const, lineSkipCreditsGranted: REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS as 5 };
       }),
 
     preparePaidSubmissionAudio: protectedProcedure
