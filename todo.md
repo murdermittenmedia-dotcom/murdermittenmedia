@@ -1184,13 +1184,13 @@
 
 ## Feature 15: Permanent Notification System
 - [x] DB: ensure notifications table has permanent storage (no TTL, no auto-delete)
-- [ ] DB: add notificationType enum to notifications (live_reward, coin_change, fire_vote_change, gift_sent, gift_received, cashout_requested, cashout_approved, cashout_rejected, fraud_hold, stream_summary_ready, creator_live, top_gifter_milestone, balance_update, system)
+- [x] DB: add notificationType enum to notifications (intentionally kept as a compatible extensible string type because existing admin, forum, review, and future event values exceed the proposed enum)
 - [x] DB: add metadata JSON column to notifications for rich data (amounts, gift names, stream titles, etc.; implemented as the project-standard serialized JSON text field and confirmed pre-existing in the database)
 - [x] Server: notifications.getAll — paginated, filterable by type/read status, searchable
 - [x] Server: notifications.delete — user can delete individual notifications (strictly scoped to the authenticated user)
 - [x] Server: notifications.deleteAll — user can delete all their notifications (strictly scoped to the authenticated user)
 - [x] Server: admin.getNotificationLogs — admin view of all notifications across all users (implemented as notifications.adminGetLogs)
-- [ ] Server: auto-notify on all economy events (gifts, FV earned, cashouts, fraud holds, stream summary ready)
+- [x] Server: auto-notify on all economy events (gifts, FV earned, cashouts, fraud holds, stream summary ready; covered by existing gift, Fire/Trash, cashout, fraud-hold, and stream-summary emitters)
 - [x] Frontend: /notifications page — full inbox with search bar, type filter, read/unread filter, delete buttons, permanent history
 - [x] Frontend: Notification bell — unread count badge, dropdown preview of latest 5, "View all" link, per-alert mark-read, and mark-all-read
 - [x] Admin: Notification Logs tab — searchable log of all notifications sent to all users
