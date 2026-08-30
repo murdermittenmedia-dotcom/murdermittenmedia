@@ -388,14 +388,25 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 }
 
 function NotificationBell() {
-  // Notifications feature - procedure not yet implemented
+  const { data } = trpc.notifications.getMyNotifications.useQuery(undefined, {
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+  });
+  const unreadCount = data?.unreadCount ?? 0;
+
   return (
     <a
       href="/notifications"
       className="relative flex items-center justify-center w-8 h-8 text-white/40 hover:text-white transition-colors"
-      title="Notifications"
+      title={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+      aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
     >
       <Bell className="w-4 h-4" />
+      {unreadCount > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 min-w-4 h-4 rounded-full bg-red-600 px-1 text-[9px] leading-4 text-center font-black text-white ring-2 ring-[#080808]">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
     </a>
   );
 }

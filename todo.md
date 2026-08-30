@@ -1106,10 +1106,10 @@
 - [x] Admin cashout management tab in AdminPanel
 
 ## Notification System
-- [ ] notifications table (userId, type, title, body, link, isRead, createdAt)
-- [ ] notifications.getMyNotifications procedure (paginated, unread count)
-- [ ] notifications.markRead / markAllRead procedures
-- [ ] Notification bell icon in SiteNav with unread badge
+- [x] notifications table (userId, type, title, body, link, isRead, createdAt)
+- [x] notifications.getMyNotifications procedure (paginated, unread count)
+- [x] notifications.markRead / markAllRead procedures
+- [x] Notification bell icon in SiteNav with unread badge (live unread count, capped badge, accessible label, and 30-second refresh)
 - [ ] Notification dropdown/panel with all notifications
 - [ ] Trigger: new live stream started
 - [ ] Trigger: live cookup started
