@@ -1028,10 +1028,10 @@
 - [ ] tRPC: live.end — mark stream as ended
 - [ ] tRPC: live.updateTitle — update stream title
 - [ ] tRPC: coins.getBalance — get current user's coin balance
-- [ ] tRPC: coins.requestPurchase — create a pending coin purchase record (admin approves manually)
-- [ ] tRPC: gifts.send — deduct coins from sender, record gift, notify streamer via socket
-- [ ] tRPC: gifts.getForStream — get all gifts for a stream
-- [ ] tRPC: admin.getLiveStreams — list all streams with gift totals
+- [x] tRPC: coins.requestPurchase — create a pending coin purchase record (admin approves manually)
+- [x] tRPC: gifts.send — deduct coins from sender, record gift, notify streamer via socket
+- [x] tRPC: gifts.getForStream — get all gifts for a stream
+- [x] tRPC: admin.getLiveStreams — list all streams with gift totals
 - [x] tRPC: admin.getGiftLedger — full gift history with USD values (implemented as admin.adminGetGiftLedger)
 - [x] tRPC: admin.approveCoinPurchase — mark purchase approved, add coins to user balance (implemented as admin.adminApproveCoinPurchase)
 - [x] tRPC: admin.markPayoutSent — mark a streamer's gift earnings as paid out (implemented through economy.adminResolveCreatorCashout with the pay action)
