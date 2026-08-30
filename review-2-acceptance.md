@@ -1,0 +1,9 @@
+# /review 2.0 acceptance checklist
+
+The upgrade preserves the existing queue, current-track playback, FIRE/TRASH voting, chat, history, Skip Line, wallet, payments, authentication, navigation, and admin access. It must make the existing judge path reliable for an admin host plus up to five judges, including secure access, green-room/device controls, stage controls, camera/profile fallback, mic/camera state, speaking state, and reconnect-safe behavior.
+
+The central reliability requirement is separation between synchronized review music and judge voice media. Judge join, leave, reconnect, camera changes, and microphone changes must not pause, reload, restart, seek, mute, or replace the review music. Viewers need independent music and judge-volume controls, mute-all-judges, and per-judge mute behavior.
+
+The server must enforce judge permissions, invitations, voting integrity, daily Vote To Skip limits, Review+ entitlements, line-skip balances, verified payments, and PAID ONLY submission mode. PAID ONLY must block unpaid direct API submissions, accept only verified successful paid submissions, reject failed/cancelled payments, and immediately restore normal submissions when disabled. Review+ must provide unlimited Vote To Skip, five billing-cycle line skips, and a constrained highlighted chat banner.
+
+Admin controls remain in the existing admin surface and cover session lifecycle, playback, queue, PAID ONLY, auto-skip/threshold, bot chat, judge management, chat moderation, and current voting. The public review surface should show a branded Mitten Panel, distinct crowd/panel results, verdict/history continuity, simple sharing, Instagram destination, merch/promo/submission CTAs, and a mobile-friendly layout. Required verification covers 0/1/5 judges, join/leave/reconnect, camera and mic toggles, simultaneous music and judge voice, voting, skip limits, paid-only flows, Review+, bot off, existing flows, and desktop/mobile browser behavior.

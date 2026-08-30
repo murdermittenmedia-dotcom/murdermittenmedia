@@ -1604,3 +1604,21 @@
 - [x] Make colorway image assignment easy, visible, and reliably saved in the merch editor
 
 - [x] Fix public merch storefront so saved admin thumbnail, order, and colorway image changes appear on merch cards and product pages
+
+# /REVIEW 2.0 Upgrade Brief
+
+- [ ] Define /review 2.0 acceptance criteria for live review, judge, audience, admin, payment, membership, sharing, and reliability flows
+- [ ] Audit and preserve stable existing review, judge, socket, payment, wallet, and admin functionality before refactoring
+- [ ] Implement server-enforced up-to-five judge roster, roles, green room, stage controls, invite tokens, and connection state
+- [ ] Implement independent synchronized review-music and judge-voice audio paths with viewer volume and per-judge mute controls
+- [ ] Implement server-enforced Vote To Skip limits, realtime skip state, auto-skip settings, and Review+ membership gating
+- [ ] Add Review+ membership purchase and entitlement handling using existing Stripe infrastructure
+- [ ] Build dedicated judge join/green-room/session interfaces and responsive Mitten Panel viewer presentation
+- [ ] Add distinct crowd and Mitten Panel voting display while preserving existing FIRE/TRASH behavior
+- [ ] Add review admin controls, pop-out control board, live status, chat/viewer moderation, and judge management
+- [ ] Add review sharing, social preview, and past-played artist/profile continuity where missing
+- [ ] Add end-to-end regression tests and validate /review user flows across admin, judge, viewer, audio, voting, skip, and membership paths
+
+- [x] Enforce persisted PAID ONLY mode on queue.submit, queue.uploadTrack, and queue.uploadAudio direct API paths
+- [x] Allow verified Stripe paid-submission confirmation during PAID ONLY mode
+- [x] Route the existing review submission form to verified Stripe checkout when PAID ONLY is active

@@ -1514,10 +1514,52 @@ export default function MusicReview() {
     if (!form.songTitle) { toast.error("Please fill in song title"); return; }
     if (submitType === "youtube" && !form.youtubeUrl) { toast.error("Please enter a YouTube link"); return; }
     if (submitType === "file" && !audioFile) { toast.error("Please select an audio file"); return; }
-    setSubmitting(true);
-
+        setSubmitting(true);
+    const paidOnly = data?.state?.playbackMode === "paid_only";
+    const paidType = selectedPaidType ?? "reentry5";
+    if (paidOnly) {
+      setSelectedPaidType(paidType);
+      setPaidSubmitSuccess(null);
+      try {
+        if (submitType === "file" && audioFile) {
+          const reader = new FileReader();
+          reader.onload = async (ev) => {
+            try {
+              const base64 = (ev.target?.result as string).split(",")[1];
+              const prepared = await preparePaidSubmissionAudioMutation.mutateAsync({
+                fileBase64: base64,
+                fileName: audioFile.name,
+                mimeType: (audioFile.type || "audio/mpeg") as "audio/mpeg" | "audio/wav" | "audio/mp4" | "audio/x-m4a",
+              });
+              setPendingFormData({ type: "file", songTitle: form.songTitle, contactInfo: form.contactInfo || undefined, wantsSkip: false, fileBase64: base64, fileName: audioFile.name, mimeType: audioFile.type || "audio/mpeg" });
+              const checkout = await createPaidSubmissionCheckoutMutation.mutateAsync({
+                submissionType: "file", songTitle: form.songTitle, fileKey: prepared.fileKey, fileUrl: prepared.fileUrl,
+                contactInfo: form.contactInfo || undefined, paidSubmissionType: paidType, origin: window.location.origin,
+              });
+              window.location.href = checkout.checkoutUrl;
+            } catch (error: any) {
+              setSubmitting(false);
+              toast.error(error?.message ?? "Unable to start paid checkout");
+            }
+          };
+          reader.readAsDataURL(audioFile);
+        } else {
+          setPendingFormData({ type: "youtube", songTitle: form.songTitle, youtubeUrl: form.youtubeUrl, contactInfo: form.contactInfo || undefined, wantsSkip: false });
+          const checkout = await createPaidSubmissionCheckoutMutation.mutateAsync({
+            submissionType: "youtube", songTitle: form.songTitle, youtubeUrl: form.youtubeUrl,
+            contactInfo: form.contactInfo || undefined, paidSubmissionType: paidType, origin: window.location.origin,
+          });
+          window.location.href = checkout.checkoutUrl;
+        }
+      } catch (error: any) {
+        setSubmitting(false);
+        toast.error(error?.message ?? "Unable to start paid checkout");
+      }
+      return;
+    }
     if (submitType === "file" && audioFile) {
       const reader = new FileReader();
+
       reader.onload = async (ev) => {
         const base64 = (ev.target?.result as string).split(",")[1];
         setPendingFormData({
@@ -2259,6 +2301,12 @@ export default function MusicReview() {
                   </div>
                 ) : (
                   <>
+                    {data?.state?.playbackMode === "paid_only" && (
+                      <div className="rounded-xl border border-red-500/40 bg-red-500/[0.08] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-400">Paid Only Mode</p>
+                        <p className="mt-1 text-sm leading-relaxed text-white/65">Submissions are currently paid only. Your track will open secure Stripe checkout and will not enter the queue unless payment is verified.</p>
+                      </div>
+                    )}
                     {/* Submit type toggle */}
                     <div className="flex rounded-xl overflow-hidden border border-white/10">
                       <button onClick={() => setSubmitType("file")} className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all ${submitType === "file" ? "bg-red-600 text-white" : "text-white/40 hover:text-white/70"}`}>
@@ -2308,7 +2356,7 @@ export default function MusicReview() {
                       disabled={submitting || !form.songTitle.trim() || (submitType === "youtube" ? !form.youtubeUrl.trim() : !audioFile)}
                       className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 text-white py-4 rounded-xl font-semibold uppercase tracking-widest transition-all"
                     >
-                      {submitting ? "Submitting..." : "Submit Track →"}
+                      {submitting ? (data?.state?.playbackMode === "paid_only" ? "Opening secure checkout..." : "Submitting...") : (data?.state?.playbackMode === "paid_only" ? "Continue to secure checkout →" : "Submit Track →")}
                     </button>
                   </>
                 )}

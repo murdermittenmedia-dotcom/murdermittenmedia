@@ -813,6 +813,10 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
+        const queueState = await getQueueState();
+        if (queueState?.playbackMode === "paid_only") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
+        }
         // Check submission limit (max 2 free submissions per user per live session)
         const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
         
@@ -989,6 +993,10 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
+        const queueState = await getQueueState();
+        if (queueState?.playbackMode === "paid_only") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
+        }
         const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
         if (submissionCount >= 2 && !input.paidSubmissionType) {
           return {
@@ -1047,6 +1055,10 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
+        const queueState = await getQueueState();
+        if (queueState?.playbackMode === "paid_only") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
+        }
         // Enforce 2-song per-session limit
         const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
         if (submissionCount >= 2 && !input.paidSubmissionType) {
@@ -4628,7 +4640,8 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "The uploaded audio file is not ready for payment." });
         }
         const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
-        if (submissionCount < 2) {
+        const queueState = await getQueueState();
+        if (submissionCount < 2 && queueState?.playbackMode !== "paid_only") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Paid re-entry is available after your two free submissions for this live session." });
         }
         const option = MUSIC_REVIEW_PAID_OPTIONS.find((candidate) => candidate.type === input.paidSubmissionType);
@@ -4707,7 +4720,10 @@ export const appRouter = router({
           .limit(1);
         if (existing[0]) return { success: true as const, submissionId: existing[0].id, alreadyCreated: true as const };
         const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
-        if (submissionCount < 2) throw new TRPCError({ code: "BAD_REQUEST", message: "This paid re-entry is no longer needed because your session limit is not active." });
+        const queueState = await getQueueState();
+        if (submissionCount < 2 && queueState?.playbackMode !== "paid_only") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This paid re-entry is no longer needed because your session limit is not active." });
+        }
         const activeSession = await getOrCreateActiveMusicReviewSession();
         await addSubmission({
           userId: ctx.user.id,
