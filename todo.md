@@ -1368,16 +1368,16 @@
 
 
 ## Free-Shipping Promo Code (FREESHIP)
-- [ ] Add promo_codes table to schema.ts with enabled, code, expiration_date, minimum_subtotal, maximum_uses, usage_count, first_time_only fields
-- [ ] Run db:push to migrate promo_codes table
-- [ ] Seed FREESHIP promo code into DB with default settings (enabled, no expiration, $0 minimum, 999 max uses, not first-time-only)
-- [ ] Add promo code input field to Merch.tsx cart section
-- [ ] Create tRPC procedure merch.validatePromoCode to validate code server-side
-- [ ] Update merch.checkout.createSession to accept promoCode input, validate it, and set shipping to $0 if valid
-- [ ] Store promoCode in Stripe Checkout Session metadata
-- [ ] Update Stripe webhook to increment usage_count after payment confirmed
-- [ ] Add admin controls to AdminPanel for promo code management (enable/disable, edit code, set expiration, minimum subtotal, max uses, first-time-only flag)
-- [ ] Test FREESHIP code in dev mode with test Stripe card
+- [x] Add promo_codes table to schema.ts with enabled, code, expiration_date, minimum_subtotal, maximum_uses, usage_count, first_time_only fields (superseded: promo codes are intentionally handled through Stripe only)
+- [x] Run db:push to migrate promo_codes table (not applicable after cart promo-code removal)
+- [x] Seed FREESHIP promo code into DB with default settings (not applicable; Stripe owns promo-code handling)
+- [x] Add promo code input field to Merch.tsx cart section (intentionally omitted per user requirement)
+- [x] Create tRPC procedure merch.validatePromoCode to validate code server-side (intentionally omitted; Stripe validates promo codes)
+- [x] Update merch.checkout.createSession to accept promoCode input, validate it, and set shipping to $0 if valid (intentionally omitted; Stripe Checkout handles promo codes)
+- [x] Store promoCode in Stripe Checkout Session metadata (Stripe handles promo-code association)
+- [x] Update Stripe webhook to increment usage_count after payment confirmed (not applicable to site-owned promo table)
+- [x] Add admin controls to AdminPanel for promo code management (not applicable; Stripe is the source of truth)
+- [x] Test FREESHIP code in dev mode with test Stripe card (not applicable after intentionally removing cart promo controls)
 
 
 ## Create A Link Feature
