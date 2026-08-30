@@ -5093,3 +5093,6 @@
 
 - [x] Add newly published interviews from the confirmed @MurderMittenMedia YouTube channel to the Murder Mitten Mic tab using verified public video data only (Shaudy Kash, DJStr8Cash, Art Decco, and BandGang Javar)
 - [x] Preserve existing Mic episodes, card styling, links, and responsive behavior while adding verified interview uploads (desktop/mobile verified)
+
+- [x] Music Review workspace: remove grid packing and make all windows truly free-positioned in 2D (absolute x/y canvas with pointer dragging and no dense-grid repacking)
+- [x] Music Review workspace: preserve independent unlocked width/height resizing, persistence, reset behavior, viewport clamping, and mobile usability without grid snapping (desktop/mobile verified; 146 tests passing)

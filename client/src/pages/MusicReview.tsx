@@ -47,10 +47,20 @@ type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null;
 
 type ReviewWindowId = "now-playing" | "live-chat" | "mitten-panel" | "review-tools" | "voice-room";
 type ReviewWindowSize = { width: number; height: number };
+type ReviewWindowPosition = { x: number; y: number };
 
 const REVIEW_WINDOW_ORDER_KEY = "murder-mitten-review-window-order";
 const REVIEW_WINDOW_SIZE_KEY = "murder-mitten-review-window-sizes";
+const REVIEW_WINDOW_POSITION_KEY = "murder-mitten-review-window-positions";
 const DEFAULT_REVIEW_WINDOW_ORDER: ReviewWindowId[] = ["now-playing", "live-chat", "mitten-panel", "voice-room", "review-tools"];
+const DEFAULT_REVIEW_WINDOW_POSITIONS: Record<ReviewWindowId, ReviewWindowPosition> = {
+  "now-playing": { x: 0, y: 0 },
+  "mitten-panel": { x: 720, y: 0 },
+  "live-chat": { x: 0, y: 560 },
+  "review-tools": { x: 720, y: 560 },
+  "voice-room": { x: 0, y: 1160 },
+};
+const REVIEW_WORKSPACE_MIN_HEIGHT = 1800;
 
 import {
   Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
@@ -98,21 +108,33 @@ function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
   );
 }
 
-function ReviewWorkspaceWindow({ id, title, order, size, isDragging, onDragStart, onDrop, onMove, onResize, children, className = "" }: { id: ReviewWindowId; title: string; order: number; size?: ReviewWindowSize; isDragging: boolean; onDragStart: (event: DragEvent<HTMLElement>, id: ReviewWindowId) => void; onDrop: (event: DragEvent<HTMLElement>, id: ReviewWindowId) => void; onMove: (id: ReviewWindowId, direction: -1 | 1) => void; onResize: (id: ReviewWindowId, size: ReviewWindowSize) => void; children: ReactNode; className?: string }) {
+function ReviewWorkspaceWindow({ id, title, position, size, onMove, onResize, children, className = "" }: { id: ReviewWindowId; title: string; position: ReviewWindowPosition; size?: ReviewWindowSize; onMove: (id: ReviewWindowId, delta: { x: number; y: number }) => void; onResize: (id: ReviewWindowId, size: ReviewWindowSize) => void; children: ReactNode; className?: string }) {
   const windowRef = useRef<HTMLElement>(null);
   const resizeStartRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const [draftSize, setDraftSize] = useState<ReviewWindowSize | null>(null);
-  const [gridRowSpan, setGridRowSpan] = useState<number | null>(null);
+  const [draftPosition, setDraftPosition] = useState<ReviewWindowPosition | null>(null);
   const currentSize = draftSize ?? size;
-  useEffect(() => {
-    const node = windowRef.current;
-    if (!node || typeof ResizeObserver === "undefined") return;
-    const updateSpan = () => setGridRowSpan(Math.max(1, Math.ceil((node.getBoundingClientRect().height + 8) / 16)));
-    updateSpan();
-    const observer = new ResizeObserver(updateSpan);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [size?.height]);
+  const currentPosition = draftPosition ?? position;
+  const startDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStartRef.current = { x: event.clientX, y: event.clientY };
+    setDraftPosition(position);
+  }, [position]);
+  const moveDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = dragStartRef.current;
+    if (!start) return;
+    setDraftPosition({ x: Math.max(0, position.x + event.clientX - start.x), y: Math.max(0, position.y + event.clientY - start.y) });
+  }, [position]);
+  const finishDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = dragStartRef.current;
+    dragStartRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (start) onMove(id, { x: event.clientX - start.x, y: event.clientY - start.y });
+    setDraftPosition(null);
+  }, [id, onMove]);
   const startResize = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -134,15 +156,11 @@ function ReviewWorkspaceWindow({ id, title, order, size, isDragging, onDragStart
     if (nextSize) onResize(id, nextSize);
     setDraftSize(null);
   }, [draftSize, id, onResize]);
-  return <section ref={windowRef} style={{ order, width: currentSize ? `min(100%, ${currentSize.width}px)` : undefined, height: currentSize ? `${currentSize.height}px` : undefined, gridRowEnd: gridRowSpan ? `span ${gridRowSpan}` : undefined, overflow: "auto", minWidth: "280px", minHeight: "180px", maxWidth: "100%", alignSelf: "start", justifySelf: "start" }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, id)} className={`relative min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a]/40 ${isDragging ? "opacity-45 ring-1 ring-red-500/70" : ""} ${className}`}>
-    <header className="flex items-center justify-between gap-2 border-b border-white/10 bg-white/[0.025] px-3 py-2">
-      <div draggable onDragStart={(event) => onDragStart(event, id)} className="flex min-w-0 cursor-grab touch-none items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50 active:cursor-grabbing" title="Drag this window to rearrange the review workspace">
+  return <section ref={windowRef} style={{ left: `${currentPosition.x}px`, top: `${currentPosition.y}px`, width: currentSize ? `${currentSize.width}px` : "min(620px, calc(100vw - 32px))", height: currentSize ? `${currentSize.height}px` : undefined, overflow: "auto", minWidth: "280px", minHeight: "180px", maxWidth: "calc(100% - 16px)" }} className={`absolute min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a]/90 shadow-2xl shadow-black/30 ${className}`}>
+    <header onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} className="flex items-center justify-between gap-2 border-b border-white/10 bg-white/[0.025] px-3 py-2 cursor-grab touch-none active:cursor-grabbing">
+      <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50" title="Drag this window freely around the review workspace">
         <GripVertical className="h-4 w-4 shrink-0 text-red-400/80" aria-hidden="true" />
         <span className="truncate">{title}</span>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button type="button" onClick={() => onMove(id, -1)} className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white/45 hover:border-white/30 hover:text-white" aria-label={`Move ${title} earlier in the workspace`}>←</button>
-        <button type="button" onClick={() => onMove(id, 1)} className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white/45 hover:border-white/30 hover:text-white" aria-label={`Move ${title} later in the workspace`}>→</button>
       </div>
     </header>
     <div className="p-0">{children}</div>
@@ -1498,15 +1516,11 @@ export default function MusicReview() {
   }, [user]);
   const isAdmin = user?.role === "admin";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
-  const [reviewWindowOrder, setReviewWindowOrder] = useState<ReviewWindowId[]>(DEFAULT_REVIEW_WINDOW_ORDER);
   const [reviewWindowSizes, setReviewWindowSizes] = useState<Partial<Record<ReviewWindowId, ReviewWindowSize>>>({});
-  const [draggingWindow, setDraggingWindow] = useState<ReviewWindowId | null>(null);
+  const [reviewWindowPositions, setReviewWindowPositions] = useState<Record<ReviewWindowId, ReviewWindowPosition>>(DEFAULT_REVIEW_WINDOW_POSITIONS);
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const saved = JSON.parse(window.localStorage.getItem(REVIEW_WINDOW_ORDER_KEY) ?? "[]") as unknown[];
-      const restored = Array.from(new Set(saved.filter((value): value is ReviewWindowId => typeof value === "string" && DEFAULT_REVIEW_WINDOW_ORDER.includes(value as ReviewWindowId))));
-      setReviewWindowOrder([...restored, ...DEFAULT_REVIEW_WINDOW_ORDER.filter((id) => !restored.includes(id))]);
       const savedSizes = JSON.parse(window.localStorage.getItem(REVIEW_WINDOW_SIZE_KEY) ?? "{}") as Record<string, unknown>;
       const restoredSizes: Partial<Record<ReviewWindowId, ReviewWindowSize>> = {};
       DEFAULT_REVIEW_WINDOW_ORDER.forEach((id) => {
@@ -1515,40 +1529,35 @@ export default function MusicReview() {
           restoredSizes[id] = { width: Math.max(280, (value as ReviewWindowSize).width), height: Math.max(180, (value as ReviewWindowSize).height) };
         }
       });
+      const savedPositions = JSON.parse(window.localStorage.getItem(REVIEW_WINDOW_POSITION_KEY) ?? "{}") as Record<string, unknown>;
+      const restoredPositions = { ...DEFAULT_REVIEW_WINDOW_POSITIONS };
+      DEFAULT_REVIEW_WINDOW_ORDER.forEach((id) => {
+        const value = savedPositions[id];
+        if (value && typeof value === "object" && typeof (value as ReviewWindowPosition).x === "number" && typeof (value as ReviewWindowPosition).y === "number") {
+          restoredPositions[id] = { x: Math.max(0, (value as ReviewWindowPosition).x), y: Math.max(0, (value as ReviewWindowPosition).y) };
+        }
+      });
       setReviewWindowSizes(restoredSizes);
+      setReviewWindowPositions(restoredPositions);
     } catch {
-      window.localStorage.removeItem(REVIEW_WINDOW_ORDER_KEY);
+      window.localStorage.removeItem(REVIEW_WINDOW_SIZE_KEY);
+      window.localStorage.removeItem(REVIEW_WINDOW_POSITION_KEY);
     }
   }, []);
-  const reorderReviewWindows = useCallback((source: ReviewWindowId, target: ReviewWindowId) => {
-    if (source === target) return;
-    setReviewWindowOrder((current) => {
-      const next = [...current];
-      const sourceIndex = next.indexOf(source);
-      const targetIndex = next.indexOf(target);
-      if (sourceIndex < 0 || targetIndex < 0) return current;
-      next.splice(sourceIndex, 1);
-      next.splice(targetIndex, 0, source);
-      window.localStorage.setItem(REVIEW_WINDOW_ORDER_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-  const moveReviewWindow = useCallback((id: ReviewWindowId, direction: -1 | 1) => {
-    setReviewWindowOrder((current) => {
-      const currentIndex = current.indexOf(id);
-      const targetIndex = currentIndex + direction;
-      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.length) return current;
-      const next = [...current];
-      [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
-      window.localStorage.setItem(REVIEW_WINDOW_ORDER_KEY, JSON.stringify(next));
+  const moveReviewWindow = useCallback((id: ReviewWindowId, delta: { x: number; y: number }) => {
+    setReviewWindowPositions((current) => {
+      const previous = current[id] ?? DEFAULT_REVIEW_WINDOW_POSITIONS[id];
+      const next = { ...current, [id]: { x: Math.max(0, Math.min(2400, previous.x + delta.x)), y: Math.max(0, Math.min(5000, previous.y + delta.y)) } };
+      window.localStorage.setItem(REVIEW_WINDOW_POSITION_KEY, JSON.stringify(next));
       return next;
     });
   }, []);
   const resetReviewWindowLayout = useCallback(() => {
-    setReviewWindowOrder(DEFAULT_REVIEW_WINDOW_ORDER);
+    setReviewWindowPositions(DEFAULT_REVIEW_WINDOW_POSITIONS);
     setReviewWindowSizes({});
     window.localStorage.removeItem(REVIEW_WINDOW_ORDER_KEY);
     window.localStorage.removeItem(REVIEW_WINDOW_SIZE_KEY);
+    window.localStorage.removeItem(REVIEW_WINDOW_POSITION_KEY);
   }, []);
   const resizeReviewWindow = useCallback((id: ReviewWindowId, size: ReviewWindowSize) => {
     setReviewWindowSizes((current) => {
@@ -1559,17 +1568,6 @@ export default function MusicReview() {
       return next;
     });
   }, []);
-  const beginWindowDrag = useCallback((event: DragEvent<HTMLElement>, id: ReviewWindowId) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", id);
-    setDraggingWindow(id);
-  }, []);
-  const dropWindow = useCallback((event: DragEvent<HTMLElement>, target: ReviewWindowId) => {
-    event.preventDefault();
-    const source = event.dataTransfer.getData("text/plain") as ReviewWindowId || draggingWindow;
-    if (source && DEFAULT_REVIEW_WINDOW_ORDER.includes(source)) reorderReviewWindows(source, target);
-    setDraggingWindow(null);
-  }, [draggingWindow, reorderReviewWindows]);
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
@@ -2405,15 +2403,15 @@ export default function MusicReview() {
           <button type="button" onClick={() => setTab("submit")} className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Submit a Track</button>
         </div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35"><GripVertical className="mr-1 inline h-3.5 w-3.5 text-red-400/80" />Drag headers to arrange · resize freely from lower-right corner</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35"><GripVertical className="mr-1 inline h-3.5 w-3.5 text-red-400/80" />Free canvas · drag headers anywhere · resize from lower-right corner · swipe horizontally on mobile</p>
           <button type="button" onClick={resetReviewWindowLayout} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/55 transition-colors hover:border-white/30 hover:text-white"><RotateCcw className="h-3.5 w-3.5" />Reset layout</button>
         </div>
-        <div className="grid auto-rows-[8px] grid-flow-row-dense items-start gap-x-4 gap-y-2 lg:grid-cols-2">
-        <ReviewWorkspaceWindow id="mitten-panel" title="Mitten Panel" order={reviewWindowOrder.indexOf("mitten-panel")} size={reviewWindowSizes["mitten-panel"]} isDragging={draggingWindow === "mitten-panel"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
+        <div className="relative min-h-[1800px] min-w-[980px] touch-pan-x overflow-auto rounded-2xl border border-white/5 bg-black/20 p-2">
+        <ReviewWorkspaceWindow id="mitten-panel" title="Mitten Panel" position={reviewWindowPositions["mitten-panel"]} size={reviewWindowSizes["mitten-panel"]} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
           <JudgePanelStrip isReviewLive={isLive} />
         </ReviewWorkspaceWindow>
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
-        <ReviewWorkspaceWindow id="now-playing" title="Now Playing" order={reviewWindowOrder.indexOf("now-playing")} size={reviewWindowSizes["now-playing"]} isDragging={draggingWindow === "now-playing"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
+        <ReviewWorkspaceWindow id="now-playing" title="Now Playing" position={reviewWindowPositions["now-playing"]} size={reviewWindowSizes["now-playing"]} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
         {activeTrack ? (
           <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
             {/* Glow corners */}
@@ -2635,7 +2633,7 @@ export default function MusicReview() {
         </ReviewWorkspaceWindow>
 
         {/* ── LIVE CHAT ───────────────────────────────────────── */}
-        <ReviewWorkspaceWindow id="live-chat" title="Live Chat" order={reviewWindowOrder.indexOf("live-chat")} size={reviewWindowSizes["live-chat"]} isDragging={draggingWindow === "live-chat"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
+        <ReviewWorkspaceWindow id="live-chat" title="Live Chat" position={reviewWindowPositions["live-chat"]} size={reviewWindowSizes["live-chat"]} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Chat header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
@@ -2768,7 +2766,7 @@ export default function MusicReview() {
         </ReviewWorkspaceWindow>
 
         {/* ── BOTTOM MENU TABS ────────────────────────────────── */}
-        <ReviewWorkspaceWindow id="review-tools" title="Review Tools" order={reviewWindowOrder.indexOf("review-tools")} size={reviewWindowSizes["review-tools"]} isDragging={draggingWindow === "review-tools"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
+        <ReviewWorkspaceWindow id="review-tools" title="Review Tools" position={reviewWindowPositions["review-tools"]} size={reviewWindowSizes["review-tools"]} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Tab navigation */}
           <div className="flex overflow-x-auto scrollbar-none border-b border-white/10">
@@ -3177,7 +3175,7 @@ export default function MusicReview() {
           </div>
         </div>
         </ReviewWorkspaceWindow>
-        {showVoicePanel && <ReviewWorkspaceWindow id="voice-room" title="Voice Room" order={reviewWindowOrder.indexOf("voice-room")} size={reviewWindowSizes["voice-room"]} isDragging={draggingWindow === "voice-room"} onDragStart={beginWindowDrag} onDrop={dropWindow} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
+        {showVoicePanel && <ReviewWorkspaceWindow id="voice-room" title="Voice Room" position={reviewWindowPositions["voice-room"]} size={reviewWindowSizes["voice-room"]} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
           <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
