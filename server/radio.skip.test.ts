@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import { shouldProcessReviewTrackEnd } from "@shared/review-radio-transition";
 
 // ─── Simulate the server-side RadioState shape ────────────────────────────────
 type RadioState = {
@@ -229,5 +230,15 @@ describe("Auto-advance Guard (onEnded filter)", () => {
     expect(processTrack({ submissionId: 42, sourcePage: "Music Review" })).toBe(true);
     expect(processTrack({ submissionId: 42, sourcePage: "Forum" })).toBe(false);
     expect(processTrack({ sourcePage: "Music Review" })).toBe(false);
+  });
+});
+
+describe("Review radio transition guard", () => {
+  it("processes only the current identified track and rejects stale or duplicate completion events", () => {
+    expect(shouldProcessReviewTrackEnd(42, 42, null)).toBe(true);
+    expect(shouldProcessReviewTrackEnd(42, 41, null)).toBe(false);
+    expect(shouldProcessReviewTrackEnd(42, undefined, null)).toBe(false);
+    expect(shouldProcessReviewTrackEnd(42, 42, 42)).toBe(false);
+    expect(shouldProcessReviewTrackEnd(null, 42, null)).toBe(false);
   });
 });

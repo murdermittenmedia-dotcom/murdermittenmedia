@@ -15,6 +15,7 @@ import { storageGetSignedUrl } from "../storage";
 import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, setCurrentPlaying } from "../db";
 import { registerStripeWebhook } from "../stripe-webhook";
 import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
+import { shouldProcessReviewTrackEnd } from "../../shared/review-radio-transition";
 import { sdk } from "./sdk";
 import { and, desc, eq } from "drizzle-orm";
 
@@ -544,8 +545,8 @@ async function startServer() {
     // Track ended — auto-advance to next pending track in queue
     socket.on("radio:track_ended", async (data?: { submissionId?: number }) => {
       const completedId = radioState.submissionId;
-      if (!completedId || reviewTrackTransitionInFlight === completedId) return;
-      if (data?.submissionId && data.submissionId !== completedId) return;
+      if (completedId === null) return;
+      if (!shouldProcessReviewTrackEnd(completedId, data?.submissionId, reviewTrackTransitionInFlight)) return;
       reviewTrackTransitionInFlight = completedId;
       try {
         const db = await getDb();
@@ -558,7 +559,7 @@ async function startServer() {
         // Find next pending track
         const pending = await db.select().from(reviewSubmissions)
           .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, completedId)))
-          .orderBy(asc(reviewSubmissions.createdAt))
+          .orderBy(asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt))
           .limit(1);
         if (pending.length > 0) {
           const next = pending[0];

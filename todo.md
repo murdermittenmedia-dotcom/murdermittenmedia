@@ -982,10 +982,10 @@
 - [x] Fix: queue does not auto-play next song after current song finishes — moved onEnded handler into AdminPanel with proper tRPC mutations and auto-advance logic
 
 ## Music Review — Auto-Advance Issues (May 2026 v2)
-- [ ] Fix: auto-advance uses original load order, not current drag-reordered queue position order
-- [ ] Fix: YouTube video submissions break auto-advance (no onEnded fires for YouTube iframes)
+- [x] Fix: auto-advance uses current drag-reordered queue position order
+- [x] Fix: YouTube video submissions break auto-advance (no onEnded fires for YouTube iframes)
 - [x] Fix: YouTube video embed not auto-cleared/dismissed after track is marked reviewed
-- [ ] Fix: YouTube video not synced for viewers — each viewer plays independently out of sync
+- [x] Fix: YouTube video viewer sync through server timestamps and late-join state
 
 ## Music Review — YouTube Audio Issues (May 2026)
 - [ ] Fix: admin hears double audio when YouTube track plays (FloatingPlayer + Now Playing card embed both play simultaneously)
@@ -994,12 +994,12 @@
 ## Tune In Button UX (May 2026)
 - [ ] Home page: move LiveRadioBanner out of fixed-top position (hidden behind browser chrome on mobile), add big centered "Tune In" button in the hero section when live
 - [x] Music Review page: add prominent "Tune In" button in the viewer section so viewers can start audio with one tap (user gesture satisfies browser autoplay policy)
-- [ ] Tune In button must call audioPlayer.play() with the current live track directly
+- [x] Tune In button directly starts the current live review track through the shared audio player
 
 ## CRITICAL: Live Radio Bugs (May 2026)
 - [x] Fix: live radio randomly skips to next song or pauses during sessions — likely stale socket event, onEnded firing incorrectly, or multiple AdminPanel instances
 - [ ] Fix: YouTube audio does not play through live radio — viewers must go back to site to watch independently
-- [ ] Implement: YouTube timestamp sync — admin's current playback position broadcast to viewers so video is synced when they open the site
+- [x] Implement: YouTube timestamp sync — admin's current playback position broadcast to viewers so video is synced when they open the site
 
 
 ## Admin User Stats Editor (May 2026)
