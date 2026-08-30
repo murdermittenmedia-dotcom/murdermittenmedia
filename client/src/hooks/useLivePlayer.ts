@@ -95,6 +95,10 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
     socket.on("radio:state", (data: (LiveNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
       // Support both file and YouTube submissions
       if (!data || (!data.audioUrl && !data.youtubeUrl)) return;
+      // YouTube media cannot be played through an HTMLAudioElement. The
+      // synchronized player on /review is the single playback surface for
+      // those submissions, which prevents an empty/double FloatingPlayer.
+      if (data.submissionType === "youtube") return;
       // The Music Review admin controls the local player directly. Never let the
       // global listener create a second competing player on the admin page.
       if (isAdminRef.current) return;
@@ -124,6 +128,10 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
       // The Music Review admin controls the local player directly. Never let the
       // global listener create a second competing player on the admin page.
       if (isAdminRef.current) return;
+      // Keep YouTube playback inside SyncedYouTubePlayer on /review. Passing
+      // an empty URL into the global audio element cannot produce usable audio
+      // and can compete with the synchronized player when the page is open.
+      if (data.submissionType === "youtube") return;
       // Support both file and YouTube submissions
       if (data.audioUrl || data.youtubeUrl) {
         const t = buildTrack(data);

@@ -988,7 +988,7 @@
 - [x] Fix: YouTube video viewer sync through server timestamps and late-join state
 
 ## Music Review — YouTube Audio Issues (May 2026)
-- [ ] Fix: admin hears double audio when YouTube track plays (FloatingPlayer + Now Playing card embed both play simultaneously)
+- [x] Fix: isolate YouTube review playback to the synchronized player and prevent competing global-player audio
 - [ ] Fix: viewers cannot hear YouTube audio live like MP3 submissions — need server-side audio capture/relay or alternative sync approach
 
 ## Tune In Button UX (May 2026)
