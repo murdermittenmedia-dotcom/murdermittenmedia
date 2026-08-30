@@ -99,6 +99,25 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
     if (isNewUser) {
       void createActivityEvent("community", "A new member joined the Mitten", { href: "/explore" });
+      try {
+        const [newUser] = await db.select({ id: users.id, name: users.name, artistName: users.artistName })
+          .from(users)
+          .where(eq(users.openId, user.openId))
+          .limit(1);
+        const { notifications } = await import("../drizzle/schema");
+        const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+        const displayName = newUser?.artistName || newUser?.name || "A new member";
+        for (const admin of admins) {
+          if (admin.id === newUser?.id) continue;
+          await db.insert(notifications).values({
+            userId: admin.id,
+            type: "admin_new_user",
+            title: "New member joined",
+            body: `${displayName} just joined Murder Mitten Media.`,
+            link: "/admin",
+          });
+        }
+      } catch {}
     }
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
@@ -194,6 +213,19 @@ export async function addSubmission(data: InsertReviewSubmission) {
   const position = (data.position && data.position > 0) ? data.position : maxPos + 1;
   const result = await db.insert(reviewSubmissions).values({ ...data, position });
   void createActivityEvent("review", `${data.artistName} entered the review queue`, { detail: data.songTitle });
+  try {
+    const { notifications } = await import("../drizzle/schema");
+    const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+    for (const admin of admins) {
+      await db.insert(notifications).values({
+        userId: admin.id,
+        type: "admin_new_submission",
+        title: "New music review submission",
+        body: `${data.artistName} submitted “${data.songTitle}” to the review queue.`,
+        link: "/review",
+      });
+    }
+  } catch {}
   return result;
 }
 

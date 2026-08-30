@@ -2332,6 +2332,27 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const result = await reactToForumItem(ctx.user.id, input.targetType, input.targetId, input.reaction);
+        if (result.action === "added" && input.targetType === "post" && input.reaction === "upvote") {
+          try {
+            const db = await getDb();
+            if (!db) throw new Error("DB not available");
+            const { notifications: notifTable, forumPosts } = await import('../drizzle/schema');
+            const [post] = await db.select({ userId: forumPosts.userId, title: forumPosts.title })
+              .from(forumPosts)
+              .where(eq(forumPosts.id, input.targetId))
+              .limit(1);
+            if (post?.userId && post.userId !== ctx.user.id) {
+              const actorName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
+              await db.insert(notifTable).values({
+                userId: post.userId,
+                type: "forum_like",
+                title: "Your post got an upvote",
+                body: `${actorName} upvoted “${post.title}”.`,
+                link: "/forum",
+              });
+            }
+          } catch {}
+        }
         // Award fan XP for reacting to forum content
         awardXP(ctx.user.id, "vote_cast", { amount: 1 }).catch(() => {});
         return result;
@@ -3898,6 +3919,20 @@ export const appRouter = router({
           paymentNote: input.paymentNote,
           status: "pending",
         });
+        try {
+          const { notifications } = await import("../drizzle/schema");
+          const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+          const requesterName = ctx.user.artistName || ctx.user.name || `User${ctx.user.id}`;
+          for (const admin of admins) {
+            await db.insert(notifications).values({
+              userId: admin.id,
+              type: "admin_coin_purchase",
+              title: "New coin purchase request",
+              body: `${requesterName} requested ${input.coins.toLocaleString()} coins ($${(input.amountCents / 100).toFixed(2)}).`,
+              link: "/admin",
+            });
+          }
+        } catch {}
         return { success: true };
       }),
 

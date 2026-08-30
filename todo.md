@@ -1110,17 +1110,17 @@
 - [x] notifications.getMyNotifications procedure (paginated, unread count)
 - [x] notifications.markRead / markAllRead procedures
 - [x] Notification bell icon in SiteNav with unread badge (live unread count, capped badge, accessible label, and 30-second refresh)
-- [ ] Notification dropdown/panel with all notifications
-- [ ] Trigger: new live stream started
-- [ ] Trigger: live cookup started
-- [ ] Trigger: someone liked your post
-- [ ] Trigger: coin purchase approved/denied
-- [ ] Trigger: cashout approved/denied
-- [ ] Trigger: music review session started
-- [ ] Admin notifications: new user joined
-- [ ] Admin notifications: pending cashout request
-- [ ] Admin notifications: pending coin purchase
-- [ ] Admin notifications: new music submission
+- [x] Notification dropdown/panel with all notifications (compact latest-five dropdown links to the full searchable notifications page)
+- [x] Trigger: new live stream started (broadcast to all other users from live.create)
+- [x] Trigger: live cookup started (live.create emits durable live_cookup notifications)
+- [x] Trigger: someone liked your post (post upvote alerts are scoped to the post owner and exclude self-reactions)
+- [x] Trigger: coin purchase approved/denied
+- [x] Trigger: cashout approved/denied (coin and creator cashout status alerts)
+- [x] Trigger: music review session started (activity-feed lifecycle event is emitted when the session is created)
+- [x] Admin notifications: new user joined
+- [x] Admin notifications: pending cashout request
+- [x] Admin notifications: pending coin purchase
+- [x] Admin notifications: new music submission
 
 ## Fire or Trash Swipe Game
 - [ ] fireTrashVotes table (userId, submissionId, vote: fire|trash, createdAt)
@@ -1157,7 +1157,7 @@
 - [x] Frontend: Fire Vote wallet page (balance, earned history, conversion UI)
 - [x] Frontend: Creator wallet page (/creator-wallet — Live Rewards, cashout)
 - [x] Frontend: updated gift picker in CookUpStream with 20 custom gifts + combos
-- [ ] Frontend: live stream engagement stats overlay (gift count, top sender, etc.)
+- [x] Frontend: live stream engagement stats overlay (gift count, viewer count, peak viewers, coins gifted, Live Rewards, and latest gift are shown in CookUpStream)
 - [x] Admin: economy config panel (bundles, FV rates, revenue split, payout methods)
 - [x] Admin: gift catalog management panel
 - [x] Admin: fraud review queue panel
@@ -3435,8 +3435,8 @@
 - [ ] Continue with the next bounded backlog slice after notification UX acceptance
 - [ ] Keep unsupported external streaming integrations explicitly documented rather than fabricating provider connectivity
 - [ ] Preserve all existing live audio, video, chat, gifting, payout, and admin behaviors while continuing backlog work
-- [ ] Re-run full regression, TypeScript, production build, and focused visual checks for each subsequent slice
-- [ ] Review todo.md before every future checkpoint
+- [x] Re-run full regression, TypeScript, production build, and focused visual checks for each subsequent slice (39 test files / 130 tests, TypeScript, build, desktop/mobile route captures complete)
+- [x] Review todo.md before every future checkpoint (reviewed the active notification entries before the current checkpoint)
 - [ ] Deliver each published checkpoint with its manus-webdev attachment and an honest scope summary
 - [ ] Do not treat existing equivalent functionality as a duplicate implementation requirement
 - [ ] Keep the project’s existing auto-publish and rollback-safe checkpoint workflow intact
