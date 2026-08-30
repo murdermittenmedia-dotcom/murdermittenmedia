@@ -1671,6 +1671,7 @@
 - [x] Add a judge-only review skip-vote action and identify judge role in profile views
 - [x] Integrate the Mitten Panel into the main Music Review live-window workspace alongside the review, chat, queue, and history windows
 - [x] Let viewers drag and rearrange the Music Review live windows, with a clear reset-layout action and keyboard-accessible ordering controls
+- [x] Let viewers freely resize Music Review windows in both dimensions without a locked aspect ratio, and persist/reset those dimensions with their layout
 - [x] Replace Green Room wording and flow with a direct Join Judge Panel camera-and-microphone publishing action
 - [x] Make judge camera permission and microphone permission status explicit before joining the live panel
 - [x] Simplify public review audio so one listener control covers judge voices while the synchronized review track continues independently
