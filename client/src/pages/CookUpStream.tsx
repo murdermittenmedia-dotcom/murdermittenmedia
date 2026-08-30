@@ -10,6 +10,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { SiteNav } from "@/components/SiteNav";
 import GiftPanel from "@/components/GiftPanel";
+import GiftAnimation, { type FloatingGift } from "@/components/GiftAnimation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -88,31 +89,6 @@ const AUDIO_PRESETS = [
   { label: "Low (Save Data)", sampleRate: 22050, bitrate: 64000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
 ];
 
-// ── Floating gift animation ───────────────────────────────────
-type FloatingGift = { id: number; emoji: string; name: string; from: string };
-
-function FloatingGifts({ gifts }: { gifts: FloatingGift[] }) {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden z-10">
-      {gifts.map((g, i) => (
-        <div
-          key={g.id}
-          className="absolute flex flex-col items-center"
-          style={{
-            bottom: "60px",
-            left: `${20 + (i % 5) * 15}%`,
-            animation: "floatUp 2.5s ease-out forwards",
-          }}
-        >
-          <span className="text-4xl drop-shadow-lg">{g.emoji}</span>
-          <span className="text-white/80 text-xs mt-1 bg-black/70 px-2 py-0.5 rounded-full whitespace-nowrap">
-            {g.from} · {g.name}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ── Viewer video ──────────────────────────────────────────────
 function ViewerVideo() {
@@ -1010,7 +986,7 @@ export default function CookUpStream() {
             )}
 
             {/* Floating gifts overlay */}
-            <FloatingGifts gifts={floatingGifts} />
+            <GiftAnimation gifts={floatingGifts} />
           </div>
 
           {/* ── LIVE STATS BAR ── */}

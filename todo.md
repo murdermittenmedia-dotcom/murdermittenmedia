@@ -1044,7 +1044,7 @@
 - [ ] Component: BroadcastPanel — WebRTC camera/mic broadcast using Cloudflare WHIP
 - [ ] Component: StreamPlayer — WebRTC viewer using Cloudflare WHEP (sub-1s latency)
 - [x] Component: GiftPanel — scrollable gift buttons with coin cost, send animation (integrated into Cook Up Stream; live active-stream animation QA remains open)
-- [ ] Component: GiftAnimation — floating gift emoji animation when gift is sent
+- [x] Component: GiftAnimation — floating gift emoji animation when gift is sent (extracted into a reusable accessible overlay while preserving the existing floatUp timing)
 - [x] Component: CoinBalance — header coin balance display with "Buy Coins" button (authenticated navigation shows live balance and links to /coins)
 - [x] Component: BuyCoinsModal — coin package selector, submits request to admin (package selection, payment note, request submission, and confirmation modal are now connected)
 - [x] Nav: Add "Live" link to SiteNav (satisfied by the existing "GO LIVE" entry linking to /cookup)
