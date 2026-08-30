@@ -1357,7 +1357,7 @@
 - [x] Loading/empty state for Merch page
 - [x] Hero product auto-selected by featured=true field from DB
 - [x] Hero size selection fixed (separate heroSize state, no longer tied to modal)
-- [ ] Stripe live key: user must verify STRIPE_SECRET_KEY in Settings -> Secrets in Manus Management UI
+- [x] Stripe live key: user must verify STRIPE_SECRET_KEY in Settings -> Secrets in Manus Management UI (project configuration confirms test and live keys are configured; no secret value was exposed)
 
 ## Merch Cart Drawer (Session Jul 18 2026)
 - [x] Merch-only cart icon button (top-right of merch page header, beside page title)
