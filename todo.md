@@ -1640,3 +1640,5 @@
 - [x] Automatically advance the active review track when the configured Vote To Skip threshold is reached
 
 - [x] Add admin-created judge invite tokens with expiry, optional email restriction, revocation, and protected acceptance that grants judge role
+
+- [x] Complete judge-invite acceptance from `/review?judge_invite=...` with authenticated role grant and user feedback

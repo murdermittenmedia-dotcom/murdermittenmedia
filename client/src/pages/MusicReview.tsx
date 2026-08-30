@@ -1238,6 +1238,17 @@ export default function MusicReview() {
       toast.error("Review+ checkout was canceled.");
     }
   }, [user]);
+  const acceptJudgeInvite = trpc.review.acceptJudgeInvite.useMutation({
+    onSuccess: () => toast.success("Judge access granted. You can now join the Mitten Panel."),
+    onError: (error) => toast.error("Judge invite failed: " + error.message),
+  });
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const token = new URLSearchParams(window.location.search).get("judge_invite");
+    if (!token) return;
+    window.history.replaceState({}, "", "/review");
+    acceptJudgeInvite.mutate({ token });
+  }, [user]);
   const isAdmin = user?.role === "admin";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
   const audioPlayer = useAudioPlayer();
