@@ -1037,7 +1037,7 @@
 - [ ] tRPC: admin.markPayoutSent — mark a streamer's gift earnings as paid out
 
 ### Frontend
-- [ ] Page: /live — browse page with thumbnail grid of active streams
+- [x] Page: /live — browse page with thumbnail grid of active streams (active Cook Up discovery now appears on the existing radio/live page)
 - [x] Page: /live/go — "Go Live" setup page (reuses the existing Cook Up live entry surface; browser LiveKit flow remains intact)
 - [x] Page: /live/:id — individual stream page with video player, live chat, gift panel (alias routes to the existing /cookup/:id stream page)
 - [x] Component: LiveThumbnailCard — stream card with thumbnail, title, streamer name, viewer count (standardized existing Cook Up card)

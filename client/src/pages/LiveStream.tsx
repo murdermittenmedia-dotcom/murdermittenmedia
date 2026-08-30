@@ -11,6 +11,8 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
+import { Radio } from "lucide-react";
+import { LiveThumbnailCard } from "./CookUp";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 const YT_CHANNEL_URL = "https://www.youtube.com/@MurderMittenMedia";
@@ -29,6 +31,9 @@ export default function LiveStream() {
   const { data: eventData, refetch: refetchEvent } = trpc.events.getNext.useQuery(undefined, {
     refetchInterval: 15000,
   });
+
+  // Cook Up stream discovery stays visible alongside the legacy radio/live status.
+  const { data: cookUpStreams = [] } = trpc.live.list.useQuery(undefined, { refetchInterval: 10000 });
 
   const setLiveMutation = trpc.queue.setLive.useMutation({
     onSuccess: () => { toast.success("Live status updated!"); refetchQueue(); },
@@ -95,6 +100,28 @@ export default function LiveStream() {
       </section>
 
       <div className="container pb-20 max-w-4xl mx-auto px-4">
+
+        {/* ── ACTIVE COOK UP STREAMS ─────────────────────── */}
+        <section className="mb-10 border border-white/10 bg-white/[0.02] p-5 sm:p-6">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-red-400">Live Cook Up</p>
+              <h2 className="mt-1 font-['Anton'] text-3xl uppercase tracking-wide">Community <span className="text-red-600">Streams</span></h2>
+            </div>
+            <a href="/cookup" className="text-xs font-bold uppercase tracking-widest text-white/45 transition hover:text-red-400">Browse all →</a>
+          </div>
+          {cookUpStreams.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {cookUpStreams.slice(0, 6).map((stream) => <LiveThumbnailCard key={stream.id} stream={stream} />)}
+            </div>
+          ) : (
+            <div className="border border-dashed border-white/10 px-4 py-8 text-center">
+              <Radio className="mx-auto mb-2 h-6 w-6 text-white/20" />
+              <p className="text-sm text-white/45">No Cook Up streams are live right now.</p>
+              <a href="/live/go" className="mt-3 inline-block text-xs font-bold uppercase tracking-widest text-red-400 hover:text-red-300">Start a stream →</a>
+            </div>
+          )}
+        </section>
 
         {/* ── ADMIN CONTROLS ─────────────────────────────── */}
         {isAdmin && (

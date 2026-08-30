@@ -15,6 +15,15 @@ import { Radio, Plus, Users, Coins } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
+export type LiveStream = {
+  id: number;
+  title: string;
+  thumbnailUrl?: string | null;
+  viewerCount: number;
+  totalGiftCoins: number;
+  streamer?: { artistName?: string | null; name?: string | null } | null;
+};
+
 export default function LiveCookUp() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
@@ -169,7 +178,7 @@ export default function LiveCookUp() {
   );
 }
 
-function LiveThumbnailCard({ stream }: { stream: any }) {
+export function LiveThumbnailCard({ stream }: { stream: LiveStream }) {
   const displayName = stream.streamer?.artistName || stream.streamer?.name || "Unknown Artist";
   const initials = displayName.slice(0, 2).toUpperCase();
 
