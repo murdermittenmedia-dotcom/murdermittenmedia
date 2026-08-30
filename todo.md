@@ -884,7 +884,7 @@
 - [x] Route `/broadcast/review` — full-screen broadcast view for Music Review (large text, high contrast, current song + queue + reactions)
 - [x] Route `/broadcast/radio` — full-screen broadcast view for Radio (now playing, next up, listener count, reactions)
 - [x] Route `/broadcast/rankings` — full-screen broadcast view for Rankings (top artists, trending, heat meters)
-- [ ] Route `/broadcast/wars` — full-screen broadcast view for Music Wars (matchup, voting, scores)
+- [x] Route `/broadcast/wars` — full-screen broadcast view for Music Wars (matchup, voting, scores)
 - [x] Broadcast views: no nav, no footer, no floating player — clean overlay-style layout
 - [x] Broadcast views: large Anton font, high contrast (#080808 bg, white/red text), animated counters
 - [x] Broadcast views: safe margins for Instagram crop (16:9 safe zone)
