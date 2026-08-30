@@ -1642,3 +1642,5 @@
 - [x] Add admin-created judge invite tokens with expiry, optional email restriction, revocation, and protected acceptance that grants judge role
 
 - [x] Complete judge-invite acceptance from `/review?judge_invite=...` with authenticated role grant and user feedback
+
+- [x] Add admin Music Review controls for creating, copying, listing, and revoking judge invites

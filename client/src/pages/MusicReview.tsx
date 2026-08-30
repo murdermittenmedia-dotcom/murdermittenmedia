@@ -126,9 +126,20 @@ function AdminPanel({
   const [showReviewed, setShowReviewed] = useState(false);
   const audioPlayer = useAudioPlayer();
   const { user: currentUser } = useAuth();
-  const isJudge = currentUser?.role === "judge" || currentUser?.role === "admin";
-
+    const isJudge = currentUser?.role === "judge" || currentUser?.role === "admin";
+  const [judgeInviteEmail, setJudgeInviteEmail] = useState("");
+  const [latestJudgeInviteUrl, setLatestJudgeInviteUrl] = useState<string | null>(null);
+  const judgeInvites = trpc.review.getJudgeInvites.useQuery(undefined, { enabled: currentUser?.role === "admin" });
+  const createJudgeInvite = trpc.review.createJudgeInvite.useMutation({
+    onSuccess: ({ inviteUrl }) => { setLatestJudgeInviteUrl(`${window.location.origin}${inviteUrl}`); judgeInvites.refetch(); toast.success("Judge invite created"); },
+    onError: (error) => toast.error(error.message),
+  });
+  const revokeJudgeInvite = trpc.review.revokeJudgeInvite.useMutation({
+    onSuccess: () => { judgeInvites.refetch(); toast.success("Invite revoked"); },
+    onError: (error) => toast.error(error.message),
+  });
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
+
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
   const updateStatus = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
   const confirmSkip = trpc.queue.confirmSkip.useMutation({ onSuccess: () => refetch() });
@@ -430,9 +441,46 @@ function AdminPanel({
           </div>
         )}
 
-        </div>
-
+                </div>
+        {currentUser?.role === "admin" && (
+          <div className="border-t border-white/10 pt-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300/80">Judge roster</div>
+                <div className="mt-1 text-[10px] text-white/35">Create expiring links for approved panel members.</div>
+              </div>
+              <span className="text-[10px] text-white/35">{(judgeInvites.data ?? []).filter((invite) => invite.status === "pending").length} pending</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={judgeInviteEmail}
+                onChange={(event) => setJudgeInviteEmail(event.target.value)}
+                placeholder="Optional judge email"
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder-white/20 focus:border-yellow-400/50 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => createJudgeInvite.mutate({ invitedEmail: judgeInviteEmail || undefined, expiresInHours: 72 })}
+                disabled={createJudgeInvite.isPending}
+                className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-200 hover:bg-yellow-400/20 disabled:opacity-50"
+              >{createJudgeInvite.isPending ? "Creating…" : "Create Invite"}</button>
+            </div>
+            {latestJudgeInviteUrl && (
+              <button type="button" onClick={() => navigator.clipboard?.writeText(latestJudgeInviteUrl).then(() => toast.success("Invite link copied"))} className="mt-2 w-full truncate rounded border border-green-400/20 bg-green-400/[0.06] px-2 py-1.5 text-left text-[10px] text-green-200 hover:bg-green-400/10">Copy latest invite: {latestJudgeInviteUrl}</button>
+            )}
+            <div className="mt-2 max-h-24 space-y-1 overflow-y-auto">
+              {(judgeInvites.data ?? []).slice(0, 5).map((invite) => (
+                <div key={invite.id} className="flex items-center justify-between gap-2 text-[10px] text-white/45">
+                  <span className="truncate">{invite.invitedEmail || "Open invite"} · {invite.status}</span>
+                  {invite.status === "pending" && <button type="button" onClick={() => revokeJudgeInvite.mutate({ inviteId: invite.id })} className="shrink-0 text-red-300 hover:text-red-200">Revoke</button>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {/* ── Row 2: Mic / Camera / Mic→Radio ── */}
+
         <div className="border-t border-white/10 pt-3">
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300/70">Audio routing</div>
         <div className="grid grid-cols-3 gap-2">
