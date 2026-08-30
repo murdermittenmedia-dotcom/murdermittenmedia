@@ -1650,3 +1650,5 @@
 - [x] Grant five line-skip credits on first verified Review+ activation and expose the active credit balance in membership status
 
 - [x] Grant five additional Review+ line-skip credits on each verified recurring Stripe billing cycle via the idempotent webhook
+
+- [x] Show active judge broadcasts on public /review with independent viewer audio and a mute-all-judges control

@@ -265,11 +265,12 @@ interface JudgeBroadcastViewerProps {
   roomName: string;
   livekitUrl: string;
   viewerToken: string;
-  judgeName: string;
+    judgeName: string;
   judgeUserId: number;
+  mutedAll?: boolean;
 }
+export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeName, judgeUserId, mutedAll = false }: JudgeBroadcastViewerProps) {
 
-export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeName, judgeUserId }: JudgeBroadcastViewerProps) {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
@@ -341,7 +342,7 @@ export function JudgeBroadcastViewer({ roomName, livekitUrl, viewerToken, judgeN
   return (
     <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
       {/* Hidden audio element for judge mic; browsers require a user gesture before playback */}
-      <audio ref={remoteAudioRef} autoPlay playsInline muted={muted || !audioUnlocked} />
+      <audio ref={remoteAudioRef} autoPlay playsInline muted={muted || mutedAll || !audioUnlocked} />
       <div className="relative bg-black" style={{ aspectRatio: '16/9', maxHeight: '180px' }}>
         <video
           ref={remoteVideoRef}
