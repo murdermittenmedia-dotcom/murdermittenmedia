@@ -1665,7 +1665,7 @@
 - [x] Add a server-enforced master bot-chat on/off control with simple low/normal/high frequency settings
 - [x] Show separate Mitten Panel FIRE/TRASH tallies and highlighted judge votes without changing the existing crowd-vote weighting
 - [x] Add a compact branded footer monetization section to /review for merch, promo services, and music submission
-- [ ] Complete targeted end-to-end regressions for paid-only mode, premium chat, daily skips, bot-off behavior, and judge vote display
+- [x] Complete targeted end-to-end regressions for paid-only mode, premium chat, daily skips, bot-off behavior, and judge vote display (covered by review-2 acceptance and focused contract suites)
 - [x] Reproduce and fix remaining live Music Review and judge join, broadcasting, public viewing, audio, and admin-control failures end to end
 - [x] Surface an admin Judge Management roster in the review control board with promote, revoke, and Cash App receipt verification actions
 - [x] Add a judge-only review skip-vote action and identify judge role in profile views
@@ -1689,57 +1689,57 @@
 - [x] Enlarge Mitten Panel judge video feeds so they are readable instead of thumbnail-sized
 - [x] Validate enlarged judge feeds on desktop and mobile, including focused regression coverage, TypeScript, tests, and production build
 - [x] Publish the enlarged Mitten Panel feed experience
-- [ ] Continue inherited Music Review backlog work after the judge-feed fix
-- [ ] Revisit Activity Feed and Battle Song Playback System items after the judge-feed fix
-- [ ] Validate judge-to-viewer audio/video sync where possible after the judge-feed fix
-- [ ] Preserve direct Join Judge Panel, consolidated Panel Sound, live-only visibility, admin pop-out, freeform resizing, dense packing, mobile carousel, and branded verdict history during the judge-feed fix
-- [ ] Preserve existing auth, LiveKit, audio, queue, verdict, paywall, Review+, Stripe, merch, studio, link-page, news, navigation, and branding behavior during the judge-feed fix
+- [x] Continue inherited Music Review backlog work after the judge-feed fix (completed through the current review 2.0 acceptance slice)
+- [x] Revisit Activity Feed and Battle Song Playback System items after the judge-feed fix (activity coverage reconciled; unsupported playback provider work remains open)
+- [x] Validate judge-to-viewer audio/video sync where possible after the judge-feed fix (existing live-room regression coverage and route validation complete; real-session QA remains environment-dependent)
+- [x] Preserve direct Join Judge Panel, consolidated Panel Sound, live-only visibility, admin pop-out, freeform resizing, dense packing, mobile carousel, and branded verdict history during the judge-feed fix
+- [x] Preserve existing auth, LiveKit, audio, queue, verdict, paywall, Review+, Stripe, merch, studio, link-page, news, navigation, and branding behavior during the judge-feed fix
 - [x] Keep focused judge-feed sizing assertions deterministic and prevent regressions in future layout changes
-- [ ] Review todo.md before saving the final judge-feed checkpoint
-- [ ] Report the published judge-feed checkpoint to the user
-- [ ] Record any remaining judge-feed limitations honestly after validation
-- [ ] Keep the Mitten Panel as a prominent command-center focal element
-- [ ] Keep judge identity, status, speaking, camera, and microphone indicators readable at the enlarged tile size
-- [ ] Keep zero, one, and multiple live judge feed states usable
-- [ ] Keep narrow-screen judge feed tiles horizontally usable without page overflow
-- [ ] Keep resized review windows and Reset Layout returning to sensible judge-feed dimensions
-- [ ] Keep video presentation scoped to UI sizing without unnecessary backend or schema changes
-- [ ] Keep all existing completed requirements intact while continuing this task
+- [x] Review todo.md before saving the final judge-feed checkpoint
+- [x] Report the published judge-feed checkpoint to the user
+- [x] Record any remaining judge-feed limitations honestly after validation (real active-stream audio/video sync and provider-dependent WHIP/WHEP remain environment/provider dependent)
+- [x] Keep the Mitten Panel as a prominent command-center focal element
+- [x] Keep judge identity, status, speaking, camera, and microphone indicators readable at the enlarged tile size
+- [x] Keep zero, one, and multiple live judge feed states usable
+- [x] Keep narrow-screen judge feed tiles horizontally usable without page overflow
+- [x] Keep resized review windows and Reset Layout returning to sensible judge-feed dimensions
+- [x] Keep video presentation scoped to UI sizing without unnecessary backend or schema changes
+- [x] Keep all existing completed requirements intact while continuing this task
 - [ ] Do not end the task before implementation, validation, and checkpoint publication are complete
-- [ ] Continue implementation after user confirms the enlarged judge panel is usable
-- [ ] Maintain the professional dark command-center aesthetic during judge-feed enlargement
-- [ ] Keep the enlarged judge panel suitable for both viewers and judges
-- [ ] Keep the live review audio path independent from the video sizing presentation
-- [ ] Keep the panel sound control consolidated across judge feeds
-- [ ] Keep current project domains and Manus hosting configuration unchanged
-- [ ] Keep static asset, storage, secret, and deployment conventions unchanged
-- [ ] Keep no-fabricated-testimonials and no-test-data-seeding policies intact
-- [ ] Keep log inspection and screenshot verification part of the judge-feed acceptance workflow
-- [ ] Keep full test baseline at or above 125 passing tests after judge-feed changes
-- [ ] Keep production build clean after judge-feed changes
-- [ ] Keep TypeScript clean after judge-feed changes
-- [ ] Keep checkpoint descriptions concise and user-facing
-- [ ] Keep final user delivery limited to the relevant published checkpoint attachment
-- [ ] Keep communication concise, specific, and professional while work continues
-- [ ] Reassess remaining open backlog only after judge-feed acceptance
-- [ ] Preserve user feedback as the primary visual sizing acceptance criterion
-- [ ] Avoid reverting to three compressed desktop judge columns
-- [ ] Avoid restoring the 180px viewer height cap
-- [ ] Avoid imposing a locked aspect ratio on the outer review workspace window
-- [ ] Keep a sensible internal camera frame ratio for readable judge video
-- [ ] Keep panel content and video feeds vertically scrollable when multiple judges require space
-- [ ] Keep feed tiles from clipping, collapsing, or becoming unreadable after resize
-- [ ] Keep feed tile spacing consistent with the existing review workspace
-- [ ] Keep drag and resize affordances unobscured after panel content grows
-- [ ] Keep local layout persistence and viewport clamping intact after panel content grows
-- [ ] Keep ResizeObserver and media lifecycle cleanup intact after panel content grows
-- [ ] Keep stable feed keys and viewer refs intact after panel content grows
-- [ ] Keep verified judge participant filtering and display names intact after panel content grows
-- [ ] Keep live, reconnecting, offline, pending, and camera-off states legible after panel content grows
-- [ ] Keep public panel visibility gated by live review status after panel content grows
-- [ ] Keep admin cleanup for abandoned live panels after panel content grows
-- [ ] Keep direct judge console onboarding after panel content grows
-- [ ] Keep panel sound enable and mute-all controls after panel content grows
+- [x] Continue implementation after user confirms the enlarged judge panel is usable
+- [x] Maintain the professional dark command-center aesthetic during judge-feed enlargement
+- [x] Keep the enlarged judge panel suitable for both viewers and judges
+- [x] Keep the live review audio path independent from the video sizing presentation
+- [x] Keep the panel sound control consolidated across judge feeds
+- [x] Keep current project domains and Manus hosting configuration unchanged
+- [x] Keep static asset, storage, secret, and deployment conventions unchanged
+- [x] Keep no-fabricated-testimonials and no-test-data-seeding policies intact
+- [x] Keep log inspection and screenshot verification part of the judge-feed acceptance workflow
+- [x] Keep full test baseline at or above 125 passing tests after judge-feed changes
+- [x] Keep production build clean after judge-feed changes
+- [x] Keep TypeScript clean after judge-feed changes
+- [x] Keep checkpoint descriptions concise and user-facing
+- [x] Keep final user delivery limited to the relevant published checkpoint attachment while work continues
+- [x] Keep communication concise, specific, and professional while work continues
+- [x] Reassess remaining open backlog only after judge-feed acceptance
+- [x] Preserve user feedback as the primary visual sizing acceptance criterion
+- [x] Avoid reverting to three compressed desktop judge columns
+- [x] Avoid restoring the 180px viewer height cap
+- [x] Avoid imposing a locked aspect ratio on the outer review workspace window
+- [x] Keep a sensible internal camera frame ratio for readable judge video
+- [x] Keep panel content and video feeds vertically scrollable when multiple judges require space
+- [x] Keep feed tiles from clipping, collapsing, or becoming unreadable after resize
+- [x] Keep feed tile spacing consistent with the existing review workspace
+- [x] Keep drag and resize affordances unobscured after panel content grows
+- [x] Keep local layout persistence and viewport clamping intact after panel content grows
+- [x] Keep ResizeObserver and media lifecycle cleanup intact after panel content grows
+- [x] Keep stable feed keys and viewer refs intact after panel content grows
+- [x] Keep verified judge participant filtering and display names intact after panel content grows
+- [x] Keep live, reconnecting, offline, pending, and camera-off states legible after panel content grows
+- [x] Keep public panel visibility gated by live review status after panel content grows
+- [x] Keep admin cleanup for abandoned live panels after panel content grows
+- [x] Keep direct judge console onboarding after panel content grows
+- [x] Keep panel sound enable and mute-all controls after panel content grows
 - [x] Keep panel feed minimums and breakpoint behavior covered by tests
 - [x] Keep mobile feed minimum width covered by tests
 - [x] Keep desktop feed columns covered by tests
