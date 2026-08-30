@@ -74,6 +74,16 @@ describe("merch shirt colorways", () => {
     expect(micSource).toContain('Watch raw, unfiltered performances and interviews from the trenches.');
   });
 
+  it("spotlights the four verified Meeting With The Mitten Season 2 uploads", () => {
+    const podcastSource = readFileSync(resolve(process.cwd(), "client/src/pages/MeetingWithTheMitten.tsx"), "utf8");
+    expect(podcastSource).toContain("SEASON_2_SPOTLIGHT");
+    for (const videoId of ["2LqNPNOsS5w", "FiXQViDNP9Q", "L-X7rR0F4oM", "Tob-pLXFj2k"]) {
+      expect(podcastSource).toContain(videoId);
+    }
+    expect(podcastSource).toContain("The four newest verified interview uploads");
+    expect(podcastSource).toContain("Season 2 · Episode 1");
+  });
+
   it("keeps the renamed Blade Tee at $27.99 and separate from the Spirit tee", async () => {
     const db = await getDb();
     if (!db) return;

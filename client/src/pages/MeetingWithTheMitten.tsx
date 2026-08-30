@@ -1,12 +1,43 @@
 /* ============================================================
    MURDER MITTEN MEDIA -- Meeting With The Mitten Podcast
-   All 15 episodes from the official YouTube playlist
+   Official YouTube interview catalog with a dedicated Season 2 spotlight
    ============================================================ */
 
 import { useState } from "react";
 import { SiteNav } from "@/components/SiteNav";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
+
+const SEASON_2_SPOTLIGHT = [
+  {
+    id: "2LqNPNOsS5w",
+    title: "Shaudy Kash Interview | Meeting With The Mitten",
+    guest: "Shaudy Kash",
+    duration: "33:19",
+    descriptor: "Season 2 spotlight · newest interview upload",
+  },
+  {
+    id: "FiXQViDNP9Q",
+    title: "DJStr8Cash Interview | Meeting With The Mitten",
+    guest: "DJStr8Cash",
+    duration: "17:42",
+    descriptor: "Season 2 spotlight · newest interview upload",
+  },
+  {
+    id: "L-X7rR0F4oM",
+    title: "Art Decco Interview | Meeting With The Mitten",
+    guest: "Art Decco",
+    duration: "40:38",
+    descriptor: "Season 2 spotlight · newest interview upload",
+  },
+  {
+    id: "Tob-pLXFj2k",
+    title: "BandGang Javar Interview - Meeting With The Mitten S2 : E1",
+    guest: "BandGang Javar",
+    duration: "23:42",
+    descriptor: "Season 2 · Episode 1",
+  },
+] as const;
 
 const EPISODES = [
   {
@@ -174,6 +205,49 @@ export default function MeetingWithTheMitten() {
             >
               ▶ Full Playlist on YouTube
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Season 2 spotlight */}
+      <section className="relative border-y border-red-600/20 bg-gradient-to-r from-red-950/20 via-[#0b0b0b] to-[#080808] py-10 overflow-hidden">
+        <div className="absolute inset-y-0 left-0 w-1/3 bg-red-600/5 blur-3xl pointer-events-none" />
+        <div className="container relative">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+            <div>
+              <p className="text-red-500 text-xs uppercase tracking-[0.3em] font-semibold mb-2">Fresh from the channel</p>
+              <h2 className="font-['Anton'] text-3xl md:text-5xl uppercase leading-none">MEETING WITH THE MITTEN <span className="text-red-600">S2</span></h2>
+              <p className="text-white/45 text-sm mt-3 max-w-xl">The four newest verified interview uploads from the official Murder Mitten Media YouTube channel.</p>
+            </div>
+            <a
+              href="https://www.youtube.com/@MurderMittenMedia/videos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="self-start md:self-auto border border-red-600/50 text-red-400 hover:bg-red-600 hover:text-white px-4 py-2 text-xs uppercase tracking-widest transition-colors"
+            >
+              View channel
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {SEASON_2_SPOTLIGHT.map((ep, index) => (
+              <article key={ep.id} className="group border border-white/10 bg-black/30 overflow-hidden hover:border-red-600/60 transition-colors">
+                <button type="button" onClick={() => setActiveVideo(ep.id)} className="relative block w-full aspect-video bg-black overflow-hidden text-left">
+                  <img src={`https://img.youtube.com/vi/${ep.id}/hqdefault.jpg`} alt={ep.guest} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                  <span className="absolute top-2 left-2 bg-red-600 text-white text-[10px] px-2 py-1 uppercase tracking-widest">S2 · {index + 1}</span>
+                  <span className="absolute bottom-2 right-2 bg-black/85 text-white text-xs px-2 py-1">{ep.duration}</span>
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors"><span className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center text-white text-lg pl-0.5">▶</span></span>
+                </button>
+                <div className="p-3">
+                  <p className="text-red-500 text-[10px] uppercase tracking-widest font-semibold">{ep.descriptor}</p>
+                  <h3 className="text-white text-sm font-semibold leading-snug mt-1 line-clamp-2">{ep.title}</h3>
+                  <div className="flex items-center justify-between gap-2 mt-3">
+                    <button type="button" onClick={() => setActiveVideo(ep.id)} className="text-xs text-red-400 hover:text-white uppercase tracking-wider">Play here</button>
+                    <a href={`https://www.youtube.com/watch?v=${ep.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-white/40 hover:text-white uppercase tracking-wider">YouTube ↗</a>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>

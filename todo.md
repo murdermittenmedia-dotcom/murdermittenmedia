@@ -5099,3 +5099,7 @@
 
 - [x] Audit the canonical https://www.youtube.com/@MurderMittenMedia public uploads for missing Mic episodes and newer interviews (verified public channel list and canonical URLs saved)
 - [x] Compare verified canonical uploads with the existing Murder Mitten Mic catalog before adding entries (Young Hoova was missing and is now included)
+
+- [x] Verify the four newest Meeting With The Mitten Season 2 episodes on the canonical YouTube channel and record their exact titles, IDs, and thumbnails
+- [x] Add a dedicated Meeting With The Mitten Season 2 spotlight section featuring the four verified episodes
+- [x] Add regression coverage for the four Season 2 spotlight entries and verify desktop/mobile rendering
