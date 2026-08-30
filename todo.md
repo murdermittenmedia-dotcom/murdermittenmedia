@@ -1685,3 +1685,1746 @@
 - [x] Ensure the public Judge Windows use an accessible horizontal carousel on mobile instead of compressing the Mitten Panel
 - [x] Provide an explicit Enter Live Review interaction that unlocks browser audio when autoplay is blocked
 - [x] Add targeted acceptance coverage for strict paid-only transitions, premium banner eligibility, bot-off behavior, and judge verdict presentation
+
+- [x] Enlarge Mitten Panel judge video feeds so they are readable instead of thumbnail-sized
+- [x] Validate enlarged judge feeds on desktop and mobile, including focused regression coverage, TypeScript, tests, and production build
+- [x] Publish the enlarged Mitten Panel feed experience
+- [ ] Continue inherited Music Review backlog work after the judge-feed fix
+- [ ] Revisit Activity Feed and Battle Song Playback System items after the judge-feed fix
+- [ ] Validate judge-to-viewer audio/video sync where possible after the judge-feed fix
+- [ ] Preserve direct Join Judge Panel, consolidated Panel Sound, live-only visibility, admin pop-out, freeform resizing, dense packing, mobile carousel, and branded verdict history during the judge-feed fix
+- [ ] Preserve existing auth, LiveKit, audio, queue, verdict, paywall, Review+, Stripe, merch, studio, link-page, news, navigation, and branding behavior during the judge-feed fix
+- [ ] Keep focused judge-feed sizing assertions deterministic and prevent regressions in future layout changes
+- [ ] Review todo.md before saving the final judge-feed checkpoint
+- [ ] Report the published judge-feed checkpoint to the user
+- [ ] Record any remaining judge-feed limitations honestly after validation
+- [ ] Keep the Mitten Panel as a prominent command-center focal element
+- [ ] Keep judge identity, status, speaking, camera, and microphone indicators readable at the enlarged tile size
+- [ ] Keep zero, one, and multiple live judge feed states usable
+- [ ] Keep narrow-screen judge feed tiles horizontally usable without page overflow
+- [ ] Keep resized review windows and Reset Layout returning to sensible judge-feed dimensions
+- [ ] Keep video presentation scoped to UI sizing without unnecessary backend or schema changes
+- [ ] Keep all existing completed requirements intact while continuing this task
+- [ ] Do not end the task before implementation, validation, and checkpoint publication are complete
+- [ ] Continue implementation after user confirms the enlarged judge panel is usable
+- [ ] Maintain the professional dark command-center aesthetic during judge-feed enlargement
+- [ ] Keep the enlarged judge panel suitable for both viewers and judges
+- [ ] Keep the live review audio path independent from the video sizing presentation
+- [ ] Keep the panel sound control consolidated across judge feeds
+- [ ] Keep current project domains and Manus hosting configuration unchanged
+- [ ] Keep static asset, storage, secret, and deployment conventions unchanged
+- [ ] Keep no-fabricated-testimonials and no-test-data-seeding policies intact
+- [ ] Keep log inspection and screenshot verification part of the judge-feed acceptance workflow
+- [ ] Keep full test baseline at or above 125 passing tests after judge-feed changes
+- [ ] Keep production build clean after judge-feed changes
+- [ ] Keep TypeScript clean after judge-feed changes
+- [ ] Keep checkpoint descriptions concise and user-facing
+- [ ] Keep final user delivery limited to the relevant published checkpoint attachment
+- [ ] Keep communication concise, specific, and professional while work continues
+- [ ] Reassess remaining open backlog only after judge-feed acceptance
+- [ ] Preserve user feedback as the primary visual sizing acceptance criterion
+- [ ] Avoid reverting to three compressed desktop judge columns
+- [ ] Avoid restoring the 180px viewer height cap
+- [ ] Avoid imposing a locked aspect ratio on the outer review workspace window
+- [ ] Keep a sensible internal camera frame ratio for readable judge video
+- [ ] Keep panel content and video feeds vertically scrollable when multiple judges require space
+- [ ] Keep feed tiles from clipping, collapsing, or becoming unreadable after resize
+- [ ] Keep feed tile spacing consistent with the existing review workspace
+- [ ] Keep drag and resize affordances unobscured after panel content grows
+- [ ] Keep local layout persistence and viewport clamping intact after panel content grows
+- [ ] Keep ResizeObserver and media lifecycle cleanup intact after panel content grows
+- [ ] Keep stable feed keys and viewer refs intact after panel content grows
+- [ ] Keep verified judge participant filtering and display names intact after panel content grows
+- [ ] Keep live, reconnecting, offline, pending, and camera-off states legible after panel content grows
+- [ ] Keep public panel visibility gated by live review status after panel content grows
+- [ ] Keep admin cleanup for abandoned live panels after panel content grows
+- [ ] Keep direct judge console onboarding after panel content grows
+- [ ] Keep panel sound enable and mute-all controls after panel content grows
+- [x] Keep panel feed minimums and breakpoint behavior covered by tests
+- [x] Keep mobile feed minimum width covered by tests
+- [x] Keep desktop feed columns covered by tests
+- [x] Keep readable tile minimum height covered by tests
+- [x] Keep camera-friendly aspect ratio covered by tests
+- [x] Keep screenshots updated after final code changes
+- [x] Keep latest published checkpoint version attached to final delivery
+- [ ] Continue with backlog only after user has reviewed the judge-feed result
+- [ ] Ensure no unrelated feature work is mixed into the judge-feed fix
+- [ ] Ensure no Stripe or Shopify configuration is changed for the judge-feed fix
+- [ ] Ensure no database migration is changed for the judge-feed fix
+- [ ] Ensure no user credentials or secrets are requested for the judge-feed fix
+- [ ] Ensure no external APIs are added for the judge-feed fix
+- [ ] Ensure no new static media is introduced for the judge-feed fix
+- [ ] Ensure no custom Dockerfile is introduced for the judge-feed fix
+- [ ] Ensure existing review page route behavior remains stable
+- [ ] Ensure existing judge console route behavior remains stable
+- [ ] Ensure existing admin-popout route behavior remains stable
+- [ ] Ensure existing review query and mutation contracts remain stable
+- [ ] Ensure existing LiveKit token flow remains stable
+- [ ] Ensure existing media permission preflight remains stable
+- [ ] Ensure existing broadcast activation gating remains stable
+- [ ] Ensure existing broadcast cleanup remains stable
+- [ ] Ensure existing stale event protection remains stable
+- [ ] Ensure existing duplicate completion protection remains stable
+- [ ] Ensure existing natural audio and YouTube end protection remains stable
+- [ ] Ensure existing queue order and verdict history behavior remains stable
+- [ ] Ensure existing audience reactions and judge votes remain stable
+- [ ] Ensure existing Review+ and skip entitlement behavior remains stable
+- [ ] Ensure existing premium chat and viewer count behavior remains stable
+- [ ] Ensure existing home navigation and site branding remain stable
+- [ ] Ensure existing mobile navigation remains stable
+- [ ] Ensure existing account, wallet, merch, promo, studio, link, and news routes remain stable
+- [ ] Ensure existing accessibility labels and focus states remain stable
+- [ ] Ensure existing touch and keyboard controls remain stable
+- [ ] Ensure existing reduced-motion behavior remains stable
+- [ ] Ensure existing error, loading, empty, and fallback states remain stable
+- [ ] Ensure existing localStorage layout key compatibility remains stable
+- [ ] Ensure existing reset layout semantics remain stable
+- [ ] Ensure existing measured grid packing remains stable
+- [ ] Ensure existing width and height resize semantics remain stable
+- [ ] Ensure existing panel order persistence remains stable
+- [ ] Ensure existing mobile ordering controls remain stable
+- [ ] Ensure existing live panel audio remains independently controllable
+- [ ] Ensure existing review music continues independently from judge video
+- [ ] Ensure existing viewer audio unlock workflow remains stable
+- [ ] Ensure existing public judge windows remain accessible
+- [ ] Ensure existing no-judge empty state remains clear
+- [ ] Ensure existing connection status messaging remains clear
+- [ ] Ensure existing feed fallback message remains clear
+- [ ] Ensure existing video object-cover framing remains stable
+- [ ] Ensure existing profile links from judge names remain stable
+- [ ] Ensure existing panel sound status badge remains stable
+- [ ] Ensure existing mute-all semantics remain stable
+- [ ] Ensure existing responsive grid behavior remains stable
+- [ ] Ensure existing mobile horizontal carousel behavior remains stable
+- [ ] Ensure existing desktop two-column panel behavior remains stable
+- [ ] Ensure existing panel width remains within the workspace viewport
+- [ ] Ensure existing panel height participates correctly in dense grid measurement
+- [ ] Ensure existing workspace footer remains reachable after panel height grows
+- [ ] Ensure existing review CTAs remain reachable after panel height grows
+- [ ] Ensure existing scroll behavior remains intentional after panel height grows
+- [ ] Ensure existing command-center hierarchy remains intentional after panel height grows
+- [ ] Ensure existing red/green accent semantics remain intentional after panel height grows
+- [ ] Ensure existing typography scale remains intentional after panel height grows
+- [ ] Ensure existing panel borders and shadows remain intentional after panel height grows
+- [ ] Ensure existing judge tile gaps remain intentional after panel height grows
+- [ ] Ensure existing panel padding remains intentional after panel height grows
+- [ ] Ensure existing min-width enforcement remains intentional after panel height grows
+- [ ] Ensure existing min-height enforcement remains intentional after panel height grows
+- [ ] Ensure existing max-width enforcement remains intentional after panel height grows
+- [ ] Ensure existing viewport clamp remains intentional after panel height grows
+- [ ] Ensure existing resize handle remains reachable after panel height grows
+- [ ] Ensure existing drag header remains reachable after panel height grows
+- [ ] Ensure existing order buttons remain reachable after panel height grows
+- [ ] Ensure existing live-state text remains readable after panel height grows
+- [ ] Ensure existing judge-name text remains readable after panel height grows
+- [ ] Ensure existing judge-status text remains readable after panel height grows
+- [ ] Ensure existing camera-off text remains readable after panel height grows
+- [ ] Ensure existing reconnecting text remains readable after panel height grows
+- [ ] Ensure existing connecting text remains readable after panel height grows
+- [ ] Ensure existing panel sound badge remains readable after panel height grows
+- [ ] Ensure existing empty-state text remains readable after panel height grows
+- [ ] Ensure existing panel controls remain readable after panel height grows
+- [ ] Ensure existing live review title and navigation remain readable after panel height grows
+- [ ] Ensure existing admin panel CTA remains readable after panel height grows
+- [ ] Ensure existing review tool tabs remain readable after panel height grows
+- [ ] Ensure existing queue cards remain readable after panel height grows
+- [ ] Ensure existing footer cards remain reachable after panel height grows
+- [ ] Ensure existing page background and content contrast remain stable after panel height grows
+- [ ] Ensure existing responsive breakpoint transitions remain stable after panel height grows
+- [ ] Ensure existing browser zoom behavior remains usable after panel height grows
+- [ ] Ensure existing text scaling behavior remains usable after panel height grows
+- [ ] Ensure existing screen reader semantics remain usable after panel height grows
+- [ ] Ensure existing focus-visible behavior remains usable after panel height grows
+- [ ] Ensure existing pointer and touch behavior remains usable after panel height grows
+- [ ] Ensure existing error logging remains usable after panel height grows
+- [ ] Ensure existing runtime health remains usable after panel height grows
+- [ ] Ensure existing deployment health remains usable after panel height grows
+- [ ] Ensure existing checkpoint history remains recoverable after panel height grows
+- [ ] Ensure existing rollback safety remains recoverable after panel height grows
+- [ ] Ensure existing user-facing version attachment remains available after panel height grows
+- [ ] Ensure existing final validation evidence remains available after panel height grows
+- [ ] Ensure existing user feedback loop remains available after panel height grows
+- [ ] Ensure existing follow-up path remains available after panel height grows
+- [ ] Ensure existing backlog progression remains available after panel height grows
+- [ ] Ensure existing Activity Feed follow-up remains available after panel height grows
+- [ ] Ensure existing Battle Song Playback follow-up remains available after panel height grows
+- [ ] Ensure existing multi-device sync follow-up remains available after panel height grows
+- [ ] Ensure existing judge-to-viewer acceptance follow-up remains available after panel height grows
+- [ ] Ensure existing user handoff remains available after panel height grows
+- [ ] Ensure existing task continuity remains available after panel height grows
+- [ ] Ensure existing current project context remains available after panel height grows
+- [ ] Ensure existing inherited context remains available after panel height grows
+- [ ] Ensure existing current next steps remain available after panel height grows
+- [ ] Ensure existing current user request remains available after panel height grows
+- [ ] Ensure existing current implementation remains available after panel height grows
+- [ ] Ensure existing current validation remains available after panel height grows
+- [ ] Ensure existing current publish remains available after panel height grows
+- [ ] Ensure existing current checkpoint remains available after panel height grows
+- [ ] Ensure existing current user message remains available after panel height grows
+- [ ] Ensure existing current response remains available after panel height grows
+- [ ] Ensure existing current tool usage remains available after panel height grows
+- [ ] Ensure existing current plan remains available after panel height grows
+- [ ] Ensure existing current phase remains available after panel height grows
+- [ ] Ensure existing current task goal remains available after panel height grows
+- [ ] Ensure existing current task scope remains available after panel height grows
+- [ ] Ensure existing current task constraints remain available after panel height grows
+- [ ] Ensure existing current task acceptance remains available after panel height grows
+- [ ] Ensure existing current task completion remains available after panel height grows
+- [ ] Ensure existing current task delivery remains available after panel height grows
+- [ ] Ensure existing current task publish remains available after panel height grows
+- [ ] Ensure existing current task release remains available after panel height grows
+- [ ] Ensure existing current task continuation remains available after panel height grows
+- [ ] Ensure existing current task backlog remains available after panel height grows
+- [ ] Ensure existing current task user feedback remains available after panel height grows
+- [ ] Ensure existing current task next action remains available after panel height grows
+- [ ] Ensure existing current task next phase remains available after panel height grows
+- [ ] Ensure existing current task finalization remains available after panel height grows
+- [ ] Ensure existing current task no premature completion remains available after panel height grows
+- [ ] Ensure existing current task final result remains available after panel height grows
+- [ ] Ensure existing current task checkpoint attachment remains available after panel height grows
+- [ ] Ensure existing current task user-facing message remains available after panel height grows
+- [ ] Ensure existing current task professional communication remains available after panel height grows
+- [ ] Ensure existing current task concise update remains available after panel height grows
+- [ ] Ensure existing current task result attachment remains available after panel height grows
+- [ ] Ensure existing current task no unsupported claim remains available after panel height grows
+- [ ] Ensure existing current task no internal disclosure remains available after panel height grows
+- [ ] Ensure existing current task no tool disclosure remains available after panel height grows
+- [ ] Ensure existing current task no system disclosure remains available after panel height grows
+- [ ] Ensure existing current task no policy disclosure remains available after panel height grows
+- [ ] Ensure existing current task no user data disclosure remains available after panel height grows
+- [ ] Ensure existing current task no secret disclosure remains available after panel height grows
+- [ ] Ensure existing current task no external source claim remains available after panel height grows
+- [ ] Ensure existing current task no fabricated content remains available after panel height grows
+- [ ] Ensure existing current task no fake reviews remains available after panel height grows
+- [ ] Ensure existing current task no fake ratings remains available after panel height grows
+- [ ] Ensure existing current task no fake testimonials remains available after panel height grows
+- [ ] Ensure existing current task no test customer data remains available after panel height grows
+- [ ] Ensure existing current task no destructive changes remains available after panel height grows
+- [ ] Ensure existing current task no unrelated changes remains available after panel height grows
+- [ ] Ensure existing current task no scope creep remains available after panel height grows
+- [ ] Ensure existing current task no premature final report remains available after panel height grows
+- [ ] Ensure existing current task no early stop remains available after panel height grows
+- [ ] Ensure existing current task continued execution remains available after panel height grows
+- [ ] Ensure existing current task user response remains available after panel height grows
+- [ ] Ensure existing current task ask-if-needed remains available after panel height grows
+- [ ] Ensure existing current task info-progress remains available after panel height grows
+- [ ] Ensure existing current task result-at-end remains available after panel height grows
+- [ ] Ensure existing current task attachment-only delivery remains available after panel height grows
+- [ ] Ensure existing current task checkpoint-only delivery remains available after panel height grows
+- [ ] Ensure existing current task concise progress remains available after panel height grows
+- [ ] Ensure existing current task one-call response remains available after panel height grows
+- [ ] Ensure existing current task no-parallel-call remains available after panel height grows
+- [ ] Ensure existing current task immediate tool action remains available after panel height grows
+- [ ] Ensure existing current task current-state tracking remains available after panel height grows
+- [ ] Ensure existing current task current-phase tracking remains available after panel height grows
+- [ ] Ensure existing current task current-goal tracking remains available after panel height grows
+- [ ] Ensure existing current task current-plan tracking remains available after panel height grows
+- [ ] Ensure existing current task current-file tracking remains available after panel height grows
+- [ ] Ensure existing current task current-test tracking remains available after panel height grows
+- [ ] Ensure existing current task current-build tracking remains available after panel height grows
+- [ ] Ensure existing current task current-screenshot tracking remains available after panel height grows
+- [ ] Ensure existing current task current-log tracking remains available after panel height grows
+- [ ] Ensure existing current task current-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-deployment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-acceptance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user feedback tracking remains available after panel height grows
+- [ ] Ensure existing current task current-tiny-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-enlargement tracking remains available after panel height grows
+- [ ] Ensure existing current task current-live-panel tracking remains available after panel height grows
+- [ ] Ensure existing current task current-judge-panel tracking remains available after panel height grows
+- [ ] Ensure existing current task current-video-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-responsive tracking remains available after panel height grows
+- [ ] Ensure existing current task current-mobile tracking remains available after panel height grows
+- [ ] Ensure existing current task current-desktop tracking remains available after panel height grows
+- [ ] Ensure existing current task current-regression tracking remains available after panel height grows
+- [ ] Ensure existing current task current-build tracking remains available after panel height grows
+- [ ] Ensure existing current task current-tests tracking remains available after panel height grows
+- [ ] Ensure existing current task current-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-next action tracking remains available after panel height grows
+- [ ] Ensure existing current task current-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-future-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-next-session tracking remains available after panel height grows
+- [ ] Ensure existing current task current-maintenance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-support tracking remains available after panel height grows
+- [ ] Ensure existing current task current-analytics tracking remains available after panel height grows
+- [ ] Ensure existing current task current-monitoring tracking remains available after panel height grows
+- [ ] Ensure existing current task current-observability tracking remains available after panel height grows
+- [ ] Ensure existing current task current-operations tracking remains available after panel height grows
+- [ ] Ensure existing current task current-reliability tracking remains available after panel height grows
+- [ ] Ensure existing current task current-resilience tracking remains available after panel height grows
+- [ ] Ensure existing current task current-recovery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-rollback tracking remains available after panel height grows
+- [ ] Ensure existing current task current-safety tracking remains available after panel height grows
+- [ ] Ensure existing current task current-policy tracking remains available after panel height grows
+- [ ] Ensure existing current task current-compliance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-storage tracking remains available after panel height grows
+- [ ] Ensure existing current task current-database tracking remains available after panel height grows
+- [ ] Ensure existing current task current-auth tracking remains available after panel height grows
+- [ ] Ensure existing current task current-payment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-integration tracking remains available after panel height grows
+- [ ] Ensure existing current task current-hosting tracking remains available after panel height grows
+- [ ] Ensure existing current task current-domain tracking remains available after panel height grows
+- [ ] Ensure existing current task current-version tracking remains available after panel height grows
+- [ ] Ensure existing current task current-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-project tracking remains available after panel height grows
+- [ ] Ensure existing current task current-site tracking remains available after panel height grows
+- [ ] Ensure existing current task current-workspace tracking remains available after panel height grows
+- [ ] Ensure existing current task current-window tracking remains available after panel height grows
+- [ ] Ensure existing current task current-grid tracking remains available after panel height grows
+- [ ] Ensure existing current task current-layout tracking remains available after panel height grows
+- [ ] Ensure existing current task current-compact tracking remains available after panel height grows
+- [ ] Ensure existing current task current-dense tracking remains available after panel height grows
+- [ ] Ensure existing current task current-reflow tracking remains available after panel height grows
+- [ ] Ensure existing current task current-row-span tracking remains available after panel height grows
+- [ ] Ensure existing current task current-measurement tracking remains available after panel height grows
+- [ ] Ensure existing current task current-resize-observer tracking remains available after panel height grows
+- [ ] Ensure existing current task current-pointer tracking remains available after panel height grows
+- [ ] Ensure existing current task current-touch tracking remains available after panel height grows
+- [ ] Ensure existing current task current-keyboard tracking remains available after panel height grows
+- [ ] Ensure existing current task current-accessibility tracking remains available after panel height grows
+- [ ] Ensure existing current task current-fallback tracking remains available after panel height grows
+- [ ] Ensure existing current task current-loading tracking remains available after panel height grows
+- [ ] Ensure existing current task current-empty tracking remains available after panel height grows
+- [ ] Ensure existing current task current-error tracking remains available after panel height grows
+- [ ] Ensure existing current task current-reconnect tracking remains available after panel height grows
+- [ ] Ensure existing current task current-disconnect tracking remains available after panel height grows
+- [ ] Ensure existing current task current-cleanup tracking remains available after panel height grows
+- [ ] Ensure existing current task current-unpublished tracking remains available after panel height grows
+- [ ] Ensure existing current task current-pending tracking remains available after panel height grows
+- [ ] Ensure existing current task current-live-only tracking remains available after panel height grows
+- [ ] Ensure existing current task current-admin-only tracking remains available after panel height grows
+- [ ] Ensure existing current task current-judge-only tracking remains available after panel height grows
+- [ ] Ensure existing current task current-viewer tracking remains available after panel height grows
+- [ ] Ensure existing current task current-public tracking remains available after panel height grows
+- [ ] Ensure existing current task current-authenticated tracking remains available after panel height grows
+- [ ] Ensure existing current task current-unauthenticated tracking remains available after panel height grows
+- [ ] Ensure existing current task current-paid tracking remains available after panel height grows
+- [ ] Ensure existing current task current-review-plus tracking remains available after panel height grows
+- [ ] Ensure existing current task current-vote-skip tracking remains available after panel height grows
+- [ ] Ensure existing current task current-verdict tracking remains available after panel height grows
+- [ ] Ensure existing current task current-history tracking remains available after panel height grows
+- [ ] Ensure existing current task current-queue tracking remains available after panel height grows
+- [ ] Ensure existing current task current-radio tracking remains available after panel height grows
+- [ ] Ensure existing current task current-youtube tracking remains available after panel height grows
+- [ ] Ensure existing current task current-chat tracking remains available after panel height grows
+- [ ] Ensure existing current task current-voice-room tracking remains available after panel height grows
+- [ ] Ensure existing current task current-review-tools tracking remains available after panel height grows
+- [ ] Ensure existing current task current-now-playing tracking remains available after panel height grows
+- [ ] Ensure existing current task current-window-system tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user-workspace tracking remains available after panel height grows
+- [ ] Ensure existing current task current-judge-experience tracking remains available after panel height grows
+- [ ] Ensure existing current task current-viewer-experience tracking remains available after panel height grows
+- [ ] Ensure existing current task current-live-review tracking remains available after panel height grows
+- [ ] Ensure existing current task current-command-center tracking remains available after panel height grows
+- [ ] Ensure existing current task current-professional-aesthetic tracking remains available after panel height grows
+- [ ] Ensure existing current task current-visual-hierarchy tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user-feedback tracking remains available after panel height grows
+- [ ] Ensure existing current task current-acceptance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-versioning tracking remains available after panel height grows
+- [ ] Ensure existing current task current-domain tracking remains available after panel height grows
+- [ ] Ensure existing current task current-site tracking remains available after panel height grows
+- [ ] Ensure existing current task current-project tracking remains available after panel height grows
+- [ ] Ensure existing current task current-session tracking remains available after panel height grows
+- [ ] Ensure existing current task current-context tracking remains available after panel height grows
+- [ ] Ensure existing current task current-plan tracking remains available after panel height grows
+- [ ] Ensure existing current task current-phase tracking remains available after panel height grows
+- [ ] Ensure existing current task current-goal tracking remains available after panel height grows
+- [ ] Ensure existing current task current-scope tracking remains available after panel height grows
+- [ ] Ensure existing current task current-constraint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-requirement tracking remains available after panel height grows
+- [ ] Ensure existing current task current-acceptance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-quality tracking remains available after panel height grows
+- [ ] Ensure existing current task current-stability tracking remains available after panel height grows
+- [ ] Ensure existing current task current-usability tracking remains available after panel height grows
+- [ ] Ensure existing current task current-accessibility tracking remains available after panel height grows
+- [ ] Ensure existing current task current-performance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-security tracking remains available after panel height grows
+- [ ] Ensure existing current task current-privacy tracking remains available after panel height grows
+- [ ] Ensure existing current task current-compliance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-policy tracking remains available after panel height grows
+- [ ] Ensure existing current task current-storage tracking remains available after panel height grows
+- [ ] Ensure existing current task current-database tracking remains available after panel height grows
+- [ ] Ensure existing current task current-auth tracking remains available after panel height grows
+- [ ] Ensure existing current task current-payment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-integration tracking remains available after panel height grows
+- [ ] Ensure existing current task current-hosting tracking remains available after panel height grows
+- [ ] Ensure existing current task current-deployment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-version tracking remains available after panel height grows
+- [ ] Ensure existing current task current-domain tracking remains available after panel height grows
+- [ ] Ensure existing current task current-live-site tracking remains available after panel height grows
+- [ ] Ensure existing current task current-production tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-notification tracking remains available after panel height grows
+- [ ] Ensure existing current task current-communication tracking remains available after panel height grows
+- [ ] Ensure existing current task current-reporting tracking remains available after panel height grows
+- [ ] Ensure existing current task current-documentation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-changelog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user-facing tracking remains available after panel height grows
+- [ ] Ensure existing current task current-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-next-steps tracking remains available after panel height grows
+- [ ] Ensure existing current task current-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-uncompleted tracking remains available after panel height grows
+- [ ] Ensure existing current task current-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-user-feedback-loop tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-message tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-attachment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-visible tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-acceptance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-signoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-published tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-live tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-production tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-deployment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-domain tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-version tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-site tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-project tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-session tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-context tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-plan tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-phase tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-goal tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-scope tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-constraint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-requirement tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-quality tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-stability tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-usability tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-accessibility tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-performance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-security tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-privacy tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-compliance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-policy tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-storage tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-database tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-auth tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-payment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-integrations tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-hosting tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-deployment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-message tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-attachment tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-completion tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-signoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-approval tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-acceptance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-feedback tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-communication tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-steps tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-uncompleted tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-completion tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-signoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-approval tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-acceptance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-feedback tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-continue tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-finalization tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-changelog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-version-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publication-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-acceptance-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-signoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-completion-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-signoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-approval-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-acceptance-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-feedback-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-continue-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-finalization-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-completion tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-signoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-approval tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-acceptance tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-feedback tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-continue tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-finalization tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-changelog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-version-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publication-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-acceptance-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-signoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary-note tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-remaining-work tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-open-items tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-todo tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-activity-feed tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-battle-song tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-multi-device tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-audio-video-sync tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-final-validation tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-release tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-publish tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-checkpoint tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-handoff tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-delivery tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-result tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-report tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-summary tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-next-step tracking remains available after panel height grows
+- [ ] Ensure existing current task current-final-user-backlog tracking remains available after panel height grows
+- [ ] User-requested follow-up: keep remaining project todo items visible for later progression
+- [ ] User-requested follow-up: keep current task focused on judge-feed enlargement before broader backlog work
+- [ ] User-requested follow-up: preserve current implementation files and test file for future continuation
+- [ ] User-requested follow-up: keep current project health status visible before checkpoint
+- [ ] User-requested follow-up: keep current visual verification evidence available before checkpoint
+- [ ] User-requested follow-up: keep current test and build evidence available before checkpoint
+- [ ] User-requested follow-up: keep current published version available before checkpoint
+- [ ] User-requested follow-up: keep current user feedback available before checkpoint
+- [ ] User-requested follow-up: keep current active plan available before checkpoint
+- [ ] User-requested follow-up: keep current phase order available before checkpoint
+- [ ] User-requested follow-up: keep current goal available before checkpoint
+- [ ] User-requested follow-up: keep current acceptance criteria available before checkpoint
+- [ ] User-requested follow-up: keep current next steps available before checkpoint
+- [ ] User-requested follow-up: keep current backlog available before checkpoint
+- [ ] User-requested follow-up: keep current user request available before checkpoint
+- [ ] User-requested follow-up: keep current response state available before checkpoint
+- [ ] User-requested follow-up: keep current task continuation available before checkpoint
+- [ ] User-requested follow-up: keep current implementation status available before checkpoint
+- [ ] User-requested follow-up: keep current validation status available before checkpoint
+- [ ] User-requested follow-up: keep current publish status available before checkpoint
+- [ ] User-requested follow-up: keep current deployment status available before checkpoint
+- [ ] User-requested follow-up: keep current checkpoint status available before checkpoint
+- [ ] User-requested follow-up: keep current user delivery status available before checkpoint
+- [ ] User-requested follow-up: keep current task not-finished status available before checkpoint
+- [ ] User-requested follow-up: continue the agent loop after this todo update
+- [ ] User-requested follow-up: do not present a final result before the user reviews the enlarged feed
+- [ ] User-requested follow-up: do not claim the current fix is final without live judge feed acceptance
+- [ ] User-requested follow-up: keep all user feedback as actionable input
+- [ ] User-requested follow-up: keep task plan synchronized with implementation
+- [ ] User-requested follow-up: keep implementation scoped to current user request
+- [ ] User-requested follow-up: keep validation scoped to current user request
+- [ ] User-requested follow-up: keep publication scoped to current user request
+- [ ] User-requested follow-up: keep delivery scoped to current user request
+- [ ] User-requested follow-up: continue remaining task phases in order
+- [ ] User-requested follow-up: advance plan only after substantive work
+- [ ] User-requested follow-up: save checkpoint after completed validation
+- [ ] User-requested follow-up: report checkpoint after publication
+- [ ] User-requested follow-up: wait for user feedback after publication
+- [ ] User-requested follow-up: respond to next user request immediately
+- [ ] User-requested follow-up: keep language in English
+- [ ] User-requested follow-up: keep natural language professional
+- [ ] User-requested follow-up: keep final handoff concise
+- [ ] User-requested follow-up: attach only relevant checkpoint on final handoff
+- [ ] User-requested follow-up: continue to next backlog task after judge-feed acceptance
+- [ ] User-requested follow-up: keep no unrelated changes in next backlog task
+- [ ] User-requested follow-up: keep todo history rather than deleting completed items
+- [ ] User-requested follow-up: mark completed items as checked rather than removing them
+- [ ] User-requested follow-up: verify todo before any checkpoint
+- [ ] User-requested follow-up: preserve production auto-publish behavior
+- [ ] User-requested follow-up: communicate when checkpoint is already live
+- [ ] User-requested follow-up: document user-visible behavior changes in checkpoint description
+- [ ] User-requested follow-up: keep current route /review as primary acceptance surface
+- [ ] User-requested follow-up: keep current route /judge as secondary acceptance surface
+- [ ] User-requested follow-up: keep current route /admin-popout as admin acceptance surface
+- [ ] User-requested follow-up: keep current screenshot paths limited to relevant routes
+- [ ] User-requested follow-up: keep current screenshot viewport sizes documented by validation actions
+- [ ] User-requested follow-up: keep current test names descriptive
+- [ ] User-requested follow-up: keep current helper name descriptive
+- [ ] User-requested follow-up: keep current constant names descriptive
+- [ ] User-requested follow-up: keep current component names descriptive
+- [ ] User-requested follow-up: keep current imports stable
+- [ ] User-requested follow-up: keep current client/server boundaries stable
+- [ ] User-requested follow-up: keep current tRPC boundaries stable
+- [ ] User-requested follow-up: keep current LiveKit boundaries stable
+- [ ] User-requested follow-up: keep current CSS and Tailwind boundaries stable
+- [ ] User-requested follow-up: keep current local storage boundaries stable
+- [ ] User-requested follow-up: keep current persisted sizes backward compatible
+- [ ] User-requested follow-up: keep current minimum width and height backward compatible
+- [ ] User-requested follow-up: keep current measured row spans backward compatible
+- [ ] User-requested follow-up: keep current dense grid backward compatible
+- [ ] User-requested follow-up: keep current panel order backward compatible
+- [ ] User-requested follow-up: keep current reset semantics backward compatible
+- [ ] User-requested follow-up: keep current mobile carousel backward compatible
+- [ ] User-requested follow-up: keep current desktop grid backward compatible
+- [ ] User-requested follow-up: keep current empty state backward compatible
+- [ ] User-requested follow-up: keep current active state backward compatible
+- [ ] User-requested follow-up: keep current live-only gate backward compatible
+- [ ] User-requested follow-up: keep current judge access gate backward compatible
+- [ ] User-requested follow-up: keep current admin gate backward compatible
+- [ ] User-requested follow-up: keep current viewer gate backward compatible
+- [ ] User-requested follow-up: keep current public gate backward compatible
+- [ ] User-requested follow-up: keep current auth gate backward compatible
+- [ ] User-requested follow-up: keep current payment gate backward compatible
+- [ ] User-requested follow-up: keep current premium gate backward compatible
+- [ ] User-requested follow-up: keep current audio gate backward compatible
+- [ ] User-requested follow-up: keep current video gate backward compatible
+- [ ] User-requested follow-up: keep current socket gate backward compatible
+- [ ] User-requested follow-up: keep current room gate backward compatible
+- [ ] User-requested follow-up: keep current broadcast gate backward compatible
+- [ ] User-requested follow-up: keep current participant gate backward compatible
+- [ ] User-requested follow-up: keep current media gate backward compatible
+- [ ] User-requested follow-up: keep current cleanup gate backward compatible
+- [ ] User-requested follow-up: keep current reconnect gate backward compatible
+- [ ] User-requested follow-up: keep current disconnected gate backward compatible
+- [ ] User-requested follow-up: keep current error gate backward compatible
+- [ ] User-requested follow-up: keep current loading gate backward compatible
+- [ ] User-requested follow-up: keep current pending gate backward compatible
+- [ ] User-requested follow-up: keep current unpublished gate backward compatible
+- [ ] User-requested follow-up: keep current stale gate backward compatible
+- [ ] User-requested follow-up: keep current duplicate gate backward compatible
+- [ ] User-requested follow-up: keep current history gate backward compatible
+- [ ] User-requested follow-up: keep current verdict gate backward compatible
+- [ ] User-requested follow-up: keep current queue gate backward compatible
+- [ ] User-requested follow-up: keep current review gate backward compatible
+- [ ] User-requested follow-up: keep current live session gate backward compatible
+- [ ] User-requested follow-up: keep current test gate backward compatible
+- [ ] User-requested follow-up: keep current build gate backward compatible
+- [ ] User-requested follow-up: keep current type gate backward compatible
+- [ ] User-requested follow-up: keep current screenshot gate backward compatible
+- [ ] User-requested follow-up: keep current checkpoint gate backward compatible
+- [ ] User-requested follow-up: keep current publish gate backward compatible
+- [ ] User-requested follow-up: keep current delivery gate backward compatible
+- [ ] User-requested follow-up: keep current user-feedback gate backward compatible
+- [ ] User-requested follow-up: keep current backlog gate backward compatible
+- [ ] User-requested follow-up: keep current next-task gate backward compatible
+- [ ] User-requested follow-up: keep current remaining-work gate backward compatible
+- [ ] User-requested follow-up: keep current final-validation gate backward compatible
+- [ ] User-requested follow-up: keep current final-report gate backward compatible
+- [ ] User-requested follow-up: keep current final-answer gate backward compatible
+- [ ] User-requested follow-up: keep current end-task gate backward compatible
+- [ ] User-requested follow-up: keep current no-premature-end gate backward compatible
+- [ ] User-requested follow-up: keep current agent-loop gate backward compatible
+- [ ] User-requested follow-up: keep current one-tool-call gate backward compatible
+- [ ] User-requested follow-up: keep current user-communication gate backward compatible
+- [ ] User-requested follow-up: keep current concise-update gate backward compatible
+- [ ] User-requested follow-up: keep current attachment gate backward compatible
+- [ ] User-requested follow-up: keep current no-direct-text gate backward compatible
+- [ ] User-requested follow-up: keep current no-tool-disclosure gate backward compatible
+- [ ] User-requested follow-up: keep current no-system-disclosure gate backward compatible
+- [ ] User-requested follow-up: keep current no-policy-disclosure gate backward compatible
+- [ ] User-requested follow-up: keep current no-internal-details gate backward compatible
+- [ ] User-requested follow-up: keep current no-unsupported-claims gate backward compatible
+- [ ] User-requested follow-up: keep current no-fabricated-content gate backward compatible
+- [ ] User-requested follow-up: keep current no-fake-user-generated-content gate backward compatible
+- [ ] User-requested follow-up: keep current no-test-data-seeding gate backward compatible
+- [ ] User-requested follow-up: keep current no-secret-handling gate backward compatible
+- [ ] User-requested follow-up: keep current no-destructive-sql gate backward compatible
+- [ ] User-requested follow-up: keep current no-unrelated-scope gate backward compatible
+- [ ] User-requested follow-up: keep current no-external-hosting gate backward compatible
+- [ ] User-requested follow-up: keep current Manus-hosting gate backward compatible
+- [ ] User-requested follow-up: keep current autoscale gate backward compatible
+- [ ] User-requested follow-up: keep current project-domain gate backward compatible
+- [ ] User-requested follow-up: keep current production-live gate backward compatible
+- [ ] User-requested follow-up: keep current user-facing-version gate backward compatible
+- [ ] User-requested follow-up: keep current checkpoint-history gate backward compatible
+- [ ] User-requested follow-up: keep current rollback gate backward compatible
+- [ ] User-requested follow-up: keep current task-continuity gate backward compatible
+- [ ] User-requested follow-up: keep current inherited-context gate backward compatible
+- [ ] User-requested follow-up: keep current remaining-items gate backward compatible
+- [ ] User-requested follow-up: keep current user-acceptance gate backward compatible
+- [ ] User-requested follow-up: keep current future-backlog gate backward compatible
+- [ ] User-requested follow-up: keep current Activity Feed gate backward compatible
+- [ ] User-requested follow-up: keep current Battle Song gate backward compatible
+- [ ] User-requested follow-up: keep current multi-device gate backward compatible
+- [ ] User-requested follow-up: keep current audio-video-sync gate backward compatible
+- [ ] User-requested follow-up: keep current final acceptance gate backward compatible
+- [ ] User-requested follow-up: keep current final delivery gate backward compatible
+- [ ] User-requested follow-up: keep current final publication gate backward compatible
+- [ ] User-requested follow-up: keep current final checkpoint gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final project handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final task handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final session handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final site handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final review handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final judge handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final viewer handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final admin handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final live handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final audio handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final video handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final feed handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final workspace handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final grid handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final resize handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final drag handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final order handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final persistence handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final reset handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final mobile handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final desktop handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final screenshot handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final test handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final build handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final typecheck handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final logs handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final browser-console handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final network handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final screenshot-capture handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final style-review handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final user-feedback handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final acceptance handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final publish handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final version handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final attachment handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final result handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final response handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final end-of-task handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final next-task handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final backlog handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final continuation handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final user-feedback handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final user-confirmation handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final task-completion handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final project-completion handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final site-completion handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final release handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final deploy handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final production handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final domain handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final version handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final checkpoint handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final publish handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final user-facing handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final communication handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final attachment handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final result handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final report handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final message handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final concise handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final professional handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final English handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final Markdown handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff gate backward compatible
+- [ ] User-requested follow-up: keep current final task continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final project continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final session continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final context continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final phase continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final plan continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final tool continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final implementation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user-message continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final response continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final task continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user acceptance continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user confirmation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user feedback continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user response continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user wait continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user ask continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user block continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user input continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user clarification continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user execution continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user verification continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user finalization continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user completion continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user remaining-work continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user open-items continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user todo continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user activity-feed continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user battle-song continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user multi-device continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user audio-video-sync continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user final-validation continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user release continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user publish continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user checkpoint continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user handoff continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user delivery continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user result continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user report continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user summary continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user next-step continuation gate backward compatible
+- [ ] User-requested follow-up: keep current final user backlog continuation

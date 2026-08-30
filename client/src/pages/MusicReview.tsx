@@ -25,6 +25,7 @@ import { JudgeBroadcastViewer, type JudgeBroadcastViewerHandle } from "@/compone
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 import { MUSIC_REVIEW_FREE_SUBMISSION_LIMIT } from "@shared/music-review-paywall";
+import { JUDGE_PANEL_LAYOUT } from "@/lib/musicReviewLayout";
 
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; verdict?: string | null; crowdFirePct?: number | null; crowdTrashPct?: number | null; judgeFireCount: number; judgeTrashCount: number; totalVoteCount?: number; skipVoteTriggered?: boolean; reviewedAt?: Date | null; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string |
@@ -90,8 +91,8 @@ function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
             </button>
           </div>}
       </div>
-      {!isReviewLive || broadcasts.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-green-500/20 bg-black/10 px-4 text-center text-xs text-white/35">No judges are live yet. Verified judges can join from the Judge Panel when this review session is live.</div> : <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
-          {broadcasts.map((broadcast) => <div key={broadcast.id} className="min-w-[260px] snap-start sm:min-w-0"><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} /></div>)}
+      {!isReviewLive || broadcasts.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-green-500/20 bg-black/10 px-4 text-center text-xs text-white/35">No judges are live yet. Verified judges can join from the Judge Panel when this review session is live.</div> : <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-2">
+          {broadcasts.map((broadcast) => <div key={broadcast.id} className="snap-start sm:min-w-0" style={{ minWidth: JUDGE_PANEL_LAYOUT.mobileTileMinWidth }}><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} /></div>)}
         </div>}
     </section>
   );

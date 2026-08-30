@@ -4,6 +4,7 @@
  * No OBS or RTMP ingress required.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useCallback } from "react";
+import { JUDGE_PANEL_LAYOUT } from "@/lib/musicReviewLayout";
 import { Room, RoomEvent, LocalTrack, createLocalVideoTrack, createLocalAudioTrack, Track } from "livekit-client";
 import { Mic, MicOff, Video, VideoOff, Loader2, X, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -369,7 +370,7 @@ export const JudgeBroadcastViewer = forwardRef<JudgeBroadcastViewerHandle, Judge
     <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
       {/* Hidden audio element for judge mic; browsers require a user gesture before playback */}
       <audio ref={remoteAudioRef} autoPlay playsInline muted={mutedAll || !audioUnlocked} />
-      <div className="relative bg-black" style={{ aspectRatio: '16/9', maxHeight: '180px' }}>
+      <div className="relative min-h-[220px] bg-black sm:min-h-[250px]" style={{ aspectRatio: JUDGE_PANEL_LAYOUT.tileAspectRatio }}>
         <video
           ref={remoteVideoRef}
           autoPlay
@@ -402,12 +403,12 @@ export const JudgeBroadcastViewer = forwardRef<JudgeBroadcastViewerHandle, Judge
         {/* Mic indicator overlay */}
         {hasAudio && <div className={`absolute bottom-1 right-1 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${audioUnlocked && !mutedAll ? "bg-green-600/90 text-white" : "bg-black/80 text-white/55"}`}>{audioUnlocked && !mutedAll ? "Panel sound on" : "Panel sound off"}</div>}
       </div>
-      <div className="px-2 py-1.5 border-t border-green-500/20">
+      <div className="px-3 py-2 border-t border-green-500/20">
         <div className="flex items-center justify-between">
-          <a href={`/profile/${judgeUserId}`} className="text-white/70 text-xs font-semibold hover:text-white truncate">
+          <a href={`/profile/${judgeUserId}`} className="text-white/85 text-sm font-semibold hover:text-white truncate">
             {judgeName}
           </a>
-          <div className={`text-[10px] flex items-center gap-1 ${connectionState === "reconnecting" ? "text-yellow-300" : connectionState === "connected" ? "text-green-400" : "text-white/35"}`}>
+          <div className={`text-xs flex items-center gap-1 ${connectionState === "reconnecting" ? "text-yellow-300" : connectionState === "connected" ? "text-green-400" : "text-white/35"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${connectionState === "reconnecting" ? "bg-yellow-400 animate-pulse" : connectionState === "connected" ? "bg-green-500 animate-pulse" : "bg-white/25"}`} />
             {connectionState === "reconnecting" ? "Reconnecting" : connectionState === "connected" ? "Live" : "Offline"}
           </div>
