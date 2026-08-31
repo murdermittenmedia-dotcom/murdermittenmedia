@@ -20,7 +20,6 @@ import BroadcastRadio from "./pages/BroadcastRadio";
 import BroadcastRankings from "./pages/BroadcastRankings";
 import BroadcastWars from "./pages/BroadcastWars";
 import BroadcastHub from "./pages/BroadcastHub";
-import JudgeConsole from "./pages/JudgeConsole";
 import ArtistOfWeek from "./pages/ArtistOfWeek";
 import LiveStream from "./pages/LiveStream";
 import MusicWars from "./pages/MusicWars";
@@ -90,7 +89,10 @@ function Router() {
       <Route path={"/broadcast/wars"} component={BroadcastWars} />
       <Route path={"/broadcast"} component={BroadcastHub} />
       <Route path={"/review"} component={MusicReview} />
-      <Route path={"/judge"} component={JudgeConsole} />
+      {/* Judges now join directly inside the live review stage; preserve old links as a compatibility redirect. */}
+      <Route path={"/judge"}>
+        <Redirect to="/review" />
+      </Route>
       <Route path={"/admin-popout"} component={MusicReview} />
       <Route path={"/artist-of-the-week"} component={ArtistOfWeek} />
       <Route path={"/live"} component={LiveStream} />

@@ -5103,3 +5103,9 @@
 - [x] Verify the four newest Meeting With The Mitten Season 2 episodes on the canonical YouTube channel and record their exact titles, IDs, and thumbnails
 - [x] Add a dedicated Meeting With The Mitten Season 2 spotlight section featuring the four verified episodes
 - [x] Add regression coverage for the four Season 2 spotlight entries and verify desktop/mobile rendering
+
+- [x] Audit current Music Review judge entry, separate-room references, live-status gating, and admin control-board flow
+- [x] Replace separate judge-room friction with an inline Join Judge Panel experience on /review using native camera and microphone access
+- [x] Redesign /review around a talent-show stage with a performance focal point, judge seating, audience activity, and clear live/offline states
+- [x] Preserve consolidated review audio, live-only viewer visibility, judge disconnect cleanup, freeform window behavior, and admin controls
+- [x] Add regression coverage and verify the integrated judge-stage review experience on desktop and mobile

@@ -21,7 +21,7 @@ import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
 import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
-import { JudgeBroadcastViewer, type JudgeBroadcastViewerHandle } from "@/components/JudgeLiveBroadcast";
+import { JudgeLiveBroadcast, JudgeBroadcastViewer, type JudgeBroadcastViewerHandle } from "@/components/JudgeLiveBroadcast";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 import { MUSIC_REVIEW_FREE_SUBMISSION_LIMIT } from "@shared/music-review-paywall";
@@ -45,20 +45,19 @@ type QueueState = {
 };
 type QueueAllData = { submissions: ReviewSubmission[]; state: QueueState | null; currentPlaying: ReviewSubmission | null };
 
-type ReviewWindowId = "now-playing" | "live-chat" | "mitten-panel" | "review-tools" | "voice-room";
+type ReviewWindowId = "now-playing" | "live-chat" | "mitten-panel" | "review-tools";
 type ReviewWindowSize = { width: number; height: number };
 type ReviewWindowPosition = { x: number; y: number };
 
 const REVIEW_WINDOW_ORDER_KEY = "murder-mitten-review-window-order";
 const REVIEW_WINDOW_SIZE_KEY = "murder-mitten-review-window-sizes";
 const REVIEW_WINDOW_POSITION_KEY = "murder-mitten-review-window-positions";
-const DEFAULT_REVIEW_WINDOW_ORDER: ReviewWindowId[] = ["now-playing", "live-chat", "mitten-panel", "voice-room", "review-tools"];
+const DEFAULT_REVIEW_WINDOW_ORDER: ReviewWindowId[] = ["now-playing", "live-chat", "mitten-panel", "review-tools"];
 const DEFAULT_REVIEW_WINDOW_POSITIONS: Record<ReviewWindowId, ReviewWindowPosition> = {
   "now-playing": { x: 0, y: 0 },
   "mitten-panel": { x: 720, y: 0 },
   "live-chat": { x: 0, y: 560 },
   "review-tools": { x: 720, y: 560 },
-  "voice-room": { x: 0, y: 1160 },
 };
 const REVIEW_WORKSPACE_MIN_HEIGHT = 1800;
 
@@ -66,7 +65,7 @@ import {
   Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
   ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw, Music,
-  GripVertical, X, Send, LogIn, Headphones, Zap, Eye,
+  GripVertical, X, Send, LogIn, Zap, Eye,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -101,7 +100,7 @@ function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
             </button>
           </div>}
       </div>
-      {!isReviewLive || broadcasts.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-green-500/20 bg-black/10 px-4 text-center text-xs text-white/35">No judges are live yet. Verified judges can join from the Judge Panel when this review session is live.</div> : <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-2">
+      {!isReviewLive || broadcasts.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-green-500/20 bg-black/10 px-4 text-center text-xs text-white/35">No judges are live yet. Verified judges can join from the in-page Judge Stage when this review session is live.</div> : <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-2">
           {broadcasts.map((broadcast) => <div key={broadcast.id} className="snap-start sm:min-w-0" style={{ minWidth: JUDGE_PANEL_LAYOUT.mobileTileMinWidth }}><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} /></div>)}
         </div>}
     </section>
@@ -172,6 +171,67 @@ function JudgePanelCard({ broadcast, mutedAll, panelAudioEnabled, onViewerReady 
   const { data: tokenData } = trpc.review.getJudgeViewerToken.useQuery({ broadcastId: broadcast.id }, { refetchInterval: 15000 });
   if (!tokenData) return <div className="min-h-[100px] rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-white/35">Connecting to judge…</div>;
   return <JudgeBroadcastViewer ref={onViewerReady} roomName={tokenData.roomName} livekitUrl={tokenData.livekitUrl} viewerToken={tokenData.token} judgeName={broadcast.judgeName || `Judge ${broadcast.userId}`} judgeUserId={broadcast.userId} mutedAll={mutedAll} autoEnableAudio={panelAudioEnabled} />;
+}
+
+type JudgeBroadcastSession = { broadcastId: number; token: string; livekitUrl: string };
+
+function InlineJudgeStage({
+  isLive,
+  isJudge,
+  broadcast,
+  isJoining,
+  currentTrack,
+  viewerCount,
+  viewerCountVisible,
+  onJoin,
+  onStop,
+}: {
+  isLive: boolean;
+  isJudge: boolean;
+  broadcast: JudgeBroadcastSession | null;
+  isJoining: boolean;
+  currentTrack: { songTitle: string; artistName: string } | null;
+  viewerCount: number;
+  viewerCountVisible: boolean;
+  onJoin: () => void;
+  onStop: () => void;
+}) {
+  const visibleAudience = isLive && viewerCountVisible;
+  return (
+    <section id="judge-stage" className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-[radial-gradient(circle_at_80%_0%,rgba(220,38,38,0.18),transparent_35%),linear-gradient(135deg,#180707,#090909_58%,#111111)] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.3)] sm:p-6">
+      <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full border border-yellow-300/10" />
+      <div className="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full border border-yellow-300/10" />
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-red-200"><span className={`h-2 w-2 rounded-full ${isLive ? "bg-red-400 animate-pulse" : "bg-white/30"}`} />{isLive ? "Live review stage" : "Stage on standby"}</span>
+            <span className="rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-100">The Mitten Panel</span>
+          </div>
+          <h2 className="mt-3 font-['Anton'] text-3xl uppercase leading-none tracking-wide text-white sm:text-5xl">Step into the <span className="text-red-500">spotlight</span></h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/55">A live talent-stage view for Michigan music. Judges join right here with camera and microphone, while the artist, synchronized review audio, panel seats, and audience reactions stay in one room.</p>
+          <div className="mt-4 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2"><p className="text-[9px] font-bold uppercase tracking-widest text-white/35">On stage</p><p className="mt-1 truncate text-xs font-semibold text-white/80">{currentTrack ? currentTrack.artistName : "Awaiting artist"}</p></div>
+            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2"><p className="text-[9px] font-bold uppercase tracking-widest text-white/35">Audience</p><p className="mt-1 text-xs font-semibold text-white/80">{visibleAudience ? viewerCount.toLocaleString() : "Hidden"}</p></div>
+            <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2 sm:col-span-1"><p className="text-[9px] font-bold uppercase tracking-widest text-white/35">Show cue</p><p className="mt-1 truncate text-xs font-semibold text-white/80">{currentTrack?.songTitle ?? "Next track loading"}</p></div>
+          </div>
+        </div>
+        <div className="w-full shrink-0 lg:max-w-[360px]">
+          {!isJudge ? (
+            <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.06] p-4"><p className="text-xs font-bold uppercase tracking-[0.16em] text-yellow-100">Judge access only</p><p className="mt-2 text-xs leading-relaxed text-white/45">Verified judges will see their camera and microphone controls here after signing in.</p></div>
+          ) : broadcast ? (
+            <JudgeLiveBroadcast broadcastId={broadcast.broadcastId} token={broadcast.token} livekitUrl={broadcast.livekitUrl} onStop={onStop} />
+          ) : (
+            <div className="rounded-xl border border-green-400/25 bg-green-400/[0.06] p-4">
+              <div className="flex items-center gap-2 text-green-200"><Video className="h-4 w-4" /><p className="text-xs font-bold uppercase tracking-[0.16em]">Your judge seat is ready</p></div>
+              <p className="mt-2 text-xs leading-relaxed text-white/50">Press once to request native camera and microphone access, then your live feed appears alongside the review stage.</p>
+              <button type="button" onClick={onJoin} disabled={!isLive || isJoining} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45">{isJoining ? "Opening your seat…" : isLive ? "Join Judge Seat" : "Waiting for showtime"}</button>
+              {!isLive && <p className="mt-2 text-center text-[10px] uppercase tracking-wider text-white/30">The admin must activate the live review first.</p>}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 }
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
@@ -1453,8 +1513,8 @@ export default function MusicReview() {
   const [submitted, setSubmitted] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [voiceJoined, setVoiceJoined] = useState(false);
-  const [showVoicePanel, setShowVoicePanel] = useState(false);
+  const [judgeBroadcast, setJudgeBroadcast] = useState<JudgeBroadcastSession | null>(null);
+  const [isJoiningJudge, setIsJoiningJudge] = useState(false);
   const [selectedYouTube, setSelectedYouTube] = useState<{ url: string; title: string; artist: string } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -1502,8 +1562,8 @@ export default function MusicReview() {
   }, [user]);
   const acceptJudgeInvite = trpc.review.acceptJudgeInvite.useMutation({
     onSuccess: () => {
-      toast.success("Judge access granted. Opening the Mitten Panel…");
-      window.setTimeout(() => window.location.assign("/judge"), 500);
+      toast.success("Judge access granted. Join the Mitten Panel directly below.");
+      void window.location.reload();
     },
     onError: (error) => toast.error("Judge invite failed: " + error.message),
   });
@@ -1515,7 +1575,19 @@ export default function MusicReview() {
     acceptJudgeInvite.mutate({ token });
   }, [user]);
   const isAdmin = user?.role === "admin";
+  const isJudge = user?.role === "judge" || isAdmin;
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
+  const startJudgeBroadcast = trpc.review.startBroadcast.useMutation({
+    onSuccess: ({ broadcast, token, livekitUrl }) => {
+      setJudgeBroadcast({ broadcastId: broadcast.id, token, livekitUrl });
+      setIsJoiningJudge(false);
+      toast.success("Your judge seat is opening on the live stage.");
+    },
+    onError: (error) => {
+      setIsJoiningJudge(false);
+      toast.error("Could not open your judge seat: " + error.message);
+    },
+  });
   const [reviewWindowSizes, setReviewWindowSizes] = useState<Partial<Record<ReviewWindowId, ReviewWindowSize>>>({});
   const [reviewWindowPositions, setReviewWindowPositions] = useState<Record<ReviewWindowId, ReviewWindowPosition>>(DEFAULT_REVIEW_WINDOW_POSITIONS);
   useEffect(() => {
@@ -1573,6 +1645,18 @@ export default function MusicReview() {
 
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 5000 });
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
+  const joinJudgeStage = useCallback(() => {
+    if (!isJudge) {
+      toast.error("Verified judge access is required to join the panel.");
+      return;
+    }
+    if (!data?.state?.isLive) {
+      toast.error("The live review stage is not on air yet.");
+      return;
+    }
+    setIsJoiningJudge(true);
+    startJudgeBroadcast.mutate();
+  }, [data?.state?.isLive, isJudge, startJudgeBroadcast]);
 
   const [limitReachedData, setLimitReachedData] = useState<{ success: false; limitReached: true; message: string; upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
   const [pendingFormData, setPendingFormData] = useState<{
@@ -1758,9 +1842,9 @@ export default function MusicReview() {
   const audioRoom = useAudioRoom({
     room: "music_review",
     username: chatUsername,
-    role: isAdmin ? "admin" : voiceJoined ? "user" : "viewer",
+    role: isAdmin ? "admin" : "viewer",
     userId: user?.id,
-    enabled: isAdmin || voiceJoined,
+    enabled: isAdmin,
   });
 
   const videoRoom = useVideoRoom({
@@ -2275,7 +2359,7 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={enterLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Audio Ready" : "Enter Live Review"}
             </button>}
-            {(isAdmin || user?.role === "judge") && <Link href="/judge" className="rounded-full border border-green-500/35 bg-green-500/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-green-200 transition-colors hover:bg-green-500/20">Judge Console</Link>}
+            {isJudge && <a href="#judge-stage" className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-yellow-100 transition-colors hover:bg-yellow-300/20">Join Judge Stage</a>}
           </div>
         </div>
       </div>
@@ -2283,6 +2367,18 @@ export default function MusicReview() {
       {/* ── MAIN SINGLE-COLUMN CONTENT ──────────────────────── */}
       <div className="max-w-[1500px] mx-auto px-4 py-6 space-y-6">
 
+
+        {!isAdminPopout && <InlineJudgeStage
+          isLive={isLive}
+          isJudge={isJudge}
+          broadcast={judgeBroadcast}
+          isJoining={isJoiningJudge || startJudgeBroadcast.isPending}
+          currentTrack={activeTrack ? { songTitle: activeTrack.songTitle, artistName: activeTrack.artistName } : null}
+          viewerCount={viewerCount}
+          viewerCountVisible={viewerCountVisible}
+          onJoin={joinJudgeStage}
+          onStop={() => { setJudgeBroadcast(null); setIsJoiningJudge(false); }}
+        />}
 
         {/* ── ADMIN PANEL (admin/judge only) ─────────────────── */}
         {isAdmin && (
@@ -3175,20 +3271,7 @@ export default function MusicReview() {
           </div>
         </div>
         </ReviewWorkspaceWindow>
-        {showVoicePanel && <ReviewWorkspaceWindow id="voice-room" title="Voice Room" position={reviewWindowPositions["voice-room"]} size={reviewWindowSizes["voice-room"]} onMove={moveReviewWindow} onResize={resizeReviewWindow}>
-          <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Headphones className="w-4 h-4 text-purple-400" />
-                <span className="text-white font-semibold text-sm uppercase tracking-wider">Voice Room</span>
-              </div>
-              <button onClick={() => setShowVoicePanel(false)} className="text-white/30 hover:text-white/60 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-white/40 text-sm text-center py-4">Voice room active — use the controls above to manage your audio.</p>
-          </div>
-        </ReviewWorkspaceWindow>}
+
         </div>
 
         <section className="mt-8 grid gap-3 border-t border-white/10 pt-6 md:grid-cols-3">
