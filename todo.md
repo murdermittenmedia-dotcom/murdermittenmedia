@@ -2768,7 +2768,7 @@
 - [ ] User-requested follow-up: communicate when checkpoint is already live
 - [ ] User-requested follow-up: document user-visible behavior changes in checkpoint description
 - [ ] User-requested follow-up: keep current route /review as primary acceptance surface
-- [ ] User-requested follow-up: keep current route /judge as secondary acceptance surface
+- [x] User-requested follow-up: keep current route /judge as secondary acceptance surface (superseded: /judge now redirects to the primary in-page /review Judge Stage)
 - [ ] User-requested follow-up: keep current route /admin-popout as admin acceptance surface
 - [ ] User-requested follow-up: keep current screenshot paths limited to relevant routes
 - [ ] User-requested follow-up: keep current screenshot viewport sizes documented by validation actions
