@@ -16,11 +16,14 @@ describe("Mitten Panel judge feed layout", () => {
     expect(JUDGE_PANEL_LAYOUT.tileAspectRatio).toBe("4 / 3");
   });
 
-  it("uses a persisted freeform canvas instead of dense grid packing", () => {
-    expect(musicReviewSource).toContain("REVIEW_WINDOW_POSITION_KEY");
-    expect(musicReviewSource).toContain("min-w-[980px]");
-    expect(musicReviewSource).toContain("position={reviewWindowPositions[");
-    expect(musicReviewSource).not.toContain("grid-flow-row-dense");
-    expect(musicReviewSource).not.toContain("gridRowEnd");
+  it("uses a fixed review-stage grid instead of draggable or resizable windows", () => {
+    expect(musicReviewSource).toContain("lg:grid-cols-12");
+    expect(musicReviewSource).toContain('id="mitten-panel"');
+    expect(musicReviewSource).toContain("lg:col-span-4");
+    expect(musicReviewSource).toContain("lg:col-span-8");
+    expect(musicReviewSource).not.toContain("REVIEW_WINDOW_POSITION_KEY");
+    expect(musicReviewSource).not.toContain("ReviewWorkspaceWindow");
+    expect(musicReviewSource).not.toContain("min-w-[980px]");
+    expect(musicReviewSource).not.toContain("Step into the");
   });
 });

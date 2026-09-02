@@ -5109,3 +5109,9 @@
 - [x] Redesign /review around a talent-show stage with a performance focal point, judge seating, audience activity, and clear live/offline states
 - [x] Preserve consolidated review audio, live-only viewer visibility, judge disconnect cleanup, freeform window behavior, and admin controls
 - [x] Add regression coverage and verify the integrated judge-stage review experience on desktop and mobile
+
+- [x] Replace the freeform review workspace with an efficient fixed review-stage layout on desktop and mobile
+- [x] Remove the unnecessary Step into the Spotlight panel from /review
+- [x] Restrict Join Mitten Panel controls to authenticated users with the judge role, excluding admin-only access
+- [x] Preserve live audio, review voting, chat, queue, panel viewer cards, and admin popout controls in the fixed layout
+- [x] Add regression coverage and verify the streamlined review layout on desktop and mobile

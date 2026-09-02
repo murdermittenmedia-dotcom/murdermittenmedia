@@ -37,13 +37,15 @@ describe("/review 2.0 acceptance contracts", () => {
     expect(REVIEW_PLUS_MONTHLY_PRICE_CENTS).toBe(2500);
   });
 
-  it("keeps judge participation inline on the review page", () => {
+  it("keeps judge participation inline on the fixed review page", () => {
     const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
     const appSource = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
-    expect(reviewSource).toContain("Join Judge Stage");
-    expect(reviewSource).toContain("Join Judge Seat");
+    expect(reviewSource).toContain("Join Mitten Panel");
     expect(reviewSource).toContain("JudgeLiveBroadcast");
-    expect(reviewSource).toContain('id="judge-stage"');
+    expect(reviewSource).toContain('id="mitten-panel"');
+    expect(reviewSource).toContain('user?.role === "judge"');
+    expect(reviewSource).not.toContain("Step into the");
+    expect(reviewSource).not.toContain("ReviewWorkspaceWindow");
     expect(appSource).toContain('<Redirect to="/review" />');
     expect(appSource).not.toContain('path={"/judge"} component={JudgeConsole}');
   });
