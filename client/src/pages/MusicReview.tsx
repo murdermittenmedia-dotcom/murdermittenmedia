@@ -20,7 +20,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import { usePlayTrack } from "@/hooks/usePlayTrack";
-import { SyncedYouTubePlayer } from "@/components/SyncedYouTubePlayer";
+import { SyncedYouTubePlayer, type SyncedYouTubePlayerHandle } from "@/components/SyncedYouTubePlayer";
 import { JudgeLiveBroadcast, JudgeBroadcastViewer, type JudgeBroadcastViewerHandle } from "@/components/JudgeLiveBroadcast";
 import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast } from "@/contexts/RadioSeekBroadcastContext";
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
@@ -2107,11 +2107,12 @@ export default function MusicReview() {
         }
       : null;
 
-  const enterLiveReview = () => {
+  const syncedYouTubePlayerRef = useRef<SyncedYouTubePlayerHandle>(null);
+  const listenToLiveReview = () => {
     setAudioUnlocked(true);
-    const loadedTrack = audioPlayer.track;
-    if (loadedTrack) {
-      audioPlayer.unlockAndPlay(loadedTrack);
+    if (activeTrack?.submissionType === "youtube") {
+      syncedYouTubePlayerRef.current?.listenLive();
+      toast.success("Listening live — synced to the current review.");
       return;
     }
     if (activeTrack?.fileUrl) {
@@ -2123,9 +2124,27 @@ export default function MusicReview() {
         submissionId: activeTrack.submissionId,
         artistUserId: activeTrack.userId ?? undefined,
       });
+      toast.success("Listening live — connected to the current review.");
       return;
     }
-    toast.success("Live Review audio is ready. Tap the player when the next track begins.");
+    if (streamUrl) {
+      audioPlayer.unlockAndPlay({
+        url: streamUrl,
+        title: "Murder Mitten Media — LIVE",
+        artist: "Murder Mitten Media",
+        isStream: true,
+        artworkUrl: LOGO,
+      });
+      toast.success("Listening live — connected to the live audio feed.");
+      return;
+    }
+    const loadedTrack = audioPlayer.track;
+    if (loadedTrack) {
+      audioPlayer.unlockAndPlay(loadedTrack);
+      toast.success("Listening live — connected to the current feed.");
+      return;
+    }
+    toast.message("Live audio will begin as soon as the next review starts.");
   };
 
   // ── Merged chat messages (real + fake) sorted chronologically ───
@@ -2223,8 +2242,8 @@ export default function MusicReview() {
                 <span className="text-green-400 text-xs font-bold uppercase tracking-widest">LIVE</span>
               </div>
             )}
-            {isLive && <button type="button" onClick={enterLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
-              {audioUnlocked ? "Audio Ready" : "Enter Live Review"}
+            {isLive && <button type="button" onClick={listenToLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
+              {audioUnlocked ? "Listening Live" : "Listen Live"}
             </button>}
             {isJudge && <button type="button" onClick={joinJudgeStage} disabled={!isLive || isJoiningJudge || startJudgeBroadcast.isPending || Boolean(judgeBroadcast)} className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-yellow-100 transition-colors hover:bg-yellow-300/20 disabled:cursor-not-allowed disabled:opacity-45">{judgeBroadcast ? "Panel is live" : isJoiningJudge || startJudgeBroadcast.isPending ? "Opening panel…" : isLive ? "Join Mitten Panel" : "Panel opens when live"}</button>}
           </div>
@@ -2462,6 +2481,7 @@ export default function MusicReview() {
               {activeTrack.submissionType === "youtube" && activeTrack.youtubeUrl ? (
                 <div className="rounded-xl overflow-hidden mb-5">
                 <SyncedYouTubePlayer
+                  ref={syncedYouTubePlayerRef}
                   videoId={extractYouTubeId(activeTrack.youtubeUrl) ?? ""}
                   submissionId={activeTrack.submissionId}
                   initialCurrentTime={ytSyncState?.currentTime ?? null}

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { shouldEnableMixedRadioAudio, shouldEndJudgeBroadcast, shouldShowViewerCount } from "../client/src/lib/musicReviewLive";
 
 describe("Music Review live-room state", () => {
@@ -22,5 +24,18 @@ describe("Music Review live-room state", () => {
     expect(shouldEnableMixedRadioAudio({ isAdmin: true, hasRadioTrack: true, hasJudgeMic: true })).toBe(false);
     expect(shouldEnableMixedRadioAudio({ isAdmin: false, hasRadioTrack: false, hasJudgeMic: true })).toBe(false);
     expect(shouldEnableMixedRadioAudio({ isAdmin: false, hasRadioTrack: true, hasJudgeMic: false })).toBe(false);
+  });
+
+  it("uses a one-click Listen Live action for active review audio", () => {
+    const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
+    const playerSource = readFileSync(resolve(process.cwd(), "client/src/components/SyncedYouTubePlayer.tsx"), "utf8");
+    expect(reviewSource).toContain("Listen Live");
+    expect(reviewSource).toContain("Listening Live");
+    expect(reviewSource).not.toContain("Enter Live Review");
+    expect(reviewSource).toContain("listenToLiveReview");
+    expect(reviewSource).toContain("syncedYouTubePlayerRef.current?.listenLive()");
+    expect(reviewSource).toContain("audioPlayer.unlockAndPlay");
+    expect(playerSource).toContain("SyncedYouTubePlayerHandle");
+    expect(playerSource).toContain("listenLive: handleUnlock");
   });
 });

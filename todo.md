@@ -5120,3 +5120,7 @@
 - [x] Make judge panel entry a clear one-action experience directly from the top of the live review page
 - [x] Restrict /admin-popout to production controls and remove audience-facing review panels from it
 - [x] Add focused regression coverage and validate judge and admin flows on desktop and mobile
+
+- [x] Audit the current Enter Live Review action and active stream playback fallback paths
+- [x] Rename the audience action to Listen Live and connect it directly to the active live audio feed in one click
+- [x] Add regression coverage and validate the renamed live-listening interaction on desktop and mobile

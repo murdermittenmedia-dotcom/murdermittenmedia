@@ -15,7 +15,7 @@
  * YouTube IFrame API is loaded once globally via window.YT.
  */
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 
 declare global {
@@ -95,7 +95,11 @@ interface SyncedYouTubePlayerProps {
   className?: string;
 }
 
-export function SyncedYouTubePlayer({
+export type SyncedYouTubePlayerHandle = {
+  listenLive: () => void;
+};
+
+export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedYouTubePlayerProps>(function SyncedYouTubePlayer({
   videoId,
   submissionId,
   isAdmin,
@@ -103,7 +107,7 @@ export function SyncedYouTubePlayer({
   initialUpdatedAt,
   onEnded,
   className = "",
-}: SyncedYouTubePlayerProps) {
+}, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -283,6 +287,8 @@ export function SyncedYouTubePlayer({
     }, 300);
   }, [initialCurrentTime, initialUpdatedAt]);
 
+  useImperativeHandle(ref, () => ({ listenLive: handleUnlock }), [handleUnlock]);
+
   return (
     <div className={`relative w-full ${className}`} style={{ paddingTop: "56.25%" }}>
       {/* YouTube IFrame API replaces this div */}
@@ -312,4 +318,4 @@ export function SyncedYouTubePlayer({
       )}
     </div>
   );
-}
+});
