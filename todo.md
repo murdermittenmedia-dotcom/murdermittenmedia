@@ -5131,3 +5131,5 @@
 - [x] Route admin play, pause, resume, restart, skip, and next actions through authoritative broadcast updates
 - [x] Preserve the existing UI and unrelated review functionality while implementing the new synchronization flow
 - [x] Implement and stop without running tests or playback simulations, as specifically requested
+
+- [x] Make the admin stop-stream control unmistakable and reliably end any active live stream and shared audio session

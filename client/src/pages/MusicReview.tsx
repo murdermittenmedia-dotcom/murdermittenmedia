@@ -267,13 +267,28 @@ function AdminPanel({
 
   const pendingSkips: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.skippedLine && !s.skipPaymentConfirmed && s.status === "pending") ?? [];
 
+  const streamIsActive = isLive || !!currentPlaying;
+
+  const handleEndStream = () => {
+    // Stop local playback and broadcast the stop immediately; the mutation also
+    // persists the stopped state so a reconnect cannot resurrect this stream.
+    audioPlayer.stop();
+    broadcastReviewActive({ submissionId: null });
+    setLive.mutate({ isLive: false, message: liveMsg || undefined, streamUrl: streamUrlInput || undefined }, {
+      onSuccess: () => toast.success("Live stream ended for everyone"),
+      onError: () => toast.error("Could not end the live stream. Try again."),
+    });
+  };
+
   const handleGoLive = () => {
-    if (isLive) {
-      audioPlayer.stop();
-      broadcastReviewActive({ submissionId: null });
+    if (streamIsActive) {
+      handleEndStream();
+      return;
     }
-    setLive.mutate({ isLive: !isLive, message: liveMsg || undefined, streamUrl: streamUrlInput || undefined });
-    toast.success(isLive ? "Stream ended" : "You're now live!");
+    setLive.mutate({ isLive: true, message: liveMsg || undefined, streamUrl: streamUrlInput || undefined }, {
+      onSuccess: () => toast.success("You're now live!"),
+      onError: () => toast.error("Could not start the live stream. Try again."),
+    });
   };
 
   const currentIsYouTube = currentPlaying?.submissionType === "youtube";
@@ -471,16 +486,16 @@ function AdminPanel({
         <div className="flex gap-2 items-stretch">
           <button
             type="button"
-            aria-label={isLive ? "End live session" : "Start live session"}
+            aria-label={streamIsActive ? "End any active live stream" : "Start live session"}
             onClick={handleGoLive}
             disabled={setLive.isPending}
             className={`flex-shrink-0 px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-lg transition-all ${
-              isLive
+              streamIsActive
                 ? "bg-red-600/20 border border-red-600/50 text-red-400 hover:bg-red-600/30"
                 : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_20px_rgba(209,0,0,0.4)]"
             }`}
           >
-            {isLive ? "⏹ End" : "🔴 Go Live"}
+            {streamIsActive ? "⏹ End Stream" : "🔴 Go Live"}
           </button>
           <input
             type="url"
