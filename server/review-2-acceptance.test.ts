@@ -37,11 +37,14 @@ describe("/review 2.0 acceptance contracts", () => {
     expect(REVIEW_PLUS_MONTHLY_PRICE_CENTS).toBe(2500);
   });
 
-  it("keeps judge participation inline with a one-action judge-only entry", () => {
+  it("keeps judge participation inline with a clear request-and-approval entry flow", () => {
     const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
     const appSource = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
-    expect(reviewSource).toContain("Join Mitten Panel");
-    expect(reviewSource).toContain("onClick={joinJudgeStage}");
+    expect(reviewSource).toContain("Request a panel seat");
+    expect(reviewSource).toContain("Join your approved seat");
+    expect(reviewSource).toContain("requestPanelSeat");
+    expect(reviewSource).toContain("getPanelSeatRequests");
+    expect(reviewSource).toContain("decidePanelSeat");
     expect(reviewSource).toContain("JudgeLiveBroadcast");
     expect(reviewSource).toContain('id="mitten-panel"');
     expect(reviewSource).toContain('const isJudge = user?.role === "judge";');
@@ -51,13 +54,28 @@ describe("/review 2.0 acceptance contracts", () => {
     expect(appSource).not.toContain('path={"/judge"} component={JudgeConsole}');
   });
 
-  it("renders the admin popout as a controls-only surface", () => {
+  it("keeps the compatibility popout protected while embedding the main admin controls on the review page", () => {
     const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
     const popoutSource = reviewSource.slice(reviewSource.indexOf("if (isAdminPopout)"), reviewSource.indexOf("\n  return (", reviewSource.indexOf("if (isAdminPopout)")));
     expect(popoutSource).toContain("<AdminPanel");
     expect(popoutSource).toContain("Admin access required");
     expect(popoutSource).not.toContain("<SiteNav");
     expect(popoutSource).not.toContain("JudgePanelStrip");
+    expect(reviewSource).toContain("Producer controls");
+    expect(reviewSource).toContain("isAdminPanelOpen");
+    expect(reviewSource).not.toContain("window.open('/admin-popout'");
+  });
+
+  it("uses one guarded server handoff for queue completion and emits live activity notifications", () => {
+    const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const serverSource = readFileSync(resolve(process.cwd(), "server/_core/index.ts"), "utf8");
+    const navSource = readFileSync(resolve(process.cwd(), "client/src/components/SiteNav.tsx"), "utf8");
+    expect(routerSource).toContain("completeAndAdvance");
+    expect(routerSource).toContain("stale: true");
+    expect(serverSource).toContain("setCurrentPlaying(next.id)");
+    expect(serverSource).toContain("site:review_skip_requested");
+    expect(serverSource).toContain("review:participant_joined");
+    expect(navSource).toContain("site:review_skip_requested");
   });
 
   it("keeps Bot Chat truly off and retains a branded verdict for review history", () => {

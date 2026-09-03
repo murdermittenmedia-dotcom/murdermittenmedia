@@ -253,6 +253,17 @@ async function startServer() {
     if (validRooms.includes(room)) {
       socket.join(room);
     }
+    if (room === "music_review") {
+      void sdk.authenticateRequest(socket.request as any).then((user) => {
+        if (!user) return;
+        socket.to("music_review").emit("review:participant_joined", {
+          userId: user.id,
+          username: user.artistName || user.name || "A listener",
+          role: user.role === "admin" ? "admin" : user.role === "judge" ? "judge" : "user",
+          timestamp: Date.now(),
+        });
+      }).catch(() => undefined);
+    }
     const isAuthoritativeReviewAdmin = async () => {
       const user = await sdk.authenticateRequest(socket.request as any).catch(() => null);
       return user?.role === "admin";
@@ -318,6 +329,20 @@ async function startServer() {
       } catch (e) { /* Non-fatal */ }
 
       io.to(data.room).emit("chat:message", msg);
+    });
+
+    socket.on("review:skip_requested", async (data: { submissionId?: number }) => {
+      if (room !== "music_review" || !Number.isInteger(data?.submissionId)) return;
+      const requester = await sdk.authenticateRequest(socket.request as any).catch(() => null);
+      if (!requester || radioState.submissionId !== data.submissionId) return;
+      const event = {
+        submissionId: data.submissionId as number,
+        songTitle: radioState.songTitle || "the current track",
+        requestedBy: requester.artistName || requester.name || "A listener",
+        timestamp: Date.now(),
+      };
+      io.emit("site:review_skip_requested", event);
+      io.to("music_review").emit("review:skip_requested", event);
     });
 
     // ── Wheel events ──────────────────────────────────────────
@@ -664,18 +689,20 @@ async function startServer() {
         if (!db) return;
         // Import needed for query
         const { reviewSubmissions } = await import("../../drizzle/schema");
-        const { eq, ne, asc, and } = await import("drizzle-orm");
+        const { eq, ne, asc, desc, and } = await import("drizzle-orm");
         // Mark current track as reviewed
         await completeReviewSubmission(completedId);
         // Find next pending track
         const pending = await db.select().from(reviewSubmissions)
           .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, completedId)))
-          .orderBy(asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt))
+          .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt))
           .limit(1);
         if (pending.length > 0) {
           const next = pending[0];
-          // Set it as playing in DB
-          await db.update(reviewSubmissions).set({ status: "playing" }).where(eq(reviewSubmissions.id, next.id));
+          // Keep the database queue cursor and status aligned with the live
+          // transport so refreshes and late joins resolve the same track.
+          await updateSubmissionStatus(next.id, "playing");
+          await setCurrentPlaying(next.id);
           // Resolve presigned URL
           const key = next.fileUrl?.replace(/^\/manus-storage\//, "") ?? next.fileKey ?? null;
           let resolvedUrl: string | null = null;
@@ -713,6 +740,7 @@ async function startServer() {
           console.log("[radio:track_ended] Auto-advanced to:", next.songTitle);
         } else {
           // No more tracks — stop radio
+          await setCurrentPlaying(null);
           radioState = emptyRadioState();
           await persistAuthoritativeRadioState();
           broadcastAuthoritativeRadioState();

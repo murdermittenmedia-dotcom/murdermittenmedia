@@ -80,7 +80,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -948,6 +948,38 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // One canonical queue handoff for manual skips, 90-second cutoffs, and
+    // natural file endings. The guard prevents an old ended event from moving
+    // the queue again after the next track is already live.
+    completeAndAdvance: adminProcedure
+      .input(z.object({ submissionId: z.number().int().positive(), skippedByVote: z.boolean().optional() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [state] = await db.select().from(queueState).limit(1);
+        if (!state?.currentPlayingId || state.currentPlayingId !== input.submissionId) {
+          return { success: false as const, stale: true as const, next: null };
+        }
+        const [current] = await db.select().from(reviewSubmissionsTable).where(eq(reviewSubmissionsTable.id, input.submissionId)).limit(1);
+        if (!current || current.status !== "playing") {
+          return { success: false as const, stale: true as const, next: null };
+        }
+
+        await completeReviewSubmission(input.submissionId, { skippedByVote: input.skippedByVote });
+        const [next] = await db.select().from(reviewSubmissionsTable)
+          .where(and(eq(reviewSubmissionsTable.status, "pending"), ne(reviewSubmissionsTable.id, input.submissionId)))
+          .orderBy(desc(reviewSubmissionsTable.skipPaymentConfirmed), asc(reviewSubmissionsTable.position), asc(reviewSubmissionsTable.createdAt))
+          .limit(1);
+        if (!next) {
+          await setCurrentPlaying(null);
+          await setLiveReviewPlaybackState({ currentPlayingId: null, playbackState: "stopped", startedAt: null, positionMs: 0 });
+          return { success: true as const, stale: false as const, next: null };
+        }
+        await updateSubmissionStatus(next.id, "playing");
+        await setCurrentPlaying(next.id);
+        return { success: true as const, stale: false as const, next };
+      }),
+
     updateStatus: adminProcedure
       .input(z.object({
         id: z.number(),
@@ -1411,6 +1443,78 @@ export const appRouter = router({
         return { success: true as const, role: "judge" as const };
       }),
 
+    // A verified judge requests a panel seat first. Camera and microphone are
+    // never opened until an admin approves this request from the review page.
+    requestPanelSeat: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "judge") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Verified judge access is required to request a panel seat." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [queue] = await db.select({ isLive: queueState.isLive }).from(queueState).limit(1);
+      if (!queue?.isLive) throw new TRPCError({ code: "BAD_REQUEST", message: "The review is not live yet." });
+
+      const [existing] = await db.select().from(judgeStreams).where(and(
+        eq(judgeStreams.userId, ctx.user.id),
+        inArray(judgeStreams.status, ["pending", "approved", "active"]),
+      )).orderBy(desc(judgeStreams.createdAt)).limit(1);
+      if (existing) return { success: true as const, request: existing, reused: true };
+
+      const request = await createJudgeBroadcast({
+        userId: ctx.user.id,
+        musicReviewSessionId: null,
+        roomName: `review-judge-${ctx.user.id}-${Date.now()}`,
+        ingressId: null as any,
+        rtmpUrl: null as any,
+        rtmpKey: null as any,
+        status: "pending",
+      });
+      return { success: true as const, request, reused: false };
+    }),
+
+    getMyPanelSeat: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const [request] = await db.select().from(judgeStreams).where(and(
+        eq(judgeStreams.userId, ctx.user.id),
+        inArray(judgeStreams.status, ["pending", "approved", "active"]),
+      )).orderBy(desc(judgeStreams.createdAt)).limit(1);
+      return request ?? null;
+    }),
+
+    getPanelSeatRequests: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      return db.select({
+        id: judgeStreams.id,
+        userId: judgeStreams.userId,
+        roomName: judgeStreams.roomName,
+        status: judgeStreams.status,
+        createdAt: judgeStreams.createdAt,
+        judgeName: sql<string>`COALESCE(NULLIF(${users.artistName}, ''), ${users.name}, CONCAT('Judge ', ${judgeStreams.userId}))`,
+      }).from(judgeStreams)
+        .leftJoin(users, eq(judgeStreams.userId, users.id))
+        .where(inArray(judgeStreams.status, ["pending", "approved", "active"]))
+        .orderBy(asc(judgeStreams.createdAt));
+    }),
+
+    decidePanelSeat: adminProcedure
+      .input(z.object({ broadcastId: z.number().int().positive(), approve: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [request] = await db.select().from(judgeStreams).where(eq(judgeStreams.id, input.broadcastId)).limit(1);
+        if (!request || request.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "This seat request is no longer pending." });
+        if (!input.approve) {
+          await db.update(judgeStreams).set({ status: "ended", endedAt: new Date() }).where(eq(judgeStreams.id, input.broadcastId));
+          return { success: true as const, status: "ended" as const };
+        }
+        const occupied = await db.select({ id: judgeStreams.id }).from(judgeStreams).where(inArray(judgeStreams.status, ["approved", "active"]));
+        if (occupied.length >= 6) throw new TRPCError({ code: "BAD_REQUEST", message: "The six-seat Mitten Panel is full." });
+        await db.update(judgeStreams).set({ status: "approved" }).where(eq(judgeStreams.id, input.broadcastId));
+        return { success: true as const, status: "approved" as const };
+      }),
+
     // Start a judge/admin broadcast during music review (browser WebRTC — no RTMP ingress)
     startBroadcast: protectedProcedure
       .mutation(async ({ ctx }) => {
@@ -1420,47 +1524,21 @@ export const appRouter = router({
         }
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-        // One active broadcast per judge, with a hard five-judge stage cap.
-        const existing = await getJudgeBroadcast(ctx.user.id);
-        if (!existing) {
-          const activeBroadcasts = await db.select({ id: judgeStreams.id })
-            .from(judgeStreams)
-            .where(eq(judgeStreams.status, "active"));
-          if (activeBroadcasts.length >= 5) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "The Mitten Panel is full. Up to five judges can be live at once." });
-          }
-        }
-        
-        // Reuse existing active broadcast if present — return a fresh token
-        if (existing) {
+        const [existing] = await db.select().from(judgeStreams).where(and(
+          eq(judgeStreams.userId, ctx.user.id),
+          inArray(judgeStreams.status, ["pending", "approved", "active"]),
+        )).orderBy(desc(judgeStreams.createdAt)).limit(1);
+        if (!existing) throw new TRPCError({ code: "BAD_REQUEST", message: "Request a Mitten Panel seat before joining." });
+        if (existing.status === "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Your panel request is waiting for admin approval." });
+
+        // Reuse an approved/active seat and issue a fresh publisher token.
+        if (existing.status === "approved" || existing.status === "active") {
           const identity = `judge-browser-${ctx.user.id}`;
           const displayName = ctx.user.artistName || ctx.user.name || `Judge ${ctx.user.id}`;
           const token = await generateStreamerToken(existing.roomName, identity, displayName);
           return { success: true, broadcast: { id: existing.id, userId: existing.userId, roomName: existing.roomName, status: existing.status }, token, livekitUrl: ENV.livekitUrl };
         }
-        
-        // Browser-first: create room + publisher token WITHOUT RTMP ingress
-        const roomName = `review-judge-${ctx.user.id}-${Date.now()}`;
-        const identity = `judge-browser-${ctx.user.id}`;
-        const displayName = ctx.user.artistName || ctx.user.name || `Judge ${ctx.user.id}`;
-        
-        const broadcast = await createJudgeBroadcast({
-          userId: ctx.user.id,
-          musicReviewSessionId: null,
-          roomName,
-          ingressId: null as any,
-          rtmpUrl: null as any,
-          rtmpKey: null as any,
-          status: "pending",
-        });
-        const broadcastId = broadcast.id;
-        
-        // Generate LiveKit publisher token immediately — one click to go live
-        const token = await generateStreamerToken(roomName, identity, displayName);
-        
-        console.log(`[Judge Broadcast] ${ctx.user.name} started browser broadcast in room ${roomName} (id=${broadcastId})`);
-        
-        return { success: true, broadcast: { id: broadcastId, userId: ctx.user.id, roomName, status: "active" }, token, livekitUrl: ENV.livekitUrl };
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This panel seat is not available." });
       }),
 
     // A browser broadcast becomes public only after its camera and microphone tracks publish successfully.
@@ -1476,7 +1554,7 @@ export const appRouter = router({
         if (!broadcast || broadcast.userId !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Not your broadcast" });
         }
-        if (broadcast.status === "ended" || broadcast.status === "error") {
+        if (broadcast.status !== "approved" && broadcast.status !== "active") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "This broadcast is no longer available" });
         }
         await db.update(judgeStreams).set({ status: "active" }).where(eq(judgeStreams.id, input.broadcastId));

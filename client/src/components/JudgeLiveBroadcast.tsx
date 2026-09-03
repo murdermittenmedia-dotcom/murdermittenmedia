@@ -170,7 +170,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
       <div className="border border-red-500/40 bg-red-500/10 rounded p-4 flex items-start gap-3">
         <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
         <div>
-          <div className="text-red-400 text-sm font-semibold mb-1">Broadcast Error</div>
+          <div className="text-red-300 text-sm font-semibold mb-1">Camera or microphone needs attention</div>
           <div className="text-white/60 text-xs">{error}</div>
           <button
             onClick={onStop}
@@ -184,20 +184,17 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
   }
 
   return (
-    <div className="border border-green-500/40 bg-black/60 rounded overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-red-500/35 bg-black/70">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-green-500/20 bg-green-500/5">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.025] px-3 py-2">
         <div className="flex items-center gap-2">
           {connecting ? (
-            <Loader2 className="w-3.5 h-3.5 text-green-400 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-red-300" />
           ) : (
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
           )}
           <div>
-            <span className="text-green-400 text-xs font-semibold uppercase tracking-widest">
-              {connecting ? "Joining Judge Panel…" : "🟢 Judge Panel Live"}
-            </span>
-            <span className="ml-2 text-[9px] uppercase tracking-wider text-white/30">Judge broadcast</span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-white/85">{connecting ? "Opening your seat" : "Your seat is live"}</span>
           </div>
         </div>
         <button
@@ -263,7 +260,7 @@ export function JudgeLiveBroadcast({ broadcastId, token, livekitUrl, onStop }: J
           onClick={handleStop}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-red-600/20 border border-red-600/40 text-red-400 hover:bg-red-600/30 transition-all ml-auto"
         >
-          Stop
+          Leave panel
         </button>
       </div>
     </div>
@@ -291,6 +288,8 @@ export const JudgeBroadcastViewer = forwardRef<JudgeBroadcastViewerHandle, Judge
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
+  const remoteVideoTrackRef = useRef<Track | null>(null);
+  const remoteAudioTrackRef = useRef<Track | null>(null);
   const [connected, setConnected] = useState(false);
   const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "reconnecting" | "ended">("connecting");
   const [hasVideo, setHasVideo] = useState(false);
@@ -307,26 +306,35 @@ export const JudgeBroadcastViewer = forwardRef<JudgeBroadcastViewerHandle, Judge
     room.on(RoomEvent.TrackSubscribed, (track) => {
       if (cancelled) return;
       if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
+        if (remoteVideoTrackRef.current === track) return;
+        remoteVideoTrackRef.current?.detach(remoteVideoRef.current);
         track.attach(remoteVideoRef.current);
+        remoteVideoTrackRef.current = track;
         setHasVideo(true);
       } else if (track.kind === Track.Kind.Audio) {
         // Attach audio to a dedicated audio element so judge mic is heard
         if (remoteAudioRef.current) {
+          if (remoteAudioTrackRef.current === track) return;
+          remoteAudioTrackRef.current?.detach(remoteAudioRef.current);
           track.attach(remoteAudioRef.current);
+          remoteAudioTrackRef.current = track;
           if (audioUnlockedRef.current) remoteAudioRef.current.play().catch(() => undefined);
-        } else {
-          // Fallback: create a new audio element
-          const audioEl = track.attach() as HTMLAudioElement;
-          audioEl.autoplay = true;
-          document.body.appendChild(audioEl);
         }
         setHasAudio(true);
       }
     });
 
     room.on(RoomEvent.TrackUnsubscribed, (track) => {
-      if (track.kind === Track.Kind.Video) setHasVideo(false);
-      if (track.kind === Track.Kind.Audio) setHasAudio(false);
+      if (track.kind === Track.Kind.Video && remoteVideoTrackRef.current === track) {
+        if (remoteVideoRef.current) remoteVideoTrackRef.current?.detach(remoteVideoRef.current);
+        remoteVideoTrackRef.current = null;
+        setHasVideo(false);
+      }
+      if (track.kind === Track.Kind.Audio && remoteAudioTrackRef.current === track) {
+        if (remoteAudioRef.current) remoteAudioTrackRef.current?.detach(remoteAudioRef.current);
+        remoteAudioTrackRef.current = null;
+        setHasAudio(false);
+      }
     });
 
     room.on(RoomEvent.Connected, () => {
@@ -346,6 +354,10 @@ export const JudgeBroadcastViewer = forwardRef<JudgeBroadcastViewerHandle, Judge
 
     return () => {
       cancelled = true;
+      if (remoteVideoRef.current) remoteVideoTrackRef.current?.detach(remoteVideoRef.current);
+      if (remoteAudioRef.current) remoteAudioTrackRef.current?.detach(remoteAudioRef.current);
+      remoteVideoTrackRef.current = null;
+      remoteAudioTrackRef.current = null;
       room.disconnect();
     };
   }, [livekitUrl, viewerToken]);
@@ -370,7 +382,7 @@ export const JudgeBroadcastViewer = forwardRef<JudgeBroadcastViewerHandle, Judge
     <div className="border border-green-500/30 bg-black/40 rounded overflow-hidden">
       {/* Hidden audio element for judge mic; browsers require a user gesture before playback */}
       <audio ref={remoteAudioRef} autoPlay playsInline muted={mutedAll || !audioUnlocked} />
-      <div className="relative min-h-[220px] bg-black sm:min-h-[250px]" style={{ aspectRatio: JUDGE_PANEL_LAYOUT.tileAspectRatio }}>
+      <div className="relative min-h-36 bg-black" style={{ aspectRatio: JUDGE_PANEL_LAYOUT.tileAspectRatio }}>
         <video
           ref={remoteVideoRef}
           autoPlay

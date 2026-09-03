@@ -5,22 +5,24 @@ import { getJudgePanelTileCountPerDesktopRow, getJudgePanelTileMinHeight, JUDGE_
 const musicReviewSource = readFileSync(new URL("../client/src/pages/MusicReview.tsx", import.meta.url), "utf8");
 
 describe("Mitten Panel judge feed layout", () => {
-  it("uses two desktop tiles per row instead of compressing three feeds into thumbnails", () => {
-    expect(getJudgePanelTileCountPerDesktopRow()).toBe(2);
+  it("uses three broadcast-ready desktop tiles per row for a six-seat panel", () => {
+    expect(getJudgePanelTileCountPerDesktopRow()).toBe(3);
   });
 
-  it("keeps a readable minimum tile size across breakpoints", () => {
-    expect(JUDGE_PANEL_LAYOUT.mobileTileMinWidth).toBeGreaterThanOrEqual(300);
-    expect(getJudgePanelTileMinHeight(false)).toBeGreaterThanOrEqual(220);
-    expect(getJudgePanelTileMinHeight(true)).toBeGreaterThan(getJudgePanelTileMinHeight(false));
-    expect(JUDGE_PANEL_LAYOUT.tileAspectRatio).toBe("4 / 3");
+  it("uses a stable 16:9 broadcast frame without arbitrary tile-height distortion", () => {
+    expect(JUDGE_PANEL_LAYOUT.mobileTileMinWidth).toBe(0);
+    expect(getJudgePanelTileMinHeight(false)).toBe(0);
+    expect(getJudgePanelTileMinHeight(true)).toBe(0);
+    expect(JUDGE_PANEL_LAYOUT.tileAspectRatio).toBe("16 / 9");
   });
 
   it("uses a fixed review-stage grid instead of draggable or resizable windows", () => {
     expect(musicReviewSource).toContain("lg:grid-cols-12");
     expect(musicReviewSource).toContain('id="mitten-panel"');
-    expect(musicReviewSource).toContain("lg:col-span-4");
+    expect(musicReviewSource).toContain("lg:col-span-12");
     expect(musicReviewSource).toContain("lg:col-span-8");
+    expect(musicReviewSource).toContain("Array.from({ length: 6 })");
+    expect(musicReviewSource).toContain("grid-cols-2 gap-2");
     expect(musicReviewSource).not.toContain("REVIEW_WINDOW_POSITION_KEY");
     expect(musicReviewSource).not.toContain("ReviewWorkspaceWindow");
     expect(musicReviewSource).not.toContain("min-w-[980px]");

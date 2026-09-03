@@ -1,9 +1,9 @@
 export const JUDGE_PANEL_LAYOUT = {
-  desktopColumns: 2,
-  mobileTileMinWidth: 300,
-  tileAspectRatio: "4 / 3",
-  tileMinHeight: 220,
-  tileSmallScreenMinHeight: 250,
+  desktopColumns: 3,
+  mobileTileMinWidth: 0,
+  tileAspectRatio: "16 / 9",
+  tileMinHeight: 0,
+  tileSmallScreenMinHeight: 0,
 } as const;
 
 export function getJudgePanelTileMinHeight(isSmallScreen: boolean) {

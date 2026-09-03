@@ -173,6 +173,21 @@ export function useChat({
       setMessages(prev => [...prev.slice(-199), msg]);
     });
 
+    socket.on("review:participant_joined", (data: { userId: number; username: string; role: "admin" | "judge" | "user"; timestamp: number }) => {
+      setMessages(prev => [...prev.slice(-199), {
+        id: data.timestamp,
+        username: "Live update",
+        message: `${data.username} joined the review.`,
+        room,
+        isAdmin: false,
+        role: data.role,
+        userId: data.userId,
+        createdAt: new Date(data.timestamp),
+        type: "system",
+        text: `${data.username} joined the review.`,
+      } as ChatMessage]);
+    });
+
     socket.on("wheel:spinning", () => {
       setWheelSpinning(true);
       setWheelWinner(null);
@@ -322,6 +337,10 @@ export function useChat({
     socketRef.current?.emit("review:queue_updated");
   }, []);
 
+  const emitSkipRequest = useCallback((submissionId: number) => {
+    socketRef.current?.emit("review:skip_requested", { submissionId });
+  }, []);
+
   // Broadcast that reactions have been updated for a submission
   const broadcastReactionsUpdated = useCallback((submissionId: number) => {
     socketRef.current?.emit("review:reactions_updated", { submissionId });
@@ -363,6 +382,7 @@ export function useChat({
     broadcastReviewTrackEnded,
     broadcastBattlePlayback,
     broadcastReviewQueueUpdated,
+    emitSkipRequest,
     broadcastReactionsUpdated,
     broadcastLastSong,
     emitFakeChatMessage,

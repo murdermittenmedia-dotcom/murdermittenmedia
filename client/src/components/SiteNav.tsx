@@ -18,6 +18,8 @@ import {
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import CoinBalance from "@/components/CoinBalance";
+import { io } from "socket.io-client";
+import { toast } from "sonner";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -107,6 +109,16 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
+
+  useEffect(() => {
+    const socket = io(window.location.origin, { path: "/api/socket.io" });
+    socket.on("site:review_skip_requested", (data: { songTitle?: string; requestedBy?: string }) => {
+      toast("Skip request", {
+        description: `${data.requestedBy || "A listener"} requested to skip ${data.songTitle || "the current track"}.`,
+      });
+    });
+    return () => { socket.disconnect(); };
+  }, []);
 
   const bg = transparent && !scrolled
     ? "bg-transparent"

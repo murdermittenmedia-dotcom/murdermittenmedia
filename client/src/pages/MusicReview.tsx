@@ -1,4 +1,3 @@
-import { FloatingWindow } from "@/components/FloatingWindow";
 /* ============================================================
    MURDER MITTEN MEDIA — Music Review (V2 Major Redesign)
    Premium "Studio Control Room" aesthetic
@@ -49,14 +48,34 @@ import {
   Mic, MicOff, Video, VideoOff, Radio, Play, Pause, SkipForward,
   Trash2, CheckCircle, ChevronDown, ChevronUp, Settings, Users,
   ExternalLink, Flame, ThumbsDown, Crown, AlertCircle, RotateCcw, Music,
-  GripVertical, X, Send, LogIn, Zap, Eye,
+  GripVertical, X, Send, LogIn, Zap, Eye, Check, Clock3, UserRound,
 } from "lucide-react";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 const CASHAPP = "$MittenMedia";
 
-function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
-  const { data: broadcasts = [] } = trpc.review.getActive.useQuery(undefined, { enabled: isReviewLive, refetchInterval: isReviewLive ? 5000 : false });
+function JudgePanelStrip({
+  isReviewLive,
+  isJudge,
+  seatStatus,
+  isRequestingSeat,
+  isJoiningSeat,
+  onRequestSeat,
+  onJoinSeat,
+  judgeBroadcast,
+  onStopBroadcast,
+}: {
+  isReviewLive: boolean;
+  isJudge: boolean;
+  seatStatus?: "pending" | "approved" | "active" | "ended" | "error" | null;
+  isRequestingSeat: boolean;
+  isJoiningSeat: boolean;
+  onRequestSeat: () => void;
+  onJoinSeat: () => void;
+  judgeBroadcast: JudgeBroadcastSession | null;
+  onStopBroadcast: () => void;
+}) {
+  const { data: broadcasts = [] } = trpc.review.getActive.useQuery(undefined, { enabled: isReviewLive, refetchInterval: isReviewLive ? 5_000 : false });
   const [mutedAll, setMutedAll] = useState(false);
   const [panelAudioEnabled, setPanelAudioEnabled] = useState(false);
   const viewerRefs = useRef(new Map<number, JudgeBroadcastViewerHandle>());
@@ -70,30 +89,65 @@ function JudgePanelStrip({ isReviewLive }: { isReviewLive: boolean }) {
     setMutedAll(false);
     setPanelAudioEnabled(true);
   }, []);
+  const requestLabel = seatStatus === "pending"
+    ? "Seat request sent"
+    : seatStatus === "approved"
+      ? "Join your approved seat"
+      : judgeBroadcast || seatStatus === "active"
+        ? "Your panel feed is live"
+        : "Request a panel seat";
+  const requestAction = seatStatus === "approved" ? onJoinSeat : onRequestSeat;
+  const requestDisabled = !isReviewLive || isRequestingSeat || isJoiningSeat || seatStatus === "pending" || !!judgeBroadcast || seatStatus === "active";
+
   return (
-    <section className="rounded-2xl border border-green-500/20 bg-green-500/[0.04] p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-300/80">Mitten Panel</p>
-          <p className="mt-1 text-xs text-white/40">{isReviewLive ? "Enable Panel Sound once to hear every live judge voice together. The review track keeps playing in sync beside it." : "The review is offline. Judge video windows will appear here when the show starts."}</p>
+    <section id="mitten-panel" className="overflow-hidden rounded-2xl border border-red-500/30 bg-[#090909] shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-red-950/45 via-[#111] to-black px-4 py-3 sm:px-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-red-500/45 bg-red-500/10"><Users className="h-4 w-4 text-red-300" /></div>
+          <div>
+            <p className="font-['Anton'] text-xl uppercase tracking-wide text-white">Mitten Panel</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">{broadcasts.length} of 6 seats live</p>
+          </div>
         </div>
-        {isReviewLive && broadcasts.length > 0 && <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            {!panelAudioEnabled && <button type="button" onClick={() => void enablePanelAudio()} className="rounded-lg border border-green-400/40 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-100 hover:bg-green-500/20">Enable Panel Sound</button>}
-            <button type="button" onClick={() => setMutedAll((value) => !value)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:border-white/30 hover:text-white">
-              {mutedAll ? "Unmute Judges" : "Mute Judges"}
-            </button>
-          </div>}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {isJudge && <button type="button" onClick={requestAction} disabled={requestDisabled} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.13em] text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45">
+            {seatStatus === "approved" ? <Check className="h-3.5 w-3.5" /> : seatStatus === "pending" ? <Clock3 className="h-3.5 w-3.5" /> : <UserRound className="h-3.5 w-3.5" />}
+            {isRequestingSeat || isJoiningSeat ? "Working…" : requestLabel}
+          </button>}
+          {isReviewLive && broadcasts.length > 0 && <>
+            {!panelAudioEnabled && <button type="button" onClick={() => void enablePanelAudio()} className="rounded-lg border border-red-400/35 bg-red-500/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-100 hover:bg-red-500/20">Enable panel audio</button>}
+            <button type="button" onClick={() => setMutedAll((value) => !value)} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:border-white/30 hover:text-white">{mutedAll ? "Unmute judges" : "Mute judges"}</button>
+          </>}
+        </div>
       </div>
-      {!isReviewLive || broadcasts.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-green-500/20 bg-black/10 px-4 text-center text-xs text-white/35">No judges are live yet. Verified judges can join from the in-page Judge Stage when this review session is live.</div> : <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-2">
-          {broadcasts.map((broadcast) => <div key={broadcast.id} className="snap-start sm:min-w-0" style={{ minWidth: JUDGE_PANEL_LAYOUT.mobileTileMinWidth }}><JudgePanelCard broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} /></div>)}
-        </div>}
+
+      {isJudge && seatStatus === "pending" && <div className="border-b border-amber-300/15 bg-amber-300/[0.045] px-4 py-2.5 text-xs text-amber-100/80">Your seat request is with the producer. Camera and microphone will open only after approval.</div>}
+      {isJudge && seatStatus === "approved" && <div className="border-b border-green-400/15 bg-green-400/[0.05] px-4 py-2.5 text-xs text-green-100/80">Your seat is approved. Select <strong>Join your approved seat</strong> to open camera and microphone.</div>}
+
+      <div className="grid grid-cols-2 gap-2 p-2 sm:gap-3 sm:p-4 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => {
+          const broadcast = broadcasts[index];
+          if (broadcast) return <JudgePanelCard key={broadcast.id} broadcast={broadcast} mutedAll={mutedAll} panelAudioEnabled={panelAudioEnabled} onViewerReady={(viewer) => { if (viewer) viewerRefs.current.set(broadcast.id, viewer); else viewerRefs.current.delete(broadcast.id); }} />;
+          return <div key={`open-seat-${index}`} className="relative aspect-video overflow-hidden rounded-xl border border-dashed border-white/15 bg-white/[0.018]">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <UserRound className="mb-2 h-6 w-6 text-white/15" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/28">Seat {index + 1}</p>
+              <p className="mt-1 text-[10px] text-white/20">Open</p>
+            </div>
+          </div>;
+        })}
+      </div>
+
+      {judgeBroadcast && <div className="border-t border-white/10 p-4"><JudgeLiveBroadcast broadcastId={judgeBroadcast.broadcastId} token={judgeBroadcast.token} livekitUrl={judgeBroadcast.livekitUrl} onStop={onStopBroadcast} /></div>}
     </section>
   );
 }
 
 function JudgePanelCard({ broadcast, mutedAll, panelAudioEnabled, onViewerReady }: { broadcast: { id: number; roomName: string; userId: number; judgeName?: string | null }; mutedAll: boolean; panelAudioEnabled: boolean; onViewerReady: (viewer: JudgeBroadcastViewerHandle | null) => void }) {
-  const { data: tokenData } = trpc.review.getJudgeViewerToken.useQuery({ broadcastId: broadcast.id }, { refetchInterval: 15000 });
-  if (!tokenData) return <div className="min-h-[100px] rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-white/35">Connecting to judge…</div>;
+  // A new viewer token forces a LiveKit reconnect. Keep this token stable for
+  // the lifetime of the active card instead of refreshing it every few seconds.
+  const { data: tokenData } = trpc.review.getJudgeViewerToken.useQuery({ broadcastId: broadcast.id }, { staleTime: 10 * 60_000, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  if (!tokenData) return <div className="aspect-video rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-white/35">Connecting to judge…</div>;
   return <JudgeBroadcastViewer ref={onViewerReady} roomName={tokenData.roomName} livekitUrl={tokenData.livekitUrl} viewerToken={tokenData.token} judgeName={broadcast.judgeName || `Judge ${broadcast.userId}`} judgeUserId={broadcast.userId} mutedAll={mutedAll} autoEnableAudio={panelAudioEnabled} />;
 }
 
@@ -211,6 +265,11 @@ function AdminPanel({
     onSuccess: () => { activeJudgePanels.refetch(); toast.success("Judge panel ended"); },
     onError: (error) => toast.error(error.message),
   });
+  const panelSeatRequests = trpc.review.getPanelSeatRequests.useQuery(undefined, { enabled: currentUser?.role === "admin", refetchInterval: 4_000 });
+  const decidePanelSeat = trpc.review.decidePanelSeat.useMutation({
+    onSuccess: () => { void panelSeatRequests.refetch(); void activeJudgePanels.refetch(); toast.success("Panel seat updated"); },
+    onError: (error) => toast.error(error.message),
+  });
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
 
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
@@ -318,41 +377,7 @@ function AdminPanel({
     });
   };
 
-  const advanceToNext = (skipId: number) => {
-    const pendingInOrder = localQueue.filter(s => s.status === "pending" && s.id !== skipId);
-    const next = pendingInOrder[0] ?? null;
-    setSelectedYouTube(null);
-    if (next) {
-      setTimeout(() => {
-        setPlaying.mutate({ submissionId: next.id }, {
-          onSuccess: () => {
-            playTrack(next);
-            broadcastReviewActive({
-              submissionId: next.id,
-              userId: next.userId ?? null,
-              artistName: next.artistName,
-              songTitle: next.songTitle,
-              audioUrl: null,
-              youtubeUrl: next.youtubeUrl ?? null,
-              submissionType: next.submissionType,
-              fileKey: next.fileKey ?? null,
-              fileUrl: next.fileUrl ?? null,
-            });
-            broadcastReviewQueueUpdated();
-            toast.success(`▶ Auto-advancing to: ${next.songTitle}`);
-          }
-        });
-      }, 400);
-    } else {
-      setPlaying.mutate({ submissionId: null }, {
-        onSuccess: () => {
-          broadcastReviewActive({ submissionId: null });
-          broadcastReviewQueueUpdated();
-          toast("Queue finished — all tracks reviewed!");
-        }
-      });
-    }
-  };
+  const completeAndAdvanceMutation = trpc.queue.completeAndAdvance.useMutation();
 
   const completeAndAdvance = (submissionId: number, playbackAction?: "skip") => {
     if (completionInFlightRef.current === submissionId) return false;
@@ -362,11 +387,36 @@ function AdminPanel({
     // cannot leave the previous song audible during the handoff.
     audioPlayer.stop();
     broadcastReviewActive({ submissionId: null });
-    updateStatus.mutate({ id: submissionId, status: "reviewed" }, {
-      onSuccess: () => {
+    completeAndAdvanceMutation.mutate({ submissionId }, {
+      onSuccess: (result) => {
+        if (result.stale) {
+          completionInFlightRef.current = null;
+          void refetch();
+          return;
+        }
         refetch();
         if (playbackAction) broadcastReviewPlayback({ action: playbackAction });
-        advanceToNext(submissionId);
+        if (!result.next) {
+          broadcastReviewActive({ submissionId: null });
+          broadcastReviewQueueUpdated();
+          toast("Queue finished — all tracks reviewed!");
+          return;
+        }
+        const next = result.next as ReviewSubmission;
+        playTrack(next);
+        broadcastReviewActive({
+          submissionId: next.id,
+          userId: next.userId ?? null,
+          artistName: next.artistName,
+          songTitle: next.songTitle,
+          audioUrl: null,
+          youtubeUrl: next.youtubeUrl ?? null,
+          submissionType: next.submissionType,
+          fileKey: next.fileKey ?? null,
+          fileUrl: next.fileUrl ?? null,
+        });
+        broadcastReviewQueueUpdated();
+        toast.success(`Now reviewing: ${next.songTitle}`);
       },
       onError: (error) => {
         completionInFlightRef.current = null;
@@ -388,8 +438,6 @@ function AdminPanel({
 
   const updateStatusRef = useRef(updateStatus);
   updateStatusRef.current = updateStatus;
-  const advanceToNextRef = useRef(advanceToNext);
-  advanceToNextRef.current = advanceToNext;
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
   const completeAndAdvanceRef = useRef(completeAndAdvance);
@@ -547,6 +595,27 @@ function AdminPanel({
                 </div>
         {currentUser?.role === "admin" && (
           <div className="border-t border-white/10 pt-3">
+            <div className="mb-3 rounded-lg border border-red-500/25 bg-red-500/[0.045] p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-red-200">Mitten Panel seat requests</p>
+                  <p className="mt-1 text-[10px] text-white/35">Approve a judge before their camera and microphone can enter the panel.</p>
+                </div>
+                <span className="rounded-full border border-red-400/25 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-red-200">{(panelSeatRequests.data ?? []).filter((seat) => seat.status === "pending").length} waiting</span>
+              </div>
+              <div className="space-y-2">
+                {(panelSeatRequests.data ?? []).filter((seat) => seat.status === "pending").map((seat) => (
+                  <div key={seat.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-white/10 bg-black/20 px-2.5 py-2">
+                    <div className="min-w-0"><p className="truncate text-xs font-semibold text-white">{seat.judgeName}</p><p className="text-[9px] uppercase tracking-wider text-white/35">Requested a live seat</p></div>
+                    <div className="flex gap-1.5">
+                      <button type="button" onClick={() => decidePanelSeat.mutate({ broadcastId: seat.id, approve: false })} disabled={decidePanelSeat.isPending} className="rounded border border-white/15 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-white/50 hover:text-white">Decline</button>
+                      <button type="button" onClick={() => decidePanelSeat.mutate({ broadcastId: seat.id, approve: true })} disabled={decidePanelSeat.isPending} className="rounded bg-red-600 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Approve</button>
+                    </div>
+                  </div>
+                ))}
+                {(panelSeatRequests.data ?? []).filter((seat) => seat.status === "pending").length === 0 && <p className="py-1 text-[10px] text-white/30">No judge requests waiting.</p>}
+              </div>
+            </div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300/80">Judge roster</div>
@@ -1465,6 +1534,14 @@ export default function MusicReview() {
   const isAdmin = user?.role === "admin";
   const isJudge = user?.role === "judge";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
+  const panelSeat = trpc.review.getMyPanelSeat.useQuery(undefined, { enabled: isJudge, refetchInterval: isJudge ? 4_000 : false });
+  const requestPanelSeat = trpc.review.requestPanelSeat.useMutation({
+    onSuccess: (result) => {
+      void panelSeat.refetch();
+      toast.success(result.request.status === "approved" ? "Your panel seat is approved." : "Panel seat requested. Waiting for producer approval.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const startJudgeBroadcast = trpc.review.startBroadcast.useMutation({
     onSuccess: ({ broadcast, token, livekitUrl }) => {
       setJudgeBroadcast({ broadcastId: broadcast.id, token, livekitUrl });
@@ -1602,7 +1679,7 @@ export default function MusicReview() {
   });
 
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
-  const [isAdminPanelFloating, setIsAdminPanelFloating] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
   // Tip artist state
   const [tipAmount, setTipAmount] = useState<string>("");
@@ -1636,6 +1713,7 @@ export default function MusicReview() {
   const skipVoteMutation = trpc.queue.voteToSkip.useMutation({
     onSuccess: (result) => {
       toast.success(`Skip vote counted (${result.votes}).`);
+      if (currentPlayingId) emitSkipRequest(currentPlayingId);
       refetchSkipVoteStatus();
     },
     onError: (error) => toast.error(error.message),
@@ -1702,6 +1780,7 @@ export default function MusicReview() {
     broadcastReviewPlayback,
     broadcastReviewTrackEnded,
     broadcastReviewQueueUpdated,
+    emitSkipRequest,
     broadcastLastSong,
     broadcastReactionsUpdated,
     emitFakeChatMessage,
@@ -2268,7 +2347,7 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={listenToLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Listening Live" : "Listen Live"}
             </button>}
-            {isJudge && <button type="button" onClick={joinJudgeStage} disabled={!isLive || isJoiningJudge || startJudgeBroadcast.isPending || Boolean(judgeBroadcast)} className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-yellow-100 transition-colors hover:bg-yellow-300/20 disabled:cursor-not-allowed disabled:opacity-45">{judgeBroadcast ? "Panel is live" : isJoiningJudge || startJudgeBroadcast.isPending ? "Opening panel…" : isLive ? "Join Mitten Panel" : "Panel opens when live"}</button>}
+            {isJudge && <button type="button" onClick={() => document.getElementById("mitten-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-full border border-red-400/45 bg-red-600/15 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100 transition-colors hover:bg-red-600/25">{judgeBroadcast ? "Panel live" : panelSeat.data?.status === "approved" ? "Join approved seat" : panelSeat.data?.status === "pending" ? "Seat requested" : "Request panel seat"}</button>}
           </div>
         </div>
       </div>
@@ -2277,30 +2356,15 @@ export default function MusicReview() {
       <div className="max-w-[1500px] mx-auto px-4 py-6 space-y-6">
 
 
-        {/* ── ADMIN PANEL (admin/judge only) ─────────────────── */}
+        {/* ── ADMIN SESSION CONTROLS (admin only) ───────────── */}
         {isAdmin && (
-          <div className="relative">
-            <button
-              onClick={() => window.open('/admin-popout', '_blank', 'width=600,height=900,left=100,top=100')}
-              className="px-4 py-2 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors uppercase tracking-widest font-bold"
-              title="Open admin control panel in new window"
-            >
-              📺 Open Admin Panel
+          <section className="overflow-hidden rounded-2xl border border-red-500/30 bg-[#0b0b0b] shadow-xl shadow-black/20">
+            <button type="button" onClick={() => setIsAdminPanelOpen((open) => !open)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-red-500/[0.06] sm:px-5">
+              <span className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10"><Settings className="h-4 w-4 text-red-300" /></span><span><span className="block text-xs font-bold uppercase tracking-[0.16em] text-white">Producer controls</span><span className="mt-0.5 block text-[10px] text-white/35">Only you can see or operate this session surface.</span></span></span>
+              {isAdminPanelOpen ? <ChevronUp className="h-4 w-4 text-red-300" /> : <ChevronDown className="h-4 w-4 text-red-300" />}
             </button>
-          </div>
-        )}
-
-        {/* ── FLOATING ADMIN PANEL (DISABLED - use new window instead) ─────────────────────── */}
-        {false && (
-          <FloatingWindow
-            title="Admin Control Panel"
-            onClose={() => setIsAdminPanelFloating(false)}
-            defaultWidth={420}
-            defaultHeight={700}
-            defaultX={typeof window !== 'undefined' ? window.innerWidth - 450 : 20}
-            defaultY={60}
-          >
-            <AdminPanel
+            {isAdminPanelOpen && <div className="border-t border-white/10 p-3 sm:p-4">
+              <AdminPanel
               data={data}
               refetch={refetch}
               audioRoom={audioRoom}
@@ -2340,7 +2404,8 @@ export default function MusicReview() {
               viewerCountVisible={viewerCountVisible}
               setViewerCountVisible={(v) => { setViewerCountVisible(v); emitChatControls({ viewerCountVisible: v }); }}
             />
-          </FloatingWindow>
+            </div>}
+          </section>
         )}
 
         <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
@@ -2355,24 +2420,21 @@ export default function MusicReview() {
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Live review stage · performance, panel, crowd</p>
         </div>
         <div className="grid gap-5 lg:grid-cols-12">
-        <section id="mitten-panel" className="order-2 rounded-2xl border border-yellow-300/20 bg-[#0b0b0b] shadow-2xl shadow-black/25 lg:order-1 lg:col-span-4">
-          <JudgePanelStrip isReviewLive={isLive} />
-          {user?.role === "judge" && (
-            <div className="border-t border-yellow-300/15 p-4">
-              {judgeBroadcast ? (
-                <JudgeLiveBroadcast broadcastId={judgeBroadcast.broadcastId} token={judgeBroadcast.token} livekitUrl={judgeBroadcast.livekitUrl} onStop={() => { setJudgeBroadcast(null); setIsJoiningJudge(false); }} />
-              ) : (
-                <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.05] p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-yellow-100">Your panel seat is ready</p>
-                  <p className="mt-2 text-xs leading-relaxed text-white/50">Join the live panel here with your camera and microphone when the review goes on air.</p>
-                  <button type="button" onClick={joinJudgeStage} disabled={!isLive || isJoiningJudge || startJudgeBroadcast.isPending} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45">{isJoiningJudge || startJudgeBroadcast.isPending ? "Opening panel…" : isLive ? "Join Mitten Panel" : "Panel opens when live"}</button>
-                </div>
-              )}
-            </div>
-          )}
+        <section className="order-1 min-w-0 lg:col-span-12">
+          <JudgePanelStrip
+            isReviewLive={isLive}
+            isJudge={isJudge}
+            seatStatus={panelSeat.data?.status ?? null}
+            isRequestingSeat={requestPanelSeat.isPending}
+            isJoiningSeat={isJoiningJudge || startJudgeBroadcast.isPending}
+            onRequestSeat={() => requestPanelSeat.mutate()}
+            onJoinSeat={joinJudgeStage}
+            judgeBroadcast={judgeBroadcast}
+            onStopBroadcast={() => { setJudgeBroadcast(null); setIsJoiningJudge(false); void panelSeat.refetch(); }}
+          />
         </section>
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
-        <section className="order-1 min-w-0 lg:order-2 lg:col-span-8">
+        <section className="order-2 min-w-0 lg:col-span-8">
         {activeTrack ? (
           <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
             {/* Glow corners */}

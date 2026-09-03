@@ -5138,3 +5138,12 @@
 - [x] Ensure the 90-second cutoff emits one authoritative transition and replaces or stops every listener player
 - [x] Prevent late ended events from the prior song from reloading or retaining stale playback state
 - [x] Publish the quick 90-second mode stale-player fix
+
+- [x] Audit the current judge request, approval, six-seat panel layout, camera lifecycle, queue advance, admin-popout, and live-presence flows
+- [x] Replace the beta-style judge panel with a clear professional six-seat broadcast layout and an easy request-to-approval journey
+- [x] Stabilize judge camera tracks so active feeds do not flicker or drop during panel changes
+- [x] Make queue continuation deterministic after a review, 90-second cutoff, skip, or track end
+- [x] Consolidate admin-only operations into a collapsible in-page control surface that viewers cannot see
+- [x] Show a floating site notification for skip requests and a live-chat system message when a participant joins the review
+- [x] Add regression coverage and validate the revised broadcast workflow on desktop and mobile
+- [x] Publish the professional Music Review workflow update
