@@ -13,7 +13,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages, reviewPlusMemberships } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
-import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, setCurrentPlaying, getLiveReviewPlaybackState, setLiveReviewPlaybackState } from "../db";
+import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, completeAndAdvanceReviewQueue, setCurrentPlaying, getLiveReviewPlaybackState, setLiveReviewPlaybackState } from "../db";
 import { registerStripeWebhook } from "../stripe-webhook";
 import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
 import { shouldProcessReviewTrackEnd } from "../../shared/review-radio-transition";
@@ -685,24 +685,10 @@ async function startServer() {
       if (!shouldProcessReviewTrackEnd(completedId, data?.submissionId, reviewTrackTransitionInFlight)) return;
       reviewTrackTransitionInFlight = completedId;
       try {
-        const db = await getDb();
-        if (!db) return;
-        // Import needed for query
-        const { reviewSubmissions } = await import("../../drizzle/schema");
-        const { eq, ne, asc, desc, and } = await import("drizzle-orm");
-        // Mark current track as reviewed
-        await completeReviewSubmission(completedId);
-        // Find next pending track
-        const pending = await db.select().from(reviewSubmissions)
-          .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, completedId)))
-          .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt))
-          .limit(1);
-        if (pending.length > 0) {
-          const next = pending[0];
-          // Keep the database queue cursor and status aligned with the live
-          // transport so refreshes and late joins resolve the same track.
-          await updateSubmissionStatus(next.id, "playing");
-          await setCurrentPlaying(next.id);
+        const handoff = await completeAndAdvanceReviewQueue(completedId);
+        if (handoff.stale) return;
+        if (handoff.next) {
+          const next = handoff.next;
           // Resolve presigned URL
           const key = next.fileUrl?.replace(/^\/manus-storage\//, "") ?? next.fileKey ?? null;
           let resolvedUrl: string | null = null;

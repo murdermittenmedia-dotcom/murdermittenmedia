@@ -65,7 +65,7 @@ import {
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
   getDb, ensureUserReferralCode, getUserReferralStatus, acceptUserReferralCode,
-  createJudgeBroadcast, getActiveJudgeBroadcasts, getJudgeBroadcast, endJudgeBroadcast,
+  createJudgeBroadcast, getActiveJudgeBroadcasts, getJudgeBroadcast, endJudgeBroadcast, completeAndAdvanceReviewQueue,
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
   confirmPaidSubmission,
@@ -954,30 +954,8 @@ export const appRouter = router({
     completeAndAdvance: adminProcedure
       .input(z.object({ submissionId: z.number().int().positive(), skippedByVote: z.boolean().optional() }))
       .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-        const [state] = await db.select().from(queueState).limit(1);
-        if (!state?.currentPlayingId || state.currentPlayingId !== input.submissionId) {
-          return { success: false as const, stale: true as const, next: null };
-        }
-        const [current] = await db.select().from(reviewSubmissionsTable).where(eq(reviewSubmissionsTable.id, input.submissionId)).limit(1);
-        if (!current || current.status !== "playing") {
-          return { success: false as const, stale: true as const, next: null };
-        }
-
-        await completeReviewSubmission(input.submissionId, { skippedByVote: input.skippedByVote });
-        const [next] = await db.select().from(reviewSubmissionsTable)
-          .where(and(eq(reviewSubmissionsTable.status, "pending"), ne(reviewSubmissionsTable.id, input.submissionId)))
-          .orderBy(desc(reviewSubmissionsTable.skipPaymentConfirmed), asc(reviewSubmissionsTable.position), asc(reviewSubmissionsTable.createdAt))
-          .limit(1);
-        if (!next) {
-          await setCurrentPlaying(null);
-          await setLiveReviewPlaybackState({ currentPlayingId: null, playbackState: "stopped", startedAt: null, positionMs: 0 });
-          return { success: true as const, stale: false as const, next: null };
-        }
-        await updateSubmissionStatus(next.id, "playing");
-        await setCurrentPlaying(next.id);
-        return { success: true as const, stale: false as const, next };
+        const result = await completeAndAdvanceReviewQueue(input.submissionId, { skippedByVote: input.skippedByVote });
+        return { success: !result.stale, ...result };
       }),
 
     updateStatus: adminProcedure
@@ -1338,23 +1316,12 @@ export const appRouter = router({
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
           eq(reviewSkipVotes.submissionId, input.submissionId),
         ));
-        const { queueState: queueStateTable } = await import("../drizzle/schema");
-        const [queueSettings] = await db.select().from(queueStateTable).limit(1);
-        let autoAdvanced = false;
-        if (queueSettings?.autoSkipThreshold && votes.length >= queueSettings.autoSkipThreshold && queueSettings.currentPlayingId === input.submissionId) {
-          await completeReviewSubmission(input.submissionId, { skippedByVote: true });
-          const [nextTrack] = await db.select({ id: reviewSubmissionsTable.id }).from(reviewSubmissionsTable)
-            .where(and(eq(reviewSubmissionsTable.status, "pending"), ne(reviewSubmissionsTable.id, input.submissionId)))
-            .orderBy(asc(reviewSubmissionsTable.position)).limit(1);
-          if (nextTrack) {
-            await db.update(reviewSubmissionsTable).set({ status: "playing" }).where(eq(reviewSubmissionsTable.id, nextTrack.id));
-            await db.update(queueStateTable).set({ currentPlayingId: nextTrack.id });
-          } else {
-            await db.update(queueStateTable).set({ currentPlayingId: null });
-          }
-          autoAdvanced = true;
-        }
-        return { success: true as const, votes: votes.length, limit: voteLimit, dailyVotesUsed: unlimited ? 0 : dailyVotes.length + 1, dailyVotesRemaining: getDailySkipVotesRemaining(dailyVotes.length + 1, unlimited), sessionId: session.id, reviewPlusActive, unlimited, resetsAt: end, autoAdvanced };
+        const [queueSettings] = await db.select().from(queueState).limit(1);
+        // Votes deliberately do not mutate the current-playing cursor. Only a
+        // producer transport action can move a live review, which prevents a
+        // vote race from advancing the database without updating shared audio.
+        const thresholdReached = Boolean(queueSettings?.autoSkipThreshold && votes.length >= queueSettings.autoSkipThreshold && queueSettings.currentPlayingId === input.submissionId);
+        return { success: true as const, votes: votes.length, limit: voteLimit, dailyVotesUsed: unlimited ? 0 : dailyVotes.length + 1, dailyVotesRemaining: getDailySkipVotesRemaining(dailyVotes.length + 1, unlimited), sessionId: session.id, reviewPlusActive, unlimited, resetsAt: end, autoAdvanced: false, thresholdReached };
       }),
 
     // Get fire/trash counts for a submissionn
@@ -1588,23 +1555,9 @@ export const appRouter = router({
           eq(reviewSkipVotes.musicReviewSessionId, session.id),
           eq(reviewSkipVotes.submissionId, input.submissionId),
         ));
-        const { queueState: queueStateTable } = await import("../drizzle/schema");
-        const [queueSettings] = await db.select().from(queueStateTable).limit(1);
-        let autoAdvanced = false;
-        if (queueSettings?.autoSkipThreshold && votes.length >= queueSettings.autoSkipThreshold && queueSettings.currentPlayingId === input.submissionId) {
-          await completeReviewSubmission(input.submissionId, { skippedByVote: true });
-          const [nextTrack] = await db.select({ id: reviewSubmissionsTable.id }).from(reviewSubmissionsTable)
-            .where(and(eq(reviewSubmissionsTable.status, "pending"), ne(reviewSubmissionsTable.id, input.submissionId)))
-            .orderBy(asc(reviewSubmissionsTable.position)).limit(1);
-          if (nextTrack) {
-            await db.update(reviewSubmissionsTable).set({ status: "playing" }).where(eq(reviewSubmissionsTable.id, nextTrack.id));
-            await db.update(queueStateTable).set({ currentPlayingId: nextTrack.id });
-          } else {
-            await db.update(queueStateTable).set({ currentPlayingId: null });
-          }
-          autoAdvanced = true;
-        }
-        return { success: true as const, votes: votes.length, autoAdvanced };
+        const [queueSettings] = await db.select().from(queueState).limit(1);
+        const thresholdReached = Boolean(queueSettings?.autoSkipThreshold && votes.length >= queueSettings.autoSkipThreshold && queueSettings.currentPlayingId === input.submissionId);
+        return { success: true as const, votes: votes.length, autoAdvanced: false, thresholdReached };
       }),
 
     // End a judge broadcast

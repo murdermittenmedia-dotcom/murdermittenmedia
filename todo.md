@@ -5147,3 +5147,12 @@
 - [x] Show a floating site notification for skip requests and a live-chat system message when a participant joins the review
 - [x] Add regression coverage and validate the revised broadcast workflow on desktop and mobile
 - [x] Publish the professional Music Review workflow update
+
+- [x] Re-audit the rejected judge panel for needless copy, confusing controls, approval friction, camera feed churn, and six-seat sizing
+- [x] Replace the current judge surface with a minimal request-status-action flow and a producer approval queue that is obvious on first use
+- [x] Harden judge broadcast recovery so feeds persist through token refreshes, reconnects, and panel membership changes without flicker
+- [x] Route all queue completion paths through one idempotent transition and surface any blocked handoff to the admin
+- [x] Finish the compact in-page admin-only operations drawer and validate it hides all controls from viewers
+- [x] Verify site-wide skip-request alert and live-chat join system notices work from authenticated realtime events
+- [x] Add focused regression coverage plus authenticated desktop and mobile acceptance checks for the final broadcast workflow
+- [x] Publish the accepted production-grade Music Review workflow

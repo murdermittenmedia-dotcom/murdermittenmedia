@@ -69,10 +69,16 @@ describe("/review 2.0 acceptance contracts", () => {
   it("uses one guarded server handoff for queue completion and emits live activity notifications", () => {
     const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     const serverSource = readFileSync(resolve(process.cwd(), "server/_core/index.ts"), "utf8");
+    const dbSource = readFileSync(resolve(process.cwd(), "server/db.ts"), "utf8");
+    const judgeBroadcastSource = readFileSync(resolve(process.cwd(), "client/src/components/JudgeLiveBroadcast.tsx"), "utf8");
     const navSource = readFileSync(resolve(process.cwd(), "client/src/components/SiteNav.tsx"), "utf8");
     expect(routerSource).toContain("completeAndAdvance");
-    expect(routerSource).toContain("stale: true");
-    expect(serverSource).toContain("setCurrentPlaying(next.id)");
+    expect(routerSource).toContain("thresholdReached");
+    expect(dbSource).toContain("completeAndAdvanceReviewQueue");
+    expect(dbSource).toContain("affectedRows");
+    expect(serverSource).toContain("completeAndAdvanceReviewQueue(completedId)");
+    expect(judgeBroadcastSource).toContain("remoteVideoTrackRef");
+    expect(judgeBroadcastSource).toContain("remoteAudioTrackRef");
     expect(serverSource).toContain("site:review_skip_requested");
     expect(serverSource).toContain("review:participant_joined");
     expect(navSource).toContain("site:review_skip_requested");

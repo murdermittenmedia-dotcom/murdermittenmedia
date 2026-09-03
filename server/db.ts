@@ -312,6 +312,46 @@ export async function completeReviewSubmission(id: number, options: { skippedByV
 }
 
 /**
+ * Claims the active queue cursor before completing a track, then selects and
+ * promotes exactly one next submission. The conditional cursor clear is the
+ * idempotency guard: a duplicate ended/cutoff event becomes a harmless stale
+ * result instead of completing a second song or leaving two songs playing.
+ */
+export async function completeAndAdvanceReviewQueue(
+  completedId: number,
+  options: { skippedByVote?: boolean } = {},
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [state] = await db.select().from(queueState).limit(1);
+  if (!state?.currentPlayingId || state.currentPlayingId !== completedId) {
+    return { stale: true as const, next: null };
+  }
+
+  const claim = await db.update(queueState)
+    .set({ currentPlayingId: null })
+    .where(and(eq(queueState.id, state.id), eq(queueState.currentPlayingId, completedId)));
+  const affectedRows = (claim as any)?.affectedRows ?? (claim as any)?.[0]?.affectedRows ?? 0;
+  if (affectedRows !== 1) return { stale: true as const, next: null };
+
+  const [current] = await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, completedId)).limit(1);
+  if (!current || current.status !== "playing") return { stale: true as const, next: null };
+
+  await completeReviewSubmission(completedId, options);
+  const [next] = await db.select().from(reviewSubmissions)
+    .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, completedId)))
+    .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt))
+    .limit(1);
+  if (!next) {
+    await setLiveReviewPlaybackState({ currentPlayingId: null, playbackState: "stopped", startedAt: null, positionMs: 0 });
+    return { stale: false as const, next: null };
+  }
+  await updateSubmissionStatus(next.id, "playing");
+  await setCurrentPlaying(next.id);
+  return { stale: false as const, next };
+}
+
+/**
  * Confirm a skip payment and reposition the submission in the queue.
  * skipType:
  *   "reentry5"  → move 5 spots up (lower position number)

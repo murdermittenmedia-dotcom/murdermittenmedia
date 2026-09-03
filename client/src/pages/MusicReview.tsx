@@ -90,7 +90,7 @@ function JudgePanelStrip({
     setPanelAudioEnabled(true);
   }, []);
   const requestLabel = seatStatus === "pending"
-    ? "Seat request sent"
+    ? "Waiting for producer"
     : seatStatus === "approved"
       ? "Join your approved seat"
       : seatStatus === "active" && !judgeBroadcast
@@ -124,8 +124,8 @@ function JudgePanelStrip({
         </div>
       </div>
 
-      {isJudge && seatStatus === "pending" && <div className="border-b border-amber-300/15 bg-amber-300/[0.045] px-4 py-2.5 text-xs text-amber-100/80">Your seat request is with the producer. Camera and microphone will open only after approval.</div>}
-      {isJudge && seatStatus === "approved" && <div className="border-b border-green-400/15 bg-green-400/[0.05] px-4 py-2.5 text-xs text-green-100/80">Your seat is approved. Select <strong>Join your approved seat</strong> to open camera and microphone.</div>}
+      {isJudge && seatStatus === "pending" && <div className="border-b border-amber-300/15 bg-amber-300/[0.045] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-100/80">Seat request sent · waiting for producer</div>}
+      {isJudge && seatStatus === "approved" && <div className="border-b border-green-400/15 bg-green-400/[0.05] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-green-100/80">Seat approved · camera and microphone ready</div>}
 
       <div className="grid grid-cols-2 gap-2 p-2 sm:gap-3 sm:p-4 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => {
@@ -135,7 +135,7 @@ function JudgePanelStrip({
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <UserRound className="mb-2 h-6 w-6 text-white/15" />
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/28">Seat {index + 1}</p>
-              <p className="mt-1 text-[10px] text-white/20">Open</p>
+              <p className="mt-1 text-[10px] text-white/20">Available</p>
             </div>
           </div>;
         })}
@@ -1538,6 +1538,7 @@ export default function MusicReview() {
   const isJudge = user?.role === "judge";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
   const panelSeat = trpc.review.getMyPanelSeat.useQuery(undefined, { enabled: isJudge, refetchInterval: isJudge ? 4_000 : false });
+  const pendingPanelSeats = trpc.review.getPanelSeatRequests.useQuery(undefined, { enabled: isAdmin, refetchInterval: isAdmin ? 4_000 : false });
   const requestPanelSeat = trpc.review.requestPanelSeat.useMutation({
     onSuccess: (result) => {
       void panelSeat.refetch();
@@ -2350,7 +2351,12 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={listenToLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Listening Live" : "Listen Live"}
             </button>}
-            {isJudge && <button type="button" onClick={() => document.getElementById("mitten-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-full border border-red-400/45 bg-red-600/15 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100 transition-colors hover:bg-red-600/25">{judgeBroadcast ? "Panel live" : panelSeat.data?.status === "approved" ? "Join approved seat" : panelSeat.data?.status === "active" ? "Reconnect to seat" : panelSeat.data?.status === "pending" ? "Seat requested" : "Request panel seat"}</button>}
+            {isJudge && <button type="button" onClick={() => {
+              const status = panelSeat.data?.status;
+              if (status === "approved" || (status === "active" && !judgeBroadcast)) { joinJudgeStage(); return; }
+              if (!status || status === "ended" || status === "error") { requestPanelSeat.mutate(); return; }
+              document.getElementById("mitten-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }} disabled={!isLive || isJoiningJudge || requestPanelSeat.isPending || startJudgeBroadcast.isPending || Boolean(judgeBroadcast)} className="rounded-full border border-red-400/45 bg-red-600/15 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100 transition-colors hover:bg-red-600/25 disabled:cursor-not-allowed disabled:opacity-45">{judgeBroadcast ? "Panel live" : panelSeat.data?.status === "approved" ? "Join panel" : panelSeat.data?.status === "active" ? "Reconnect panel" : panelSeat.data?.status === "pending" ? "Request pending" : "Request panel seat"}</button>}
           </div>
         </div>
       </div>
@@ -2363,7 +2369,7 @@ export default function MusicReview() {
         {isAdmin && (
           <section className="overflow-hidden rounded-2xl border border-red-500/30 bg-[#0b0b0b] shadow-xl shadow-black/20">
             <button type="button" onClick={() => setIsAdminPanelOpen((open) => !open)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-red-500/[0.06] sm:px-5">
-              <span className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10"><Settings className="h-4 w-4 text-red-300" /></span><span><span className="block text-xs font-bold uppercase tracking-[0.16em] text-white">Producer controls</span><span className="mt-0.5 block text-[10px] text-white/35">Only you can see or operate this session surface.</span></span></span>
+              <span className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10"><Settings className="h-4 w-4 text-red-300" /></span><span><span className="block text-xs font-bold uppercase tracking-[0.16em] text-white">Producer controls</span><span className="mt-0.5 block text-[10px] text-white/35">{(pendingPanelSeats.data ?? []).filter((seat) => seat.status === "pending").length > 0 ? `${(pendingPanelSeats.data ?? []).filter((seat) => seat.status === "pending").length} judge seat request${(pendingPanelSeats.data ?? []).filter((seat) => seat.status === "pending").length === 1 ? "" : "s"} waiting` : "Private session controls"}</span></span></span>
               {isAdminPanelOpen ? <ChevronUp className="h-4 w-4 text-red-300" /> : <ChevronDown className="h-4 w-4 text-red-300" />}
             </button>
             {isAdminPanelOpen && <div className="border-t border-white/10 p-3 sm:p-4">
