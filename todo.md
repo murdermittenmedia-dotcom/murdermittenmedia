@@ -5115,3 +5115,8 @@
 - [x] Restrict Join Mitten Panel controls to authenticated users with the judge role, excluding admin-only access
 - [x] Preserve live audio, review voting, chat, queue, panel viewer cards, and admin popout controls in the fixed layout
 - [x] Add regression coverage and verify the streamlined review layout on desktop and mobile
+
+- [x] Audit the judge entry sequence and all audience-facing panels currently rendered in the admin popout
+- [x] Make judge panel entry a clear one-action experience directly from the top of the live review page
+- [x] Restrict /admin-popout to production controls and remove audience-facing review panels from it
+- [x] Add focused regression coverage and validate judge and admin flows on desktop and mobile

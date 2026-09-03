@@ -37,17 +37,27 @@ describe("/review 2.0 acceptance contracts", () => {
     expect(REVIEW_PLUS_MONTHLY_PRICE_CENTS).toBe(2500);
   });
 
-  it("keeps judge participation inline on the fixed review page", () => {
+  it("keeps judge participation inline with a one-action judge-only entry", () => {
     const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
     const appSource = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
     expect(reviewSource).toContain("Join Mitten Panel");
+    expect(reviewSource).toContain("onClick={joinJudgeStage}");
     expect(reviewSource).toContain("JudgeLiveBroadcast");
     expect(reviewSource).toContain('id="mitten-panel"');
-    expect(reviewSource).toContain('user?.role === "judge"');
+    expect(reviewSource).toContain('const isJudge = user?.role === "judge";');
     expect(reviewSource).not.toContain("Step into the");
     expect(reviewSource).not.toContain("ReviewWorkspaceWindow");
     expect(appSource).toContain('<Redirect to="/review" />');
     expect(appSource).not.toContain('path={"/judge"} component={JudgeConsole}');
+  });
+
+  it("renders the admin popout as a controls-only surface", () => {
+    const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
+    const popoutSource = reviewSource.slice(reviewSource.indexOf("if (isAdminPopout)"), reviewSource.indexOf("\n  return (", reviewSource.indexOf("if (isAdminPopout)")));
+    expect(popoutSource).toContain("<AdminPanel");
+    expect(popoutSource).toContain("Admin access required");
+    expect(popoutSource).not.toContain("<SiteNav");
+    expect(popoutSource).not.toContain("JudgePanelStrip");
   });
 
   it("keeps Bot Chat truly off and retains a branded verdict for review history", () => {

@@ -2135,6 +2135,60 @@ export default function MusicReview() {
     return ta - tb;
   });
 
+  if (isAdminPopout) {
+    return (
+      <main className="min-h-screen bg-[#080808] p-4 text-white sm:p-6">
+        {isAdmin ? (
+          <AdminPanel
+            data={data}
+            refetch={refetch}
+            audioRoom={audioRoom}
+            videoRoom={videoRoom}
+            broadcastReviewActive={broadcastReviewActive}
+            broadcastRadioPause={broadcastRadioPause}
+            broadcastRadioResume={broadcastRadioResume}
+            broadcastRadioSeek={broadcastRadioSeek}
+            broadcastReviewPlayback={broadcastReviewPlayback}
+            broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
+            broadcastLastSong={broadcastLastSong}
+            adminMicBroadcast={adminMicBroadcast}
+            playTrack={playTrack}
+            setSelectedYouTube={setSelectedYouTube}
+            reviewedTracks={reviewedTracks}
+            triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
+            botEnabled={botEnabled}
+            setBotEnabled={(value) => { setBotEnabled(value); emitChatControls({ botEnabled: value }); saveReviewBotSettings.mutate({ botEnabled: value, botFrequency }); }}
+            botFrequency={botFrequency}
+            setBotFrequency={(value) => { setBotFrequency(value); emitChatControls({ botFrequency: value }); saveReviewBotSettings.mutate({ botEnabled, botFrequency: value }); }}
+            commentIntervalMs={commentIntervalMs}
+            setCommentIntervalMs={(value) => { setCommentIntervalMs(value); emitChatControls({ commentIntervalMs: value }); }}
+            viewerMin={viewerMin}
+            setViewerMin={setViewerMin}
+            viewerMax={viewerMax}
+            setViewerMax={setViewerMax}
+            ghostFireCount={ghostFireCount}
+            setGhostFireCount={setGhostFireCount}
+            ghostTrashCount={ghostTrashCount}
+            setGhostTrashCount={setGhostTrashCount}
+            ghostFireIntervalSec={ghostFireIntervalSec}
+            setGhostFireIntervalSec={(value) => { setGhostFireIntervalSec(value); emitChatControls({ ghostFireIntervalSec: value }); }}
+            ghostTrashIntervalSec={ghostTrashIntervalSec}
+            setGhostTrashIntervalSec={(value) => { setGhostTrashIntervalSec(value); emitChatControls({ ghostTrashIntervalSec: value }); }}
+            sentimentBias={sentimentBias}
+            setSentimentBias={(value) => { setSentimentBias(value); emitChatControls({ sentimentBias: value }); }}
+            viewerCountVisible={viewerCountVisible}
+            setViewerCountVisible={(value) => { setViewerCountVisible(value); emitChatControls({ viewerCountVisible: value }); }}
+          />
+        ) : (
+          <div className="mx-auto max-w-md rounded-2xl border border-red-500/25 bg-red-500/[0.05] p-6 text-center">
+            <p className="font-['Anton'] text-2xl uppercase">Admin access required</p>
+            <a className="mt-4 inline-flex rounded-lg border border-white/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white/70 hover:text-white" href="/review">Return to review</a>
+          </div>
+        )}
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
@@ -2172,7 +2226,7 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={enterLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Audio Ready" : "Enter Live Review"}
             </button>}
-            {user?.role === "judge" && <a href="#mitten-panel" className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-yellow-100 transition-colors hover:bg-yellow-300/20">Join Mitten Panel</a>}
+            {isJudge && <button type="button" onClick={joinJudgeStage} disabled={!isLive || isJoiningJudge || startJudgeBroadcast.isPending || Boolean(judgeBroadcast)} className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-yellow-100 transition-colors hover:bg-yellow-300/20 disabled:cursor-not-allowed disabled:opacity-45">{judgeBroadcast ? "Panel is live" : isJoiningJudge || startJudgeBroadcast.isPending ? "Opening panel…" : isLive ? "Join Mitten Panel" : "Panel opens when live"}</button>}
           </div>
         </div>
       </div>
@@ -2192,50 +2246,6 @@ export default function MusicReview() {
               📺 Open Admin Panel
             </button>
           </div>
-        )}
-
-        {/* The pop-out uses the same tested control board in its own window. */}
-        {isAdmin && isAdminPopout && (
-            <AdminPanel
-            data={data}
-            refetch={refetch}
-            audioRoom={audioRoom}
-            videoRoom={videoRoom}
-            broadcastReviewActive={broadcastReviewActive}
-            broadcastRadioPause={broadcastRadioPause}
-            broadcastRadioResume={broadcastRadioResume}
-            broadcastRadioSeek={broadcastRadioSeek}
-            broadcastReviewPlayback={broadcastReviewPlayback}
-            broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
-            broadcastLastSong={broadcastLastSong}
-            adminMicBroadcast={adminMicBroadcast}
-            playTrack={playTrack}
-            setSelectedYouTube={setSelectedYouTube}
-            reviewedTracks={reviewedTracks}
-            triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
-            botEnabled={botEnabled}
-            setBotEnabled={(v) => { setBotEnabled(v); emitChatControls({ botEnabled: v }); saveReviewBotSettings.mutate({ botEnabled: v, botFrequency }); }}
-            botFrequency={botFrequency}
-            setBotFrequency={(v) => { setBotFrequency(v); emitChatControls({ botFrequency: v }); saveReviewBotSettings.mutate({ botEnabled, botFrequency: v }); }}
-            commentIntervalMs={commentIntervalMs}
-            setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); }}
-            viewerMin={viewerMin}
-            setViewerMin={setViewerMin}
-            viewerMax={viewerMax}
-            setViewerMax={setViewerMax}
-            ghostFireCount={ghostFireCount}
-            setGhostFireCount={setGhostFireCount}
-            ghostTrashCount={ghostTrashCount}
-            setGhostTrashCount={setGhostTrashCount}
-            ghostFireIntervalSec={ghostFireIntervalSec}
-            setGhostFireIntervalSec={(v) => { setGhostFireIntervalSec(v); emitChatControls({ ghostFireIntervalSec: v }); }}
-            ghostTrashIntervalSec={ghostTrashIntervalSec}
-            setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
-            sentimentBias={sentimentBias}
-            setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
-            viewerCountVisible={viewerCountVisible}
-            setViewerCountVisible={(v) => { setViewerCountVisible(v); emitChatControls({ viewerCountVisible: v }); }}
-            />
         )}
 
         {/* ── FLOATING ADMIN PANEL (DISABLED - use new window instead) ─────────────────────── */}
