@@ -406,6 +406,48 @@ export async function setCurrentPlaying(submissionId: number | null) {
   }
 }
 
+export type LiveReviewPlaybackState = "playing" | "paused" | "stopped";
+
+/**
+ * Persist the authoritative Music Review transport state. The socket layer owns
+ * the transport clock; this row lets it survive a process restart or brief
+ * connection hiccup and lets late joiners calculate the same playback position.
+ */
+export async function setLiveReviewPlaybackState(input: {
+  currentPlayingId: number | null;
+  playbackState: LiveReviewPlaybackState;
+  startedAt: number | null;
+  positionMs: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select({ id: queueState.id, livePlaybackRevision: queueState.livePlaybackRevision }).from(queueState).limit(1);
+  const values = {
+    currentPlayingId: input.currentPlayingId,
+    livePlaybackState: input.playbackState,
+    livePlaybackStartedAt: input.startedAt,
+    livePlaybackPositionMs: Math.max(0, Math.round(input.positionMs)),
+    livePlaybackRevision: (existing[0]?.livePlaybackRevision ?? 0) + 1,
+  };
+  if (existing.length === 0) {
+    await db.insert(queueState).values({ isLive: true, ...values });
+  } else {
+    await db.update(queueState).set(values).where(eq(queueState.id, existing[0].id));
+  }
+}
+
+/** Recover the persisted transport record together with its active submission. */
+export async function getLiveReviewPlaybackState() {
+  const db = await getDb();
+  if (!db) return null;
+  const [state] = await db.select().from(queueState).limit(1);
+  if (!state) return null;
+  const [submission] = state.currentPlayingId
+    ? await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, state.currentPlayingId)).limit(1)
+    : [];
+  return { state, submission: submission ?? null };
+}
+
 export async function setLiveStatus(isLive: boolean, message?: string, streamUrl?: string) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

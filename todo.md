@@ -5124,3 +5124,10 @@
 - [x] Audit the current Enter Live Review action and active stream playback fallback paths
 - [x] Rename the audience action to Listen Live and connect it directly to the active live audio feed in one click
 - [x] Add regression coverage and validate the renamed live-listening interaction on desktop and mobile
+
+- [x] Audit existing Music Review playback state, socket events, persistence, and listener synchronization paths
+- [x] Make the server-held playback track, transport state, and precise timestamp the authoritative live-review session
+- [x] Synchronize admin, judges, viewers, and queued artists to late-join positions with quiet drift correction
+- [x] Route admin play, pause, resume, restart, skip, and next actions through authoritative broadcast updates
+- [x] Preserve the existing UI and unrelated review functionality while implementing the new synchronization flow
+- [x] Implement and stop without running tests or playback simulations, as specifically requested

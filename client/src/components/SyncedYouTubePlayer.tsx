@@ -113,6 +113,10 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
   const socketRef = useRef<Socket | null>(null);
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [unlocked, setUnlocked] = useState(isAdmin); // admin auto-plays, viewers need tap
+  const unlockedRef = useRef(unlocked);
+  unlockedRef.current = unlocked;
+  const listenRequestedRef = useRef(false);
+  const serverPausedRef = useRef(false);
   const [playerReady, setPlayerReady] = useState(false);
   const submissionIdRef = useRef(submissionId);
   submissionIdRef.current = submissionId;
@@ -131,52 +135,37 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
       query: { room: "global" },
     });
     socketRef.current = socket;
+    const requestAuthoritativeState = () => socket.emit("radio:get_state");
+    socket.on("connect", requestAuthoritativeState);
+    const driftCorrectionTimer = window.setInterval(requestAuthoritativeState, 4_000);
 
-    if (!isAdmin) {
-      // Request current radio state for late-joiner YouTube timestamp
-      socket.on("connect", () => {
-        socket.emit("radio:get_state");
-      });
+    socket.on("radio:state", (data: { submissionId: number | null; currentTime: number; pausedAt: number | null } | null) => {
+      if (!data || data.submissionId !== submissionIdRef.current) return;
+      const syncedTime = Math.max(0, data.currentTime);
+      serverPausedRef.current = data.pausedAt !== null;
+      latestTickRef.current = { currentTime: syncedTime, updatedAt: Date.now() };
+      const player = playerRef.current;
+      if (!player) return;
+      if (Math.abs(player.getCurrentTime() - syncedTime) > 1.25) player.seekTo(syncedTime, true);
+      if (serverPausedRef.current) player.pauseVideo();
+      else if (unlockedRef.current) player.playVideo();
+    });
 
-      // Late-joiner: get initial YouTube position from server state
-      socket.on("radio:state", (data: { submissionId: number | null; ytCurrentTime: number | null; ytUpdatedAt: number | null; ytState: number | null } | null) => {
-        if (!data || data.submissionId !== submissionIdRef.current) return;
-        if (data.ytCurrentTime != null && data.ytUpdatedAt != null) {
-          const syncedTime = data.ytCurrentTime + (Date.now() - data.ytUpdatedAt) / 1000;
-          latestTickRef.current = { currentTime: syncedTime, updatedAt: Date.now() };
-          // If player is already ready, seek immediately
-          const player = playerRef.current;
-          if (player && syncedTime > 2) {
-            player.seekTo(syncedTime, true);
-          }
-        }
-      });
-
-      // Viewer: listen for youtube:tick and seek to synced position
-      socket.on("youtube:tick", (data: { submissionId: number; currentTime: number; state: number; updatedAt: number }) => {
-        if (data.submissionId !== submissionIdRef.current) return;
-        const syncedTime = data.currentTime + (Date.now() - data.updatedAt) / 1000;
-        latestTickRef.current = { currentTime: syncedTime, updatedAt: Date.now() };
-        const player = playerRef.current;
-        if (!player) return;
-        // Calculate synced position accounting for network latency
-        const playerTime = player.getCurrentTime();
-        const drift = Math.abs(syncedTime - playerTime);
-        // Only seek if drift > 3s to avoid constant seeking
-        if (drift > 3) {
-          player.seekTo(syncedTime, true);
-        }
-        // Sync play/pause state
-        const playerState = player.getPlayerState();
-        if (data.state === 1 && playerState !== 1) {
-          player.playVideo();
-        } else if (data.state === 2 && playerState === 1) {
-          player.pauseVideo();
-        }
-      });
-    }
+    // Server-relayed admin clock update for all viewer/player instances.
+    socket.on("youtube:tick", (data: { submissionId: number; currentTime: number; state: number; updatedAt: number }) => {
+      if (data.submissionId !== submissionIdRef.current) return;
+      const syncedTime = data.currentTime + (Date.now() - data.updatedAt) / 1000;
+      serverPausedRef.current = data.state === 2;
+      latestTickRef.current = { currentTime: syncedTime, updatedAt: Date.now() };
+      const player = playerRef.current;
+      if (!player || isAdminRef.current) return;
+      if (Math.abs(syncedTime - player.getCurrentTime()) > 1.25) player.seekTo(syncedTime, true);
+      if (data.state === 1 && player.getPlayerState() !== 1 && unlockedRef.current) player.playVideo();
+      else if (data.state === 2 && player.getPlayerState() === 1) player.pauseVideo();
+    });
 
     return () => {
+      if (driftCorrectionTimer !== null) window.clearInterval(driftCorrectionTimer);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -211,7 +200,7 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
               // Admin: start ticking every 2s
               tickIntervalRef.current = setInterval(() => {
                 const p = playerRef.current;
-                if (!p || !socketRef.current?.connected) return;
+                if (!p || !socketRef.current?.connected || serverPausedRef.current) return;
                 const ct = p.getCurrentTime();
                 const state = p.getPlayerState();
                 socketRef.current.emit("youtube:tick", {
@@ -231,6 +220,9 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
                   e.target.seekTo(syncedTime, true);
                 }
               }
+              if (listenRequestedRef.current && !serverPausedRef.current) {
+                e.target.playVideo();
+              }
             }
           },
           onStateChange: (e) => {
@@ -239,7 +231,8 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
               onEndedRef.current?.();
               return;
             }
-            // Emit tick immediately on state change so viewers sync faster
+            // The admin does not invent its own clock after a server pause; any
+            // explicit player state change is published to the server for all clients.
             if (socketRef.current?.connected) {
               socketRef.current.emit("youtube:tick", {
                 submissionId: submissionIdRef.current,
@@ -271,20 +264,22 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
   }, [videoId, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUnlock = useCallback(() => {
+    listenRequestedRef.current = true;
+    unlockedRef.current = true;
     setUnlocked(true);
-    // Play via IFrame API
-    setTimeout(() => {
-      if (playerRef.current) {
-        playerRef.current.playVideo();
-        // Seek to latest tick if available
-        if (initialCurrentTime != null && initialUpdatedAt != null) {
-          const syncedTime = initialCurrentTime + (Date.now() - initialUpdatedAt) / 1000;
-          if (syncedTime > 2) {
-            playerRef.current.seekTo(syncedTime, true);
-          }
-        }
+    // Called synchronously from Listen Live / the player overlay, preserving the
+    // browser user gesture while jumping straight to the server's latest clock.
+    if (playerRef.current) {
+      const latest = latestTickRef.current?.currentTime;
+      const fallback = initialCurrentTime != null && initialUpdatedAt != null
+        ? initialCurrentTime + (Date.now() - initialUpdatedAt) / 1000
+        : 0;
+      const syncedTime = latest ?? fallback;
+      if (syncedTime > 0.15) {
+        playerRef.current.seekTo(syncedTime, true);
       }
-    }, 300);
+      playerRef.current.playVideo();
+    }
   }, [initialCurrentTime, initialUpdatedAt]);
 
   useImperativeHandle(ref, () => ({ listenLive: handleUnlock }), [handleUnlock]);

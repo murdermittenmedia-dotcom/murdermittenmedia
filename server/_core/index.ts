@@ -13,7 +13,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages, reviewPlusMemberships } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
-import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, setCurrentPlaying } from "../db";
+import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, setCurrentPlaying, getLiveReviewPlaybackState, setLiveReviewPlaybackState } from "../db";
 import { registerStripeWebhook } from "../stripe-webhook";
 import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
 import { shouldProcessReviewTrackEnd } from "../../shared/review-radio-transition";
@@ -83,6 +83,76 @@ let radioState: RadioState = {
 // Track the last played song so admin can put it back on the deck
 let lastRadioState: RadioState | null = null;
 let reviewTrackTransitionInFlight: number | null = null;
+
+const emptyRadioState = (): RadioState => ({
+  submissionId: null,
+  artistName: "",
+  songTitle: "",
+  audioUrl: null,
+  youtubeUrl: null,
+  submissionType: "file",
+  startedAt: null,
+  pausedAt: null,
+  fileKey: null,
+  ytCurrentTime: null,
+  ytState: null,
+  ytUpdatedAt: null,
+});
+
+function getAuthoritativePlaybackPositionMs(now = Date.now()) {
+  if (!radioState.submissionId) return 0;
+  if (radioState.pausedAt !== null) return Math.max(0, Math.round(radioState.pausedAt * 1000));
+  if (!radioState.startedAt) return 0;
+  return Math.max(0, now - radioState.startedAt);
+}
+
+async function persistAuthoritativeRadioState() {
+  const playbackState = !radioState.submissionId
+    ? "stopped"
+    : radioState.pausedAt !== null
+      ? "paused"
+      : "playing";
+  await setLiveReviewPlaybackState({
+    currentPlayingId: radioState.submissionId,
+    playbackState,
+    startedAt: radioState.startedAt,
+    positionMs: getAuthoritativePlaybackPositionMs(),
+  });
+}
+
+async function hydrateAuthoritativeRadioState() {
+  const persisted = await getLiveReviewPlaybackState();
+  const state = persisted?.state;
+  const submission = persisted?.submission;
+  if (!state?.currentPlayingId || !submission || state.livePlaybackState === "stopped") {
+    radioState = emptyRadioState();
+    return;
+  }
+
+  const fileKey = submission.fileUrl?.replace(/^\/manus-storage\//, "") ?? submission.fileKey ?? null;
+  let audioUrl: string | null = null;
+  if (submission.submissionType !== "youtube" && fileKey) {
+    try { audioUrl = await storageGetSignedUrl(fileKey); } catch { audioUrl = submission.fileUrl ?? null; }
+  }
+  const storedPositionMs = state.livePlaybackPositionMs ?? 0;
+  const startedAt = state.livePlaybackState === "playing"
+    ? (state.livePlaybackStartedAt ?? Date.now() - storedPositionMs)
+    : state.livePlaybackStartedAt;
+  radioState = {
+    submissionId: submission.id,
+    artistName: submission.artistName,
+    songTitle: submission.songTitle,
+    audioUrl,
+    youtubeUrl: submission.youtubeUrl,
+    submissionType: submission.submissionType,
+    startedAt,
+    pausedAt: state.livePlaybackState === "paused" ? storedPositionMs / 1000 : null,
+    fileKey,
+    ytCurrentTime: null,
+    ytState: null,
+    ytUpdatedAt: null,
+  };
+}
 
 // ─── Music Wars Radio State ────────────────────────────────────────────────────
 type WarsRadioTrack = {
@@ -156,6 +226,23 @@ async function startServer() {
   (app as any).io = io;
   setActivityBroadcaster((event) => io.emit("activity:new_event", event));
 
+  try {
+    await hydrateAuthoritativeRadioState();
+  } catch (error) {
+    console.error("[radio] Unable to restore the saved Music Review transport state:", error);
+  }
+
+  const broadcastAuthoritativeRadioState = () => {
+    if (!radioState.submissionId) {
+      io.emit("radio:state", null);
+      return;
+    }
+    io.emit("radio:state", {
+      ...radioState,
+      currentTime: getAuthoritativePlaybackPositionMs() / 1000,
+    });
+  };
+
   const broadcastPresence = () => io.emit("presence:count", io.engine.clientsCount);
 
   io.on("connection", (socket) => {
@@ -166,6 +253,10 @@ async function startServer() {
     if (validRooms.includes(room)) {
       socket.join(room);
     }
+    const isAuthoritativeReviewAdmin = async () => {
+      const user = await sdk.authenticateRequest(socket.request as any).catch(() => null);
+      return user?.role === "admin";
+    };
 
     // ── Chat ──────────────────────────────────────────────────
     socket.on("chat:send", async (data: {
@@ -457,9 +548,11 @@ async function startServer() {
       youtubeUrl?: string | null;
       submissionType?: string;
     }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
       if (data.submissionId === null) {
         // Admin cleared the deck — also reset any playing songs in DB
-        radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null, ytCurrentTime: null, ytState: null, ytUpdatedAt: null };
+        radioState = emptyRadioState();
+        await persistAuthoritativeRadioState();
         try { await setCurrentPlaying(null); } catch (e) { /* non-fatal */ }
         io.emit("radio:stopped");
         io.emit("live:now_playing", null);
@@ -510,6 +603,9 @@ async function startServer() {
         ytUpdatedAt: null,
       };
 
+      await persistAuthoritativeRadioState();
+      broadcastAuthoritativeRadioState();
+
       const broadcast = { ...radioState };
       // Broadcast to music_review room (for the review page UI)
       io.to("music_review").emit("radio:playing", broadcast);
@@ -526,26 +622,39 @@ async function startServer() {
     });
 
     // Admin pause/resume/seek — broadcast to all
-    socket.on("radio:pause", (data: { currentTime: number }) => {
+    socket.on("radio:pause", async (data: { currentTime: number }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
+      if (!radioState.submissionId) return;
       radioState.pausedAt = data.currentTime;
+      await persistAuthoritativeRadioState();
+      broadcastAuthoritativeRadioState();
       io.emit("radio:paused", { pausedAt: data.currentTime });
     });
 
-    socket.on("radio:resume", (data: { currentTime: number }) => {
+    socket.on("radio:resume", async (data: { currentTime: number }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
+      if (!radioState.submissionId) return;
       // Recalculate startedAt so late joiners can sync
       radioState.startedAt = Date.now() - data.currentTime * 1000;
       radioState.pausedAt = null;
+      await persistAuthoritativeRadioState();
+      broadcastAuthoritativeRadioState();
       io.emit("radio:resumed", { startedAt: radioState.startedAt });
     });
 
-    socket.on("radio:seek", (data: { currentTime: number }) => {
+    socket.on("radio:seek", async (data: { currentTime: number }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
+      if (!radioState.submissionId) return;
       radioState.startedAt = Date.now() - data.currentTime * 1000;
       radioState.pausedAt = radioState.pausedAt !== null ? data.currentTime : null;
+      await persistAuthoritativeRadioState();
+      broadcastAuthoritativeRadioState();
       io.emit("radio:seeked", { currentTime: data.currentTime, startedAt: radioState.startedAt });
     });
 
     // Track ended — auto-advance to next pending track in queue
     socket.on("radio:track_ended", async (data?: { submissionId?: number }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
       const completedId = radioState.submissionId;
       if (completedId === null) return;
       if (!shouldProcessReviewTrackEnd(completedId, data?.submissionId, reviewTrackTransitionInFlight)) return;
@@ -587,6 +696,8 @@ async function startServer() {
             ytState: null,
             ytUpdatedAt: null,
           };
+          await persistAuthoritativeRadioState();
+          broadcastAuthoritativeRadioState();
           io.to("music_review").emit("radio:playing", { ...radioState });
           io.emit("live:now_playing", {
             submissionId: radioState.submissionId,
@@ -602,7 +713,9 @@ async function startServer() {
           console.log("[radio:track_ended] Auto-advanced to:", next.songTitle);
         } else {
           // No more tracks — stop radio
-          radioState = { submissionId: null, artistName: "", songTitle: "", audioUrl: null, youtubeUrl: null, submissionType: "file", startedAt: null, pausedAt: null, fileKey: null, ytCurrentTime: null, ytState: null, ytUpdatedAt: null };
+          radioState = emptyRadioState();
+          await persistAuthoritativeRadioState();
+          broadcastAuthoritativeRadioState();
           io.emit("radio:stopped");
           io.emit("live:now_playing", null);
           io.to("music_review").emit("review:queue_updated");
@@ -616,12 +729,22 @@ async function startServer() {
     });
 
     // Admin broadcasts YouTube player currentTime every ~2s for viewer sync
-    socket.on("youtube:tick", (data: { submissionId: number; currentTime: number; state: number }) => {
+    socket.on("youtube:tick", async (data: { submissionId: number; currentTime: number; state: number }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
       // Only accept ticks for the currently playing submission
       if (data.submissionId !== radioState.submissionId) return;
       radioState.ytCurrentTime = data.currentTime;
       radioState.ytState = data.state;
       radioState.ytUpdatedAt = Date.now();
+      // The server owns the durable transport clock even for embedded YouTube playback.
+      if (data.state === 2) {
+        radioState.pausedAt = data.currentTime;
+      } else if (data.state === 1) {
+        radioState.startedAt = radioState.ytUpdatedAt - data.currentTime * 1000;
+        radioState.pausedAt = null;
+      }
+      await persistAuthoritativeRadioState();
+      broadcastAuthoritativeRadioState();
       // Broadcast to all viewers (excluding the admin sender)
       socket.broadcast.emit("youtube:tick", {
         submissionId: data.submissionId,
@@ -632,18 +755,16 @@ async function startServer() {
     });
 
     // Late-joining viewer requests current radio state
-    socket.on("radio:get_state", () => {
+    socket.on("radio:get_state", async () => {
+      if (!radioState.submissionId) {
+        try { await hydrateAuthoritativeRadioState(); } catch (error) { console.error("[radio] Failed to hydrate state for late listener:", error); }
+      }
       if (!radioState.submissionId) {
         socket.emit("radio:state", null);
         return;
       }
       // Calculate current position
-      let currentTime = 0;
-      if (radioState.pausedAt !== null) {
-        currentTime = radioState.pausedAt;
-      } else if (radioState.startedAt) {
-        currentTime = (Date.now() - radioState.startedAt) / 1000;
-      }
+      const currentTime = getAuthoritativePlaybackPositionMs() / 1000;
       // Include YouTube timestamp for late joiners
       socket.emit("radio:state", {
         ...radioState,
@@ -656,6 +777,7 @@ async function startServer() {
 
     // Admin: put last played song back on the deck
     socket.on("radio:last_song", async () => {
+      if (!await isAuthoritativeReviewAdmin()) return;
       if (!lastRadioState || !lastRadioState.submissionId) {
         socket.emit("radio:error", { message: "No previous song to restore" });
         return;

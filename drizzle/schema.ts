@@ -1,4 +1,4 @@
-import { boolean, date, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, date, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -100,6 +100,12 @@ export const queueState = mysqlTable("queue_state", {
   isLive: boolean("isLive").default(false).notNull(),
   liveMessage: varchar("liveMessage", { length: 256 }),
   streamUrl: varchar("streamUrl", { length: 512 }),  // YouTube live URL or direct stream URL set by admin
+  // Server-authoritative transport state. Timestamps are UTC epoch milliseconds;
+  // clients derive their audible position from these values rather than a local timer.
+  livePlaybackState: varchar("livePlaybackState", { length: 16 }).default("stopped").notNull(),
+  livePlaybackStartedAt: bigint("livePlaybackStartedAt", { mode: "number" }),
+  livePlaybackPositionMs: int("livePlaybackPositionMs").default(0).notNull(),
+  livePlaybackRevision: int("livePlaybackRevision").default(0).notNull(),
   // Playback mode: '90sec' = cap free submissions at 90s, 'full' = play full songs, 'paid_only' = paid submissions only
   playbackMode: mysqlEnum("playbackMode", ["90sec", "full", "paid_only"]).default("90sec").notNull(),
   // Pricing (in cents) — 0 means free/disabled

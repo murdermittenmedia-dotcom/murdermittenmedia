@@ -53,7 +53,7 @@ function isOurStream(track: { isStream?: boolean; sourcePage?: string } | null):
 }
 
 export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
-  const { play, playWithSeek, pause, resume, stop, seek, track, onEnded } = useAudioPlayer();
+  const { play, playWithSeek, pause, resume, stop, seek, track, getAudioElement } = useAudioPlayer();
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
   // Keep refs so socket callbacks always see latest values without re-subscribing
@@ -64,6 +64,7 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   const stopRef = useRef(stop);
   const seekRef = useRef(seek);
   const trackRef = useRef(track);
+  const getAudioElementRef = useRef(getAudioElement);
   const socketRef = useRef<Socket | null>(null);
   playRef.current = play;
   playWithSeekRef.current = playWithSeek;
@@ -72,6 +73,7 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   stopRef.current = stop;
   seekRef.current = seek;
   trackRef.current = track;
+  getAudioElementRef.current = getAudioElement;
 
   // NOTE: We intentionally do NOT emit radio:track_ended here.
   // Auto-advance is handled exclusively by AdminPanel's onEnded callback via tRPC mutations.
@@ -86,34 +88,41 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
     });
     socketRef.current = socket;
 
-    // Request current radio state when we connect (for late joiners)
-    socket.on("connect", () => {
-      socket.emit("radio:get_state");
-    });
+    const synchronizeAuthoritativeState = (data: (LiveNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
+      if (!data || (!data.audioUrl && !data.youtubeUrl) || data.submissionType === "youtube" || isAdminRef.current) return;
+      const liveTrack = buildTrack(data);
+      const expectedPosition = Math.max(0, data.currentTime);
+      const currentTrack = trackRef.current;
+      const currentAudio = getAudioElementRef.current();
+      const isSameAuthoritativeTrack = isOurStream(currentTrack) && currentTrack?.submissionId === data.submissionId;
 
-    // Server sends current state to late joiners
-    socket.on("radio:state", (data: (LiveNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
-      // Support both file and YouTube submissions
-      if (!data || (!data.audioUrl && !data.youtubeUrl)) return;
-      // YouTube media cannot be played through an HTMLAudioElement. The
-      // synchronized player on /review is the single playback surface for
-      // those submissions, which prevents an empty/double FloatingPlayer.
-      if (data.submissionType === "youtube") return;
-      // The Music Review admin controls the local player directly. Never let the
-      // global listener create a second competing player on the admin page.
-      if (isAdminRef.current) return;
-      const t = buildTrack(data);
-      // Use playWithSeek for file tracks — seeks to admin's position on canplay (reliable)
-      if (data.submissionType !== "youtube" && data.currentTime > 1) {
-        playWithSeekRef.current(t, data.currentTime);
-        // If admin was paused, pause after a short delay to let the seek settle
-        if (data.pausedAt !== null) {
-          setTimeout(() => pauseRef.current(), 500);
-        }
-      } else {
-        playRef.current(t);
+      if (!isSameAuthoritativeTrack) {
+        if (expectedPosition > 0.15) playWithSeekRef.current(liveTrack, expectedPosition);
+        else playRef.current(liveTrack);
+        if (data.pausedAt !== null) setTimeout(() => pauseRef.current(), 250);
+        return;
       }
-    });
+
+      if (data.pausedAt !== null) {
+        if (currentAudio && !currentAudio.paused) pauseRef.current();
+        return;
+      }
+
+      if (currentAudio?.paused) resumeRef.current();
+      // Correct meaningful server-clock drift without repeatedly restarting audio.
+      if (currentAudio && Math.abs(currentAudio.currentTime - expectedPosition) > 1.25) {
+        seekRef.current(expectedPosition);
+      }
+    };
+
+    // Refresh the server-authoritative transport state after reconnects and at
+    // a low frequency so a transient browser hiccup never creates a new clock.
+    const requestAuthoritativeState = () => socket.emit("radio:get_state");
+    socket.on("connect", requestAuthoritativeState);
+    const driftCorrectionTimer = window.setInterval(requestAuthoritativeState, 4_000);
+
+    // Server sends the authoritative state to late joiners and drift checks.
+    socket.on("radio:state", synchronizeAuthoritativeState);
 
     // Admin loaded a new track — play it on all clients
     socket.on("live:now_playing", (data: LiveNowPlayingEvent | null) => {
@@ -188,6 +197,7 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
 
     return () => {
       socketRef.current = null;
+      window.clearInterval(driftCorrectionTimer);
       socket.disconnect();
     };
   }, []); // mount once

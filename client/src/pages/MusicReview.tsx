@@ -268,6 +268,10 @@ function AdminPanel({
   const pendingSkips: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.skippedLine && !s.skipPaymentConfirmed && s.status === "pending") ?? [];
 
   const handleGoLive = () => {
+    if (isLive) {
+      audioPlayer.stop();
+      broadcastReviewActive({ submissionId: null });
+    }
     setLive.mutate({ isLive: !isLive, message: liveMsg || undefined, streamUrl: streamUrlInput || undefined });
     toast.success(isLive ? "Stream ended" : "You're now live!");
   };

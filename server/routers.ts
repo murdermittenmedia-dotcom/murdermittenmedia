@@ -23,7 +23,7 @@ import { normalizeStudioInput } from "./studio-input";
 import { buildWheelCatalogueSong } from "../shared/wheel-catalogue";
 import {
   getQueueSubmissions, getTodaySubmissionCount, getReviewedSubmissions, addSubmission, updateSubmissionStatus, completeReviewSubmission,
-  confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus,
+  confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus, setLiveReviewPlaybackState,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
   updateWheelEntryStatus, confirmWheelPayment, getUserWheelEntries,
@@ -1005,6 +1005,13 @@ export const appRouter = router({
               console.error("[queue.setLive] Error ending session:", err);
               // Don't fail the entire mutation if session end fails
             }
+            await setLiveReviewPlaybackState({
+              currentPlayingId: null,
+              playbackState: "stopped",
+              startedAt: null,
+              positionMs: 0,
+            });
+            await setCurrentPlaying(null);
           }
           await setLiveStatus(input.isLive, input.message, input.streamUrl);
           // Notify all users when going live
