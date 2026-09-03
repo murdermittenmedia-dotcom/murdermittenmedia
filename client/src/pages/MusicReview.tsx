@@ -93,11 +93,14 @@ function JudgePanelStrip({
     ? "Seat request sent"
     : seatStatus === "approved"
       ? "Join your approved seat"
-      : judgeBroadcast || seatStatus === "active"
-        ? "Your panel feed is live"
-        : "Request a panel seat";
-  const requestAction = seatStatus === "approved" ? onJoinSeat : onRequestSeat;
-  const requestDisabled = !isReviewLive || isRequestingSeat || isJoiningSeat || seatStatus === "pending" || !!judgeBroadcast || seatStatus === "active";
+      : seatStatus === "active" && !judgeBroadcast
+        ? "Reconnect to your seat"
+        : judgeBroadcast || seatStatus === "active"
+          ? "Your panel feed is live"
+          : "Request a panel seat";
+  const canJoinApprovedSeat = seatStatus === "approved" || (seatStatus === "active" && !judgeBroadcast);
+  const requestAction = canJoinApprovedSeat ? onJoinSeat : onRequestSeat;
+  const requestDisabled = !isReviewLive || isRequestingSeat || isJoiningSeat || seatStatus === "pending" || !!judgeBroadcast;
 
   return (
     <section id="mitten-panel" className="overflow-hidden rounded-2xl border border-red-500/30 bg-[#090909] shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
@@ -2347,7 +2350,7 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={listenToLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Listening Live" : "Listen Live"}
             </button>}
-            {isJudge && <button type="button" onClick={() => document.getElementById("mitten-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-full border border-red-400/45 bg-red-600/15 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100 transition-colors hover:bg-red-600/25">{judgeBroadcast ? "Panel live" : panelSeat.data?.status === "approved" ? "Join approved seat" : panelSeat.data?.status === "pending" ? "Seat requested" : "Request panel seat"}</button>}
+            {isJudge && <button type="button" onClick={() => document.getElementById("mitten-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-full border border-red-400/45 bg-red-600/15 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100 transition-colors hover:bg-red-600/25">{judgeBroadcast ? "Panel live" : panelSeat.data?.status === "approved" ? "Join approved seat" : panelSeat.data?.status === "active" ? "Reconnect to seat" : panelSeat.data?.status === "pending" ? "Seat requested" : "Request panel seat"}</button>}
           </div>
         </div>
       </div>
