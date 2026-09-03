@@ -358,6 +358,10 @@ function AdminPanel({
     if (completionInFlightRef.current === submissionId) return false;
     completionInFlightRef.current = submissionId;
     setSelectedYouTube(null);
+    // Clear the source immediately at the cutoff so a slow status mutation
+    // cannot leave the previous song audible during the handoff.
+    audioPlayer.stop();
+    broadcastReviewActive({ submissionId: null });
     updateStatus.mutate({ id: submissionId, status: "reviewed" }, {
       onSuccess: () => {
         refetch();

@@ -110,6 +110,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // Keep a ref to state for use in callbacks without stale closures
   const stateRef = useRef(state);
   stateRef.current = state;
+  // Delayed readiness callbacks from an old source must never revive playback.
+  const sourceGenerationRef = useRef(0);
 
   // Create the audio element once
   useEffect(() => {
@@ -141,6 +143,9 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       if (audio.src === SILENT_MP3 || audio.src.startsWith("data:")) return;
       // Fire registered onEnded callbacks
       const { track: currentTrack, playlist, playlistIndex } = stateRef.current;
+      // A source swap during the 90-second handoff can deliver a late ended
+      // event from the previous file. Do not advance the new track because of it.
+      if (currentTrack?.url && audio.src && !audio.src.startsWith(currentTrack.url.split("?")[0])) return;
       if (currentTrack) {
         endedCallbacks.forEach(cb => { try { cb(currentTrack); } catch {} });
       }
@@ -267,6 +272,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const play = useCallback((track: AudioTrack) => {
     const audio = audioRef.current;
     if (!audio) return;
+    ++sourceGenerationRef.current;
     // For YouTube tracks, just update state — FloatingPlayer renders the iframe embed
     if (track.submissionType === "youtube" || (!track.url && track.youtubeUrl)) {
       setState(s => ({ ...s, track, playlist: [track], playlistIndex: 0, isLoading: false, isPlaying: true, error: null, currentTime: 0, duration: 0 }));
@@ -458,6 +464,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const stop = useCallback(() => {
+    ++sourceGenerationRef.current;
     const audio = audioRef.current;
     if (!audio) return;
     audio.pause();
@@ -500,6 +507,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const playWithSeek = useCallback((track: AudioTrack, seekTo: number) => {
     const audio = audioRef.current;
     if (!audio) return;
+    const sourceGeneration = ++sourceGenerationRef.current;
     // For YouTube tracks — just play, no seek needed (handled by SyncedYouTubePlayer)
     if (track.submissionType === 'youtube' || (!track.url && track.youtubeUrl)) {
       setState(s => ({ ...s, track, playlist: [track], playlistIndex: 0, isLoading: false, isPlaying: true, error: null, currentTime: 0, duration: 0 }));
@@ -517,6 +525,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       }
     };
     const onReady = () => {
+      if (sourceGenerationRef.current !== sourceGeneration) return;
       audio.removeEventListener('canplay', onReady);
       doSeek();
       audio.play().catch(err => {
@@ -529,6 +538,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     audio.addEventListener('canplay', onReady, { once: true });
     // Fallback: if canplay doesn't fire within 3s, play anyway
     const fallback = setTimeout(() => {
+      if (sourceGenerationRef.current !== sourceGeneration) return;
       audio.removeEventListener('canplay', onReady);
       doSeek();
       audio.play().catch(console.error);

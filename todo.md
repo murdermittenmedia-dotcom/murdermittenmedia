@@ -5133,3 +5133,8 @@
 - [x] Implement and stop without running tests or playback simulations, as specifically requested
 
 - [x] Make the admin stop-stream control unmistakable and reliably end any active live stream and shared audio session
+
+- [x] Audit 90-second cutoff, audio ended events, server track transitions, and stale live-player cleanup
+- [x] Ensure the 90-second cutoff emits one authoritative transition and replaces or stops every listener player
+- [x] Prevent late ended events from the prior song from reloading or retaining stale playback state
+- [x] Publish the quick 90-second mode stale-player fix
