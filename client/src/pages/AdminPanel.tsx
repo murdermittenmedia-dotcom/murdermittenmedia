@@ -835,7 +835,6 @@ function SiteSettingsTab() {
   });
 
   const SETTING_LABELS: Record<string, { label: string; description: string; type: "text" | "textarea" | "toggle" }> = {
-    site_announcement: { label: "Site Announcement Banner", description: "Shown at the top of every page. Leave empty to hide.", type: "textarea" },
     submission_open: { label: "Submissions Open", description: "Set to 'true' or 'false' to open/close the submission queue.", type: "text" },
     wars_open: { label: "Music Wars Open", description: "Set to 'true' or 'false' to open/close wheel entry submissions.", type: "text" },
     promo_skip_price: { label: "Skip-the-Line Price", description: "Display price for skip-the-line (e.g. '$10')", type: "text" },
@@ -1576,6 +1575,7 @@ export default function AdminPanel() {
     { id: "paidsubmissions", label: "Paid Reviews", icon: CreditCard, description: "Payment review queue" },
     { id: "users", label: "Members", icon: Users, description: "Accounts and roles" },
     { id: "rewards", label: "Rewards and XP", icon: Trophy, description: "Recognition and economy" },
+    { id: "notifications", label: "Site Notices", icon: Bell, description: "Publish a visitor announcement" },
     { id: "settings", label: "Content and Posts", icon: FileText, description: "Site content tools" },
     { id: "moderation", label: "Moderation", icon: Shield, description: "Reports and removals" },
     { id: "orders", label: "Orders and Payments", icon: ShoppingBag, description: "Orders and payment status" },
@@ -2105,6 +2105,8 @@ function NotificationsAdminTab() {
         <p className="text-white/40 text-sm">Search the permanent notification ledger across every user and monitor delivery state.</p>
       </div>
 
+      <SiteAnnouncementComposer />
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Permanent Storage", desc: "Notifications persist in the database until a user removes them." },
@@ -2165,6 +2167,102 @@ function NotificationsAdminTab() {
 
       <AdminBroadcastPanel />
     </div>
+  );
+}
+
+function SiteAnnouncementComposer() {
+  const utils = trpc.useUtils();
+  const { data: activeAnnouncement, isLoading } = trpc.announcements.getActive.useQuery();
+  const [form, setForm] = useState({ title: "", message: "", actionLabel: "", actionUrl: "" });
+  const [loadedPublishedAt, setLoadedPublishedAt] = useState<number | null | undefined>(undefined);
+
+  useEffect(() => {
+    const nextPublishedAt = activeAnnouncement?.publishedAt ?? null;
+    if (isLoading || loadedPublishedAt === nextPublishedAt) return;
+    setLoadedPublishedAt(nextPublishedAt);
+    setForm(activeAnnouncement ? {
+      title: activeAnnouncement.title,
+      message: activeAnnouncement.message,
+      actionLabel: activeAnnouncement.actionLabel ?? "",
+      actionUrl: activeAnnouncement.actionUrl ?? "",
+    } : { title: "", message: "", actionLabel: "", actionUrl: "" });
+  }, [activeAnnouncement, isLoading, loadedPublishedAt]);
+
+  const publish = trpc.announcements.publish.useMutation({
+    onSuccess: (announcement) => {
+      utils.announcements.getActive.setData(undefined, announcement);
+      setLoadedPublishedAt(announcement.publishedAt);
+      toast.success("Site notification is live");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const clear = trpc.announcements.clear.useMutation({
+    onSuccess: () => {
+      utils.announcements.getActive.setData(undefined, null);
+      setLoadedPublishedAt(null);
+      setForm({ title: "", message: "", actionLabel: "", actionUrl: "" });
+      toast.success("Site notification removed");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const publishNotice = () => {
+    if (!form.title.trim() || !form.message.trim()) {
+      toast.error("Add a title and message first");
+      return;
+    }
+    publish.mutate({
+      title: form.title,
+      message: form.message,
+      actionLabel: form.actionLabel || null,
+      actionUrl: form.actionUrl || null,
+    });
+  };
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-red-500/35 bg-gradient-to-br from-red-950/30 via-[#111] to-[#090909] shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-400/15 px-5 py-4">
+        <div>
+          <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-300"><Bell className="h-3.5 w-3.5" /> Site notification</p>
+          <h3 className="mt-1 text-base font-bold text-white">Send a message to every visitor</h3>
+        </div>
+        <span className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${activeAnnouncement ? "border-green-400/30 bg-green-400/10 text-green-200" : "border-white/10 bg-white/5 text-white/35"}`}>{activeAnnouncement ? "Live" : "Offline"}</span>
+      </div>
+      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.72fr)]">
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Title</label>
+            <Input value={form.title} maxLength={96} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="What should people know?" className="border-white/10 bg-black/30 text-white placeholder:text-white/20" />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Message</label>
+            <Textarea value={form.message} maxLength={360} onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))} placeholder="Write the announcement..." rows={3} className="resize-none border-white/10 bg-black/30 text-white placeholder:text-white/20" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Button label <span className="normal-case tracking-normal text-white/25">optional</span></label>
+              <Input value={form.actionLabel} maxLength={40} onChange={(event) => setForm((current) => ({ ...current, actionLabel: event.target.value }))} placeholder="Tune in" className="border-white/10 bg-black/30 text-white placeholder:text-white/20" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Button link <span className="normal-case tracking-normal text-white/25">optional</span></label>
+              <Input value={form.actionUrl} maxLength={512} onChange={(event) => setForm((current) => ({ ...current, actionUrl: event.target.value }))} placeholder="/review or https://..." className="border-white/10 bg-black/30 text-white placeholder:text-white/20" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button type="button" onClick={publishNotice} disabled={publish.isPending} className="bg-red-600 text-white hover:bg-red-500">{publish.isPending ? "Publishing…" : activeAnnouncement ? "Update notice" : "Publish notice"}</Button>
+            {activeAnnouncement && <Button type="button" variant="outline" onClick={() => clear.mutate()} disabled={clear.isPending} className="border-white/15 text-white/60 hover:border-red-400/50 hover:text-white">{clear.isPending ? "Removing…" : "Remove notice"}</Button>}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-black/35 p-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Visitor preview</p>
+          <div className="mt-3 overflow-hidden rounded-xl border border-red-500/25 bg-[#100b0c] shadow-xl">
+            <div className="h-1 bg-gradient-to-r from-red-700 via-red-400 to-red-700" />
+            <div className="p-4"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-300">From Murder Mitten</p><p className="mt-2 text-sm font-bold text-white">{form.title || "Announcement title"}</p><p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-white/55">{form.message || "Your message will appear here for every site visitor."}</p>{form.actionUrl && <span className="mt-3 inline-flex rounded-md bg-red-600 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white">{form.actionLabel || "Open"}</span>}</div>
+          </div>
+          <p className="mt-3 text-[10px] leading-relaxed text-white/35">Publishes instantly to visitors already on the site and stays visible for new visitors until you remove it. Each visitor can dismiss it on their device.</p>
+        </div>
+      </div>
+    </section>
   );
 }
 

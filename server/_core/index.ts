@@ -19,6 +19,7 @@ import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
 import { shouldProcessReviewTrackEnd } from "../../shared/review-radio-transition";
 import { sdk } from "./sdk";
 import { and, desc, eq } from "drizzle-orm";
+import { setSiteAnnouncementBroadcaster } from "../site-announcement";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -224,6 +225,7 @@ async function startServer() {
   });
 
   (app as any).io = io;
+  setSiteAnnouncementBroadcaster((announcement) => io.emit("site:announcement", announcement));
   setActivityBroadcaster((event) => io.emit("activity:new_event", event));
 
   try {

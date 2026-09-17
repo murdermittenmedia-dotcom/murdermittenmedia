@@ -97,6 +97,7 @@ import {
   updateStreak,
 } from "./rewards";
 import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
+import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -106,6 +107,41 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx });
 });
+
+const SITE_ANNOUNCEMENT_SETTING = "site_announcement";
+
+const siteAnnouncementInput = z.object({
+  title: z.string().trim().min(1).max(96),
+  message: z.string().trim().min(1).max(360),
+  actionLabel: z.string().trim().max(40).optional().nullable(),
+  actionUrl: z.string().trim().max(512).optional().nullable(),
+});
+
+function isSafeSiteAnnouncementUrl(value: string) {
+  return /^\/(?!\/)/.test(value) || /^https?:\/\//i.test(value);
+}
+
+function parseSiteAnnouncement(raw: string | null): SiteAnnouncement | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<SiteAnnouncement>;
+    if (typeof parsed.title !== "string" || typeof parsed.message !== "string" || typeof parsed.publishedAt !== "number") {
+      return null;
+    }
+    const actionUrl = typeof parsed.actionUrl === "string" && parsed.actionUrl.trim() && isSafeSiteAnnouncementUrl(parsed.actionUrl.trim())
+      ? parsed.actionUrl.trim()
+      : null;
+    return {
+      title: parsed.title,
+      message: parsed.message,
+      actionLabel: actionUrl && typeof parsed.actionLabel === "string" && parsed.actionLabel.trim() ? parsed.actionLabel : null,
+      actionUrl,
+      publishedAt: parsed.publishedAt,
+    };
+  } catch {
+    return null;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STUDIOS ROUTER
@@ -4386,6 +4422,36 @@ export const appRouter = router({
         });
         return { success: true };
       }),
+  }),
+
+  // ─── Site Announcements ─────────────────────────────────────
+  announcements: router({
+    getActive: publicProcedure.query(async () => parseSiteAnnouncement(await getSetting(SITE_ANNOUNCEMENT_SETTING))),
+
+    publish: adminProcedure
+      .input(siteAnnouncementInput)
+      .mutation(async ({ input }) => {
+        const actionUrl = input.actionUrl?.trim() || null;
+        if (actionUrl && !isSafeSiteAnnouncementUrl(actionUrl)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Use a site path beginning with / or a full http(s) link." });
+        }
+        const announcement: SiteAnnouncement = {
+          title: input.title.trim(),
+          message: input.message.trim(),
+          actionLabel: actionUrl ? (input.actionLabel?.trim() || "Open") : null,
+          actionUrl,
+          publishedAt: Date.now(),
+        };
+        await setSetting(SITE_ANNOUNCEMENT_SETTING, JSON.stringify(announcement));
+        broadcastSiteAnnouncement(announcement);
+        return announcement;
+      }),
+
+    clear: adminProcedure.mutation(async () => {
+      await setSetting(SITE_ANNOUNCEMENT_SETTING, "");
+      broadcastSiteAnnouncement(null);
+      return { cleared: true };
+    }),
   }),
 
   // ─── Notifications ──────────────────────────────────────────

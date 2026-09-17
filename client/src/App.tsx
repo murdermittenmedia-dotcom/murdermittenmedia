@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import FloatingPlayer from "./components/FloatingPlayer";
+import { SiteAnnouncementNotice } from "./components/SiteAnnouncementNotice";
 import { useLivePlayer } from "./hooks/useLivePlayer";
 import { useAuth } from "./_core/hooks/useAuth";
 import { useWarsLivePlayer } from "./hooks/useWarsLivePlayer";
@@ -195,6 +196,7 @@ function App() {
             <Router />
             {!isBroadcastView && <FloatingPlayer />}
             {!isBroadcastView && <PWAInstallBanner />}
+            {!isBroadcastView && <SiteAnnouncementNotice />}
           </TooltipProvider>
         </AudioPlayerProvider>
       </ThemeProvider>
