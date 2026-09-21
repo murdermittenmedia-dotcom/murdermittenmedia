@@ -61,6 +61,11 @@ import FindStudio from "./pages/FindStudio";
 import CreateALink from "./pages/CreateALink";
 import PublicLinkPage from "./pages/PublicLinkPage";
 import LinkAnalytics from "./pages/LinkAnalytics";
+import BeatMarketplace from "./pages/BeatMarketplace";
+import BeatDetail from "./pages/BeatDetail";
+import BeatProducer from "./pages/BeatProducer";
+import BeatLibrary from "./pages/BeatLibrary";
+import AdminBeatPayouts from "./pages/AdminBeatPayouts";
 
 function Router() {
   return (
@@ -82,6 +87,10 @@ function Router() {
       <Route path={"/account/link-analytics"} component={LinkAnalytics} />
       <Route path={"/admin/link-analytics"} component={LinkAnalytics} />
       <Route path={"/link/:slug"} component={PublicLinkPage} />
+      <Route path={"/beats"} component={BeatMarketplace} />
+      <Route path={"/beats/producer"} component={BeatProducer} />
+      <Route path={"/beats/library"} component={BeatLibrary} />
+      <Route path={"/beats/:slug"} component={BeatDetail} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
       <Route path={"/broadcast/review"} component={BroadcastReview} />
@@ -149,6 +158,7 @@ function Router() {
       <Route path={"/admin/moderation"} component={AdminModeration} />
       <Route path={"/admin/stats"} component={AdminSiteStats} />
       <Route path={"/admin/golden-wheel"} component={AdminGoldenWheel} />
+      <Route path={"/admin/beats"} component={AdminBeatPayouts} />
 
       {/* Ban appeal */}
       <Route path={"/banned"} component={Banned} />

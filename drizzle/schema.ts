@@ -1186,6 +1186,132 @@ export const wheelSpins = mysqlTable("wheel_spins", {
 export type WheelSpin = typeof wheelSpins.$inferSelect;
 export type InsertWheelSpin = typeof wheelSpins.$inferInsert;
 
+// ─── Beat Marketplace ─────────────────────────────────────────
+// Producer memberships determine monthly upload limits and the marketplace
+// share retained from a paid beat license. Payment processing costs are
+// intentionally kept separate from this marketplace revenue split.
+export const beatProducerMemberships = mysqlTable("beat_producer_memberships", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }).unique(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 256 }).unique(),
+  status: mysqlEnum("status", ["active", "past_due", "canceled", "inactive"]).default("inactive").notNull(),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatProducerMembership = typeof beatProducerMemberships.$inferSelect;
+export type InsertBeatProducerMembership = typeof beatProducerMemberships.$inferInsert;
+
+// A Connect account is optional. When it is active, Stripe can deliver the
+// producer share automatically; otherwise sales remain visible in the payout ledger.
+export const beatProducerPayoutProfiles = mysqlTable("beat_producer_payout_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  stripeConnectAccountId: varchar("stripeConnectAccountId", { length: 256 }).unique(),
+  payoutStatus: mysqlEnum("payoutStatus", ["not_started", "pending", "active", "restricted"]).default("not_started").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatProducerPayoutProfile = typeof beatProducerPayoutProfiles.$inferSelect;
+export type InsertBeatProducerPayoutProfile = typeof beatProducerPayoutProfiles.$inferInsert;
+
+export const marketplaceBeats = mysqlTable("marketplace_beats", {
+  id: int("id").autoincrement().primaryKey(),
+  producerId: int("producerId").notNull(),
+  slug: varchar("slug", { length: 180 }).notNull().unique(),
+  title: varchar("title", { length: 160 }).notNull(),
+  genre: varchar("genre", { length: 80 }).notNull(),
+  bpm: int("bpm"),
+  musicalKey: varchar("musicalKey", { length: 24 }),
+  mood: varchar("mood", { length: 120 }),
+  description: text("description"),
+  tags: text("tags"),
+  artworkUrl: varchar("artworkUrl", { length: 512 }),
+  previewFileKey: varchar("previewFileKey", { length: 512 }).notNull(),
+  previewFileUrl: varchar("previewFileUrl", { length: 512 }).notNull(),
+  masterFileKey: varchar("masterFileKey", { length: 512 }).notNull(),
+  masterFileUrl: varchar("masterFileUrl", { length: 512 }).notNull(),
+  status: mysqlEnum("status", ["draft", "active", "archived", "sold_exclusive"]).default("draft").notNull(),
+  featured: boolean("featured").default(false).notNull(),
+  salesCount: int("salesCount").default(0).notNull(),
+  exclusiveSoldAt: timestamp("exclusiveSoldAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MarketplaceBeat = typeof marketplaceBeats.$inferSelect;
+export type InsertMarketplaceBeat = typeof marketplaceBeats.$inferInsert;
+
+export const beatLicenses = mysqlTable("beat_licenses", {
+  id: int("id").autoincrement().primaryKey(),
+  beatId: int("beatId").notNull(),
+  code: mysqlEnum("code", ["basic", "premium", "exclusive"]).notNull(),
+  name: varchar("name", { length: 96 }).notNull(),
+  priceCents: int("priceCents").notNull(),
+  terms: text("terms").notNull(),
+  includesStems: boolean("includesStems").default(false).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatLicense = typeof beatLicenses.$inferSelect;
+export type InsertBeatLicense = typeof beatLicenses.$inferInsert;
+
+export const beatSales = mysqlTable("beat_sales", {
+  id: int("id").autoincrement().primaryKey(),
+  beatId: int("beatId").notNull(),
+  licenseId: int("licenseId").notNull(),
+  buyerId: int("buyerId").notNull(),
+  producerId: int("producerId").notNull(),
+  buyerName: varchar("buyerName", { length: 160 }).notNull(),
+  buyerEmail: varchar("buyerEmail", { length: 320 }),
+  beatTitleSnapshot: varchar("beatTitleSnapshot", { length: 160 }).notNull(),
+  producerNameSnapshot: varchar("producerNameSnapshot", { length: 160 }).notNull(),
+  licenseNameSnapshot: varchar("licenseNameSnapshot", { length: 96 }).notNull(),
+  licenseTermsSnapshot: text("licenseTermsSnapshot").notNull(),
+  masterFileKeySnapshot: varchar("masterFileKeySnapshot", { length: 512 }).notNull(),
+  amountCents: int("amountCents").notNull(),
+  platformFeeCents: int("platformFeeCents").notNull(),
+  producerEarningsCents: int("producerEarningsCents").notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }).notNull().unique(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 256 }),
+  status: mysqlEnum("status", ["pending", "paid", "refunded", "disputed"]).default("pending").notNull(),
+  contractId: int("contractId"),
+  paidAt: timestamp("paidAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatSale = typeof beatSales.$inferSelect;
+export type InsertBeatSale = typeof beatSales.$inferInsert;
+
+export const beatContracts = mysqlTable("beat_contracts", {
+  id: int("id").autoincrement().primaryKey(),
+  saleId: int("saleId").notNull().unique(),
+  contractNumber: varchar("contractNumber", { length: 96 }).notNull().unique(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  documentUrl: varchar("documentUrl", { length: 512 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type BeatContract = typeof beatContracts.$inferSelect;
+export type InsertBeatContract = typeof beatContracts.$inferInsert;
+
+export const beatPayoutRequests = mysqlTable("beat_payout_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  producerId: int("producerId").notNull(),
+  amountCents: int("amountCents").notNull(),
+  paymentMethod: mysqlEnum("paymentMethod", ["cashapp", "paypal", "zelle"]).notNull(),
+  paymentHandle: varchar("paymentHandle", { length: 256 }).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "paid", "rejected", "cancelled"]).default("pending").notNull(),
+  adminNote: varchar("adminNote", { length: 512 }),
+  processedAt: timestamp("processedAt"),
+  processedBy: int("processedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatPayoutRequest = typeof beatPayoutRequests.$inferSelect;
+export type InsertBeatPayoutRequest = typeof beatPayoutRequests.$inferInsert;
+
 // Idempotency: prevent duplicate webhook processing
 export const processedStripeEvents = mysqlTable("processed_stripe_events", {
   stripeEventId: varchar("stripeEventId", { length: 256 }).primaryKey(),

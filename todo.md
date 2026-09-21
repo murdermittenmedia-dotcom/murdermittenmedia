@@ -5156,3 +5156,11 @@
 - [x] Verify site-wide skip-request alert and live-chat join system notices work from authenticated realtime events
 - [x] Add focused regression coverage plus authenticated desktop and mobile acceptance checks for the final broadcast workflow
 - [x] Publish the accepted production-grade Music Review workflow
+
+## Beat Marketplace — 2026-09-21
+- [x] Add the native Beat Marketplace data model, license presets, producer plan rules, sale records, and contract records
+- [x] Build producer uploads, configurable lease pricing, plan limits, and producer sales/payout tracking
+- [x] Build public beat browsing, beat details, checkout, protected delivery, and clear buyer license explanations
+- [x] Add Stripe Checkout and webhook fulfillment for beat purchases and Beat Pro subscriptions
+- [x] Generate stored license-contract PDFs from paid purchase records and add focused regression coverage
+- [x] Run migration, full validation, responsive checks, and publish the Beat Marketplace checkpoint

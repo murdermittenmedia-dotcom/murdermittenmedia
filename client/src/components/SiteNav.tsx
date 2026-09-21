@@ -70,6 +70,7 @@ const ALL_PAGES = [
   {
     category: "CREATOR",
     items: [
+      { href: "/beats", label: "Beat Marketplace", icon: Music },
       { href: "/create-a-link", label: "Create A Link", icon: Link2 },
       { href: "/account/link-analytics", label: "Link Analytics", icon: BarChart3 },
     ],

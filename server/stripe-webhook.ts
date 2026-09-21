@@ -26,9 +26,11 @@ import {
   users,
   promoCodes,
   reviewPlusMemberships,
+  orders,
 } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { grantLineSkipCredits } from "./db";
+import { fulfillBeatProducerSubscription, fulfillBeatSaleFromCheckoutSession, markBeatSalePaymentReversed, updateBeatProducerSubscription } from "./beat-marketplace-service";
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -116,7 +118,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     return;
   }
 
-  await grantEligibilityForSession(session);
+  if (await isMerchCheckoutSession(session.id)) {
+    await grantEligibilityForSession(session);
+  }
 }
 
 async function handleAsyncPaymentSucceeded(session: Stripe.Checkout.Session) {
@@ -124,7 +128,36 @@ async function handleAsyncPaymentSucceeded(session: Stripe.Checkout.Session) {
     console.log(`[GoldenWheel] Skipping test-mode async payment: ${session.id}`);
     return;
   }
-  await grantEligibilityForSession(session);
+  if (await isMerchCheckoutSession(session.id)) {
+    await grantEligibilityForSession(session);
+  }
+}
+
+/** Golden Wheel access is a first merch-order reward, never a side effect of another checkout type. */
+async function isMerchCheckoutSession(sessionId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [order] = await db.select({ id: orders.id }).from(orders)
+    .where(eq(orders.stripeCheckoutSessionId, sessionId)).limit(1);
+  return !!order;
+}
+
+async function handleBeatMarketplaceCheckout(session: Stripe.Checkout.Session) {
+  if (session.metadata?.kind === "beat_license") {
+    return fulfillBeatSaleFromCheckoutSession(session);
+  }
+  if (session.metadata?.kind === "beat_producer_pro") {
+    return fulfillBeatProducerSubscription(session);
+  }
+  return null;
+}
+
+async function handleBeatProInvoicePaid(invoice: Stripe.Invoice) {
+  const subscriptionId = (invoice as Stripe.Invoice & { subscription?: string }).subscription;
+  if (typeof subscriptionId !== "string") return;
+  const stripe = getStripe();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  await updateBeatProducerSubscription(subscription);
 }
 
 async function grantEligibilityForSession(session: Stripe.Checkout.Session) {
@@ -444,18 +477,37 @@ export function registerStripeWebhook(app: Express) {
         switch (event.type) {
           case "checkout.session.completed":
             await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+            await handleBeatMarketplaceCheckout(event.data.object as Stripe.Checkout.Session);
             break;
           case "checkout.session.async_payment_succeeded":
             await handleAsyncPaymentSucceeded(event.data.object as Stripe.Checkout.Session);
+            await handleBeatMarketplaceCheckout(event.data.object as Stripe.Checkout.Session);
             break;
           case "invoice.paid":
             await handleReviewPlusInvoicePaid(event.data.object as Stripe.Invoice);
+            await handleBeatProInvoicePaid(event.data.object as Stripe.Invoice);
+            break;
+          case "customer.subscription.updated":
+          case "customer.subscription.deleted":
+            await updateBeatProducerSubscription(event.data.object as Stripe.Subscription);
             break;
           case "charge.refunded":
             await handleChargeRefunded(event.data.object as Stripe.Charge);
+            {
+              const paymentIntentId = (event.data.object as Stripe.Charge).payment_intent;
+              if (typeof paymentIntentId === "string") {
+                await markBeatSalePaymentReversed(paymentIntentId, "refunded");
+              }
+            }
             break;
           case "charge.dispute.created":
             await handleDisputeCreated(event.data.object as Stripe.Dispute);
+            {
+              const paymentIntentId = (event.data.object as Stripe.Dispute).payment_intent;
+              if (typeof paymentIntentId === "string") {
+                await markBeatSalePaymentReversed(paymentIntentId, "disputed");
+              }
+            }
             break;
           default:
             // Ignore other events

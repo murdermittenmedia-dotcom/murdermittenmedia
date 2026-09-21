@@ -8,7 +8,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { eq, and, inArray, desc, asc, ne, gte, lt } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, ne, gte, lt, sql } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
@@ -80,14 +80,14 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatPayoutRequests } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
   createRtmpIngress, deleteIngress, getIngressStatus,
 } from "./livekit";
 import { ENV } from "./_core/env";
-import { desc as drizzleDesc, sql } from "drizzle-orm";
+import { desc as drizzleDesc } from "drizzle-orm";
 import {
   awardXP, getAllRewards, getRewardById, createReward, updateReward,
   getUserRewards, getPublicUserRewards, adminGrantReward, adminRevokeReward,
@@ -98,6 +98,8 @@ import {
 } from "./rewards";
 import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
+import { BEAT_LICENSE_CODES, BEAT_LICENSE_PRESETS, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, getBeatLicensePreset } from "../shared/beat-marketplace";
+import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession } from "./beat-marketplace-service";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -5579,6 +5581,323 @@ export const appRouter = router({
           packageId: session.metadata.package_id,
           amountTotal: session.amount_total ?? 0,
         };
+      }),
+  }),
+
+  // ─── Beat Marketplace ──────────────────────────────────────────
+  beats: router({
+    list: publicProcedure
+      .input(z.object({
+        search: z.string().trim().max(120).optional(),
+        genre: z.string().trim().max(80).optional(),
+        sort: z.enum(["newest", "featured", "popular", "price_low"]).default("newest"),
+      }).optional())
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const conditions = [eq(marketplaceBeats.status, "active")];
+        if (input?.genre) conditions.push(eq(marketplaceBeats.genre, input.genre));
+        if (input?.search) {
+          const escaped = input.search.replace(/[\\%_]/g, "\\$&");
+          conditions.push(sql`(${marketplaceBeats.title} LIKE ${`%${escaped}%`} OR ${marketplaceBeats.tags} LIKE ${`%${escaped}%`} OR ${marketplaceBeats.mood} LIKE ${`%${escaped}%`})`);
+        }
+        const ordering = input?.sort === "featured"
+          ? [desc(marketplaceBeats.featured), desc(marketplaceBeats.createdAt)]
+          : input?.sort === "popular"
+            ? [desc(marketplaceBeats.salesCount), desc(marketplaceBeats.createdAt)]
+            : [desc(marketplaceBeats.createdAt)];
+        const beats = await db.select({ beat: marketplaceBeats, producer: users })
+          .from(marketplaceBeats)
+          .leftJoin(users, eq(users.id, marketplaceBeats.producerId))
+          .where(and(...conditions)).orderBy(...ordering).limit(100);
+        const beatIds = beats.map(({ beat }) => beat.id);
+        const licenses = beatIds.length
+          ? await db.select().from(beatLicenses).where(and(inArray(beatLicenses.beatId, beatIds), eq(beatLicenses.isActive, true))).orderBy(asc(beatLicenses.sortOrder))
+          : [];
+        return beats.map(({ beat, producer }) => {
+          const { masterFileKey: _masterFileKey, masterFileUrl: _masterFileUrl, ...publicBeat } = beat;
+          return ({
+          ...publicBeat,
+          producerName: producer?.artistName || producer?.name || "Producer",
+          producerAvatarUrl: producer?.avatarUrl || null,
+          licenses: licenses.filter((license) => license.beatId === beat.id).map((license) => ({
+            id: license.id, code: license.code, name: license.name, priceCents: license.priceCents, includesStems: license.includesStems,
+          })),
+        });
+        });
+      }),
+
+    getBySlug: publicProcedure
+      .input(z.object({ slug: z.string().trim().min(1).max(180) }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [row] = await db.select({ beat: marketplaceBeats, producer: users })
+          .from(marketplaceBeats).leftJoin(users, eq(users.id, marketplaceBeats.producerId))
+          .where(eq(marketplaceBeats.slug, input.slug)).limit(1);
+        if (!row || (row.beat.status !== "active" && row.beat.status !== "sold_exclusive")) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Beat not found" });
+        }
+        const licenses = await db.select().from(beatLicenses)
+          .where(and(eq(beatLicenses.beatId, row.beat.id), eq(beatLicenses.isActive, true)))
+          .orderBy(asc(beatLicenses.sortOrder));
+        const { masterFileKey: _masterFileKey, masterFileUrl: _masterFileUrl, ...publicBeat } = row.beat;
+        return {
+          ...publicBeat,
+          producerName: row.producer?.artistName || row.producer?.name || "Producer",
+          producerAvatarUrl: row.producer?.avatarUrl || null,
+          licenses: licenses.map((license) => ({ ...license, preset: getBeatLicensePreset(license.code) })),
+        };
+      }),
+
+    genres: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db.selectDistinct({ genre: marketplaceBeats.genre }).from(marketplaceBeats)
+        .where(eq(marketplaceBeats.status, "active")).orderBy(asc(marketplaceBeats.genre));
+      return rows.map((row) => row.genre);
+    }),
+
+    producer: router({
+      plan: protectedProcedure.query(async ({ ctx }) => {
+        const plan = await getBeatProducerPlan(ctx.user.id);
+        return {
+          isPro: plan.isPro,
+          uploadsThisMonth: plan.uploadsThisMonth,
+          uploadLimit: plan.isPro ? null : FREE_PRODUCER_UPLOAD_LIMIT,
+          currentPeriodEnd: plan.membership?.currentPeriodEnd ?? null,
+        };
+      }),
+
+      mine: protectedProcedure.query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const beats = await db.select().from(marketplaceBeats).where(eq(marketplaceBeats.producerId, ctx.user.id)).orderBy(desc(marketplaceBeats.createdAt));
+        const ids = beats.map((beat) => beat.id);
+        const licenses = ids.length ? await db.select().from(beatLicenses).where(inArray(beatLicenses.beatId, ids)).orderBy(asc(beatLicenses.sortOrder)) : [];
+        return beats.map((beat) => ({ ...beat, licenses: licenses.filter((license) => license.beatId === beat.id) }));
+      }),
+
+      uploadFiles: protectedProcedure
+        .input(z.object({
+          title: z.string().trim().min(1).max(160),
+          previewName: z.string().min(1).max(255),
+          previewBase64: z.string().min(1),
+          previewMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
+          masterName: z.string().min(1).max(255),
+          masterBase64: z.string().min(1),
+          masterMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
+          artworkName: z.string().max(255).optional(),
+          artworkBase64: z.string().optional(),
+          artworkMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+          const plan = await getBeatProducerPlan(ctx.user.id);
+          if (!plan.isPro && plan.uploadsThisMonth >= FREE_PRODUCER_UPLOAD_LIMIT) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Free producers can publish up to 10 beats each month. Upgrade to Beat Pro for unlimited uploads." });
+          }
+          const previewBuffer = Buffer.from(input.previewBase64, "base64");
+          const masterBuffer = Buffer.from(input.masterBase64, "base64");
+          if (previewBuffer.length > 10 * 1024 * 1024 || masterBuffer.length > 20 * 1024 * 1024) {
+            throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Preview files must be under 10MB and master files under 20MB." });
+          }
+          const safeTitle = input.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "beat";
+          const previewExt = input.previewName.split(".").pop()?.toLowerCase() || "mp3";
+          const masterExt = input.masterName.split(".").pop()?.toLowerCase() || "wav";
+          const [preview, master] = await Promise.all([
+            storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-${safeTitle}.${previewExt}`, previewBuffer, input.previewMimeType),
+            storagePut(`beat-marketplace/${ctx.user.id}/masters/${Date.now()}-${safeTitle}.${masterExt}`, masterBuffer, input.masterMimeType),
+          ]);
+          let artworkUrl: string | null = null;
+          if (input.artworkBase64 && input.artworkMimeType) {
+            const artworkBuffer = Buffer.from(input.artworkBase64, "base64");
+            if (artworkBuffer.length > 3 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Artwork must be under 3MB." });
+            const artworkExt = input.artworkName?.split(".").pop()?.toLowerCase() || "jpg";
+            artworkUrl = (await storagePut(`beat-marketplace/${ctx.user.id}/artwork/${Date.now()}-${safeTitle}.${artworkExt}`, artworkBuffer, input.artworkMimeType)).url;
+          }
+          return { previewFileKey: preview.key, previewFileUrl: preview.url, masterFileKey: master.key, masterFileUrl: master.url, artworkUrl };
+        }),
+
+      create: protectedProcedure
+        .input(z.object({
+          title: z.string().trim().min(1).max(160),
+          genre: z.string().trim().min(1).max(80),
+          bpm: z.number().int().min(30).max(300).nullable().optional(),
+          musicalKey: z.string().trim().max(24).nullable().optional(),
+          mood: z.string().trim().max(120).nullable().optional(),
+          description: z.string().trim().max(3000).nullable().optional(),
+          tags: z.string().trim().max(320).nullable().optional(),
+          artworkUrl: z.string().max(512).nullable().optional(),
+          previewFileKey: z.string().min(1).max(512),
+          previewFileUrl: z.string().min(1).max(512),
+          masterFileKey: z.string().min(1).max(512),
+          masterFileUrl: z.string().min(1).max(512),
+          status: z.enum(["draft", "active"]).default("active"),
+          licenses: z.array(z.object({ code: z.enum(BEAT_LICENSE_CODES), priceCents: z.number().int().min(100).max(1_000_000), includesStems: z.boolean().optional() })).min(1).max(3),
+        }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const producerStoragePrefix = `beat-marketplace/${ctx.user.id}/`;
+          if (!input.previewFileKey.startsWith(producerStoragePrefix) || !input.masterFileKey.startsWith(producerStoragePrefix)) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Beat files must be uploaded from your producer workspace." });
+          }
+          const plan = await getBeatProducerPlan(ctx.user.id);
+          if (!plan.isPro && plan.uploadsThisMonth >= FREE_PRODUCER_UPLOAD_LIMIT) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Free producers can publish up to 10 beats each month. Upgrade to Beat Pro for unlimited uploads." });
+          }
+          const baseSlug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "beat";
+          const slug = `${baseSlug}-${Date.now().toString(36)}`.slice(0, 180);
+          const insert = await db.insert(marketplaceBeats).values({
+            producerId: ctx.user.id, slug, title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
+            mood: input.mood ?? null, description: input.description ?? null, tags: input.tags ?? null, artworkUrl: input.artworkUrl ?? null,
+            previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl, status: input.status,
+          });
+          const beatId = Number((insert as any)[0]?.insertId ?? (insert as any).insertId);
+          await db.insert(beatLicenses).values(input.licenses.map((license, index) => {
+            const preset = getBeatLicensePreset(license.code);
+            return { beatId, code: license.code, name: preset.name, priceCents: license.priceCents, terms: JSON.stringify(preset), includesStems: license.includesStems ?? preset.includesStems, sortOrder: index };
+          }));
+          return { id: beatId, slug };
+        }),
+
+      setStatus: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), status: z.enum(["draft", "active", "archived"]) }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          await db.update(marketplaceBeats).set({ status: input.status }).where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id)));
+          return { success: true };
+        }),
+
+      createProCheckout: protectedProcedure
+        .input(z.object({ origin: z.string().url() }))
+        .mutation(async ({ ctx, input }) => {
+          const membership = await getActiveBeatProducerMembership(ctx.user.id);
+          if (membership) return { alreadyActive: true as const, checkoutUrl: null as string | null };
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+          const session = await stripe.checkout.sessions.create({
+            mode: "subscription", customer_email: ctx.user.email ?? undefined, client_reference_id: String(ctx.user.id),
+            metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id) },
+            line_items: [{ price_data: { currency: "usd", product_data: { name: "Murder Mitten Beat Pro", description: "Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: BEAT_PRO_MONTHLY_PRICE_CENTS, recurring: { interval: "month" } }, quantity: 1 }],
+            success_url: `${input.origin}/beats/producer?pro_success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${input.origin}/beats/producer?pro_canceled=true`,
+          });
+          if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL" });
+          return { alreadyActive: false as const, checkoutUrl: session.url };
+        }),
+
+      sales: protectedProcedure.query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const rows = await db.select().from(beatSales).where(eq(beatSales.producerId, ctx.user.id)).orderBy(desc(beatSales.createdAt));
+        const totals = rows.filter((sale) => sale.status === "paid").reduce((sum, sale) => sum + sale.producerEarningsCents, 0);
+        const paidOutRows = await db.select({ amountCents: beatPayoutRequests.amountCents }).from(beatPayoutRequests).where(and(eq(beatPayoutRequests.producerId, ctx.user.id), inArray(beatPayoutRequests.status, ["approved", "paid"])));
+        const paidOut = paidOutRows.reduce((sum, request) => sum + request.amountCents, 0);
+        return { sales: rows, totalEarnedCents: totals, paidOutCents: paidOut, availableCents: Math.max(0, totals - paidOut) };
+      }),
+
+      requestPayout: protectedProcedure
+        .input(z.object({ amountCents: z.number().int().min(500), paymentMethod: z.enum(["cashapp", "paypal", "zelle"]), paymentHandle: z.string().trim().min(2).max(256) }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const paid = await db.select({ earnings: beatSales.producerEarningsCents }).from(beatSales).where(and(eq(beatSales.producerId, ctx.user.id), eq(beatSales.status, "paid")));
+          const paidOut = await db.select({ amountCents: beatPayoutRequests.amountCents }).from(beatPayoutRequests).where(and(eq(beatPayoutRequests.producerId, ctx.user.id), inArray(beatPayoutRequests.status, ["pending", "approved", "paid"])));
+          const available = paid.reduce((sum, sale) => sum + sale.earnings, 0) - paidOut.reduce((sum, request) => sum + request.amountCents, 0);
+          if (input.amountCents > available) throw new TRPCError({ code: "BAD_REQUEST", message: "Your payout request exceeds available marketplace earnings." });
+          const result = await db.insert(beatPayoutRequests).values({ producerId: ctx.user.id, ...input });
+          return { id: Number((result as any)[0]?.insertId ?? (result as any).insertId), availableAfterCents: available - input.amountCents };
+        }),
+    }),
+
+    admin: router({
+      payouts: adminProcedure.query(async () => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        return db.select({ request: beatPayoutRequests, producer: users }).from(beatPayoutRequests)
+          .leftJoin(users, eq(users.id, beatPayoutRequests.producerId))
+          .orderBy(asc(beatPayoutRequests.status), desc(beatPayoutRequests.createdAt));
+      }),
+      setPayoutStatus: adminProcedure
+        .input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "paid", "rejected", "cancelled"]), adminNote: z.string().trim().max(512).nullable().optional() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          await db.update(beatPayoutRequests).set({ status: input.status, adminNote: input.adminNote ?? null, processedAt: new Date(), processedBy: ctx.user.id })
+            .where(eq(beatPayoutRequests.id, input.id));
+          return { success: true };
+        }),
+    }),
+
+    checkout: router({
+      create: protectedProcedure
+        .input(z.object({ beatId: z.number().int().positive(), licenseId: z.number().int().positive(), origin: z.string().url() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [beat] = await db.select().from(marketplaceBeats).where(eq(marketplaceBeats.id, input.beatId)).limit(1);
+          const [license] = await db.select().from(beatLicenses).where(and(eq(beatLicenses.id, input.licenseId), eq(beatLicenses.beatId, input.beatId), eq(beatLicenses.isActive, true))).limit(1);
+          if (!beat || beat.status !== "active" || !license) throw new TRPCError({ code: "NOT_FOUND", message: "This beat or license is no longer available." });
+          if (beat.producerId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot purchase your own beat." });
+          const [producer] = await db.select().from(users).where(eq(users.id, beat.producerId)).limit(1);
+          if (!producer) throw new TRPCError({ code: "NOT_FOUND", message: "Producer not found." });
+          const isPro = !!(await getActiveBeatProducerMembership(beat.producerId));
+          const split = calculateBeatSaleSplit(license.priceCents, isPro);
+          const buyerName = ctx.user.artistName || ctx.user.name || "Artist";
+          const saleResult = await db.insert(beatSales).values({
+            beatId: beat.id, licenseId: license.id, buyerId: ctx.user.id, producerId: beat.producerId, buyerName, buyerEmail: ctx.user.email ?? null,
+            beatTitleSnapshot: beat.title, producerNameSnapshot: producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
+            licenseTermsSnapshot: license.terms, masterFileKeySnapshot: beat.masterFileKey, amountCents: license.priceCents, ...split, stripeCheckoutSessionId: `pending_${randomBytes(18).toString("hex")}`,
+          });
+          const saleId = Number((saleResult as any)[0]?.insertId ?? (saleResult as any).insertId);
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+          const session = await stripe.checkout.sessions.create({
+            mode: "payment", customer_email: ctx.user.email ?? undefined, client_reference_id: String(ctx.user.id),
+            metadata: { kind: "beat_license", sale_id: String(saleId), buyer_id: String(ctx.user.id), beat_id: String(beat.id), license_id: String(license.id) },
+            line_items: [{ price_data: { currency: "usd", product_data: { name: `${beat.title} — ${license.name}`, description: `Licensed from ${producer.artistName || producer.name || "Producer"} through Murder Mitten Media` }, unit_amount: license.priceCents }, quantity: 1 }],
+            success_url: `${input.origin}/beats/library?success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${input.origin}/beats/${beat.slug}?canceled=true`,
+          });
+          if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL" });
+          await db.update(beatSales).set({ stripeCheckoutSessionId: session.id }).where(eq(beatSales.id, saleId));
+          return { checkoutUrl: session.url };
+        }),
+
+      confirm: protectedProcedure
+        .input(z.object({ sessionId: z.string().min(10) }))
+        .mutation(async ({ ctx, input }) => {
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+          const session = await stripe.checkout.sessions.retrieve(input.sessionId);
+          if (session.payment_status !== "paid" || session.metadata?.kind !== "beat_license" || session.metadata.buyer_id !== String(ctx.user.id)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Beat payment has not been completed." });
+          }
+          const result = await fulfillBeatSaleFromCheckoutSession(session);
+          return { success: true as const, saleId: result?.sale.id, contractId: result?.contract.id };
+        }),
+    }),
+
+    library: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const rows = await db.select({ sale: beatSales, contract: beatContracts }).from(beatSales)
+        .leftJoin(beatContracts, eq(beatContracts.saleId, beatSales.id))
+        .where(and(eq(beatSales.buyerId, ctx.user.id), eq(beatSales.status, "paid"))).orderBy(desc(beatSales.paidAt));
+      return rows.map(({ sale, contract }) => ({ ...sale, contract }));
+    }),
+
+    getDelivery: protectedProcedure
+      .input(z.object({ saleId: z.number().int().positive(), asset: z.enum(["master", "contract"]) }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [sale] = await db.select().from(beatSales).where(and(eq(beatSales.id, input.saleId), eq(beatSales.buyerId, ctx.user.id), eq(beatSales.status, "paid"))).limit(1);
+        if (!sale) throw new TRPCError({ code: "NOT_FOUND", message: "Purchase not found." });
+        const key = input.asset === "master"
+          ? sale.masterFileKeySnapshot
+          : (await db.select({ storageKey: beatContracts.storageKey }).from(beatContracts).where(eq(beatContracts.saleId, sale.id)).limit(1))[0]?.storageKey;
+        if (!key) throw new TRPCError({ code: "NOT_FOUND", message: "Delivery file is not available yet." });
+        return { url: await storageGetSignedUrl(key) };
       }),
   }),
 
