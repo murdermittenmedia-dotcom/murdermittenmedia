@@ -5175,3 +5175,10 @@
 - [x] Add producer beat editing, clickable producer identities, and catalog alphabetical/newest sorting
 - [x] Add drag-and-drop upload, AI metadata suggestions, and direct cover-image discovery in the uploader
 - [x] Migrate and validate Beat Marketplace workflow upgrades
+
+## Beat Marketplace lease builder and preview tags — 2026-09-22
+- [x] Add a producer-editable, prefilled lease-option menu
+- [x] Store supplied default vocal tags and producer-uploaded tags securely
+- [x] Render selected tag audio at a producer-selected timestamp in the public 30-second preview
+- [x] Add intuitive tag placement controls to upload and edit workflow
+- [x] Migrate and validate lease-builder and audio-tag workflow

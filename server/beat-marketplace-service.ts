@@ -12,7 +12,7 @@ import {
 import { buildBeatLicensePdf } from "./beat-contract-pdf";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
-import { getBeatLicensePreset, getMonthStart, getProducerSettlementAvailableAt } from "../shared/beat-marketplace";
+import { getMonthStart, getProducerSettlementAvailableAt, parseBeatLicenseTerms } from "../shared/beat-marketplace";
 
 type StripeSettlementDetails = {
   balanceTransactionId: string | null;
@@ -218,7 +218,12 @@ export async function fulfillBeatSaleFromCheckoutSession(session: Stripe.Checkou
       producerName: sale.producerNameSnapshot,
       producerEmail: producer.email ?? "",
       beatTitle: sale.beatTitleSnapshot,
-      license: getBeatLicensePreset(license.code),
+      license: parseBeatLicenseTerms(sale.licenseTermsSnapshot, {
+        code: license.code,
+        name: sale.licenseNameSnapshot,
+        priceCents: sale.amountCents,
+        includesStems: license.includesStems,
+      }),
       amountCents: sale.amountCents,
     });
     const { key, url } = await storagePut(`beat-contracts/${sale.id}-${contractNumber}.pdf`, pdf, "application/pdf");

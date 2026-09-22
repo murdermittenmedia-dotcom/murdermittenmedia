@@ -98,9 +98,9 @@ import {
 } from "./rewards";
 import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
-import { BEAT_LICENSE_CODES, BEAT_LICENSE_PRESETS, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, getBeatLicensePreset } from "../shared/beat-marketplace";
+import { BEAT_LICENSE_CODES, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, createBeatLicenseTerms, parseBeatLicenseTerms } from "../shared/beat-marketplace";
 import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, getProducerSettlementLedger } from "./beat-marketplace-service";
-import { createBeatPreviewClip } from "./beat-audio-preview";
+import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, createBeatPreviewClip, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -120,6 +120,72 @@ const siteAnnouncementInput = z.object({
   actionLabel: z.string().trim().max(40).optional().nullable(),
   actionUrl: z.string().trim().max(512).optional().nullable(),
 });
+
+const beatLicenseInput = z.object({
+  code: z.enum(BEAT_LICENSE_CODES),
+  name: z.string().trim().min(2).max(96).optional(),
+  priceCents: z.number().int().min(100).max(1_000_000),
+  includesStems: z.boolean().optional(),
+  distributionLimit: z.number().int().min(1).max(100_000_000).nullable().optional(),
+  videoLimit: z.number().int().min(1).max(10_000).nullable().optional(),
+  monetizedViewLimit: z.number().int().min(1).max(5_000_000_000).nullable().optional(),
+  customTerms: z.string().trim().max(2_000).nullable().optional(),
+});
+
+const beatPreviewTagInput = z.object({
+  source: z.enum(BEAT_PREVIEW_TAG_SOURCES).default("none"),
+  atSeconds: z.number().int().min(0).max(29).default(0),
+  customName: z.string().max(255).optional(),
+  customBase64: z.string().optional(),
+  customMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).optional(),
+});
+
+const audioMimeTypeForName = (name: string) => {
+  if (/\.wav$/i.test(name)) return "audio/wav";
+  if (/\.(m4a|mp4)$/i.test(name)) return "audio/mp4";
+  return "audio/mpeg";
+};
+
+async function resolveBeatPreviewTag({
+  userId,
+  tag,
+  existingCustomTag,
+}: {
+  userId: number;
+  tag: z.infer<typeof beatPreviewTagInput>;
+  existingCustomTag?: { key: string | null; url: string | null };
+}) {
+  const source = tag.source as BeatPreviewTagSource;
+  if (source === "none") return { source, fileKey: null, fileUrl: null, atSeconds: 0, renderTag: null };
+  if (source !== "custom") {
+    const selected = DEFAULT_BEAT_PREVIEW_TAGS[source];
+    return {
+      source,
+      fileKey: selected.key,
+      fileUrl: selected.url,
+      atSeconds: tag.atSeconds,
+      renderTag: { audio: await downloadPreviewTag(selected.key), mimeType: selected.mimeType, atSeconds: tag.atSeconds },
+    };
+  }
+  let key = existingCustomTag?.key ?? null;
+  let url = existingCustomTag?.url ?? null;
+  let audio: Buffer;
+  let mimeType = tag.customMimeType || (key ? audioMimeTypeForName(key) : "audio/mpeg");
+  if (tag.customBase64) {
+    audio = Buffer.from(tag.customBase64, "base64");
+    if (audio.length > 3 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Custom preview tags must be under 3MB." });
+    if (!tag.customName || !tag.customMimeType) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a valid MP3, WAV, or M4A custom tag." });
+    const extension = tag.customName.split(".").pop()?.toLowerCase() || "mp3";
+    const stored = await storagePut(`beat-marketplace/${userId}/tags/${Date.now()}-preview-tag.${extension}`, audio, tag.customMimeType);
+    key = stored.key;
+    url = stored.url;
+    mimeType = tag.customMimeType;
+  } else {
+    if (!key || !url || !key.startsWith(`beat-marketplace/${userId}/tags/`)) throw new TRPCError({ code: "BAD_REQUEST", message: "Upload a custom preview tag before using it." });
+    audio = await downloadPreviewTag(key);
+  }
+  return { source, fileKey: key, fileUrl: url, atSeconds: tag.atSeconds, renderTag: { audio, mimeType, atSeconds: tag.atSeconds } };
+}
 
 function isSafeSiteAnnouncementUrl(value: string) {
   return /^\/(?!\/)/.test(value) || /^https?:\/\//i.test(value);
@@ -5650,7 +5716,7 @@ export const appRouter = router({
           ...publicBeat,
           producerName: row.producer?.artistName || row.producer?.name || "Producer",
           producerAvatarUrl: row.producer?.avatarUrl || null,
-          licenses: licenses.map((license) => ({ ...license, preset: getBeatLicensePreset(license.code) })),
+          licenses: licenses.map((license) => ({ ...license, preset: parseBeatLicenseTerms(license.terms, license) })),
         };
       }),
 
@@ -5679,7 +5745,10 @@ export const appRouter = router({
         const beats = await db.select().from(marketplaceBeats).where(eq(marketplaceBeats.producerId, ctx.user.id)).orderBy(desc(marketplaceBeats.createdAt));
         const ids = beats.map((beat) => beat.id);
         const licenses = ids.length ? await db.select().from(beatLicenses).where(inArray(beatLicenses.beatId, ids)).orderBy(asc(beatLicenses.sortOrder)) : [];
-        return beats.map((beat) => ({ ...beat, licenses: licenses.filter((license) => license.beatId === beat.id) }));
+        return beats.map((beat) => ({
+          ...beat,
+          licenses: licenses.filter((license) => license.beatId === beat.id).map((license) => ({ ...license, preset: parseBeatLicenseTerms(license.terms, license) })),
+        }));
       }),
 
       uploadFiles: protectedProcedure
@@ -5690,6 +5759,9 @@ export const appRouter = router({
           masterBase64: z.string().min(1),
           masterMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
           previewStartSeconds: z.number().int().min(0).max(60 * 60).default(0),
+          previewTag: beatPreviewTagInput.default({ source: "none", atSeconds: 0 }),
+          existingPreviewTagFileKey: z.string().max(512).nullable().optional(),
+          existingPreviewTagFileUrl: z.string().max(512).nullable().optional(),
           artworkName: z.string().max(255).optional(),
           artworkBase64: z.string().optional(),
           artworkMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional(),
@@ -5712,7 +5784,12 @@ export const appRouter = router({
           }
           const safeTitle = input.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "beat";
           const masterExt = input.masterName.split(".").pop()?.toLowerCase() || "wav";
-          const previewBuffer = await createBeatPreviewClip({ source: masterBuffer, mimeType: input.masterMimeType, startSeconds: input.previewStartSeconds });
+          const previewTag = await resolveBeatPreviewTag({
+            userId: ctx.user.id,
+            tag: input.previewTag,
+            existingCustomTag: { key: input.existingPreviewTagFileKey ?? null, url: input.existingPreviewTagFileUrl ?? null },
+          });
+          const previewBuffer = await createBeatPreviewClip({ source: masterBuffer, mimeType: input.masterMimeType, startSeconds: input.previewStartSeconds, tag: previewTag.renderTag });
           const [preview, master] = await Promise.all([
             storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-${safeTitle}.mp3`, previewBuffer, "audio/mpeg"),
             storagePut(`beat-marketplace/${ctx.user.id}/masters/${Date.now()}-${safeTitle}.${masterExt}`, masterBuffer, input.masterMimeType),
@@ -5724,7 +5801,7 @@ export const appRouter = router({
             const artworkExt = input.artworkName?.split(".").pop()?.toLowerCase() || "jpg";
             artworkUrl = (await storagePut(`beat-marketplace/${ctx.user.id}/artwork/${Date.now()}-${safeTitle}.${artworkExt}`, artworkBuffer, input.artworkMimeType)).url;
           }
-          return { previewFileKey: preview.key, previewFileUrl: preview.url, previewStartSeconds: input.previewStartSeconds, masterFileKey: master.key, masterFileUrl: master.url, artworkUrl };
+          return { previewFileKey: preview.key, previewFileUrl: preview.url, previewStartSeconds: input.previewStartSeconds, previewTagSource: previewTag.source, previewTagFileKey: previewTag.fileKey, previewTagFileUrl: previewTag.fileUrl, previewTagAtSeconds: previewTag.atSeconds, masterFileKey: master.key, masterFileUrl: master.url, artworkUrl };
         }),
 
       uploadArtwork: protectedProcedure
@@ -5756,10 +5833,14 @@ export const appRouter = router({
           previewFileKey: z.string().min(1).max(512),
           previewFileUrl: z.string().min(1).max(512),
           previewStartSeconds: z.number().int().min(0).max(60 * 60).default(0),
+          previewTagSource: z.enum(BEAT_PREVIEW_TAG_SOURCES).default("none"),
+          previewTagFileKey: z.string().max(512).nullable().optional(),
+          previewTagFileUrl: z.string().max(512).nullable().optional(),
+          previewTagAtSeconds: z.number().int().min(0).max(29).default(0),
           masterFileKey: z.string().min(1).max(512),
           masterFileUrl: z.string().min(1).max(512),
           status: z.enum(["draft", "active"]).default("active"),
-          licenses: z.array(z.object({ code: z.enum(BEAT_LICENSE_CODES), priceCents: z.number().int().min(100).max(1_000_000), includesStems: z.boolean().optional() })).min(1).max(3),
+          licenses: z.array(beatLicenseInput).min(1).max(3),
         }))
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
@@ -5777,12 +5858,14 @@ export const appRouter = router({
           const insert = await db.insert(marketplaceBeats).values({
             producerId: ctx.user.id, slug, title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
             mood: input.mood ?? null, description: input.description ?? null, tags: input.tags ?? null, artworkUrl: input.artworkUrl ?? null,
-            previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl, status: input.status,
+            previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds,
+            previewTagSource: input.previewTagSource, previewTagFileKey: input.previewTagFileKey ?? null, previewTagFileUrl: input.previewTagFileUrl ?? null, previewTagAtSeconds: input.previewTagAtSeconds,
+            masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl, status: input.status,
           });
           const beatId = Number((insert as any)[0]?.insertId ?? (insert as any).insertId);
           await db.insert(beatLicenses).values(input.licenses.map((license, index) => {
-            const preset = getBeatLicensePreset(license.code);
-            return { beatId, code: license.code, name: preset.name, priceCents: license.priceCents, terms: JSON.stringify(preset), includesStems: license.includesStems ?? preset.includesStems, sortOrder: index };
+            const terms = createBeatLicenseTerms(license);
+            return { beatId, code: license.code, name: terms.name, priceCents: license.priceCents, terms: JSON.stringify(terms), includesStems: terms.includesStems, sortOrder: index };
           }));
           return { id: beatId, slug };
         }),
@@ -5801,10 +5884,15 @@ export const appRouter = router({
           previewFileKey: z.string().min(1).max(512).optional(),
           previewFileUrl: z.string().min(1).max(512).optional(),
           previewStartSeconds: z.number().int().min(0).max(60 * 60).optional(),
+          previewTagSource: z.enum(BEAT_PREVIEW_TAG_SOURCES).optional(),
+          previewTagFileKey: z.string().max(512).nullable().optional(),
+          previewTagFileUrl: z.string().max(512).nullable().optional(),
+          previewTagAtSeconds: z.number().int().min(0).max(29).optional(),
+          previewTag: beatPreviewTagInput.optional(),
           masterFileKey: z.string().min(1).max(512).optional(),
           masterFileUrl: z.string().min(1).max(512).optional(),
           status: z.enum(["draft", "active", "archived"]),
-          licenses: z.array(z.object({ code: z.enum(BEAT_LICENSE_CODES), priceCents: z.number().int().min(100).max(1_000_000), includesStems: z.boolean().optional() })).min(1).max(3),
+          licenses: z.array(beatLicenseInput).min(1).max(3),
         }))
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
@@ -5813,7 +5901,8 @@ export const appRouter = router({
           if (!beat) throw new TRPCError({ code: "NOT_FOUND", message: "Beat not found" });
           if (beat.status === "sold_exclusive") throw new TRPCError({ code: "BAD_REQUEST", message: "An exclusive sale has closed this beat from future licensing." });
           const replacementFields = input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl
-            ? { previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl }
+            ? { previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl,
+              previewTagSource: input.previewTagSource ?? beat.previewTagSource, previewTagFileKey: input.previewTagFileKey ?? beat.previewTagFileKey, previewTagFileUrl: input.previewTagFileUrl ?? beat.previewTagFileUrl, previewTagAtSeconds: input.previewTagAtSeconds ?? beat.previewTagAtSeconds }
             : {};
           if ((input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl) && (!input.masterFileKey || !input.masterFileUrl || !input.previewFileKey || !input.previewFileUrl)) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "Audio replacement is incomplete." });
@@ -5822,17 +5911,25 @@ export const appRouter = router({
           if (input.masterFileKey && (!input.masterFileKey.startsWith(producerStoragePrefix) || !input.previewFileKey?.startsWith(producerStoragePrefix))) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Replacement audio must come from your producer workspace." });
           }
+          let tagOnlyFields: Record<string, unknown> = {};
+          if (!input.masterFileKey && input.previewTag) {
+            const resolvedTag = await resolveBeatPreviewTag({ userId: ctx.user.id, tag: input.previewTag, existingCustomTag: { key: beat.previewTagFileKey, url: beat.previewTagFileUrl } });
+            const master = await downloadPreviewTag(beat.masterFileKey);
+            const preview = await createBeatPreviewClip({ source: master, mimeType: audioMimeTypeForName(beat.masterFileKey), startSeconds: beat.previewStartSeconds, tag: resolvedTag.renderTag });
+            const storedPreview = await storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-tagged-preview.mp3`, preview, "audio/mpeg");
+            tagOnlyFields = { previewFileKey: storedPreview.key, previewFileUrl: storedPreview.url, previewTagSource: resolvedTag.source, previewTagFileKey: resolvedTag.fileKey, previewTagFileUrl: resolvedTag.fileUrl, previewTagAtSeconds: resolvedTag.atSeconds };
+          }
           await db.update(marketplaceBeats).set({
             title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
             mood: input.mood ?? null, description: input.description ?? null, tags: input.tags ?? null,
-            artworkUrl: input.artworkUrl ?? null, status: input.status, ...replacementFields,
+            artworkUrl: input.artworkUrl ?? null, status: input.status, ...replacementFields, ...tagOnlyFields,
           }).where(eq(marketplaceBeats.id, beat.id));
           const existing = await db.select().from(beatLicenses).where(eq(beatLicenses.beatId, beat.id));
           for (let index = 0; index < input.licenses.length; index += 1) {
             const license = input.licenses[index];
-            const preset = getBeatLicensePreset(license.code);
+            const terms = createBeatLicenseTerms(license);
             const current = existing.find((entry) => entry.code === license.code);
-            const values = { name: preset.name, priceCents: license.priceCents, terms: JSON.stringify(preset), includesStems: license.includesStems ?? preset.includesStems, isActive: true, sortOrder: index };
+            const values = { name: terms.name, priceCents: license.priceCents, terms: JSON.stringify(terms), includesStems: terms.includesStems, isActive: true, sortOrder: index };
             if (current) await db.update(beatLicenses).set(values).where(eq(beatLicenses.id, current.id));
             else await db.insert(beatLicenses).values({ beatId: beat.id, code: license.code, ...values });
           }

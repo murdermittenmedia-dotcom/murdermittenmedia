@@ -19,6 +19,7 @@ export type BeatLicensePreset = {
   monetizedViewLimit: number | null;
   includesStems: boolean;
   isExclusive: boolean;
+  customTerms?: string | null;
 };
 
 export const BEAT_LICENSE_PRESETS: readonly BeatLicensePreset[] = [
@@ -64,6 +65,59 @@ export function getBeatLicensePreset(code: string): BeatLicensePreset {
   const preset = BEAT_LICENSE_PRESETS.find((item) => item.code === code);
   if (!preset) throw new Error(`Unknown beat license: ${code}`);
   return preset;
+}
+
+export type BeatLicenseTermsInput = {
+  code: BeatLicenseCode;
+  name?: string;
+  priceCents: number;
+  includesStems?: boolean;
+  distributionLimit?: number | null;
+  videoLimit?: number | null;
+  monetizedViewLimit?: number | null;
+  customTerms?: string | null;
+};
+
+/** Starts with a clear Marketplace preset, then applies the producer's specific lease choices. */
+export function createBeatLicenseTerms(input: BeatLicenseTermsInput): BeatLicensePreset {
+  const preset = getBeatLicensePreset(input.code);
+  const name = input.name?.trim() || preset.name;
+  const distributionLimit = input.distributionLimit === undefined ? preset.distributionLimit : input.distributionLimit;
+  const videoLimit = input.videoLimit === undefined ? preset.videoLimit : input.videoLimit;
+  const monetizedViewLimit = input.monetizedViewLimit === undefined ? preset.monetizedViewLimit : input.monetizedViewLimit;
+  const includesStems = input.includesStems ?? preset.includesStems;
+  const highlights = [
+    "1 commercial release",
+    formatLicenseLimit(distributionLimit, "copies"),
+    formatLicenseLimit(videoLimit, "music videos"),
+    includesStems ? "MP3 + WAV + stems delivery" : "MP3 + WAV delivery",
+  ];
+  if (preset.isExclusive) highlights.unshift("Future licensing closes after purchase");
+  return {
+    ...preset,
+    name,
+    defaultPriceCents: input.priceCents,
+    summary: preset.isExclusive ? "A producer-defined exclusive license that closes future sales after purchase." : "A producer-defined non-exclusive license with clear usage limits.",
+    highlights,
+    distributionLimit,
+    videoLimit,
+    monetizedViewLimit,
+    includesStems,
+    customTerms: input.customTerms?.trim() || null,
+  };
+}
+
+/** Safely supports historic preset JSON and newer producer-customized lease JSON. */
+export function parseBeatLicenseTerms(terms: string, fallback: { code: string; name: string; priceCents: number; includesStems: boolean }): BeatLicensePreset {
+  try {
+    const parsed = JSON.parse(terms) as Partial<BeatLicensePreset>;
+    if (parsed && parsed.code && parsed.name && Array.isArray(parsed.highlights)) {
+      return { ...getBeatLicensePreset(parsed.code), ...parsed, defaultPriceCents: fallback.priceCents, name: parsed.name || fallback.name, includesStems: parsed.includesStems ?? fallback.includesStems };
+    }
+  } catch {
+    // Historic malformed rows fall back to the corresponding stock license below.
+  }
+  return createBeatLicenseTerms({ code: fallback.code as BeatLicenseCode, name: fallback.name, priceCents: fallback.priceCents, includesStems: fallback.includesStems });
 }
 
 export function getProducerSharePercent(isPro: boolean) {
@@ -147,6 +201,7 @@ export function buildBeatLicenseContractText(snapshot: ContractSnapshot) {
     "The Artist may not resell, sublicense, transfer, sample, or register the Beat itself as standalone content. The Artist may not claim authorship of the Beat or use it in hate, defamatory, or unlawful content.",
     "EXCLUSIVITY.",
     exclusivity,
+    ...(license.customTerms ? ["PRODUCER-SPECIFIC TERMS.", license.customTerms] : []),
     "PAYMENT AND RECORD.",
     `The license price is $${(snapshot.amountCents / 100).toFixed(2)} USD. Payment through Murder Mitten Media is the Artist's acceptance of this license. This PDF is the marketplace record of the issued license.`,
     "NOTICE.",

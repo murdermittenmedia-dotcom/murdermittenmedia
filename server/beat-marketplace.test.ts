@@ -6,6 +6,7 @@ import {
   FREE_PRODUCER_UPLOAD_LIMIT,
   calculateBeatSaleSplit,
   buildBeatLicenseContractText,
+  createBeatLicenseTerms,
   getProducerSharePercent,
   getProducerSettlementAvailableAt,
 } from "../shared/beat-marketplace";
@@ -88,5 +89,37 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(producer).toContain("Find a cover image");
     expect(market).toContain("Alphabetical A–Z");
     expect(market).toContain("/profile/${beat.producerId}");
+  });
+
+  it("preserves producer-configured lease limits and documents extra terms", () => {
+    const license = createBeatLicenseTerms({
+      code: "premium",
+      name: "Streaming Lease",
+      priceCents: 5_500,
+      distributionLimit: 250_000,
+      videoLimit: 3,
+      monetizedViewLimit: 2_500_000,
+      includesStems: true,
+      customTerms: "Producer credit must read: Prod. by Detroit Test.",
+    });
+    expect(license.name).toBe("Streaming Lease");
+    expect(license.distributionLimit).toBe(250_000);
+    expect(license.includesStems).toBe(true);
+    const terms = buildBeatLicenseContractText({ contractNumber: "MMM-BEAT-99-2026", effectiveDate: "September 22, 2026", buyerName: "Artist", buyerEmail: "artist@example.com", producerName: "Producer", producerEmail: "producer@example.com", beatTitle: "Tagged Beat", license, amountCents: 5_500 }).join(" ");
+    expect(terms).toContain("250,000");
+    expect(terms).toContain("PRODUCER-SPECIFIC TERMS");
+    expect(terms).toContain("Prod. by Detroit Test");
+  });
+
+  it("supports selected vocal tags at a producer-controlled preview timestamp", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    const mixer = readFileSync(resolve(process.cwd(), "server/beat-audio-preview.ts"), "utf8");
+    expect(router).toContain("resolveBeatPreviewTag");
+    expect(router).toContain("previewTagAtSeconds");
+    expect(producer).toContain("Place a tag anywhere");
+    expect(producer).toContain("Purchase Your Track Now");
+    expect(producer).toContain("Your custom tag");
+    expect(mixer).toContain("amix=inputs=2");
   });
 });

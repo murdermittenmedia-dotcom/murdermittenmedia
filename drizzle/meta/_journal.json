@@ -393,6 +393,13 @@
       "when": 1790092486458,
       "tag": "0055_yielding_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "5",
+      "when": 1790094031865,
+      "tag": "0056_military_argent",
+      "breakpoints": true
     }
   ]
 }
