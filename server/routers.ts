@@ -5940,12 +5940,14 @@ export const appRouter = router({
 
       suggestMetadata: protectedProcedure
         .input(z.object({ title: z.string().trim().min(1).max(160), genre: z.string().trim().max(80).optional(), bpm: z.number().int().min(30).max(300).optional(), musicalKey: z.string().trim().max(24).optional(), mood: z.string().trim().max(120).optional() }))
-        .mutation(async ({ input }) => {
+        .mutation(async ({ ctx, input }) => {
+          const artistName = ctx.user.artistName || ctx.user.name || "Independent producer";
+          const city = ctx.user.city?.trim() || null;
           const result = await invokeLLM({
             model: "gpt-5-mini",
             messages: [
-              { role: "system", content: "You write concise, accurate marketplace metadata for instrumental beats. Do not claim sample clearances, chart success, artist affiliations, or technical facts not supplied. Keep descriptions under 300 characters and provide exactly 6 short, searchable tags." },
-              { role: "user", content: `Create a polished description and tags for this beat. Title: ${input.title}. Genre: ${input.genre || "unspecified"}. BPM: ${input.bpm || "unspecified"}. Key: ${input.musicalKey || "unspecified"}. Mood: ${input.mood || "unspecified"}.` },
+              { role: "system", content: "You write sharp, accurate Beat Marketplace metadata that sounds like a real producer wrote it and helps artists find the right beat. Make it specific to the supplied title, genre, BPM, key, mood, producer artist identity, and city. Use regional discovery wording only when it naturally fits the supplied genre and mood; a city is context, not proof of an affiliation or a reason to stereotype a sound. Use only facts supplied in the request. Never invent instruments, drums, samples, arrangements, sound design, subgenres, artist affiliations, street credibility, chart success, technical claims, or sample clearances. Never use another artist's name as a style comparison. Write a confident 150–260 character description using the supplied musical facts and a practical use case, not generic hype. Return exactly 8 distinct lowercase search tags, each 1–3 words, with no # symbols. Include a broad genre tag, precise supplied mood/use-case tags, BPM or key only if supplied, and one city-plus-genre discovery tag combining only the supplied city and broad genre when city is supplied. Use a subgenre tag only when it is explicitly supplied in the genre. Avoid vague tags such as fire, hard, vibes, new, or type beat unless the user supplied a specific artist reference (they did not)." },
+              { role: "user", content: `Create discovery-ready metadata for this beat. Producer artist identity: ${artistName}. Producer city: ${city || "not provided"}. Beat title: ${input.title}. Genre: ${input.genre || "unspecified"}. BPM: ${input.bpm || "unspecified"}. Key: ${input.musicalKey || "unspecified"}. Mood: ${input.mood || "unspecified"}.` },
             ],
             outputSchema: {
               name: "beat_metadata",
@@ -5954,7 +5956,7 @@ export const appRouter = router({
                 type: "object",
                 properties: {
                   description: { type: "string" },
-                  tags: { type: "array", items: { type: "string" }, minItems: 6, maxItems: 6 },
+                  tags: { type: "array", items: { type: "string" }, minItems: 8, maxItems: 8 },
                 },
                 required: ["description", "tags"],
                 additionalProperties: false,
@@ -5964,7 +5966,9 @@ export const appRouter = router({
           const raw = result.choices[0]?.message.content;
           const parsed = typeof raw === "string" ? JSON.parse(raw) : null;
           if (!parsed || typeof parsed.description !== "string" || !Array.isArray(parsed.tags)) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Metadata helper returned an invalid response." });
-          return { description: parsed.description.slice(0, 300), tags: parsed.tags.map((tag: unknown) => String(tag).trim()).filter(Boolean).slice(0, 6).join(", ") };
+          const tags = Array.from(new Set(parsed.tags.map((tag: unknown) => String(tag).trim().toLowerCase()).filter(Boolean))).slice(0, 8);
+          if (tags.length !== 8) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Metadata helper returned duplicate or incomplete tags. Please try again." });
+          return { description: parsed.description.slice(0, 300), tags: tags.join(", ") };
         }),
 
       searchCoverImages: protectedProcedure

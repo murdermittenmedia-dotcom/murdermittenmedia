@@ -122,4 +122,16 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(producer).toContain("Your custom tag");
     expect(mixer).toContain("amix=inputs=2");
   });
+
+  it("grounds AI metadata in the producer identity, city, and real discovery language", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    expect(router).toContain("const artistName = ctx.user.artistName || ctx.user.name");
+    expect(router).toContain("const city = ctx.user.city?.trim() || null");
+    expect(router).toContain("Producer artist identity:");
+    expect(router).toContain("Producer city:");
+    expect(router).toContain("exactly 8 distinct lowercase search tags");
+    expect(router).toContain("Never use another artist's name as a style comparison");
+    expect(router).toContain("Never invent instruments, drums, samples, arrangements, sound design, subgenres");
+    expect(router).toContain("tags.length !== 8");
+  });
 });

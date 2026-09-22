@@ -5182,3 +5182,7 @@
 - [x] Render selected tag audio at a producer-selected timestamp in the public 30-second preview
 - [x] Add intuitive tag placement controls to upload and edit workflow
 - [x] Migrate and validate lease-builder and audio-tag workflow
+
+## Beat Marketplace contextual AI metadata — 2026-09-22
+- [x] Improve AI descriptions and tags using producer artist and city context
+- [x] Validate contextual metadata suggestions and regression coverage
