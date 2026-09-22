@@ -5164,3 +5164,8 @@
 - [x] Add Stripe Checkout and webhook fulfillment for beat purchases and Beat Pro subscriptions
 - [x] Generate stored license-contract PDFs from paid purchase records and add focused regression coverage
 - [x] Run migration, full validation, responsive checks, and publish the Beat Marketplace checkpoint
+
+## Beat Marketplace settlement hold — 2026-09-22
+- [x] Record Stripe-aware producer settlement dates for paid beat licenses
+- [x] Separate producer pending wallet earnings from available payout earnings
+- [x] Restrict payout requests to settled earnings, then migrate and validate the flow

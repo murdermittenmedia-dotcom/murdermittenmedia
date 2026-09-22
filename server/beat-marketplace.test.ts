@@ -7,6 +7,7 @@ import {
   calculateBeatSaleSplit,
   buildBeatLicenseContractText,
   getProducerSharePercent,
+  getProducerSettlementAvailableAt,
 } from "../shared/beat-marketplace";
 import { buildBeatLicensePdf } from "./beat-contract-pdf";
 
@@ -16,6 +17,13 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(getProducerSharePercent(false)).toBe(80);
     expect(calculateBeatSaleSplit(10_000, false)).toEqual({ producerSharePercent: 80, producerEarningsCents: 8_000, platformFeeCents: 2_000 });
     expect(calculateBeatSaleSplit(10_000, true)).toEqual({ producerSharePercent: 100, producerEarningsCents: 10_000, platformFeeCents: 0 });
+  });
+
+  it("keeps producer earnings pending for Stripe availability with a five-day floor and seven-day fallback", () => {
+    const paidAt = new Date("2026-09-22T12:00:00.000Z");
+    expect(getProducerSettlementAvailableAt(paidAt).toISOString()).toBe("2026-09-29T12:00:00.000Z");
+    expect(getProducerSettlementAvailableAt(paidAt, new Date("2026-09-24T12:00:00.000Z")).toISOString()).toBe("2026-09-27T12:00:00.000Z");
+    expect(getProducerSettlementAvailableAt(paidAt, new Date("2026-09-28T12:00:00.000Z")).toISOString()).toBe("2026-09-28T12:00:00.000Z");
   });
 
   it("provides human-readable lease terms and a real PDF document", () => {
@@ -51,5 +59,17 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(webhook).toContain("if (await isMerchCheckoutSession(session.id))");
     expect(webhook).toContain("Golden Wheel access is a first merch-order reward");
     expect(webhook).toContain("fulfillBeatSaleFromCheckoutSession");
+  });
+
+  it("uses settled earnings for marketplace cashouts and refreshes Stripe availability", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const service = readFileSync(resolve(process.cwd(), "server/beat-marketplace-service.ts"), "utf8");
+    const webhook = readFileSync(resolve(process.cwd(), "server/stripe-webhook.ts"), "utf8");
+    expect(router).toContain("getProducerSettlementLedger(ctx.user.id)");
+    expect(router).toContain("exceeds settled marketplace earnings");
+    expect(service).toContain("producerEarningsAvailableAt");
+    expect(service).toContain("getProducerSettlementAvailableAt");
+    expect(webhook).toContain('case "charge.succeeded"');
+    expect(webhook).toContain("refreshBeatSaleSettlementFromPaymentIntent");
   });
 });

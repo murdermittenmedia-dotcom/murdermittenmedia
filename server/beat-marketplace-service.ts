@@ -1,9 +1,10 @@
 import Stripe from "stripe";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 import {
   beatContracts,
   beatLicenses,
   beatProducerMemberships,
+  beatPayoutRequests,
   beatSales,
   marketplaceBeats,
   users,
@@ -11,7 +12,82 @@ import {
 import { buildBeatLicensePdf } from "./beat-contract-pdf";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
-import { getBeatLicensePreset, getMonthStart } from "../shared/beat-marketplace";
+import { getBeatLicensePreset, getMonthStart, getProducerSettlementAvailableAt } from "../shared/beat-marketplace";
+
+type StripeSettlementDetails = {
+  balanceTransactionId: string | null;
+  availableOn: Date | null;
+};
+
+async function getStripeSettlementDetails(paymentIntentId: string | null): Promise<StripeSettlementDetails> {
+  if (!paymentIntentId) return { balanceTransactionId: null, availableOn: null };
+  try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge.balance_transaction"],
+    });
+    const charge = paymentIntent.latest_charge as (Stripe.Charge & { balance_transaction?: string | Stripe.BalanceTransaction | null }) | string | null;
+    if (!charge || typeof charge === "string") return { balanceTransactionId: null, availableOn: null };
+    const balanceReference = charge.balance_transaction;
+    if (!balanceReference) return { balanceTransactionId: null, availableOn: null };
+    const transaction = typeof balanceReference === "string"
+      ? await stripe.balanceTransactions.retrieve(balanceReference)
+      : balanceReference;
+    return {
+      balanceTransactionId: transaction.id,
+      availableOn: typeof transaction.available_on === "number" ? new Date(transaction.available_on * 1000) : null,
+    };
+  } catch (error) {
+    console.warn("[Beat Marketplace] Stripe balance availability unavailable; using seven-day fallback", error);
+    return { balanceTransactionId: null, availableOn: null };
+  }
+}
+
+export async function getProducerSettlementLedger(producerId: number, now = new Date()) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  // Settlement is computed from Stripe's availability date. This lazy update keeps
+  // the ledger correct even if no background process is running at the exact hour
+  // a held balance becomes available.
+  await db.update(beatSales).set({
+    producerEarningsStatus: "available",
+    producerEarningsSettledAt: now,
+  }).where(and(
+    eq(beatSales.producerId, producerId),
+    eq(beatSales.status, "paid"),
+    eq(beatSales.producerEarningsStatus, "pending"),
+    lte(beatSales.producerEarningsAvailableAt, now),
+  ));
+  const [sales, payoutRequests] = await Promise.all([
+    db.select().from(beatSales).where(eq(beatSales.producerId, producerId)),
+    db.select().from(beatPayoutRequests).where(eq(beatPayoutRequests.producerId, producerId)),
+  ]);
+  const paidSales = sales.filter((sale) => sale.status === "paid");
+  const settledSales = paidSales.filter((sale) => sale.producerEarningsAvailableAt && sale.producerEarningsAvailableAt.getTime() <= now.getTime());
+  const pendingSales = paidSales.filter((sale) => !sale.producerEarningsAvailableAt || sale.producerEarningsAvailableAt.getTime() > now.getTime());
+  const payoutReservations = payoutRequests.filter((request) => inArrayValue(request.status, ["pending", "approved", "paid"]));
+  const reservedPayoutCents = payoutReservations.reduce((sum, request) => sum + request.amountCents, 0);
+  const availableGrossCents = settledSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0);
+  const nextAvailableAt = pendingSales.reduce<Date | null>((next, sale) => {
+    if (!sale.producerEarningsAvailableAt) return next;
+    if (!next || sale.producerEarningsAvailableAt.getTime() < next.getTime()) return sale.producerEarningsAvailableAt;
+    return next;
+  }, null);
+  return {
+    sales,
+    totalEarnedCents: paidSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0),
+    pendingCents: pendingSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0),
+    availableGrossCents,
+    availableCents: Math.max(0, availableGrossCents - reservedPayoutCents),
+    reservedPayoutCents,
+    paidOutCents: payoutRequests.filter((request) => request.status === "paid").reduce((sum, request) => sum + request.amountCents, 0),
+    nextAvailableAt,
+  };
+}
+
+function inArrayValue<T>(value: T, values: readonly T[]) {
+  return values.includes(value);
+}
 
 export async function getActiveBeatProducerMembership(userId: number) {
   const db = await getDb();
@@ -118,10 +194,17 @@ export async function fulfillBeatSaleFromCheckoutSession(session: Stripe.Checkou
     if (affectedRows === 0 && sale.status !== "paid") throw new Error("This exclusive beat was sold before this checkout completed");
   }
 
+  const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : sale.stripePaymentIntentId;
+  const paidAt = sale.paidAt ?? new Date();
+  const settlement = await getStripeSettlementDetails(paymentIntentId);
+  const settlementAvailableAt = getProducerSettlementAvailableAt(paidAt, settlement.availableOn);
   await db.update(beatSales).set({
     status: "paid",
-    stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : sale.stripePaymentIntentId,
-    paidAt: sale.paidAt ?? new Date(),
+    stripePaymentIntentId: paymentIntentId,
+    stripeBalanceTransactionId: settlement.balanceTransactionId,
+    producerEarningsStatus: settlementAvailableAt.getTime() <= Date.now() ? "available" : "pending",
+    producerEarningsAvailableAt: settlementAvailableAt,
+    paidAt,
   }).where(eq(beatSales.id, sale.id));
 
   let contract = existingContract;
@@ -145,11 +228,28 @@ export async function fulfillBeatSaleFromCheckoutSession(session: Stripe.Checkou
     await db.update(beatSales).set({ contractId }).where(eq(beatSales.id, sale.id));
     await db.update(marketplaceBeats).set({ salesCount: sql`${marketplaceBeats.salesCount} + 1` }).where(eq(marketplaceBeats.id, beat.id));
   }
-  return { sale: { ...sale, status: "paid" as const }, contract, alreadyFulfilled: false };
+  return { sale: { ...sale, status: "paid" as const, producerEarningsAvailableAt: settlementAvailableAt }, contract, alreadyFulfilled: false };
 }
 
 export async function markBeatSalePaymentReversed(paymentIntentId: string, status: "refunded" | "disputed") {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db.update(beatSales).set({ status }).where(eq(beatSales.stripePaymentIntentId, paymentIntentId));
+  await db.update(beatSales).set({ status, producerEarningsStatus: "reversed" }).where(eq(beatSales.stripePaymentIntentId, paymentIntentId));
+}
+
+/** Refreshes an existing paid sale whenever Stripe sends a charge-success event. */
+export async function refreshBeatSaleSettlementFromPaymentIntent(paymentIntentId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [sale] = await db.select().from(beatSales).where(eq(beatSales.stripePaymentIntentId, paymentIntentId)).limit(1);
+  if (!sale || sale.status !== "paid") return null;
+  const settlement = await getStripeSettlementDetails(paymentIntentId);
+  if (!settlement.availableOn || !sale.paidAt) return null;
+  const availableAt = getProducerSettlementAvailableAt(sale.paidAt, settlement.availableOn);
+  await db.update(beatSales).set({
+    stripeBalanceTransactionId: settlement.balanceTransactionId,
+    producerEarningsAvailableAt: availableAt,
+    producerEarningsStatus: availableAt.getTime() <= Date.now() ? "available" : "pending",
+  }).where(eq(beatSales.id, sale.id));
+  return { saleId: sale.id, availableAt };
 }

@@ -30,7 +30,7 @@ import {
 } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { grantLineSkipCredits } from "./db";
-import { fulfillBeatProducerSubscription, fulfillBeatSaleFromCheckoutSession, markBeatSalePaymentReversed, updateBeatProducerSubscription } from "./beat-marketplace-service";
+import { fulfillBeatProducerSubscription, fulfillBeatSaleFromCheckoutSession, markBeatSalePaymentReversed, refreshBeatSaleSettlementFromPaymentIntent, updateBeatProducerSubscription } from "./beat-marketplace-service";
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -490,6 +490,14 @@ export function registerStripeWebhook(app: Express) {
           case "customer.subscription.updated":
           case "customer.subscription.deleted":
             await updateBeatProducerSubscription(event.data.object as Stripe.Subscription);
+            break;
+          case "charge.succeeded":
+            {
+              const paymentIntentId = (event.data.object as Stripe.Charge).payment_intent;
+              if (typeof paymentIntentId === "string") {
+                await refreshBeatSaleSettlementFromPaymentIntent(paymentIntentId);
+              }
+            }
             break;
           case "charge.refunded":
             await handleChargeRefunded(event.data.object as Stripe.Charge);

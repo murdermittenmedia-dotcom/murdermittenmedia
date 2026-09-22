@@ -2,6 +2,8 @@ export const BEAT_PRO_MONTHLY_PRICE_CENTS = 999;
 export const FREE_PRODUCER_UPLOAD_LIMIT = 10;
 export const FREE_PRODUCER_SHARE_PERCENT = 80;
 export const PRO_PRODUCER_SHARE_PERCENT = 100;
+export const PRODUCER_SETTLEMENT_MINIMUM_DAYS = 5;
+export const PRODUCER_SETTLEMENT_FALLBACK_DAYS = 7;
 
 export const BEAT_LICENSE_CODES = ["basic", "premium", "exclusive"] as const;
 export type BeatLicenseCode = (typeof BEAT_LICENSE_CODES)[number];
@@ -80,6 +82,19 @@ export function calculateBeatSaleSplit(amountCents: number, isPro: boolean) {
     producerEarningsCents,
     platformFeeCents: amountCents - producerEarningsCents,
   };
+}
+
+/**
+ * Producer earnings are not withdrawable until Stripe has made the underlying
+ * charge available. The five-day floor keeps a consistent marketplace hold;
+ * Stripe's later availability date wins, and seven days is used if Stripe does
+ * not expose a balance transaction yet.
+ */
+export function getProducerSettlementAvailableAt(paidAt: Date, stripeAvailableOn?: Date | null) {
+  const minimumHold = paidAt.getTime() + PRODUCER_SETTLEMENT_MINIMUM_DAYS * 24 * 60 * 60 * 1000;
+  const fallbackHold = paidAt.getTime() + PRODUCER_SETTLEMENT_FALLBACK_DAYS * 24 * 60 * 60 * 1000;
+  const stripeAvailability = stripeAvailableOn?.getTime();
+  return new Date(Math.max(minimumHold, stripeAvailability ?? fallbackHold));
 }
 
 export function formatLicenseLimit(limit: number | null, label: string) {

@@ -99,7 +99,7 @@ import {
 import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
 import { BEAT_LICENSE_CODES, BEAT_LICENSE_PRESETS, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, getBeatLicensePreset } from "../shared/beat-marketplace";
-import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession } from "./beat-marketplace-service";
+import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, getProducerSettlementLedger } from "./beat-marketplace-service";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -5788,13 +5788,17 @@ export const appRouter = router({
         }),
 
       sales: protectedProcedure.query(async ({ ctx }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-        const rows = await db.select().from(beatSales).where(eq(beatSales.producerId, ctx.user.id)).orderBy(desc(beatSales.createdAt));
-        const totals = rows.filter((sale) => sale.status === "paid").reduce((sum, sale) => sum + sale.producerEarningsCents, 0);
-        const paidOutRows = await db.select({ amountCents: beatPayoutRequests.amountCents }).from(beatPayoutRequests).where(and(eq(beatPayoutRequests.producerId, ctx.user.id), inArray(beatPayoutRequests.status, ["approved", "paid"])));
-        const paidOut = paidOutRows.reduce((sum, request) => sum + request.amountCents, 0);
-        return { sales: rows, totalEarnedCents: totals, paidOutCents: paidOut, availableCents: Math.max(0, totals - paidOut) };
+        const ledger = await getProducerSettlementLedger(ctx.user.id);
+        return {
+          sales: ledger.sales,
+          totalEarnedCents: ledger.totalEarnedCents,
+          pendingCents: ledger.pendingCents,
+          availableGrossCents: ledger.availableGrossCents,
+          availableCents: ledger.availableCents,
+          reservedPayoutCents: ledger.reservedPayoutCents,
+          paidOutCents: ledger.paidOutCents,
+          nextAvailableAt: ledger.nextAvailableAt,
+        };
       }),
 
       requestPayout: protectedProcedure
@@ -5802,12 +5806,12 @@ export const appRouter = router({
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-          const paid = await db.select({ earnings: beatSales.producerEarningsCents }).from(beatSales).where(and(eq(beatSales.producerId, ctx.user.id), eq(beatSales.status, "paid")));
-          const paidOut = await db.select({ amountCents: beatPayoutRequests.amountCents }).from(beatPayoutRequests).where(and(eq(beatPayoutRequests.producerId, ctx.user.id), inArray(beatPayoutRequests.status, ["pending", "approved", "paid"])));
-          const available = paid.reduce((sum, sale) => sum + sale.earnings, 0) - paidOut.reduce((sum, request) => sum + request.amountCents, 0);
-          if (input.amountCents > available) throw new TRPCError({ code: "BAD_REQUEST", message: "Your payout request exceeds available marketplace earnings." });
+          const ledger = await getProducerSettlementLedger(ctx.user.id);
+          if (input.amountCents > ledger.availableCents) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Your payout request exceeds settled marketplace earnings. Pending sales become available after Stripe's settlement window." });
+          }
           const result = await db.insert(beatPayoutRequests).values({ producerId: ctx.user.id, ...input });
-          return { id: Number((result as any)[0]?.insertId ?? (result as any).insertId), availableAfterCents: available - input.amountCents };
+          return { id: Number((result as any)[0]?.insertId ?? (result as any).insertId), availableAfterCents: ledger.availableCents - input.amountCents };
         }),
     }),
 

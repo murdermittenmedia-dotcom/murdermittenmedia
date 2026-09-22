@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import {
   Coins, Wallet, ArrowRightLeft, History,
   DollarSign, Flame, ShoppingCart, TrendingUp,
-  CheckCircle2, Clock, XCircle, AlertCircle, Gift, Info
+  CheckCircle2, Clock, XCircle, AlertCircle, Gift, Info, Music2
 } from "lucide-react";
 
 function formatUSD(cents: number) {
@@ -55,6 +55,7 @@ export default function WalletPage() {
   const { data: fvBalance, refetch: refetchFV } = trpc.economy.getFireVoteBalance.useQuery(undefined, { enabled: isAuthenticated });
   const { data: lrCashouts } = trpc.economy.getCreatorCashoutHistory.useQuery(undefined, { enabled: isAuthenticated });
   const { data: econConfig } = trpc.economy.getConfig.useQuery();
+  const { data: beatWallet } = trpc.beats.producer.sales.useQuery(undefined, { enabled: isAuthenticated });
 
   // Mutations
   const requestLRCashout = trpc.economy.requestCreatorCashout.useMutation({
@@ -107,6 +108,8 @@ export default function WalletPage() {
   const fvRate = econConfig?.fireVotesPerConversion ?? 50;
   const coinRate = econConfig?.coinsPerConversion ?? 10;
   const minLRCashout = econConfig?.minCashoutCents ?? 500;
+  const beatAvailable = beatWallet?.availableCents ?? 0;
+  const beatPending = beatWallet?.pendingCents ?? 0;
 
   const lrUSD = formatUSD(lrAvailable);
 
@@ -122,7 +125,7 @@ export default function WalletPage() {
 
       <div className="container py-8 max-w-4xl">
         {/* Balance Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Coins */}
           <Card className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/10 border-yellow-600/30">
             <CardContent className="pt-5 pb-5">
@@ -160,6 +163,19 @@ export default function WalletPage() {
               <div className="text-3xl font-bold text-white">{formatCoins(fvBal)}</div>
               <div className="text-white/30 text-xs mt-1">{fvRate} FV = {coinRate} Coins</div>
               <div className="text-white/30 text-xs mt-0.5">Convert below</div>
+            </CardContent>
+          </Card>
+
+          {/* Beat Marketplace producer earnings */}
+          <Card className="bg-gradient-to-br from-red-950/30 to-zinc-900/10 border-red-600/30">
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Music2 className="w-5 h-5 text-red-400" />
+                <span className="text-red-400 text-xs font-semibold uppercase tracking-widest">Beat Earnings</span>
+              </div>
+              <div className="text-3xl font-bold text-white">{formatUSD(beatAvailable)}</div>
+              {beatPending > 0 && <div className="text-yellow-400/80 text-xs mt-1">{formatUSD(beatPending)} pending Stripe settlement</div>}
+              <Link href="/beats/producer" className="mt-1 block text-white/30 text-xs hover:text-red-300">Marketplace producer wallet</Link>
             </CardContent>
           </Card>
         </div>
