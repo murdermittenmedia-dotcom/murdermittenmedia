@@ -5759,6 +5759,8 @@ export const appRouter = router({
           masterBase64: z.string().min(1),
           masterMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
           previewStartSeconds: z.number().int().min(0).max(60 * 60).default(0),
+          browserPreviewBase64: z.string().optional(),
+          browserPreviewMimeType: z.literal("audio/wav").optional(),
           previewTag: beatPreviewTagInput.default({ source: "none", atSeconds: 0 }),
           existingPreviewTagFileKey: z.string().max(512).nullable().optional(),
           existingPreviewTagFileUrl: z.string().max(512).nullable().optional(),
@@ -5789,9 +5791,15 @@ export const appRouter = router({
             tag: input.previewTag,
             existingCustomTag: { key: input.existingPreviewTagFileKey ?? null, url: input.existingPreviewTagFileUrl ?? null },
           });
-          const previewBuffer = await createBeatPreviewClip({ source: masterBuffer, mimeType: input.masterMimeType, startSeconds: input.previewStartSeconds, tag: previewTag.renderTag });
+          const browserPreview = input.browserPreviewBase64 ? Buffer.from(input.browserPreviewBase64, "base64") : null;
+          if (browserPreview && (input.browserPreviewMimeType !== "audio/wav" || browserPreview.length < 64_000 || browserPreview.length > 5_600_000)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "The browser preview is invalid. Rebuild the 30-second preview and try again." });
+          }
+          const previewBuffer = browserPreview ?? await createBeatPreviewClip({ source: masterBuffer, mimeType: input.masterMimeType, startSeconds: input.previewStartSeconds, tag: previewTag.renderTag });
+          const previewMimeType = browserPreview ? "audio/wav" : "audio/mpeg";
+          const previewExtension = browserPreview ? "wav" : "mp3";
           const [preview, master] = await Promise.all([
-            storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-${safeTitle}.mp3`, previewBuffer, "audio/mpeg"),
+            storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-${safeTitle}.${previewExtension}`, previewBuffer, previewMimeType),
             storagePut(`beat-marketplace/${ctx.user.id}/masters/${Date.now()}-${safeTitle}.${masterExt}`, masterBuffer, input.masterMimeType),
           ]);
           let artworkUrl: string | null = null;
@@ -5889,6 +5897,8 @@ export const appRouter = router({
           previewTagFileUrl: z.string().max(512).nullable().optional(),
           previewTagAtSeconds: z.number().int().min(0).max(29).optional(),
           previewTag: beatPreviewTagInput.optional(),
+          browserPreviewBase64: z.string().optional(),
+          browserPreviewMimeType: z.literal("audio/wav").optional(),
           masterFileKey: z.string().min(1).max(512).optional(),
           masterFileUrl: z.string().min(1).max(512).optional(),
           status: z.enum(["draft", "active", "archived"]),
@@ -5914,9 +5924,15 @@ export const appRouter = router({
           let tagOnlyFields: Record<string, unknown> = {};
           if (!input.masterFileKey && input.previewTag) {
             const resolvedTag = await resolveBeatPreviewTag({ userId: ctx.user.id, tag: input.previewTag, existingCustomTag: { key: beat.previewTagFileKey, url: beat.previewTagFileUrl } });
-            const master = await downloadPreviewTag(beat.masterFileKey);
-            const preview = await createBeatPreviewClip({ source: master, mimeType: audioMimeTypeForName(beat.masterFileKey), startSeconds: beat.previewStartSeconds, tag: resolvedTag.renderTag });
-            const storedPreview = await storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-tagged-preview.mp3`, preview, "audio/mpeg");
+            const browserPreview = input.browserPreviewBase64 ? Buffer.from(input.browserPreviewBase64, "base64") : null;
+            if (browserPreview && (input.browserPreviewMimeType !== "audio/wav" || browserPreview.length < 64_000 || browserPreview.length > 5_600_000)) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: "The browser preview is invalid. Rebuild the 30-second preview and try again." });
+            }
+            const preview = browserPreview ?? await (async () => {
+              const master = await downloadPreviewTag(beat.masterFileKey);
+              return createBeatPreviewClip({ source: master, mimeType: audioMimeTypeForName(beat.masterFileKey), startSeconds: beat.previewStartSeconds, tag: resolvedTag.renderTag });
+            })();
+            const storedPreview = await storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-tagged-preview.${browserPreview ? "wav" : "mp3"}`, preview, browserPreview ? "audio/wav" : "audio/mpeg");
             tagOnlyFields = { previewFileKey: storedPreview.key, previewFileUrl: storedPreview.url, previewTagSource: resolvedTag.source, previewTagFileKey: resolvedTag.fileKey, previewTagFileUrl: resolvedTag.fileUrl, previewTagAtSeconds: resolvedTag.atSeconds };
           }
           await db.update(marketplaceBeats).set({

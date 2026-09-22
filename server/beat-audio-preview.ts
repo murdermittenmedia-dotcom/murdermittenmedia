@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { storageGetSignedUrl } from "./storage";
 
 const execFileAsync = promisify(execFile);
+const FFMPEG_PATH = process.env.FFMPEG_PATH || "/usr/bin/ffmpeg";
 
 export const BEAT_PREVIEW_SECONDS = 30;
 export const BEAT_PREVIEW_TAG_SOURCES = ["none", "purchase_now", "purchase_today", "mitten", "custom"] as const;
@@ -69,7 +70,7 @@ export async function createBeatPreviewClip({
       command.push("-i", tagPath, "-filter_complex", `[0:a]asetpts=PTS-STARTPTS[beat];[1:a]adelay=${Math.max(0, Math.floor(tag.atSeconds * 1000))}|${Math.max(0, Math.floor(tag.atSeconds * 1000))},volume=1.12[tag];[beat][tag]amix=inputs=2:duration=first:dropout_transition=0[mix]`, "-map", "[mix]");
     }
     command.push("-vn", "-acodec", "libmp3lame", "-b:a", "192k", outputPath);
-    await execFileAsync("ffmpeg", command, { maxBuffer: 2 * 1024 * 1024 });
+    await execFileAsync(FFMPEG_PATH, command, { maxBuffer: 2 * 1024 * 1024 });
     const clip = await fs.readFile(outputPath);
     if (clip.length < 1024) throw new Error("The selected preview point did not produce playable audio.");
     return clip;

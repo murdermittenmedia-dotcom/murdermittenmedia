@@ -5186,3 +5186,8 @@
 ## Beat Marketplace contextual AI metadata — 2026-09-22
 - [x] Improve AI descriptions and tags using producer artist and city context
 - [x] Validate contextual metadata suggestions and regression coverage
+
+## Beat Marketplace preview reliability — 2026-09-22
+- [x] Fix server-side preview rendering when FFmpeg is unavailable to the web process
+- [x] Add an in-uploader audio player for the selected 30-second preview and tag position
+- [x] Validate rendered preview and in-uploader playback workflow
