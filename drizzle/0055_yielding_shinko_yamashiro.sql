@@ -1,0 +1,1 @@
+ALTER TABLE `marketplace_beats` ADD `previewStartSeconds` int DEFAULT 0 NOT NULL;

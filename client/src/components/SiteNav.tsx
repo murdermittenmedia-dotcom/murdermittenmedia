@@ -279,7 +279,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                     ) : (
                       <User className="w-3.5 h-3.5" />
                     )}
-                    <span className="hidden lg:inline">Account</span>
+                    <span className="hidden lg:inline max-w-28 truncate">{displayName}</span>
                   </a>
                   <button
                     onClick={logout}
@@ -370,7 +370,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
                     ) : (
                       <User className="w-4 h-4" />
                     )}
-                    Account
+                    {displayName}
                   </a>
                   <button
                     onClick={() => {

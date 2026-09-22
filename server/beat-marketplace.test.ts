@@ -72,4 +72,21 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(webhook).toContain('case "charge.succeeded"');
     expect(webhook).toContain("refreshBeatSaleSettlementFromPaymentIntent");
   });
+
+  it("uses one master upload, a generated preview, editable listings, and buyer-friendly discovery", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    const market = readFileSync(resolve(process.cwd(), "client/src/pages/BeatMarketplace.tsx"), "utf8");
+    expect(router).toContain("createBeatPreviewClip");
+    expect(router).not.toContain("previewBase64");
+    expect(router).toContain("update: protectedProcedure");
+    expect(router).toContain("suggestMetadata: protectedProcedure");
+    expect(router).toContain("searchCoverImages: protectedProcedure");
+    expect(router).toContain('input?.sort === "alphabetical"');
+    expect(producer).toContain("Drop your beat here");
+    expect(producer).toContain("AI help");
+    expect(producer).toContain("Find a cover image");
+    expect(market).toContain("Alphabetical A–Z");
+    expect(market).toContain("/profile/${beat.producerId}");
+  });
 });

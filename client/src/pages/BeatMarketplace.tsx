@@ -7,30 +7,14 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { ArrowRight, AudioLines, ChevronRight, Disc3, Search, SlidersHorizontal, Sparkles, Upload } from "lucide-react";
 
-function cents(value: number) {
-  return `$${(value / 100).toFixed(0)}`;
-}
+function cents(value: number) { return `$${(value / 100).toFixed(0)}`; }
 
 function BeatArtwork({ beat, large = false }: { beat: any; large?: boolean }) {
-  return (
-    <div className={`relative overflow-hidden bg-gradient-to-br from-red-900/70 via-zinc-900 to-black ${large ? "aspect-square" : "aspect-[4/3]"}`}>
-      {beat.artworkUrl ? <img src={beat.artworkUrl} alt={`${beat.title} artwork`} className="h-full w-full object-cover" /> : (
-        <>
-          <div className="absolute -right-10 -top-12 h-44 w-44 rounded-full border border-red-500/20" />
-          <div className="absolute bottom-5 left-5 font-['Anton'] text-5xl leading-none text-white/15">MMM</div>
-          <Disc3 className="absolute right-5 bottom-5 h-12 w-12 text-red-500/80" />
-        </>
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <p className="truncate font-['Anton'] text-xl uppercase tracking-wide text-white">{beat.title}</p>
-          <p className="truncate text-[10px] uppercase tracking-[0.18em] text-white/55">{beat.producerName}</p>
-        </div>
-        <AudioPlayButton url={beat.previewFileUrl} title={beat.title} artist={beat.producerName} size={large ? "lg" : "md"} className="border border-white/25 bg-red-600 hover:bg-red-500" />
-      </div>
-    </div>
-  );
+  return <div className={`relative overflow-hidden bg-gradient-to-br from-red-900/70 via-zinc-900 to-black ${large ? "aspect-square" : "aspect-[4/3]"}`}>{beat.artworkUrl ? <img src={beat.artworkUrl} alt={`${beat.title} artwork`} className="h-full w-full object-cover" /> : <><div className="absolute -right-10 -top-12 h-44 w-44 rounded-full border border-red-500/20" /><div className="absolute bottom-5 left-5 font-['Anton'] text-5xl leading-none text-white/15">MMM</div><Disc3 className="absolute bottom-5 right-5 h-12 w-12 text-red-500/80" /></>}<div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" /><div className="absolute bottom-3 right-3"><AudioPlayButton url={beat.previewFileUrl} title={beat.title} artist={beat.producerName} size={large ? "lg" : "md"} className="border border-white/25 bg-red-600 hover:bg-red-500" /></div></div>;
+}
+
+function BeatCard({ beat }: { beat: any }) {
+  return <article className="group overflow-hidden border border-white/10 bg-[#101010] transition hover:-translate-y-1 hover:border-red-500/50"><BeatArtwork beat={beat} /><div className="space-y-3 p-4"><div><Link href={`/beats/${beat.slug}`} className="block truncate font-['Anton'] text-xl uppercase tracking-wide text-white hover:text-red-400">{beat.title}</Link><Link href={`/profile/${beat.producerId}`} className="mt-1 inline-block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-white/55 transition hover:text-red-400">{beat.producerName}</Link></div><div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-white/42">{beat.genre && <span>{beat.genre}</span>}{beat.bpm && <><span className="text-white/15">/</span><span>{beat.bpm} BPM</span></>}{beat.musicalKey && <><span className="text-white/15">/</span><span>{beat.musicalKey}</span></>}</div><div className="flex items-center justify-between"><span className="text-xs text-white/45">{beat.licenses.length ? `From ${cents(Math.min(...beat.licenses.map((license: any) => license.priceCents)))}` : "Licenses soon"}</span><Link href={`/beats/${beat.slug}`} className="text-[10px] font-black uppercase tracking-widest text-red-400">License</Link></div></div></article>;
 }
 
 export default function BeatMarketplace() {
@@ -38,53 +22,9 @@ export default function BeatMarketplace() {
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState<string | undefined>();
-  const [sort, setSort] = useState<"newest" | "featured" | "popular" | "price_low">("newest");
+  const [sort, setSort] = useState<"newest" | "alphabetical" | "featured" | "popular">("newest");
   const { data: genres = [] } = trpc.beats.genres.useQuery();
   const { data: beats = [], isLoading } = trpc.beats.list.useQuery({ search: search || undefined, genre, sort });
   const activeGenres = useMemo(() => genres.slice(0, 10), [genres]);
-
-  return (
-    <div className="min-h-screen bg-[#080808] text-white">
-      <SiteNav />
-      <main className="pt-24 pb-20">
-        <section className="relative overflow-hidden border-b border-white/10 bg-[#0b0b0b]">
-          <div className="absolute inset-0 opacity-70" style={{ backgroundImage: "radial-gradient(circle at 18% 20%, rgba(209,0,0,.28), transparent 30%), radial-gradient(circle at 85% 65%, rgba(120,0,0,.24), transparent 36%)" }} />
-          <div className="container relative grid gap-10 py-14 md:grid-cols-[1.25fr_.75fr] md:py-20">
-            <div>
-              <div className="mb-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.32em] text-red-400"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />The Mitten Sound</div>
-              <h1 className="font-['Anton'] text-6xl uppercase leading-[.86] tracking-tight sm:text-7xl lg:text-8xl">BEAT<br /><span className="text-red-600">MARKETPLACE</span></h1>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-white/58">Find your next record. License production from independent creators with clear terms, protected downloads, and a contract generated with every paid license.</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button onClick={() => document.getElementById("beat-catalog")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest transition hover:bg-red-500">Browse Beats <ArrowRight className="h-4 w-4" /></button>
-                <button onClick={() => user ? navigate("/beats/producer") : (window.location.href = getLoginUrl("/beats/producer"))} className="inline-flex items-center gap-2 border border-white/25 px-5 py-3 text-xs font-black uppercase tracking-widest text-white/75 transition hover:border-white hover:text-white"><Upload className="h-4 w-4" />Sell Your Beats</button>
-              </div>
-            </div>
-            <div className="self-end border border-red-500/30 bg-black/35 p-5 backdrop-blur-sm">
-              <div className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-red-400"><Sparkles className="h-4 w-4" />Simple for both sides</div>
-              <div className="grid gap-px bg-white/10 sm:grid-cols-3">
-                {[['Pick a license','Plain-language usage options'], ['Pay securely','Checkout with instant proof'], ['Download & create','Files plus your contract']].map(([title, text], index) => <div key={title} className="bg-[#101010] p-4"><span className="text-xs text-red-500">0{index + 1}</span><h2 className="mt-3 text-sm font-bold">{title}</h2><p className="mt-1 text-xs leading-relaxed text-white/45">{text}</p></div>)}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="beat-catalog" className="container py-10">
-          <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-            <div><p className="text-[10px] font-black uppercase tracking-[.28em] text-red-500">Catalog</p><h2 className="mt-2 font-['Anton'] text-4xl uppercase">Find the record</h2></div>
-            <Link href="/beats/producer" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/50 transition hover:text-red-400">Producer dashboard <ChevronRight className="h-4 w-4" /></Link>
-          </div>
-          <div className="mb-6 grid gap-3 rounded border border-white/10 bg-[#0d0d0d] p-3 lg:grid-cols-[1fr_auto_auto]">
-            <label className="flex items-center gap-3 border border-white/10 bg-black/30 px-3 py-2.5"><Search className="h-4 w-4 text-white/35" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search title, mood, or tag" className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/25" /></label>
-            <label className="flex items-center gap-2 border border-white/10 px-3 py-2.5 text-xs text-white/55"><SlidersHorizontal className="h-4 w-4" /><select value={sort} onChange={(event) => setSort(event.target.value as any)} className="bg-transparent text-xs outline-none"><option className="bg-[#111]" value="newest">Newest</option><option className="bg-[#111]" value="featured">Featured</option><option className="bg-[#111]" value="popular">Most licensed</option></select></label>
-            <button onClick={() => { setSearch(""); setGenre(undefined); setSort("newest"); }} className="border border-white/10 px-4 text-[10px] font-bold uppercase tracking-widest text-white/45 hover:text-white">Clear</button>
-          </div>
-          <div className="mb-7 flex gap-2 overflow-x-auto pb-2">
-            <button onClick={() => setGenre(undefined)} className={`shrink-0 border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${!genre ? "border-red-500 bg-red-600 text-white" : "border-white/15 text-white/50 hover:border-white/40"}`}>All beats</button>
-            {activeGenres.map((item) => <button key={item} onClick={() => setGenre(item)} className={`shrink-0 border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${genre === item ? "border-red-500 bg-red-600 text-white" : "border-white/15 text-white/50 hover:border-white/40"}`}>{item}</button>)}
-          </div>
-          {isLoading ? <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="aspect-[4/5] animate-pulse bg-white/5" />)}</div> : beats.length ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{beats.map((beat: any) => <Link key={beat.id} href={`/beats/${beat.slug}`} className="group overflow-hidden border border-white/10 bg-[#101010] transition hover:-translate-y-1 hover:border-red-500/50"><BeatArtwork beat={beat} /><div className="space-y-3 p-4"><div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-white/42">{beat.genre && <span>{beat.genre}</span>}{beat.bpm && <><span className="text-white/15">/</span><span>{beat.bpm} BPM</span></>}{beat.musicalKey && <><span className="text-white/15">/</span><span>{beat.musicalKey}</span></>}</div><div className="flex items-center justify-between"><span className="text-xs text-white/45">{beat.licenses.length ? `From ${cents(Math.min(...beat.licenses.map((license: any) => license.priceCents)))}` : "Licenses soon"}</span><span className="text-[10px] font-black uppercase tracking-widest text-red-400">License</span></div></div></Link>)}</div> : <div className="border border-dashed border-white/15 py-20 text-center"><AudioLines className="mx-auto h-10 w-10 text-white/20" /><h3 className="mt-4 font-['Anton'] text-2xl uppercase">No beats found</h3><p className="mt-2 text-sm text-white/45">Try another filter, or be the first producer to upload.</p><Link href="/beats/producer" className="mt-5 inline-flex bg-red-600 px-4 py-2 text-xs font-bold uppercase tracking-widest">Open producer dashboard</Link></div>}
-        </section>
-      </main>
-    </div>
-  );
+  return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><main className="pt-24 pb-20"><section className="relative overflow-hidden border-b border-white/10 bg-[#0b0b0b]"><div className="absolute inset-0 opacity-70" style={{ backgroundImage: "radial-gradient(circle at 18% 20%, rgba(209,0,0,.28), transparent 30%), radial-gradient(circle at 85% 65%, rgba(120,0,0,.24), transparent 36%)" }} /><div className="container relative grid gap-10 py-14 md:grid-cols-[1.25fr_.75fr] md:py-20"><div><div className="mb-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.32em] text-red-400"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />The Mitten Sound</div><h1 className="font-['Anton'] text-6xl uppercase leading-[.86] tracking-tight sm:text-7xl lg:text-8xl">BEAT<br /><span className="text-red-600">MARKETPLACE</span></h1><p className="mt-6 max-w-xl text-base leading-relaxed text-white/58">Find your next record. License production from independent creators with clear terms, protected downloads, and a contract generated with every paid license.</p><div className="mt-8 flex flex-wrap gap-3"><button onClick={() => document.getElementById("beat-catalog")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest transition hover:bg-red-500">Browse Beats <ArrowRight className="h-4 w-4" /></button><button onClick={() => user ? navigate("/beats/producer") : (window.location.href = getLoginUrl("/beats/producer"))} className="inline-flex items-center gap-2 border border-white/25 px-5 py-3 text-xs font-black uppercase tracking-widest text-white/75 transition hover:border-white hover:text-white"><Upload className="h-4 w-4" />Sell Your Beats</button></div></div><div className="self-end border border-red-500/30 bg-black/35 p-5 backdrop-blur-sm"><div className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-red-400"><Sparkles className="h-4 w-4" />Simple for both sides</div><div className="grid gap-px bg-white/10 sm:grid-cols-3">{[["Pick a license", "Plain-language usage options"], ["Pay securely", "Checkout with instant proof"], ["Download & create", "Files plus your contract"]].map(([heading, text], index) => <div key={heading} className="bg-[#101010] p-4"><span className="text-xs text-red-500">0{index + 1}</span><h2 className="mt-3 text-sm font-bold">{heading}</h2><p className="mt-1 text-xs leading-relaxed text-white/45">{text}</p></div>)}</div></div></div></section><section id="beat-catalog" className="container py-10"><div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="text-[10px] font-black uppercase tracking-[.28em] text-red-500">Catalog</p><h2 className="mt-2 font-['Anton'] text-4xl uppercase">Find the record</h2></div><Link href="/beats/producer" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/50 transition hover:text-red-400">Producer dashboard <ChevronRight className="h-4 w-4" /></Link></div><div className="mb-6 grid gap-3 rounded border border-white/10 bg-[#0d0d0d] p-3 lg:grid-cols-[1fr_auto_auto]"><label className="flex items-center gap-3 border border-white/10 bg-black/30 px-3 py-2.5"><Search className="h-4 w-4 text-white/35" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search title, mood, or tag" className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/25" /></label><label className="flex items-center gap-2 border border-white/10 px-3 py-2.5 text-xs text-white/55"><SlidersHorizontal className="h-4 w-4" /><select value={sort} onChange={(event) => setSort(event.target.value as any)} className="bg-transparent text-xs outline-none"><option className="bg-[#111]" value="newest">Newest</option><option className="bg-[#111]" value="alphabetical">Alphabetical A–Z</option><option className="bg-[#111]" value="popular">Most licensed</option><option className="bg-[#111]" value="featured">Featured</option></select></label><button onClick={() => { setSearch(""); setGenre(undefined); setSort("newest"); }} className="border border-white/10 px-4 text-[10px] font-bold uppercase tracking-widest text-white/45 hover:text-white">Clear</button></div><div className="mb-7 flex gap-2 overflow-x-auto pb-2"><button onClick={() => setGenre(undefined)} className={`shrink-0 border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${!genre ? "border-red-500 bg-red-600 text-white" : "border-white/15 text-white/50 hover:border-white/40"}`}>All beats</button>{activeGenres.map((item) => <button key={item} onClick={() => setGenre(item)} className={`shrink-0 border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${genre === item ? "border-red-500 bg-red-600 text-white" : "border-white/15 text-white/50 hover:border-white/40"}`}>{item}</button>)}</div>{isLoading ? <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="aspect-[4/5] animate-pulse bg-white/5" />)}</div> : beats.length ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{beats.map((beat: any) => <BeatCard beat={beat} key={beat.id} />)}</div> : <div className="border border-dashed border-white/15 py-20 text-center"><AudioLines className="mx-auto h-10 w-10 text-white/20" /><h3 className="mt-4 font-['Anton'] text-2xl uppercase">No beats found</h3><p className="mt-2 text-sm text-white/45">Try another filter, or be the first producer to upload.</p><Link href="/beats/producer" className="mt-5 inline-flex bg-red-600 px-4 py-2 text-xs font-bold uppercase tracking-widest">Open producer dashboard</Link></div>}</section></main></div>;
 }

@@ -1230,6 +1230,7 @@ export const marketplaceBeats = mysqlTable("marketplace_beats", {
   artworkUrl: varchar("artworkUrl", { length: 512 }),
   previewFileKey: varchar("previewFileKey", { length: 512 }).notNull(),
   previewFileUrl: varchar("previewFileUrl", { length: 512 }).notNull(),
+  previewStartSeconds: int("previewStartSeconds").default(0).notNull(),
   masterFileKey: varchar("masterFileKey", { length: 512 }).notNull(),
   masterFileUrl: varchar("masterFileUrl", { length: 512 }).notNull(),
   status: mysqlEnum("status", ["draft", "active", "archived", "sold_exclusive"]).default("draft").notNull(),

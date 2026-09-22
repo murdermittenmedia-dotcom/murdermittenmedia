@@ -100,6 +100,8 @@ import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
 import { BEAT_LICENSE_CODES, BEAT_LICENSE_PRESETS, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, getBeatLicensePreset } from "../shared/beat-marketplace";
 import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, getProducerSettlementLedger } from "./beat-marketplace-service";
+import { createBeatPreviewClip } from "./beat-audio-preview";
+import { invokeLLM } from "./_core/llm";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -5590,7 +5592,7 @@ export const appRouter = router({
       .input(z.object({
         search: z.string().trim().max(120).optional(),
         genre: z.string().trim().max(80).optional(),
-        sort: z.enum(["newest", "featured", "popular", "price_low"]).default("newest"),
+        sort: z.enum(["newest", "alphabetical", "featured", "popular", "price_low"]).default("newest"),
       }).optional())
       .query(async ({ input }) => {
         const db = await getDb();
@@ -5605,6 +5607,8 @@ export const appRouter = router({
           ? [desc(marketplaceBeats.featured), desc(marketplaceBeats.createdAt)]
           : input?.sort === "popular"
             ? [desc(marketplaceBeats.salesCount), desc(marketplaceBeats.createdAt)]
+            : input?.sort === "alphabetical"
+              ? [asc(marketplaceBeats.title), desc(marketplaceBeats.createdAt)]
             : [desc(marketplaceBeats.createdAt)];
         const beats = await db.select({ beat: marketplaceBeats, producer: users })
           .from(marketplaceBeats)
@@ -5681,31 +5685,36 @@ export const appRouter = router({
       uploadFiles: protectedProcedure
         .input(z.object({
           title: z.string().trim().min(1).max(160),
-          previewName: z.string().min(1).max(255),
-          previewBase64: z.string().min(1),
-          previewMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
+          replaceBeatId: z.number().int().positive().optional(),
           masterName: z.string().min(1).max(255),
           masterBase64: z.string().min(1),
           masterMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
+          previewStartSeconds: z.number().int().min(0).max(60 * 60).default(0),
           artworkName: z.string().max(255).optional(),
           artworkBase64: z.string().optional(),
           artworkMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional(),
         }))
         .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
           const plan = await getBeatProducerPlan(ctx.user.id);
-          if (!plan.isPro && plan.uploadsThisMonth >= FREE_PRODUCER_UPLOAD_LIMIT) {
+          if (!input.replaceBeatId && !plan.isPro && plan.uploadsThisMonth >= FREE_PRODUCER_UPLOAD_LIMIT) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Free producers can publish up to 10 beats each month. Upgrade to Beat Pro for unlimited uploads." });
           }
-          const previewBuffer = Buffer.from(input.previewBase64, "base64");
+          if (input.replaceBeatId) {
+            const [existingBeat] = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
+              .where(and(eq(marketplaceBeats.id, input.replaceBeatId), eq(marketplaceBeats.producerId, ctx.user.id))).limit(1);
+            if (!existingBeat) throw new TRPCError({ code: "NOT_FOUND", message: "Beat not found" });
+          }
           const masterBuffer = Buffer.from(input.masterBase64, "base64");
-          if (previewBuffer.length > 10 * 1024 * 1024 || masterBuffer.length > 20 * 1024 * 1024) {
-            throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Preview files must be under 10MB and master files under 20MB." });
+          if (masterBuffer.length > 20 * 1024 * 1024) {
+            throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Beat audio must be under 20MB." });
           }
           const safeTitle = input.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "beat";
-          const previewExt = input.previewName.split(".").pop()?.toLowerCase() || "mp3";
           const masterExt = input.masterName.split(".").pop()?.toLowerCase() || "wav";
+          const previewBuffer = await createBeatPreviewClip({ source: masterBuffer, mimeType: input.masterMimeType, startSeconds: input.previewStartSeconds });
           const [preview, master] = await Promise.all([
-            storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-${safeTitle}.${previewExt}`, previewBuffer, input.previewMimeType),
+            storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-${safeTitle}.mp3`, previewBuffer, "audio/mpeg"),
             storagePut(`beat-marketplace/${ctx.user.id}/masters/${Date.now()}-${safeTitle}.${masterExt}`, masterBuffer, input.masterMimeType),
           ]);
           let artworkUrl: string | null = null;
@@ -5715,7 +5724,23 @@ export const appRouter = router({
             const artworkExt = input.artworkName?.split(".").pop()?.toLowerCase() || "jpg";
             artworkUrl = (await storagePut(`beat-marketplace/${ctx.user.id}/artwork/${Date.now()}-${safeTitle}.${artworkExt}`, artworkBuffer, input.artworkMimeType)).url;
           }
-          return { previewFileKey: preview.key, previewFileUrl: preview.url, masterFileKey: master.key, masterFileUrl: master.url, artworkUrl };
+          return { previewFileKey: preview.key, previewFileUrl: preview.url, previewStartSeconds: input.previewStartSeconds, masterFileKey: master.key, masterFileUrl: master.url, artworkUrl };
+        }),
+
+      uploadArtwork: protectedProcedure
+        .input(z.object({
+          title: z.string().trim().min(1).max(160),
+          artworkName: z.string().min(1).max(255),
+          artworkBase64: z.string().min(1),
+          artworkMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        }))
+        .mutation(async ({ ctx, input }) => {
+          const artworkBuffer = Buffer.from(input.artworkBase64, "base64");
+          if (artworkBuffer.length > 3 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Artwork must be under 3MB." });
+          const safeTitle = input.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "beat";
+          const extension = input.artworkName.split(".").pop()?.toLowerCase() || "jpg";
+          const artwork = await storagePut(`beat-marketplace/${ctx.user.id}/artwork/${Date.now()}-${safeTitle}.${extension}`, artworkBuffer, input.artworkMimeType);
+          return { artworkUrl: artwork.url };
         }),
 
       create: protectedProcedure
@@ -5730,6 +5755,7 @@ export const appRouter = router({
           artworkUrl: z.string().max(512).nullable().optional(),
           previewFileKey: z.string().min(1).max(512),
           previewFileUrl: z.string().min(1).max(512),
+          previewStartSeconds: z.number().int().min(0).max(60 * 60).default(0),
           masterFileKey: z.string().min(1).max(512),
           masterFileUrl: z.string().min(1).max(512),
           status: z.enum(["draft", "active"]).default("active"),
@@ -5751,7 +5777,7 @@ export const appRouter = router({
           const insert = await db.insert(marketplaceBeats).values({
             producerId: ctx.user.id, slug, title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
             mood: input.mood ?? null, description: input.description ?? null, tags: input.tags ?? null, artworkUrl: input.artworkUrl ?? null,
-            previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl, status: input.status,
+            previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl, status: input.status,
           });
           const beatId = Number((insert as any)[0]?.insertId ?? (insert as any).insertId);
           await db.insert(beatLicenses).values(input.licenses.map((license, index) => {
@@ -5759,6 +5785,127 @@ export const appRouter = router({
             return { beatId, code: license.code, name: preset.name, priceCents: license.priceCents, terms: JSON.stringify(preset), includesStems: license.includesStems ?? preset.includesStems, sortOrder: index };
           }));
           return { id: beatId, slug };
+        }),
+
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number().int().positive(),
+          title: z.string().trim().min(1).max(160),
+          genre: z.string().trim().min(1).max(80),
+          bpm: z.number().int().min(30).max(300).nullable().optional(),
+          musicalKey: z.string().trim().max(24).nullable().optional(),
+          mood: z.string().trim().max(120).nullable().optional(),
+          description: z.string().trim().max(3000).nullable().optional(),
+          tags: z.string().trim().max(320).nullable().optional(),
+          artworkUrl: z.string().max(512).nullable().optional(),
+          previewFileKey: z.string().min(1).max(512).optional(),
+          previewFileUrl: z.string().min(1).max(512).optional(),
+          previewStartSeconds: z.number().int().min(0).max(60 * 60).optional(),
+          masterFileKey: z.string().min(1).max(512).optional(),
+          masterFileUrl: z.string().min(1).max(512).optional(),
+          status: z.enum(["draft", "active", "archived"]),
+          licenses: z.array(z.object({ code: z.enum(BEAT_LICENSE_CODES), priceCents: z.number().int().min(100).max(1_000_000), includesStems: z.boolean().optional() })).min(1).max(3),
+        }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [beat] = await db.select().from(marketplaceBeats).where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id))).limit(1);
+          if (!beat) throw new TRPCError({ code: "NOT_FOUND", message: "Beat not found" });
+          if (beat.status === "sold_exclusive") throw new TRPCError({ code: "BAD_REQUEST", message: "An exclusive sale has closed this beat from future licensing." });
+          const replacementFields = input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl
+            ? { previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl }
+            : {};
+          if ((input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl) && (!input.masterFileKey || !input.masterFileUrl || !input.previewFileKey || !input.previewFileUrl)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Audio replacement is incomplete." });
+          }
+          const producerStoragePrefix = `beat-marketplace/${ctx.user.id}/`;
+          if (input.masterFileKey && (!input.masterFileKey.startsWith(producerStoragePrefix) || !input.previewFileKey?.startsWith(producerStoragePrefix))) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Replacement audio must come from your producer workspace." });
+          }
+          await db.update(marketplaceBeats).set({
+            title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
+            mood: input.mood ?? null, description: input.description ?? null, tags: input.tags ?? null,
+            artworkUrl: input.artworkUrl ?? null, status: input.status, ...replacementFields,
+          }).where(eq(marketplaceBeats.id, beat.id));
+          const existing = await db.select().from(beatLicenses).where(eq(beatLicenses.beatId, beat.id));
+          for (let index = 0; index < input.licenses.length; index += 1) {
+            const license = input.licenses[index];
+            const preset = getBeatLicensePreset(license.code);
+            const current = existing.find((entry) => entry.code === license.code);
+            const values = { name: preset.name, priceCents: license.priceCents, terms: JSON.stringify(preset), includesStems: license.includesStems ?? preset.includesStems, isActive: true, sortOrder: index };
+            if (current) await db.update(beatLicenses).set(values).where(eq(beatLicenses.id, current.id));
+            else await db.insert(beatLicenses).values({ beatId: beat.id, code: license.code, ...values });
+          }
+          const removedCodes = existing.filter((entry) => !input.licenses.some((license) => license.code === entry.code)).map((entry) => entry.id);
+          if (removedCodes.length) await db.update(beatLicenses).set({ isActive: false }).where(inArray(beatLicenses.id, removedCodes));
+          return { success: true, id: beat.id, slug: beat.slug };
+        }),
+
+      suggestMetadata: protectedProcedure
+        .input(z.object({ title: z.string().trim().min(1).max(160), genre: z.string().trim().max(80).optional(), bpm: z.number().int().min(30).max(300).optional(), musicalKey: z.string().trim().max(24).optional(), mood: z.string().trim().max(120).optional() }))
+        .mutation(async ({ input }) => {
+          const result = await invokeLLM({
+            model: "gpt-5-mini",
+            messages: [
+              { role: "system", content: "You write concise, accurate marketplace metadata for instrumental beats. Do not claim sample clearances, chart success, artist affiliations, or technical facts not supplied. Keep descriptions under 300 characters and provide exactly 6 short, searchable tags." },
+              { role: "user", content: `Create a polished description and tags for this beat. Title: ${input.title}. Genre: ${input.genre || "unspecified"}. BPM: ${input.bpm || "unspecified"}. Key: ${input.musicalKey || "unspecified"}. Mood: ${input.mood || "unspecified"}.` },
+            ],
+            outputSchema: {
+              name: "beat_metadata",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  description: { type: "string" },
+                  tags: { type: "array", items: { type: "string" }, minItems: 6, maxItems: 6 },
+                },
+                required: ["description", "tags"],
+                additionalProperties: false,
+              },
+            },
+          });
+          const raw = result.choices[0]?.message.content;
+          const parsed = typeof raw === "string" ? JSON.parse(raw) : null;
+          if (!parsed || typeof parsed.description !== "string" || !Array.isArray(parsed.tags)) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Metadata helper returned an invalid response." });
+          return { description: parsed.description.slice(0, 300), tags: parsed.tags.map((tag: unknown) => String(tag).trim()).filter(Boolean).slice(0, 6).join(", ") };
+        }),
+
+      searchCoverImages: protectedProcedure
+        .input(z.object({ query: z.string().trim().min(2).max(120) }))
+        .query(async ({ input }) => {
+          const googleKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY || process.env.GOOGLE_SEARCH_API_KEY;
+          const googleEngine = process.env.GOOGLE_CSE_ID || process.env.GOOGLE_SEARCH_ENGINE_ID;
+          if (googleKey && googleEngine) {
+            const googleUrl = new URL("https://www.googleapis.com/customsearch/v1");
+            googleUrl.searchParams.set("key", googleKey);
+            googleUrl.searchParams.set("cx", googleEngine);
+            googleUrl.searchParams.set("q", input.query);
+            googleUrl.searchParams.set("searchType", "image");
+            googleUrl.searchParams.set("num", "10");
+            const response = await fetch(googleUrl);
+            if (response.ok) {
+              const payload = await response.json() as { items?: Array<{ title?: string; link?: string; image?: { thumbnailLink?: string; contextLink?: string } }> };
+              return (payload.items ?? []).flatMap((image) => image.link && image.image?.thumbnailLink ? [{ title: image.title || "Cover image", imageUrl: image.link, thumbnailUrl: image.image.thumbnailLink, sourceUrl: image.image.contextLink || image.link, source: "google" }] : []);
+            }
+          }
+          const url = new URL("https://commons.wikimedia.org/w/api.php");
+          url.searchParams.set("action", "query");
+          url.searchParams.set("format", "json");
+          url.searchParams.set("generator", "search");
+          url.searchParams.set("gsrsearch", `${input.query} filetype:bitmap`);
+          url.searchParams.set("gsrnamespace", "6");
+          url.searchParams.set("gsrlimit", "12");
+          url.searchParams.set("prop", "imageinfo");
+          url.searchParams.set("iiprop", "url");
+          url.searchParams.set("iiurlwidth", "800");
+          const response = await fetch(url, { headers: { "user-agent": "MurderMittenMedia/1.0 cover discovery" } });
+          if (!response.ok) throw new TRPCError({ code: "BAD_GATEWAY", message: "Cover search is temporarily unavailable." });
+          const payload = await response.json() as { query?: { pages?: Record<string, { title?: string; imageinfo?: Array<{ url?: string; thumburl?: string; descriptionurl?: string }> }> } };
+          return Object.values(payload.query?.pages ?? {}).flatMap((page) => {
+            const image = page.imageinfo?.[0];
+            if (!image?.url || !image.thumburl) return [];
+            return [{ title: (page.title || "Cover image").replace(/^File:/, ""), imageUrl: image.url, thumbnailUrl: image.thumburl, sourceUrl: image.descriptionurl || image.url, source: "public-media" }];
+          });
         }),
 
       setStatus: protectedProcedure

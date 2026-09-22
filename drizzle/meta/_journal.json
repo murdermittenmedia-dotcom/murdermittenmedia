@@ -386,6 +386,13 @@
       "when": 1790091818833,
       "tag": "0054_fuzzy_reptil",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1790092486458,
+      "tag": "0055_yielding_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }

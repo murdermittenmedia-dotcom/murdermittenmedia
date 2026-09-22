@@ -5169,3 +5169,9 @@
 - [x] Record Stripe-aware producer settlement dates for paid beat licenses
 - [x] Separate producer pending wallet earnings from available payout earnings
 - [x] Restrict payout requests to settled earnings, then migrate and validate the flow
+
+## Beat Marketplace producer workflow upgrades — 2026-09-22
+- [x] Require one master audio upload and let producers choose a protected 30-second preview clip
+- [x] Add producer beat editing, clickable producer identities, and catalog alphabetical/newest sorting
+- [x] Add drag-and-drop upload, AI metadata suggestions, and direct cover-image discovery in the uploader
+- [x] Migrate and validate Beat Marketplace workflow upgrades
