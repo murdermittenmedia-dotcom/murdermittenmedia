@@ -5227,3 +5227,8 @@
 - [x] Keep producer preview tags behind Beat Pro in both interface and server enforcement.
 - [x] Prefill a producer's new upload with lease terms from the last catalogue listing.
 - [x] Validate focused marketplace tests, TypeScript, production build, and authenticated dashboard visual state.
+
+## Edit-mode listing wizard — 2026-09-23
+- [x] Enable the Beat Pro listing wizard for both new and existing beat listings.
+- [x] Normalize marketplace edit deep-link IDs before locating the producer-owned listing.
+- [x] Validate focused marketplace tests, TypeScript, production build, and producer workspace rendering.

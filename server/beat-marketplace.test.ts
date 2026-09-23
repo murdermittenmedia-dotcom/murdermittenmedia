@@ -199,6 +199,8 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(producer).toContain("Answer any two prompts");
     expect(producer).toContain("Generate listing draft");
     expect(producer).toContain("AI fills a title and discovery tags");
+    expect(producer).toContain("{plan?.isPro && <ListingWizard");
+    expect(producer).not.toContain("{plan?.isPro && !editing && <ListingWizard");
     expect(router).toContain('required: ["title", "tags"]');
     expect(router).not.toContain('required: ["title", "description", "tags"]');
   });
@@ -214,6 +216,7 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(producer).toContain("lastLeaseOptions.useQuery");
     expect(producer).toContain("leaseOptionsFromSaved(lastLeaseOptions.licenses)");
     expect(producer).toContain('new URLSearchParams(window.location.search).get("edit")');
+    expect(producer).toContain("Number(beat.id) === requestedId");
     expect(market).toContain("Edit my beat");
     expect(market).toContain("isOwner={user?.id === beat.producerId}");
   });
