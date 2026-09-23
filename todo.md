@@ -5218,3 +5218,12 @@
 ## Producer profile cover-art option — 2026-09-23
 - [x] Add a one-click option for producers to use their current profile image as beat cover artwork
 - [x] Add regression coverage and validate the cover selection workflow
+
+## Producer catalogue, ownership, and discovery upgrades — 2026-09-23
+- [x] Add secure producer-only master downloads from the catalogue.
+- [x] Add owner-only Edit my beat actions to the marketplace feed, routed into the existing editor.
+- [x] Remove wizard-generated descriptions and retain title plus discovery tags only.
+- [x] Expand cover discovery with up to 48 openly licensed results, pagination, attribution, Google Images handoff, and direct image URL selection.
+- [x] Keep producer preview tags behind Beat Pro in both interface and server enforcement.
+- [x] Prefill a producer's new upload with lease terms from the last catalogue listing.
+- [x] Validate focused marketplace tests, TypeScript, production build, and authenticated dashboard visual state.

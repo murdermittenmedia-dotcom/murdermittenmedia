@@ -81,12 +81,11 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(router).toContain("createBeatPreviewClip");
     expect(router).not.toContain("previewBase64");
     expect(router).toContain("update: protectedProcedure");
-    expect(router).toContain("suggestMetadata: protectedProcedure");
     expect(router).toContain("searchCoverImages: protectedProcedure");
     expect(router).toContain('input?.sort === "alphabetical"');
     expect(producer).toContain("Drop your beat here");
-    expect(producer).toContain("AI help");
     expect(producer).toContain("Find a cover image");
+    expect(producer).not.toContain("Tell artists what this beat is made for.");
     expect(market).toContain("Alphabetical A–Z");
     expect(market).toContain("/profile/${beat.producerId}");
   });
@@ -124,7 +123,7 @@ describe("Beat Marketplace plan and licensing rules", () => {
     const mixer = readFileSync(resolve(process.cwd(), "server/beat-audio-preview.ts"), "utf8");
     expect(router).toContain("resolveBeatPreviewTag");
     expect(router).toContain("previewTagAtSeconds");
-    expect(producer).toContain("Preview tag");
+    expect(producer).toContain("Producer preview tag");
     expect(producer).toContain("Purchase Your Track Now");
     expect(producer).toContain("Use my own uploaded tag");
     expect(mixer).toContain("amix=inputs=2");
@@ -149,9 +148,9 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(router).toContain('await requireBeatPro(ctx.user.id, "AI metadata help")');
     expect(router).toContain('await requireBeatPro(ctx.user.id, "Cover art search")');
     expect(router).toContain("Tagged audio previews are available with Beat Pro");
-    expect(producer).toContain("AI help • Pro");
     expect(producer).toContain("Cover art search is a Beat Pro tool.");
-    expect(producer).toContain("Tagged client previews");
+    expect(producer).toContain("Producer preview tag");
+    expect(producer).toContain("Add your producer tag anywhere in the 30-second preview with Beat Pro.");
   });
 
   it("tracks direct producer payments and does not deliver until seller confirmation", () => {
@@ -199,7 +198,35 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(producer).toContain("Beat Pro listing wizard");
     expect(producer).toContain("Answer any two prompts");
     expect(producer).toContain("Generate listing draft");
-    expect(producer).toContain("Review it, then upload your audio and cover");
+    expect(producer).toContain("AI fills a title and discovery tags");
+    expect(router).toContain('required: ["title", "tags"]');
+    expect(router).not.toContain('required: ["title", "description", "tags"]');
+  });
+
+  it("gives producers secure master downloads, marketplace edit routing, and saved lease defaults", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    const market = readFileSync(resolve(process.cwd(), "client/src/pages/BeatMarketplace.tsx"), "utf8");
+    expect(router).toContain("downloadMaster: protectedProcedure");
+    expect(router).toContain("eq(marketplaceBeats.producerId, ctx.user.id)");
+    expect(router).toContain("lastLeaseOptions: protectedProcedure");
+    expect(producer).toContain("downloadMaster.fetch");
+    expect(producer).toContain("lastLeaseOptions.useQuery");
+    expect(producer).toContain("leaseOptionsFromSaved(lastLeaseOptions.licenses)");
+    expect(producer).toContain('new URLSearchParams(window.location.search).get("edit")');
+    expect(market).toContain("Edit my beat");
+    expect(market).toContain("isOwner={user?.id === beat.producerId}");
+  });
+
+  it("offers broader open-image cover discovery with a Google handoff and URL selection", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    expect(router).toContain("https://api.openverse.org/v1/images/");
+    expect(router).toContain('openverseUrl.searchParams.set("page_size", "36")');
+    expect(router).toContain('commonsUrl.searchParams.set("gsrlimit", "32")');
+    expect(producer).toContain("Browse up to 48 openly licensed choices at a time");
+    expect(producer).toContain("Google Images ↗");
+    expect(producer).toContain("Paste an image URL from Google or another source");
   });
 
   it("shows public producer catalogues and clear Free versus Beat Pro benefits", () => {

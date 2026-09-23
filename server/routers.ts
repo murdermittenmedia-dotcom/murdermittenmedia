@@ -5821,6 +5821,29 @@ export const appRouter = router({
         }));
       }),
 
+      downloadMaster: protectedProcedure
+        .input(z.object({ id: z.number().int().positive() }))
+        .query(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [beat] = await db.select().from(marketplaceBeats)
+            .where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id))).limit(1);
+          if (!beat) throw new TRPCError({ code: "NOT_FOUND", message: "That beat is not in your catalogue." });
+          const extension = beat.masterFileKey.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "audio";
+          const safeTitle = beat.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "beat";
+          return { url: await storageGetSignedUrl(beat.masterFileKey), filename: `${safeTitle}.${extension}` };
+        }),
+
+      lastLeaseOptions: protectedProcedure.query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [latestBeat] = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
+          .where(eq(marketplaceBeats.producerId, ctx.user.id)).orderBy(desc(marketplaceBeats.createdAt)).limit(1);
+        if (!latestBeat) return null;
+        const licenses = await db.select().from(beatLicenses).where(eq(beatLicenses.beatId, latestBeat.id)).orderBy(asc(beatLicenses.sortOrder));
+        return { beatId: latestBeat.id, licenses: licenses.map((license) => ({ ...license, preset: parseBeatLicenseTerms(license.terms, license) })) };
+      }),
+
       previewTagAudio: protectedProcedure
         .input(z.object({
           source: z.enum(["purchase_now", "purchase_today", "mitten", "custom"]),
@@ -6170,7 +6193,7 @@ export const appRouter = router({
           const result = await invokeLLM({
             model: "gpt-5-mini",
             messages: [
-              { role: "system", content: "You create grounded, useful Beat Marketplace listing drafts. Only use information supplied in the request. Write one distinctive title in this exact marketplace-friendly format when artist references are supplied: Artist A x Artist B [regional or genre] type beat \"Original Title\". Use no artist name unless it was explicitly supplied by the producer. When no artist references are supplied, create a concise original title in quotation marks without any artist comparison. Never invent instruments, samples, arrangements, production credits, affiliations, technical musical facts, or scene claims. Write a 150–260 character description that references only supplied inputs and a practical artist use case. Return exactly 8 distinct lowercase search tags, 1–3 words each, no hashtag symbols. Include a city-plus-genre tag only when a city and genre are supplied. Never use vague tags such as fire, hard, vibes, new, or type beat. Do not invent a key." },
+              { role: "system", content: "You create grounded, useful Beat Marketplace listing drafts. Only use information supplied in the request. Write one distinctive title in this exact marketplace-friendly format when artist references are supplied: Artist A x Artist B [regional or genre] type beat \"Original Title\". Use no artist name unless it was explicitly supplied by the producer. When no artist references are supplied, create a concise original title in quotation marks without any artist comparison. Never invent instruments, samples, arrangements, production credits, affiliations, technical musical facts, or scene claims. Return exactly 8 distinct lowercase search tags, 1–3 words each, no hashtag symbols. Include a city-plus-genre tag only when a city and genre are supplied. Never use vague tags such as fire, hard, vibes, new, or type beat. Do not invent a key." },
               { role: "user", content: `Draft a complete Beat Pro listing. Producer: ${artistName}. City: ${city || "not provided"}. Genre: ${input.genre || "not provided"}. BPM: ${input.bpm || "not provided"}. Mood: ${input.mood || "not provided"}. Artists who would fit this beat: ${input.artistReferences || "not provided"}.` },
             ],
             outputSchema: {
@@ -6180,10 +6203,9 @@ export const appRouter = router({
                 type: "object",
                 properties: {
                   title: { type: "string" },
-                  description: { type: "string" },
                   tags: { type: "array", items: { type: "string" }, minItems: 8, maxItems: 8 },
                 },
-                required: ["title", "description", "tags"],
+                required: ["title", "tags"],
                 additionalProperties: false,
               },
             },
@@ -6191,14 +6213,14 @@ export const appRouter = router({
           const raw = result.choices[0]?.message.content;
           const parsed = typeof raw === "string" ? JSON.parse(raw) : null;
           const tags = Array.from(new Set((parsed?.tags ?? []).map((tag: unknown) => String(tag).trim().toLowerCase()).filter(Boolean))).slice(0, 8);
-          if (!parsed || typeof parsed.title !== "string" || typeof parsed.description !== "string" || tags.length !== 8) {
+          if (!parsed || typeof parsed.title !== "string" || tags.length !== 8) {
             throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The listing wizard returned an incomplete draft. Please try again." });
           }
-          return { title: parsed.title.slice(0, 160), description: parsed.description.slice(0, 300), tags: tags.join(", ") };
+          return { title: parsed.title.slice(0, 160), tags: tags.join(", ") };
         }),
 
       searchCoverImages: protectedProcedure
-        .input(z.object({ query: z.string().trim().min(2).max(120) }))
+        .input(z.object({ query: z.string().trim().min(2).max(120), page: z.number().int().min(1).max(20).default(1) }))
         .query(async ({ ctx, input }) => {
           await requireBeatPro(ctx.user.id, "Cover art search");
           const googleKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY || process.env.GOOGLE_SEARCH_API_KEY;
@@ -6216,24 +6238,49 @@ export const appRouter = router({
               return (payload.items ?? []).flatMap((image) => image.link && image.image?.thumbnailLink ? [{ title: image.title || "Cover image", imageUrl: image.link, thumbnailUrl: image.image.thumbnailLink, sourceUrl: image.image.contextLink || image.link, source: "google" }] : []);
             }
           }
-          const url = new URL("https://commons.wikimedia.org/w/api.php");
-          url.searchParams.set("action", "query");
-          url.searchParams.set("format", "json");
-          url.searchParams.set("generator", "search");
-          url.searchParams.set("gsrsearch", `${input.query} filetype:bitmap`);
-          url.searchParams.set("gsrnamespace", "6");
-          url.searchParams.set("gsrlimit", "12");
-          url.searchParams.set("prop", "imageinfo");
-          url.searchParams.set("iiprop", "url");
-          url.searchParams.set("iiurlwidth", "800");
-          const response = await fetch(url, { headers: { "user-agent": "MurderMittenMedia/1.0 cover discovery" } });
-          if (!response.ok) throw new TRPCError({ code: "BAD_GATEWAY", message: "Cover search is temporarily unavailable." });
-          const payload = await response.json() as { query?: { pages?: Record<string, { title?: string; imageinfo?: Array<{ url?: string; thumburl?: string; descriptionurl?: string }> }> } };
-          return Object.values(payload.query?.pages ?? {}).flatMap((page) => {
+          const commonsUrl = new URL("https://commons.wikimedia.org/w/api.php");
+          commonsUrl.searchParams.set("action", "query");
+          commonsUrl.searchParams.set("format", "json");
+          commonsUrl.searchParams.set("generator", "search");
+          commonsUrl.searchParams.set("gsrsearch", `${input.query} filetype:bitmap`);
+          commonsUrl.searchParams.set("gsrnamespace", "6");
+          commonsUrl.searchParams.set("gsrlimit", "32");
+          commonsUrl.searchParams.set("prop", "imageinfo");
+          commonsUrl.searchParams.set("iiprop", "url");
+          commonsUrl.searchParams.set("iiurlwidth", "800");
+          const openverseUrl = new URL("https://api.openverse.org/v1/images/");
+          openverseUrl.searchParams.set("q", input.query);
+          openverseUrl.searchParams.set("page", String(input.page));
+          openverseUrl.searchParams.set("page_size", "36");
+          const [commonsResponse, openverseResponse] = await Promise.all([
+            fetch(commonsUrl, { headers: { "user-agent": "MurderMittenMedia/1.0 cover discovery" } }),
+            fetch(openverseUrl, { headers: { "user-agent": "MurderMittenMedia/1.0 cover discovery" } }),
+          ]);
+          const commonsPayload = commonsResponse.ok
+            ? await commonsResponse.json() as { query?: { pages?: Record<string, { title?: string; imageinfo?: Array<{ url?: string; thumburl?: string; descriptionurl?: string }> }> } }
+            : null;
+          const openversePayload = openverseResponse.ok
+            ? await openverseResponse.json() as { results?: Array<{ title?: string; url?: string; thumbnail?: string; foreign_landing_url?: string; source?: string; creator?: string; license?: string; license_version?: string }> }
+            : null;
+          const commonsResults = Object.values(commonsPayload?.query?.pages ?? {}).flatMap((page) => {
             const image = page.imageinfo?.[0];
             if (!image?.url || !image.thumburl) return [];
-            return [{ title: (page.title || "Cover image").replace(/^File:/, ""), imageUrl: image.url, thumbnailUrl: image.thumburl, sourceUrl: image.descriptionurl || image.url, source: "public-media" }];
+            return [{ title: (page.title || "Cover image").replace(/^File:/, ""), imageUrl: image.url, thumbnailUrl: image.thumburl, sourceUrl: image.descriptionurl || image.url, source: "Wikimedia Commons", attribution: "Wikimedia Commons" }];
           });
+          const openverseResults = (openversePayload?.results ?? []).flatMap((image) => {
+            if (!image.url || !image.thumbnail) return [];
+            const license = image.license ? `${image.license.toUpperCase()}${image.license_version ? ` ${image.license_version}` : ""}` : "Open license";
+            return [{ title: image.title || "Cover image", imageUrl: image.url, thumbnailUrl: image.thumbnail, sourceUrl: image.foreign_landing_url || image.url, source: image.source || "Openverse", attribution: `${image.creator || "Unknown creator"} · ${license}` }];
+          });
+          const results = [...openverseResults, ...commonsResults];
+          const seen = new Set<string>();
+          const uniqueResults = results.filter((image) => {
+            if (seen.has(image.imageUrl)) return false;
+            seen.add(image.imageUrl);
+            return true;
+          });
+          if (!uniqueResults.length) throw new TRPCError({ code: "BAD_GATEWAY", message: "Cover search is temporarily unavailable." });
+          return uniqueResults.slice(0, 48);
         }),
 
       setStatus: protectedProcedure
