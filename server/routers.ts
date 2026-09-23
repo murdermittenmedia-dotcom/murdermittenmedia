@@ -5849,7 +5849,9 @@ export const appRouter = router({
       }),
 
       saveDirectPaymentMethods: protectedProcedure
-        .input(z.object({ methods: z.array(beatDirectPaymentMethodInput).length(6) }))
+        // The producer dashboard exposes seven destinations: Cash App, PayPal,
+        // Zelle, Venmo, Apple Pay, Chime, and one flexible "Other" option.
+        .input(z.object({ methods: z.array(beatDirectPaymentMethodInput).length(7) }))
         .mutation(async ({ ctx, input }) => {
           await requireBeatPro(ctx.user.id, "Direct producer payments");
           const db = await getDb();

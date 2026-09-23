@@ -5210,3 +5210,7 @@
 - [x] Let Pro producers configure Cash App, PayPal, Zelle, Venmo, Apple Pay, Chime, or another direct payment destination
 - [x] Add platform-managed Cash App, PayPal, Apple Pay, and Chime payment options for free-producer beat licenses with admin receipt confirmation
 - [x] Add promo-style direct payment actions to the merchandise cart and validate the full implementation
+
+## Beat Pro payment destinations save repair — 2026-09-23
+- [x] Align Beat Pro payment-method validation with all seven visible destinations, including the flexible Other payment link
+- [x] Add regression coverage and validate the save repair with TypeScript and production build checks

@@ -162,6 +162,14 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(detail).toContain("The producer confirms it before your files and license are released.");
   });
 
+  it("accepts the full set of displayed Beat Pro payment destinations", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    expect(router).toContain('z.enum(["cashapp", "paypal", "zelle", "venmo", "apple_pay", "chime", "other"])');
+    expect(router).toContain("methods: z.array(beatDirectPaymentMethodInput).length(7)");
+    expect(producer).toContain('label: "Other payment link"');
+  });
+
   it("supports manual Beat Pro access, producer account labels, and active membership overrides", () => {
     const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     const service = readFileSync(resolve(process.cwd(), "server/beat-marketplace-service.ts"), "utf8");
