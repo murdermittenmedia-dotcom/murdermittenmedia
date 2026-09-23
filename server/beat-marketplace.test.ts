@@ -161,4 +161,57 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(detail).toContain("Pay producer directly");
     expect(detail).toContain("The producer confirms it before your files and license are released.");
   });
+
+  it("supports manual Beat Pro access, producer account labels, and active membership overrides", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const service = readFileSync(resolve(process.cwd(), "server/beat-marketplace-service.ts"), "utf8");
+    const admin = readFileSync(resolve(process.cwd(), "client/src/pages/AdminPanel.tsx"), "utf8");
+    expect(router).toContain("setProducerProAccess: adminProcedure");
+    expect(router).toContain("ensureProducerAccountLabel(ctx.user.id)");
+    expect(router).toContain('labels.includes("producer")');
+    expect(service).toContain("if (membership.adminGranted) return membership");
+    expect(service).toContain("Beat Pro is active");
+    expect(admin).toContain("Grant Beat Pro");
+    expect(admin).toContain("Remove manual grant");
+  });
+
+  it("provides a Beat Pro listing wizard that uses two creator prompts and preserves review", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    expect(router).toContain("generateListingDraft: protectedProcedure");
+    expect(router).toContain("Choose at least two prompts: genre, BPM, mood, or artists.");
+    expect(router).toContain("Artists who would fit this beat");
+    expect(producer).toContain("Beat Pro listing wizard");
+    expect(producer).toContain("Answer any two prompts");
+    expect(producer).toContain("Generate listing draft");
+    expect(producer).toContain("Review it, then upload your audio and cover");
+  });
+
+  it("shows public producer catalogues and clear Free versus Beat Pro benefits", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const profile = readFileSync(resolve(process.cwd(), "client/src/pages/UserProfile.tsx"), "utf8");
+    const market = readFileSync(resolve(process.cwd(), "client/src/pages/BeatMarketplace.tsx"), "utf8");
+    expect(router).toContain("byProducer: publicProcedure");
+    expect(profile).toContain("Beat Catalogue");
+    expect(profile).toContain("trpc.beats.byProducer.useQuery");
+    expect(market).toContain("Free Producer");
+    expect(market).toContain("Beat Pro · $9.99/month");
+    expect(market).toContain("AI listing wizard, cover discovery, and tagged client previews");
+  });
+
+  it("routes free producer manual payments through admin confirmation and adds PayPal", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const detail = readFileSync(resolve(process.cwd(), "client/src/pages/BeatDetail.tsx"), "utf8");
+    const admin = readFileSync(resolve(process.cwd(), "client/src/pages/AdminBeatPayouts.tsx"), "utf8");
+    const merch = readFileSync(resolve(process.cwd(), "client/src/pages/Merch.tsx"), "utf8");
+    expect(router).toContain("createPlatformPayment: protectedProcedure");
+    expect(router).toContain('confirmationMode: "admin"');
+    expect(router).toContain("resolvePlatformDirectPayment: adminProcedure");
+    expect(router).toContain("platformDirectPayments: adminProcedure");
+    expect(detail).toContain("Platform payment options");
+    expect(detail).toContain("Murder Mitten team");
+    expect(admin).toContain("Platform payment receipts");
+    expect(merch).toContain("MERCH_DIRECT_PAYMENT_OPTIONS");
+    expect(merch).toContain("Or pay directly");
+  });
 });

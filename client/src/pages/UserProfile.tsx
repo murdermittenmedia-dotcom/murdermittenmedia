@@ -6,7 +6,7 @@
    ============================================================ */
 
 import { useState, useRef } from "react";
-import { useRoute } from "wouter";
+import { Link, useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
@@ -408,6 +408,10 @@ export default function UserProfile() {
 
   // Live status for this profile's user
   const profileUserId = isOwnProfile ? (user?.id ?? 0) : (visitingId ?? 0);
+  const { data: producerBeats = [] } = trpc.beats.byProducer.useQuery(
+    { producerId: profileUserId },
+    { enabled: profileUserId > 0 }
+  );
   const { data: liveStatus } = trpc.stream.getLiveStatus.useQuery(
     { userId: profileUserId },
     { enabled: profileUserId > 0, refetchInterval: 15_000 }
@@ -489,6 +493,7 @@ export default function UserProfile() {
   const initials = displayName.slice(0, 2).toUpperCase();
   const rawLabels = (displayProfile?.user as { accountLabels?: string | null } | undefined)?.accountLabels;
   const currentLabels: AccountLabel[] = rawLabels ? (() => { try { const p = JSON.parse(rawLabels); return Array.isArray(p) ? p as AccountLabel[] : []; } catch { return []; } })() : [];
+  const isProducer = currentLabels.includes("producer");
 
   if (authLoading) {
     return (
@@ -813,6 +818,42 @@ export default function UserProfile() {
             onRefetch={() => refetchSongs()}
           />
         </div>
+
+        {(isProducer || producerBeats.length > 0) && (
+          <section className="mb-12 border border-blue-500/20 bg-blue-950/10 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-blue-300">Producer</p>
+                <h2 className="mt-1 font-['Anton'] text-3xl uppercase">Beat Catalogue</h2>
+                <p className="mt-1 text-sm text-white/50">Preview this producer’s available instrumentals and compare license pricing.</p>
+              </div>
+              <Link href={isOwnProfile ? "/beats/producer" : "/beats"} className="text-xs font-bold uppercase tracking-widest text-blue-200 hover:text-white">
+                {isOwnProfile ? "Manage beats" : "Browse marketplace"} →
+              </Link>
+            </div>
+            {producerBeats.length ? (
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                {producerBeats.map((beat: any) => {
+                  const lowest = beat.licenses?.length ? Math.min(...beat.licenses.map((license: any) => license.priceCents)) : null;
+                  return (
+                    <article key={beat.id} className="flex gap-3 border border-white/10 bg-black/25 p-3">
+                      {beat.artworkUrl ? <img src={beat.artworkUrl} alt="" className="h-16 w-16 shrink-0 object-cover" /> : <div className="grid h-16 w-16 shrink-0 place-items-center bg-blue-900/30 font-['Anton'] text-xl text-blue-200/50">MMM</div>}
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/beats/${beat.slug}`} className="block truncate font-bold text-white hover:text-red-400">{beat.title}</Link>
+                        <p className="mt-1 text-xs text-white/45">{beat.genre}{beat.bpm ? ` · ${beat.bpm} BPM` : ""}{lowest !== null ? ` · From $${(lowest / 100).toFixed(0)}` : ""}</p>
+                        <div className="mt-2"><AudioPlayButton url={beat.previewFileUrl} title={beat.title} artist={displayName} size="sm" /></div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-9 text-center text-sm text-white/40">
+                {isOwnProfile ? "Your Beat Catalogue will appear here when your first beat is live." : "No beats are currently available."}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── Submission History (own profile only) ───────── */}
         {isOwnProfile && (

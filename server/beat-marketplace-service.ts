@@ -7,6 +7,7 @@ import {
   beatPayoutRequests,
   beatSales,
   marketplaceBeats,
+  notifications,
   users,
 } from "../drizzle/schema";
 import { buildBeatLicensePdf } from "./beat-contract-pdf";
@@ -94,7 +95,9 @@ export async function getActiveBeatProducerMembership(userId: number) {
   if (!db) return null;
   const [membership] = await db.select().from(beatProducerMemberships)
     .where(eq(beatProducerMemberships.userId, userId)).limit(1);
-  if (!membership || membership.status !== "active") return null;
+  if (!membership) return null;
+  if (membership.adminGranted) return membership;
+  if (membership.status !== "active") return null;
   if (membership.currentPeriodEnd && membership.currentPeriodEnd.getTime() <= Date.now()) return null;
   return membership;
 }
@@ -141,6 +144,13 @@ export async function fulfillBeatProducerSubscription(session: Stripe.Checkout.S
   } else {
     await db.insert(beatProducerMemberships).values({ userId, ...values });
   }
+  await db.insert(notifications).values({
+    userId,
+    type: "beat_pro_active",
+    title: "Beat Pro is active",
+    body: "Add your direct payment destinations so buyers can pay you from every beat checkout page.",
+    link: "/beats/producer",
+  });
   return { userId, subscriptionId };
 }
 

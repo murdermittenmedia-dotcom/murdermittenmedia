@@ -41,6 +41,13 @@ const SPIRIT_TEE_IMAGES: Record<string, string[]> = {
   ],
 };
 
+const MERCH_DIRECT_PAYMENT_OPTIONS = [
+  { name: "Cash App", link: "https://cash.app/$MittenMedia", color: "border-[#00D632]/45 text-[#72ef9e]" },
+  { name: "PayPal", link: "https://paypal.me/MurderMittenPromo", color: "border-[#009cde]/50 text-[#75cfff]" },
+  { name: "Apple Pay", link: "tel:3134209004", color: "border-white/30 text-white" },
+  { name: "Chime", link: "https://www.instagram.com/murdermittenmedia/", color: "border-[#00D632]/35 text-[#72ef9e]" },
+] as const;
+
 function isBladeTee(product: ShopProduct): boolean {
   return product.slug === "three-color-system-tee" || product.name.trim().toLowerCase() === "mitten made blade tee";
 }
@@ -597,6 +604,24 @@ function CartDrawer({
                 "Checkout"
               )}
             </button>
+            <div className="border-t border-white/10 pt-3">
+              <p className="text-center text-[9px] font-bold uppercase tracking-widest text-white/40">Or pay directly</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {MERCH_DIRECT_PAYMENT_OPTIONS.map((option) => (
+                  <a
+                    key={option.name}
+                    href={option.link}
+                    target={option.link.startsWith("http") ? "_blank" : "_self"}
+                    rel="noreferrer"
+                    onClick={() => toast.message(`After payment, DM @murdermittenmedia your receipt, cart items, sizes, colors, and shipping address.`)}
+                    className={`border px-2 py-2 text-center text-[9px] font-black uppercase tracking-wider transition hover:bg-white/10 ${option.color}`}
+                  >
+                    {option.name}
+                  </a>
+                ))}
+              </div>
+              <p className="mt-2 text-center text-[10px] leading-relaxed text-white/38">Direct payments are confirmed by DM. Include your receipt, cart items, sizes, colors, and shipping address.</p>
+            </div>
             <button
               onClick={() => clearCart.mutate()}
               className="w-full text-white/30 hover:text-white/60 text-xs uppercase tracking-widest py-1 transition-colors"

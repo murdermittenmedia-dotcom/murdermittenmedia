@@ -414,6 +414,13 @@
       "when": 1790174050301,
       "tag": "0058_simple_lockjaw",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1790176148970,
+      "tag": "0059_yummy_sasquatch",
+      "breakpoints": true
     }
   ]
 }

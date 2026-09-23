@@ -5202,3 +5202,11 @@
 - [x] Add Beat Pro producer payment destinations for Cash App, Zelle, Venmo, Apple Pay, Chime, and other payment links
 - [x] Create buyer-submitted, producer-confirmed direct-payment requests before contract and file delivery
 - [x] Migrate and validate Beat Pro payment methods and direct-payment records
+
+## Beat Pro access, guided listings, and payment expansion — 2026-09-23
+- [x] Let administrators grant or remove manual Beat Pro access and automatically label new marketplace sellers as producers
+- [x] Add a Pro-only two-prompt listing wizard that drafts title, description, and discovery tags for producer review
+- [x] Add public Beat Catalogue sections to producer profiles and a clear Free versus Beat Pro benefits comparison
+- [x] Let Pro producers configure Cash App, PayPal, Zelle, Venmo, Apple Pay, Chime, or another direct payment destination
+- [x] Add platform-managed Cash App, PayPal, Apple Pay, and Chime payment options for free-producer beat licenses with admin receipt confirmation
+- [x] Add promo-style direct payment actions to the merchandise cart and validate the full implementation

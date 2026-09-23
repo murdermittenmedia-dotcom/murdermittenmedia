@@ -319,6 +319,14 @@ function UsersTab() {
     onSuccess: () => { utils.users.list.invalidate(); utils.admin.listUsers.invalidate(); toast.success("Labels updated"); },
     onError: (e: { message: string }) => toast.error(e.message),
   });
+  const setProducerProAccess = trpc.beats.admin.setProducerProAccess.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.granted ? `Beat Pro granted to ${result.userName}.` : "Manual Beat Pro access removed.");
+      utils.users.list.invalidate();
+      utils.admin.listUsers.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const banUser = trpc.admin.banUser.useMutation({
     onSuccess: () => { utils.admin.listUsers.invalidate(); setBanReason(""); toast.success("User banned"); },
@@ -471,6 +479,30 @@ function UsersTab() {
                           {role}
                         </Button>
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="border border-yellow-500/25 bg-yellow-500/[.035] p-3">
+                    <p className="text-yellow-200 text-xs font-semibold uppercase tracking-widest">Beat Pro access</p>
+                    <p className="mt-1 text-white/45 text-xs leading-relaxed">Grant full Beat Pro tools, unlimited uploads, 100% marketplace share, and direct producer payments without requiring a subscription checkout.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-yellow-400 hover:bg-yellow-300 text-black"
+                        onClick={() => setProducerProAccess.mutate({ userId: user.id, granted: true })}
+                        disabled={setProducerProAccess.isPending}
+                      >
+                        <Crown className="w-3 h-3 mr-1" /> Grant Beat Pro
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-yellow-500/40 text-yellow-200 hover:bg-yellow-500/10"
+                        onClick={() => setProducerProAccess.mutate({ userId: user.id, granted: false })}
+                        disabled={setProducerProAccess.isPending}
+                      >
+                        Remove manual grant
+                      </Button>
                     </div>
                   </div>
 
