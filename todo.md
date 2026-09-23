@@ -5214,3 +5214,7 @@
 ## Beat Pro payment destinations save repair — 2026-09-23
 - [x] Align Beat Pro payment-method validation with all seven visible destinations, including the flexible Other payment link
 - [x] Add regression coverage and validate the save repair with TypeScript and production build checks
+
+## Producer profile cover-art option — 2026-09-23
+- [x] Add a one-click option for producers to use their current profile image as beat cover artwork
+- [x] Add regression coverage and validate the cover selection workflow

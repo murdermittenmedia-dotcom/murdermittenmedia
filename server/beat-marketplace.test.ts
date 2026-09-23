@@ -91,6 +91,13 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(market).toContain("/profile/${beat.producerId}");
   });
 
+  it("lets producers select their current profile image for beat cover artwork", () => {
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    expect(producer).toContain("Use my profile image");
+    expect(producer).toContain("user.avatarUrl");
+    expect(producer).toContain("Your profile image is selected as this beat’s cover.");
+  });
+
   it("preserves producer-configured lease limits and documents extra terms", () => {
     const license = createBeatLicenseTerms({
       code: "premium",
