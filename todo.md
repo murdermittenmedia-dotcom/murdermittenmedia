@@ -5191,3 +5191,8 @@
 - [x] Fix server-side preview rendering when FFmpeg is unavailable to the web process
 - [x] Add an in-uploader audio player for the selected 30-second preview and tag position
 - [x] Validate rendered preview and in-uploader playback workflow
+
+## Beat Marketplace simplified uploader repair — 2026-09-23
+- [x] Deliver default and saved voice-tag audio through an authenticated producer API instead of browser storage fetches
+- [x] Simplify tag selection into one menu with a timestamp selector and collapse optional metadata and lease fields
+- [x] Automatically prepare playback, block publishing until a changed preview is ready, and validate the repaired workflow

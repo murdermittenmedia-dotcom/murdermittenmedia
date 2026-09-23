@@ -5751,6 +5751,25 @@ export const appRouter = router({
         }));
       }),
 
+      previewTagAudio: protectedProcedure
+        .input(z.object({
+          source: z.enum(["purchase_now", "purchase_today", "mitten", "custom"]),
+          existingCustomTagFileKey: z.string().max(512).nullable().optional(),
+        }))
+        .query(async ({ ctx, input }) => {
+          if (input.source !== "custom") {
+            const selected = DEFAULT_BEAT_PREVIEW_TAGS[input.source];
+            const audio = await downloadPreviewTag(selected.key);
+            return { audioBase64: audio.toString("base64"), mimeType: selected.mimeType };
+          }
+          const key = input.existingCustomTagFileKey;
+          if (!key || !key.startsWith(`beat-marketplace/${ctx.user.id}/tags/`)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a custom tag file first." });
+          }
+          const audio = await downloadPreviewTag(key);
+          return { audioBase64: audio.toString("base64"), mimeType: audioMimeTypeForName(key) };
+        }),
+
       uploadFiles: protectedProcedure
         .input(z.object({
           title: z.string().trim().min(1).max(160),

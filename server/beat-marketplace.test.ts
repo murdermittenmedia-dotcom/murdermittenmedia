@@ -117,9 +117,9 @@ describe("Beat Marketplace plan and licensing rules", () => {
     const mixer = readFileSync(resolve(process.cwd(), "server/beat-audio-preview.ts"), "utf8");
     expect(router).toContain("resolveBeatPreviewTag");
     expect(router).toContain("previewTagAtSeconds");
-    expect(producer).toContain("Place a tag anywhere");
+    expect(producer).toContain("Preview tag");
     expect(producer).toContain("Purchase Your Track Now");
-    expect(producer).toContain("Your custom tag");
+    expect(producer).toContain("Use my own uploaded tag");
     expect(mixer).toContain("amix=inputs=2");
   });
 
