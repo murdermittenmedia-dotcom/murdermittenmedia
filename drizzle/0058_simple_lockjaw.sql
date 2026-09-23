@@ -1,0 +1,2 @@
+ALTER TABLE `beat_direct_payments` MODIFY COLUMN `provider` enum('cashapp','zelle','venmo','apple_pay','chime','other') NOT NULL;--> statement-breakpoint
+ALTER TABLE `beat_producer_direct_payment_methods` MODIFY COLUMN `provider` enum('cashapp','zelle','venmo','apple_pay','chime','other') NOT NULL;

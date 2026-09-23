@@ -1216,6 +1216,22 @@ export const beatProducerPayoutProfiles = mysqlTable("beat_producer_payout_profi
 export type BeatProducerPayoutProfile = typeof beatProducerPayoutProfiles.$inferSelect;
 export type InsertBeatProducerPayoutProfile = typeof beatProducerPayoutProfiles.$inferInsert;
 
+// Beat Pro producers may optionally accept a buyer's payment directly through
+// their own payment destination. These are intentionally separate from the
+// platform Stripe checkout, which remains the only automatically verified flow.
+export const beatProducerDirectPaymentMethods = mysqlTable("beat_producer_direct_payment_methods", {
+  id: int("id").autoincrement().primaryKey(),
+  producerId: int("producerId").notNull(),
+  provider: mysqlEnum("provider", ["cashapp", "zelle", "venmo", "apple_pay", "chime", "other"]).notNull(),
+  destination: varchar("destination", { length: 512 }).notNull(),
+  instructions: varchar("instructions", { length: 512 }),
+  isActive: boolean("isActive").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("beat_producer_direct_payment_provider_unique").on(table.producerId, table.provider)]);
+export type BeatProducerDirectPaymentMethod = typeof beatProducerDirectPaymentMethods.$inferSelect;
+export type InsertBeatProducerDirectPaymentMethod = typeof beatProducerDirectPaymentMethods.$inferInsert;
+
 export const marketplaceBeats = mysqlTable("marketplace_beats", {
   id: int("id").autoincrement().primaryKey(),
   producerId: int("producerId").notNull(),
@@ -1293,6 +1309,24 @@ export const beatSales = mysqlTable("beat_sales", {
 });
 export type BeatSale = typeof beatSales.$inferSelect;
 export type InsertBeatSale = typeof beatSales.$inferInsert;
+
+export const beatDirectPayments = mysqlTable("beat_direct_payments", {
+  id: int("id").autoincrement().primaryKey(),
+  saleId: int("saleId").notNull().unique(),
+  producerId: int("producerId").notNull(),
+  buyerId: int("buyerId").notNull(),
+  provider: mysqlEnum("provider", ["cashapp", "zelle", "venmo", "apple_pay", "chime", "other"]).notNull(),
+  destinationSnapshot: varchar("destinationSnapshot", { length: 512 }).notNull(),
+  instructionsSnapshot: varchar("instructionsSnapshot", { length: 512 }),
+  paymentReference: varchar("paymentReference", { length: 256 }),
+  status: mysqlEnum("status", ["awaiting_payment", "submitted", "confirmed", "declined", "cancelled"]).default("awaiting_payment").notNull(),
+  producerNote: varchar("producerNote", { length: 512 }),
+  confirmedAt: timestamp("confirmedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatDirectPayment = typeof beatDirectPayments.$inferSelect;
+export type InsertBeatDirectPayment = typeof beatDirectPayments.$inferInsert;
 
 export const beatContracts = mysqlTable("beat_contracts", {
   id: int("id").autoincrement().primaryKey(),

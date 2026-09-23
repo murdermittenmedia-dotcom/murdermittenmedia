@@ -134,4 +134,31 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(router).toContain("Never invent instruments, drums, samples, arrangements, sound design, subgenres");
     expect(router).toContain("tags.length !== 8");
   });
+
+  it("keeps premium creation tools and direct producer payments behind Beat Pro", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    expect(router).toContain("async function requireBeatPro");
+    expect(router).toContain('await requireBeatPro(ctx.user.id, "AI metadata help")');
+    expect(router).toContain('await requireBeatPro(ctx.user.id, "Cover art search")');
+    expect(router).toContain("Tagged audio previews are available with Beat Pro");
+    expect(producer).toContain("AI help • Pro");
+    expect(producer).toContain("Cover art search is a Beat Pro tool.");
+    expect(producer).toContain("Tagged client previews");
+  });
+
+  it("tracks direct producer payments and does not deliver until seller confirmation", () => {
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const service = readFileSync(resolve(process.cwd(), "server/beat-marketplace-service.ts"), "utf8");
+    const detail = readFileSync(resolve(process.cwd(), "client/src/pages/BeatDetail.tsx"), "utf8");
+    expect(router).toContain("saveDirectPaymentMethods: protectedProcedure");
+    expect(router).toContain("createDirectPayment: protectedProcedure");
+    expect(router).toContain("submitDirectPayment: protectedProcedure");
+    expect(router).toContain("confirmDirectPayment: protectedProcedure");
+    expect(router).toContain("Confirm only a payment that the buyer has marked as sent");
+    expect(service).toContain("fulfillDirectBeatSale");
+    expect(service).toContain("producerEarningsStatus: \"available\"");
+    expect(detail).toContain("Pay producer directly");
+    expect(detail).toContain("The producer confirms it before your files and license are released.");
+  });
 });

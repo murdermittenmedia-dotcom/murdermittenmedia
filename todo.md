@@ -5196,3 +5196,9 @@
 - [x] Deliver default and saved voice-tag audio through an authenticated producer API instead of browser storage fetches
 - [x] Simplify tag selection into one menu with a timestamp selector and collapse optional metadata and lease fields
 - [x] Automatically prepare playback, block publishing until a changed preview is ready, and validate the repaired workflow
+
+## Beat Pro tools and direct producer payments — 2026-09-23
+- [x] Restrict AI metadata help, cover-art discovery, and preview tag creation to Beat Pro
+- [x] Add Beat Pro producer payment destinations for Cash App, Zelle, Venmo, Apple Pay, Chime, and other payment links
+- [x] Create buyer-submitted, producer-confirmed direct-payment requests before contract and file delivery
+- [x] Migrate and validate Beat Pro payment methods and direct-payment records

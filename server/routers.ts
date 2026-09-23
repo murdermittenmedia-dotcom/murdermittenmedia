@@ -80,7 +80,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatPayoutRequests } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatPayoutRequests, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -99,7 +99,7 @@ import {
 import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
 import { BEAT_LICENSE_CODES, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, createBeatLicenseTerms, parseBeatLicenseTerms } from "../shared/beat-marketplace";
-import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, getProducerSettlementLedger } from "./beat-marketplace-service";
+import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger } from "./beat-marketplace-service";
 import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, createBeatPreviewClip, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
 
@@ -138,6 +138,14 @@ const beatPreviewTagInput = z.object({
   customName: z.string().max(255).optional(),
   customBase64: z.string().optional(),
   customMimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).optional(),
+});
+
+const beatDirectPaymentProvider = z.enum(["cashapp", "zelle", "venmo", "apple_pay", "chime", "other"]);
+const beatDirectPaymentMethodInput = z.object({
+  provider: beatDirectPaymentProvider,
+  isActive: z.boolean(),
+  destination: z.string().trim().max(512),
+  instructions: z.string().trim().max(512).optional(),
 });
 
 const audioMimeTypeForName = (name: string) => {
@@ -185,6 +193,14 @@ async function resolveBeatPreviewTag({
     audio = await downloadPreviewTag(key);
   }
   return { source, fileKey: key, fileUrl: url, atSeconds: tag.atSeconds, renderTag: { audio, mimeType, atSeconds: tag.atSeconds } };
+}
+
+async function requireBeatPro(userId: number, feature: string) {
+  const plan = await getBeatProducerPlan(userId);
+  if (!plan.isPro) {
+    throw new TRPCError({ code: "FORBIDDEN", message: `${feature} is available with Beat Pro ($9.99/month).` });
+  }
+  return plan;
 }
 
 function isSafeSiteAnnouncementUrl(value: string) {
@@ -5711,12 +5727,19 @@ export const appRouter = router({
         const licenses = await db.select().from(beatLicenses)
           .where(and(eq(beatLicenses.beatId, row.beat.id), eq(beatLicenses.isActive, true)))
           .orderBy(asc(beatLicenses.sortOrder));
+        const isProProducer = !!(await getActiveBeatProducerMembership(row.beat.producerId));
+        const directPaymentMethods = isProProducer
+          ? await db.select({ provider: beatProducerDirectPaymentMethods.provider, destination: beatProducerDirectPaymentMethods.destination, instructions: beatProducerDirectPaymentMethods.instructions })
+            .from(beatProducerDirectPaymentMethods)
+            .where(and(eq(beatProducerDirectPaymentMethods.producerId, row.beat.producerId), eq(beatProducerDirectPaymentMethods.isActive, true)))
+          : [];
         const { masterFileKey: _masterFileKey, masterFileUrl: _masterFileUrl, ...publicBeat } = row.beat;
         return {
           ...publicBeat,
           producerName: row.producer?.artistName || row.producer?.name || "Producer",
           producerAvatarUrl: row.producer?.avatarUrl || null,
           licenses: licenses.map((license) => ({ ...license, preset: parseBeatLicenseTerms(license.terms, license) })),
+          directPaymentMethods,
         };
       }),
 
@@ -5770,6 +5793,69 @@ export const appRouter = router({
           return { audioBase64: audio.toString("base64"), mimeType: audioMimeTypeForName(key) };
         }),
 
+      directPaymentMethods: protectedProcedure.query(async ({ ctx }) => {
+        await requireBeatPro(ctx.user.id, "Direct producer payments");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        return db.select().from(beatProducerDirectPaymentMethods)
+          .where(eq(beatProducerDirectPaymentMethods.producerId, ctx.user.id));
+      }),
+
+      saveDirectPaymentMethods: protectedProcedure
+        .input(z.object({ methods: z.array(beatDirectPaymentMethodInput).length(5) }))
+        .mutation(async ({ ctx, input }) => {
+          await requireBeatPro(ctx.user.id, "Direct producer payments");
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          for (const method of input.methods) {
+            if (method.isActive && !method.destination) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: `Add a destination for ${method.provider}.` });
+            }
+            await db.insert(beatProducerDirectPaymentMethods).values({
+              producerId: ctx.user.id,
+              provider: method.provider,
+              destination: method.destination,
+              instructions: method.instructions || null,
+              isActive: method.isActive,
+            }).onDuplicateKeyUpdate({ set: {
+              destination: method.destination,
+              instructions: method.instructions || null,
+              isActive: method.isActive,
+              updatedAt: new Date(),
+            } });
+          }
+          return { success: true as const };
+        }),
+
+      directPaymentRequests: protectedProcedure.query(async ({ ctx }) => {
+        await requireBeatPro(ctx.user.id, "Direct producer payments");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const rows = await db.select({ request: beatDirectPayments, sale: beatSales, buyer: users })
+          .from(beatDirectPayments)
+          .innerJoin(beatSales, eq(beatSales.id, beatDirectPayments.saleId))
+          .leftJoin(users, eq(users.id, beatDirectPayments.buyerId))
+          .where(eq(beatDirectPayments.producerId, ctx.user.id))
+          .orderBy(desc(beatDirectPayments.createdAt));
+        return rows.map(({ request, sale, buyer }) => ({ ...request, sale, buyerName: buyer?.artistName || buyer?.name || "Buyer" }));
+      }),
+
+      confirmDirectPayment: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), producerNote: z.string().trim().max(512).optional() }))
+        .mutation(async ({ ctx, input }) => {
+          await requireBeatPro(ctx.user.id, "Direct producer payments");
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [request] = await db.select().from(beatDirectPayments)
+            .where(and(eq(beatDirectPayments.id, input.id), eq(beatDirectPayments.producerId, ctx.user.id))).limit(1);
+          if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Direct payment request not found." });
+          if (request.status !== "submitted") throw new TRPCError({ code: "BAD_REQUEST", message: "Confirm only a payment that the buyer has marked as sent." });
+          const result = await fulfillDirectBeatSale(request.saleId, ctx.user.id);
+          await db.update(beatDirectPayments).set({ status: "confirmed", producerNote: input.producerNote || null, confirmedAt: new Date() })
+            .where(eq(beatDirectPayments.id, request.id));
+          return { success: true as const, saleId: result.sale.id, contractId: result.contract.id };
+        }),
+
       uploadFiles: protectedProcedure
         .input(z.object({
           title: z.string().trim().min(1).max(160),
@@ -5793,6 +5879,9 @@ export const appRouter = router({
           const plan = await getBeatProducerPlan(ctx.user.id);
           if (!input.replaceBeatId && !plan.isPro && plan.uploadsThisMonth >= FREE_PRODUCER_UPLOAD_LIMIT) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Free producers can publish up to 10 beats each month. Upgrade to Beat Pro for unlimited uploads." });
+          }
+          if (!plan.isPro && input.previewTag.source !== "none") {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Tagged audio previews are available with Beat Pro ($9.99/month)." });
           }
           if (input.replaceBeatId) {
             const [existingBeat] = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
@@ -5929,6 +6018,7 @@ export const appRouter = router({
           const [beat] = await db.select().from(marketplaceBeats).where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id))).limit(1);
           if (!beat) throw new TRPCError({ code: "NOT_FOUND", message: "Beat not found" });
           if (beat.status === "sold_exclusive") throw new TRPCError({ code: "BAD_REQUEST", message: "An exclusive sale has closed this beat from future licensing." });
+          if (input.previewTag && input.previewTag.source !== "none") await requireBeatPro(ctx.user.id, "Tagged audio previews");
           const replacementFields = input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl
             ? { previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl,
               previewTagSource: input.previewTagSource ?? beat.previewTagSource, previewTagFileKey: input.previewTagFileKey ?? beat.previewTagFileKey, previewTagFileUrl: input.previewTagFileUrl ?? beat.previewTagFileUrl, previewTagAtSeconds: input.previewTagAtSeconds ?? beat.previewTagAtSeconds }
@@ -5976,6 +6066,7 @@ export const appRouter = router({
       suggestMetadata: protectedProcedure
         .input(z.object({ title: z.string().trim().min(1).max(160), genre: z.string().trim().max(80).optional(), bpm: z.number().int().min(30).max(300).optional(), musicalKey: z.string().trim().max(24).optional(), mood: z.string().trim().max(120).optional() }))
         .mutation(async ({ ctx, input }) => {
+          await requireBeatPro(ctx.user.id, "AI metadata help");
           const artistName = ctx.user.artistName || ctx.user.name || "Independent producer";
           const city = ctx.user.city?.trim() || null;
           const result = await invokeLLM({
@@ -6008,7 +6099,8 @@ export const appRouter = router({
 
       searchCoverImages: protectedProcedure
         .input(z.object({ query: z.string().trim().min(2).max(120) }))
-        .query(async ({ input }) => {
+        .query(async ({ ctx, input }) => {
+          await requireBeatPro(ctx.user.id, "Cover art search");
           const googleKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY || process.env.GOOGLE_SEARCH_API_KEY;
           const googleEngine = process.env.GOOGLE_CSE_ID || process.env.GOOGLE_SEARCH_ENGINE_ID;
           if (googleKey && googleEngine) {
@@ -6149,6 +6241,58 @@ export const appRouter = router({
           if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL" });
           await db.update(beatSales).set({ stripeCheckoutSessionId: session.id }).where(eq(beatSales.id, saleId));
           return { checkoutUrl: session.url };
+        }),
+
+      createDirectPayment: protectedProcedure
+        .input(z.object({ beatId: z.number().int().positive(), licenseId: z.number().int().positive(), provider: beatDirectPaymentProvider }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [beat] = await db.select().from(marketplaceBeats).where(eq(marketplaceBeats.id, input.beatId)).limit(1);
+          const [license] = await db.select().from(beatLicenses).where(and(eq(beatLicenses.id, input.licenseId), eq(beatLicenses.beatId, input.beatId), eq(beatLicenses.isActive, true))).limit(1);
+          if (!beat || beat.status !== "active" || !license) throw new TRPCError({ code: "NOT_FOUND", message: "This beat or license is no longer available." });
+          if (beat.producerId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot purchase your own beat." });
+          const [producerRows, methodRows] = await Promise.all([
+            db.select().from(users).where(eq(users.id, beat.producerId)).limit(1),
+            db.select().from(beatProducerDirectPaymentMethods).where(and(
+              eq(beatProducerDirectPaymentMethods.producerId, beat.producerId),
+              eq(beatProducerDirectPaymentMethods.provider, input.provider),
+              eq(beatProducerDirectPaymentMethods.isActive, true),
+            )).limit(1),
+          ]);
+          const producer = producerRows[0];
+          const method = methodRows[0];
+          if (!producer || !method || !(await getActiveBeatProducerMembership(beat.producerId))) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "That producer payment option is not available." });
+          }
+          const buyerName = ctx.user.artistName || ctx.user.name || "Artist";
+          const saleResult = await db.insert(beatSales).values({
+            beatId: beat.id, licenseId: license.id, buyerId: ctx.user.id, producerId: beat.producerId, buyerName, buyerEmail: ctx.user.email ?? null,
+            beatTitleSnapshot: beat.title, producerNameSnapshot: producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
+            licenseTermsSnapshot: license.terms, masterFileKeySnapshot: beat.masterFileKey, amountCents: license.priceCents,
+            platformFeeCents: 0, producerEarningsCents: license.priceCents, stripeCheckoutSessionId: `direct_${randomBytes(18).toString("hex")}`,
+          });
+          const saleId = Number((saleResult as any)[0]?.insertId ?? (saleResult as any).insertId);
+          const requestResult = await db.insert(beatDirectPayments).values({
+            saleId, producerId: beat.producerId, buyerId: ctx.user.id, provider: input.provider,
+            destinationSnapshot: method.destination, instructionsSnapshot: method.instructions ?? null,
+          });
+          const directPaymentId = Number((requestResult as any)[0]?.insertId ?? (requestResult as any).insertId);
+          return { directPaymentId, amountCents: license.priceCents, provider: input.provider, destination: method.destination, instructions: method.instructions ?? null };
+        }),
+
+      submitDirectPayment: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), paymentReference: z.string().trim().max(256).optional() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [request] = await db.select().from(beatDirectPayments)
+            .where(and(eq(beatDirectPayments.id, input.id), eq(beatDirectPayments.buyerId, ctx.user.id))).limit(1);
+          if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Direct payment request not found." });
+          if (request.status !== "awaiting_payment") throw new TRPCError({ code: "BAD_REQUEST", message: "This direct payment has already been submitted." });
+          await db.update(beatDirectPayments).set({ status: "submitted", paymentReference: input.paymentReference || null })
+            .where(eq(beatDirectPayments.id, request.id));
+          return { success: true as const };
         }),
 
       confirm: protectedProcedure

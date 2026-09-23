@@ -400,6 +400,20 @@
       "when": 1790094031865,
       "tag": "0056_military_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "5",
+      "when": 1790173386014,
+      "tag": "0057_exotic_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "5",
+      "when": 1790174050301,
+      "tag": "0058_simple_lockjaw",
+      "breakpoints": true
     }
   ]
 }

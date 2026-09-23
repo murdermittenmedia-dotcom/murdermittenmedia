@@ -236,6 +236,74 @@ export async function fulfillBeatSaleFromCheckoutSession(session: Stripe.Checkou
   return { sale: { ...sale, status: "paid" as const, producerEarningsAvailableAt: settlementAvailableAt }, contract, alreadyFulfilled: false };
 }
 
+/**
+ * Completes a direct producer payment after the producer confirms it. Direct
+ * providers do not give this site a payment webhook, so no buyer gets a file
+ * or contract until the seller deliberately confirms the submitted payment.
+ */
+export async function fulfillDirectBeatSale(saleId: number, producerId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [sale] = await db.select().from(beatSales).where(and(eq(beatSales.id, saleId), eq(beatSales.producerId, producerId))).limit(1);
+  if (!sale) throw new Error("Direct payment sale not found");
+  const [existingContract] = await db.select().from(beatContracts).where(eq(beatContracts.saleId, sale.id)).limit(1);
+  if (sale.status === "paid" && existingContract) return { sale, contract: existingContract, alreadyFulfilled: true };
+
+  const [beatRows, licenseRows, buyerRows, producerRows] = await Promise.all([
+    db.select().from(marketplaceBeats).where(eq(marketplaceBeats.id, sale.beatId)).limit(1),
+    db.select().from(beatLicenses).where(eq(beatLicenses.id, sale.licenseId)).limit(1),
+    db.select().from(users).where(eq(users.id, sale.buyerId)).limit(1),
+    db.select().from(users).where(eq(users.id, sale.producerId)).limit(1),
+  ]);
+  const beat = beatRows[0];
+  const license = licenseRows[0];
+  const buyer = buyerRows[0];
+  const producer = producerRows[0];
+  if (!beat || !license || !buyer || !producer) throw new Error("Direct payment fulfillment records are incomplete");
+  if (beat.status !== "active") throw new Error("This beat is no longer available for purchase");
+
+  if (license.code === "exclusive") {
+    const result = await db.update(marketplaceBeats).set({ status: "sold_exclusive", exclusiveSoldAt: new Date() })
+      .where(and(eq(marketplaceBeats.id, beat.id), eq(marketplaceBeats.status, "active")));
+    const affectedRows = Number((result as any)[0]?.affectedRows ?? (result as any).affectedRows ?? 0);
+    if (affectedRows === 0) throw new Error("This exclusive beat was sold before the payment was confirmed");
+  }
+
+  const paidAt = new Date();
+  await db.update(beatSales).set({
+    status: "paid",
+    producerEarningsStatus: "available",
+    producerEarningsAvailableAt: paidAt,
+    producerEarningsSettledAt: paidAt,
+    paidAt,
+  }).where(eq(beatSales.id, sale.id));
+
+  const contractNumber = `MMM-BEAT-${sale.id}-${new Date().getUTCFullYear()}`;
+  const pdf = buildBeatLicensePdf({
+    contractNumber,
+    effectiveDate: paidAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+    buyerName: sale.buyerName,
+    buyerEmail: sale.buyerEmail ?? "",
+    producerName: sale.producerNameSnapshot,
+    producerEmail: producer.email ?? "",
+    beatTitle: sale.beatTitleSnapshot,
+    license: parseBeatLicenseTerms(sale.licenseTermsSnapshot, {
+      code: license.code,
+      name: sale.licenseNameSnapshot,
+      priceCents: sale.amountCents,
+      includesStems: license.includesStems,
+    }),
+    amountCents: sale.amountCents,
+  });
+  const { key, url } = await storagePut(`beat-contracts/${sale.id}-${contractNumber}.pdf`, pdf, "application/pdf");
+  const result = await db.insert(beatContracts).values({ saleId: sale.id, contractNumber, storageKey: key, documentUrl: url });
+  const contractId = Number((result as any)[0]?.insertId ?? (result as any).insertId);
+  const contract = { id: contractId, saleId: sale.id, contractNumber, storageKey: key, documentUrl: url, createdAt: new Date() };
+  await db.update(beatSales).set({ contractId }).where(eq(beatSales.id, sale.id));
+  await db.update(marketplaceBeats).set({ salesCount: sql`${marketplaceBeats.salesCount} + 1` }).where(eq(marketplaceBeats.id, beat.id));
+  return { sale: { ...sale, status: "paid" as const, paidAt }, contract, alreadyFulfilled: false };
+}
+
 export async function markBeatSalePaymentReversed(paymentIntentId: string, status: "refunded" | "disputed") {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
