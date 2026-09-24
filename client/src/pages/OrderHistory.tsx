@@ -1,188 +1,143 @@
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Loader2, ShoppingBag, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
+import { SiteNav } from "@/components/SiteNav";
+import { toast } from "sonner";
+import {
+  ChevronRight,
+  Download,
+  FileCheck2,
+  FileText,
+  Library,
+  Loader2,
+  Music2,
+  Package,
+  ShoppingBag,
+  ShieldCheck,
+} from "lucide-react";
+
+type OrderFilter = "all" | "beats" | "merch";
+
+const dollars = (amountCents: number) => `$${(amountCents / 100).toFixed(2)}`;
+
+function parseMerchItems(value: string | null | undefined) {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function BeatOrderStatus({ sale }: { sale: any }) {
+  if (sale.status === "paid") {
+    return <span className="border border-green-400/35 bg-green-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-green-300">Ready to download</span>;
+  }
+  if (sale.status === "refunded" || sale.status === "disputed") {
+    return <span className="border border-red-400/35 bg-red-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-red-300">{sale.status}</span>;
+  }
+  if (sale.directPayment?.status === "submitted") {
+    return <span className="border border-yellow-400/35 bg-yellow-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-yellow-200">Payment verification</span>;
+  }
+  if (sale.directPayment?.status === "declined") {
+    return <span className="border border-red-400/35 bg-red-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-red-300">Payment needs attention</span>;
+  }
+  return <span className="border border-white/15 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-white/50">Payment pending</span>;
+}
 
 export default function OrderHistory() {
   const [, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const utils = trpc.useUtils();
+  const [filter, setFilter] = useState<OrderFilter>("all");
+  const [recentBeatSaleId, setRecentBeatSaleId] = useState<number | null>(null);
+  const completedSession = useRef<string | null>(null);
+  const sessionId = new URLSearchParams(window.location.search).get("session_id");
+  const isBeatCheckoutReturn = new URLSearchParams(window.location.search).get("beat_success") === "true";
 
-  // Fetch user's orders
-  const { data: orders, isLoading, error } = trpc.merch.orders.getMyOrders.useQuery();
+  const merchOrders = trpc.merch.orders.getMyOrders.useQuery(undefined, {
+    enabled: !!user,
+    refetchOnWindowFocus: false,
+  });
+  const beatOrders = trpc.beats.myOrders.useQuery(undefined, {
+    enabled: !!user,
+    refetchOnWindowFocus: false,
+  });
+  const confirmBeatCheckout = trpc.beats.checkout.confirm.useMutation({
+    onSuccess: (result) => {
+      if (result.saleId) setRecentBeatSaleId(result.saleId);
+      void Promise.all([
+        utils.beats.myOrders.invalidate(),
+        utils.beats.library.invalidate(),
+      ]);
+      window.history.replaceState({}, "", "/account/orders?beat_success=true");
+    },
+    onError: (error) => toast.error(error.message || "Your payment is still being finalized. Refresh this page in a moment."),
+  });
 
-  if (authLoading || isLoading) {
-    return (
-      <div className="min-h-screen bg-background px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-foreground/60" />
-          </div>
-        </div>
-      </div>
-    );
+  useEffect(() => {
+    if (!sessionId || !user || completedSession.current === sessionId || confirmBeatCheckout.isPending) return;
+    completedSession.current = sessionId;
+    confirmBeatCheckout.mutate({ sessionId });
+    // This deliberately runs once when Stripe returns with the checkout session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, user?.id]);
+
+  const downloadBeatDelivery = async (saleId: number, asset: "master" | "contract") => {
+    try {
+      const result = await utils.beats.getDelivery.fetch({ saleId, asset });
+      window.open(result.url, "_blank", "noopener,noreferrer");
+    } catch (error: any) {
+      toast.error(error?.message || "Could not prepare this download.");
+    }
+  };
+
+  const isLoading = authLoading || (!!user && (merchOrders.isLoading || beatOrders.isLoading));
+  const merch = merchOrders.data ?? [];
+  const beats = beatOrders.data ?? [];
+  const hasOrders = merch.length > 0 || beats.length > 0;
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><div className="grid min-h-screen place-items-center"><Loader2 className="h-8 w-8 animate-spin text-red-500" /></div></div>;
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center py-16">
-            <ShoppingBag className="w-12 h-12 text-foreground/30 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Error Loading Orders</h1>
-            <p className="text-foreground/60 mb-6">
-              We couldn't load your orders. Please try again later.
-            </p>
-            <Button onClick={() => setLocation("/merch")} variant="outline">
-              Back to Merch
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+  if (!user) {
+    return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><main className="container pt-36 pb-20 text-center"><Library className="mx-auto h-12 w-12 text-red-500" /><h1 className="mt-5 font-['Anton'] text-4xl uppercase">MY ORDERS</h1><p className="mx-auto mt-3 max-w-md text-sm text-white/50">Sign in to see your merch receipts, licensed beats, master files, and agreements.</p><a href={getLoginUrl("/account/orders")} className="mt-6 inline-block bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest hover:bg-red-500">Sign in</a></main></div>;
   }
 
-  if (!orders || orders.length === 0) {
-    return (
-      <div className="min-h-screen bg-background px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">My Orders</h1>
-          <div className="text-center py-16">
-            <ShoppingBag className="w-12 h-12 text-foreground/30 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">No Orders Yet</h2>
-            <p className="text-foreground/60 mb-6">
-              You haven't placed any orders yet. Start shopping to see your orders here.
-            </p>
-            <Button onClick={() => setLocation("/merch")} className="w-full sm:w-auto">
-              Shop Now
-            </Button>
-          </div>
-        </div>
+  const tabs: Array<{ id: OrderFilter; label: string; count: number }> = [
+    { id: "all", label: "All orders", count: merch.length + beats.length },
+    { id: "beats", label: "Beat licenses", count: beats.length },
+    { id: "merch", label: "Merch", count: merch.length },
+  ];
+
+  return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><main className="container pt-28 pb-20">
+    <header className="border-b border-white/10 pb-7">
+      <p className="text-[10px] font-black uppercase tracking-[.3em] text-red-500">Account delivery center</p>
+      <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div><h1 className="font-['Anton'] text-5xl uppercase">MY ORDERS</h1><p className="mt-2 max-w-2xl text-sm text-white/50">One place for your merchandise orders and every beat license you have purchased.</p></div>
+        <a href="/beats" className="inline-flex items-center justify-center gap-2 border border-red-500/50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-red-300 transition hover:bg-red-600 hover:text-white"><Music2 className="h-4 w-4" />Browse beats</a>
       </div>
-    );
-  }
+    </header>
 
-  return (
-    <div className="min-h-screen bg-background px-4 py-12">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">My Orders</h1>
-          <p className="text-foreground/60">
-            You have {orders.length} order{orders.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+    {(isBeatCheckoutReturn || confirmBeatCheckout.isPending || recentBeatSaleId) && <div className="mt-6 border border-green-400/30 bg-green-400/10 p-4">
+      <div className="flex items-start gap-3"><FileCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-green-300" /><div><p className="text-sm font-bold text-green-100">Beat payment received</p><p className="mt-1 text-xs leading-relaxed text-green-100/70">{confirmBeatCheckout.isPending ? "Generating your agreement and preparing protected downloads…" : "Your master file and full licensing agreement are ready below."}</p></div></div>
+    </div>}
 
-        {/* Orders List */}
-        <div className="space-y-4">
-          {orders.map((order) => {
-            const items = JSON.parse(order.items || "[]") as Array<{
-              productId: number;
-              productName: string;
-              color: string;
-              size: string;
-              quantity: number;
-              price: number;
-            }>;
-
-            const statusColors = {
-              pending: "bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200",
-              completed: "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200",
-              failed: "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200",
-              cancelled: "bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-200",
-            };
-
-            const statusLabels = {
-              pending: "Processing",
-              completed: "Completed",
-              failed: "Failed",
-              cancelled: "Cancelled",
-            };
-
-            return (
-              <div
-                key={order.id}
-                className="bg-card border border-border rounded-lg p-4 sm:p-6 hover:border-border/80 transition-colors"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                  {/* Order Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
-                      <h3 className="font-semibold text-lg break-words">
-                        Order #{order.id}
-                      </h3>
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
-                          statusColors[order.status as keyof typeof statusColors]
-                        }`}
-                      >
-                        {statusLabels[order.status as keyof typeof statusLabels]}
-                      </span>
-                    </div>
-                    <p className="text-sm text-foreground/60">
-                      {new Date(order.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-
-                  {/* Total */}
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">
-                      ${(order.totalCents / 100).toFixed(2)}
-                    </p>
-                    <p className="text-sm text-foreground/60">
-                      {items.length} item{items.length !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Items Preview */}
-                <div className="mb-4 pb-4 border-t border-border pt-4">
-                  <div className="space-y-2">
-                    {items.slice(0, 2).map((item, idx) => (
-                      <div key={idx} className="text-sm text-foreground/70">
-                        <p className="font-medium">{item.productName}</p>
-                        <p className="text-foreground/60">
-                          {item.color} / {item.size} × {item.quantity}
-                        </p>
-                      </div>
-                    ))}
-                    {items.length > 2 && (
-                      <p className="text-sm text-foreground/60 italic">
-                        +{items.length - 2} more item{items.length - 2 !== 1 ? "s" : ""}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* View Button */}
-                <Button
-                  onClick={() => setLocation(`/account/orders/${order.id}`)}
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                >
-                  View Details
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Back to Merch */}
-        <div className="mt-8 pt-8 border-t border-border">
-          <Button
-            onClick={() => setLocation("/merch")}
-            variant="outline"
-            className="w-full sm:w-auto"
-          >
-            Continue Shopping
-          </Button>
-        </div>
-      </div>
+    <div className="mt-7 flex flex-wrap gap-2 border-b border-white/10 pb-4">
+      {tabs.map((tab) => <button key={tab.id} type="button" onClick={() => setFilter(tab.id)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition ${filter === tab.id ? "bg-red-600 text-white" : "border border-white/15 text-white/55 hover:border-white/45 hover:text-white"}`}>{tab.label} <span className="ml-1 text-white/55">{tab.count}</span></button>)}
     </div>
-  );
+
+    {!hasOrders ? <section className="mt-10 border border-dashed border-white/15 py-20 text-center"><ShoppingBag className="mx-auto h-11 w-11 text-white/20" /><h2 className="mt-4 font-['Anton'] text-3xl uppercase">No orders yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-white/45">Merch receipts and paid Beat Marketplace licenses will show up here automatically.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><button onClick={() => setLocation("/merch")} className="bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest hover:bg-red-500">Shop merch</button><button onClick={() => setLocation("/beats")} className="border border-white/20 px-5 py-3 text-xs font-black uppercase tracking-widest text-white/70 hover:border-white hover:text-white">Browse beats</button></div></section> : <div className="mt-7 space-y-4">
+      {(filter === "all" || filter === "beats") && beats.map((sale: any) => <article key={`beat-${sale.id}`} className={`border p-5 ${sale.id === recentBeatSaleId ? "border-green-400/50 bg-green-400/[.055]" : "border-white/10 bg-[#101010]"}`}>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-[.2em] text-red-400">Beat license</span><BeatOrderStatus sale={sale} /></div><h2 className="mt-2 truncate font-['Anton'] text-3xl uppercase">{sale.beatTitleSnapshot}</h2><p className="mt-1 text-sm text-white/55">{sale.licenseNameSnapshot} · Produced by {sale.producerNameSnapshot}</p><p className="mt-3 text-xs text-white/35">Order #{sale.id} · {sale.paidAt ? `Purchased ${new Date(sale.paidAt).toLocaleDateString()}` : `Placed ${new Date(sale.createdAt).toLocaleDateString()}`} · {dollars(sale.amountCents)}</p>{sale.status !== "paid" && <p className="mt-3 max-w-xl text-xs leading-relaxed text-white/45">{sale.directPayment?.status === "submitted" ? "Payment has been marked as sent. Delivery unlocks as soon as the payment is confirmed." : "Delivery unlocks after payment is completed and confirmed."}</p>}</div>{sale.status === "paid" && <div className="grid shrink-0 gap-2 sm:grid-cols-2"><button type="button" onClick={() => downloadBeatDelivery(sale.id, "master")} className="flex items-center justify-center gap-2 bg-red-600 px-4 py-3 text-xs font-black uppercase tracking-widest hover:bg-red-500"><Download className="h-4 w-4" />Download beat</button><button type="button" onClick={() => downloadBeatDelivery(sale.id, "contract")} className="flex items-center justify-center gap-2 border border-white/20 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/70 hover:border-white hover:text-white"><FileText className="h-4 w-4" />Agreement PDF</button></div>}</div>{sale.status === "paid" && <div className="mt-5 flex items-start gap-3 border-t border-white/10 pt-4 text-xs leading-relaxed text-white/45"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />The agreement is generated from the producer’s selected lease terms at the time of your purchase. Save it with your release files.</div>}</article>)}
+      {(filter === "all" || filter === "merch") && merch.map((order: any) => { const items = parseMerchItems(order.items); return <article key={`merch-${order.id}`} className="border border-white/10 bg-[#101010] p-5"><div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-[10px] font-black uppercase tracking-[.2em] text-red-400">Merch order</span><span className={`border px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${order.status === "completed" ? "border-green-400/35 bg-green-400/10 text-green-300" : order.status === "pending" ? "border-yellow-400/35 bg-yellow-400/10 text-yellow-200" : "border-red-400/35 bg-red-400/10 text-red-300"}`}>{order.status === "completed" ? "Confirmed" : order.status}</span></div><h2 className="mt-2 font-['Anton'] text-3xl uppercase">Order #{order.id}</h2><p className="mt-1 text-sm text-white/55">{items.slice(0, 2).map((item: any) => item.productName).filter(Boolean).join(" · ") || "Murder Mitten merchandise"}{items.length > 2 ? ` + ${items.length - 2} more` : ""}</p><p className="mt-3 text-xs text-white/35">Placed {new Date(order.createdAt).toLocaleDateString()} · {dollars(order.totalCents)}</p></div><button type="button" onClick={() => setLocation(`/account/orders/${order.id}`)} className="inline-flex shrink-0 items-center justify-center gap-2 border border-white/20 px-4 py-3 text-xs font-black uppercase tracking-widest text-white/70 hover:border-white hover:text-white">View order <ChevronRight className="h-4 w-4" /></button></div></article>; })}
+      {filter === "beats" && beats.length === 0 && <p className="py-12 text-center text-sm text-white/45">No Beat Marketplace orders yet.</p>}
+      {filter === "merch" && merch.length === 0 && <p className="py-12 text-center text-sm text-white/45">No merchandise orders yet.</p>}
+    </div>}
+
+    {hasOrders && <div className="mt-8 flex flex-wrap gap-3 border-t border-white/10 pt-7"><a href="/beats/library" className="inline-flex items-center gap-2 border border-white/15 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white/60 hover:border-white hover:text-white"><Library className="h-4 w-4" />Beat library</a><button onClick={() => setLocation("/merch")} className="inline-flex items-center gap-2 border border-white/15 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white/60 hover:border-white hover:text-white"><Package className="h-4 w-4" />Shop merch</button></div>}
+  </main></div>;
 }

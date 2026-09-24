@@ -5929,8 +5929,8 @@ export const appRouter = router({
             userId: request.buyerId,
             type: "beat_direct_payment_confirmed",
             title: "Producer payment confirmed",
-            body: "Your beat license is ready in your Beat Library.",
-            link: "/beats/library",
+            body: "Your beat license, agreement, and master download are ready in My Orders.",
+            link: "/account/orders",
           });
           return { success: true as const, saleId: result.sale.id, contractId: result.contract.id };
         }),
@@ -6417,9 +6417,9 @@ export const appRouter = router({
             type: input.action === "confirmed" ? "beat_platform_payment_confirmed" : "beat_platform_payment_declined",
             title: input.action === "confirmed" ? "Beat payment confirmed" : "Beat payment needs attention",
             body: input.action === "confirmed"
-              ? `Your ${sale?.beatTitleSnapshot || "beat"} license is ready in your Beat Library.`
+              ? `Your ${sale?.beatTitleSnapshot || "beat"} license, agreement, and master download are ready in My Orders.`
               : `The payment for ${sale?.beatTitleSnapshot || "your selected beat"} could not be confirmed. ${input.adminNote || "Please contact the team before paying again."}`,
-            link: input.action === "confirmed" ? "/beats/library" : "/beats",
+            link: input.action === "confirmed" ? "/account/orders" : "/beats",
           });
           return { success: true as const };
         }),
@@ -6467,7 +6467,7 @@ export const appRouter = router({
             mode: "payment", customer_email: ctx.user.email ?? undefined, client_reference_id: String(ctx.user.id),
             metadata: { kind: "beat_license", sale_id: String(saleId), buyer_id: String(ctx.user.id), beat_id: String(beat.id), license_id: String(license.id) },
             line_items: [{ price_data: { currency: "usd", product_data: { name: `${beat.title} — ${license.name}`, description: `Licensed from ${producer.artistName || producer.name || "Producer"} through Murder Mitten Media` }, unit_amount: license.priceCents }, quantity: 1 }],
-            success_url: `${input.origin}/beats/library?success=true&session_id={CHECKOUT_SESSION_ID}`,
+            success_url: `${input.origin}/account/orders?beat_success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${input.origin}/beats/${beat.slug}?canceled=true`,
           });
           if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL" });
@@ -6594,6 +6594,20 @@ export const appRouter = router({
       return rows.map(({ sale, contract }) => ({ ...sale, contract }));
     }),
 
+    // Every buyer sees Beat Marketplace purchases here, including payments still
+    // awaiting confirmation. Delivery actions remain unavailable until status=paid.
+    myOrders: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const rows = await db.select({ sale: beatSales, contract: beatContracts, directPayment: beatDirectPayments })
+        .from(beatSales)
+        .leftJoin(beatContracts, eq(beatContracts.saleId, beatSales.id))
+        .leftJoin(beatDirectPayments, eq(beatDirectPayments.saleId, beatSales.id))
+        .where(eq(beatSales.buyerId, ctx.user.id))
+        .orderBy(desc(beatSales.createdAt));
+      return rows.map(({ sale, contract, directPayment }) => ({ ...sale, contract, directPayment }));
+    }),
+
     getDelivery: protectedProcedure
       .input(z.object({ saleId: z.number().int().positive(), asset: z.enum(["master", "contract"]) }))
       .query(async ({ ctx, input }) => {
@@ -6601,11 +6615,19 @@ export const appRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
         const [sale] = await db.select().from(beatSales).where(and(eq(beatSales.id, input.saleId), eq(beatSales.buyerId, ctx.user.id), eq(beatSales.status, "paid"))).limit(1);
         if (!sale) throw new TRPCError({ code: "NOT_FOUND", message: "Purchase not found." });
-        const key = input.asset === "master"
-          ? sale.masterFileKeySnapshot
-          : (await db.select({ storageKey: beatContracts.storageKey }).from(beatContracts).where(eq(beatContracts.saleId, sale.id)).limit(1))[0]?.storageKey;
+        const contract = input.asset === "contract"
+          ? (await db.select({ storageKey: beatContracts.storageKey, contractNumber: beatContracts.contractNumber }).from(beatContracts).where(eq(beatContracts.saleId, sale.id)).limit(1))[0]
+          : null;
+        const key = input.asset === "master" ? sale.masterFileKeySnapshot : contract?.storageKey;
         if (!key) throw new TRPCError({ code: "NOT_FOUND", message: "Delivery file is not available yet." });
-        return { url: await storageGetSignedUrl(key) };
+        const safeTitle = sale.beatTitleSnapshot.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "beat";
+        const extension = input.asset === "master"
+          ? sale.masterFileKeySnapshot.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "audio"
+          : "pdf";
+        const filename = input.asset === "master"
+          ? `${safeTitle}.${extension}`
+          : `${safeTitle}-${contract?.contractNumber || "license"}.${extension}`;
+        return { url: await storageGetSignedUrl(key), filename };
       }),
   }),
 

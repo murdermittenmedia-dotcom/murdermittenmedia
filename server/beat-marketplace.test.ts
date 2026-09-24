@@ -55,6 +55,26 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(source).toContain("eq(beatSales.buyerId, ctx.user.id)");
   });
 
+  it("keeps licensed downloads and the generated PDF agreement in buyer order history", () => {
+    const source = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const library = readFileSync(resolve(process.cwd(), "client/src/pages/BeatLibrary.tsx"), "utf8");
+    const orders = readFileSync(resolve(process.cwd(), "client/src/pages/OrderHistory.tsx"), "utf8");
+    const nav = readFileSync(resolve(process.cwd(), "client/src/components/SiteNav.tsx"), "utf8");
+    expect(source).toContain("myOrders: protectedProcedure");
+    expect(source).toContain("leftJoin(beatContracts, eq(beatContracts.saleId, beatSales.id))");
+    expect(source).toContain("leftJoin(beatDirectPayments, eq(beatDirectPayments.saleId, beatSales.id))");
+    expect(source).toContain("asset: z.enum([\"master\", \"contract\"])");
+    expect(source).toContain("filename = input.asset === \"master\"");
+    expect(source).toContain("/account/orders?beat_success=true&session_id={CHECKOUT_SESSION_ID}");
+    expect(library).toContain("Master file");
+    expect(library).toContain("License PDF");
+    expect(orders).toContain("trpc.beats.myOrders.useQuery");
+    expect(orders).toContain("Download beat");
+    expect(orders).toContain("Agreement PDF");
+    expect(orders).toContain("trpc.merch.orders.getMyOrders.useQuery");
+    expect(nav).toContain('label: "My Orders"');
+  });
+
   it("keeps Golden Wheel eligibility limited to merch checkout sessions", () => {
     const webhook = readFileSync(resolve(process.cwd(), "server/stripe-webhook.ts"), "utf8");
     expect(webhook).toContain("if (await isMerchCheckoutSession(session.id))");

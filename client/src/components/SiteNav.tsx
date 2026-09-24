@@ -75,6 +75,12 @@ const ALL_PAGES = [
       { href: "/account/link-analytics", label: "Link Analytics", icon: BarChart3 },
     ],
   },
+  {
+    category: "ACCOUNT",
+    items: [
+      { href: "/account/orders", label: "My Orders", icon: ShoppingBag },
+    ],
+  },
 ] as const;
 
 export function SiteNav({ transparent = false }: { transparent?: boolean }) {
