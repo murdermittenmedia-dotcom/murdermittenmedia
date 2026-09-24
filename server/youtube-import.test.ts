@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { parseYouTubeUrl } from "./youtube-import";
 
 describe("YouTube beat import", () => {
@@ -13,5 +15,9 @@ describe("YouTube beat import", () => {
     expect(parseYouTubeUrl("https://example.com/watch?v=dQw4w9WgXcQ")).toBeNull();
     expect(parseYouTubeUrl("not a url")).toBeNull();
     expect(parseYouTubeUrl("https://youtu.be/short")).toBeNull();
+  });
+  it("uses the imported YouTube thumbnail as the beat cover", () => {
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    expect(producer).toContain("if (imported.thumbnailUrl) { setArtwork(null); setRemoteArtworkUrl(imported.thumbnailUrl); }");
   });
 });
