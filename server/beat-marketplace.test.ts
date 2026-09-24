@@ -79,7 +79,7 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(detail).toContain("claimFree.useMutation");
     expect(detail).toContain("Get free license");
     expect(producer).toContain("Price (USD · 0 = free)");
-    expect(marketplace).toContain("contract generated with every license");
+    expect(marketplace).toContain("clear terms");
     expect(marketplace).toContain("Free claim or secure checkout");
   });
 
@@ -279,7 +279,7 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(producer).toContain("leaseOptionsFromSaved(lastLeaseOptions.licenses)");
     expect(producer).toContain('new URLSearchParams(window.location.search).get("edit")');
     expect(producer).toContain("Number(beat.id) === requestedId");
-    expect(market).toContain("Edit my beat");
+    expect(market).toContain(">Edit</button>");
     expect(market).toContain("isOwner={user?.id === beat.producerId}");
   });
 
@@ -301,9 +301,9 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(router).toContain("byProducer: publicProcedure");
     expect(profile).toContain("Beat Catalogue");
     expect(profile).toContain("trpc.beats.byProducer.useQuery");
-    expect(market).toContain("Free Producer");
-    expect(market).toContain("Beat Pro · $10/month or $50/year");
-    expect(market).toContain("AI listing wizard, cover discovery, and tagged client previews");
+    expect(market).toContain("100% royalties with Pro");
+    expect(market).toContain("30 days of Pro.");
+    expect(market).toContain("AI listing help, cover discovery, tagged client previews");
   });
 
   it("routes free producer manual payments through admin confirmation and adds PayPal", () => {
