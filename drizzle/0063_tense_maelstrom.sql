@@ -1,0 +1,2 @@
+ALTER TABLE `marketplace_beats` ADD `youtubeUrl` varchar(512);--> statement-breakpoint
+ALTER TABLE `marketplace_beats` ADD `masterDeliveryStatus` enum('ready','producer_required') DEFAULT 'ready' NOT NULL;

@@ -65,8 +65,10 @@ export async function getProducerSettlementLedger(producerId: number, now = new 
     db.select().from(beatPayoutRequests).where(eq(beatPayoutRequests.producerId, producerId)),
   ]);
   const paidSales = sales.filter((sale) => sale.status === "paid");
-  const settledSales = paidSales.filter((sale) => sale.producerEarningsAvailableAt && sale.producerEarningsAvailableAt.getTime() <= now.getTime());
-  const pendingSales = paidSales.filter((sale) => !sale.producerEarningsAvailableAt || sale.producerEarningsAvailableAt.getTime() > now.getTime());
+  // Producer-direct payments are already in the producer's external wallet.
+  // They count toward lifetime earned, but must never inflate the platform cashout balance.
+  const settledSales = paidSales.filter((sale) => !sale.stripeCheckoutSessionId.startsWith("direct_") && sale.producerEarningsAvailableAt && sale.producerEarningsAvailableAt.getTime() <= now.getTime());
+  const pendingSales = paidSales.filter((sale) => !sale.stripeCheckoutSessionId.startsWith("direct_") && (!sale.producerEarningsAvailableAt || sale.producerEarningsAvailableAt.getTime() > now.getTime()));
   const payoutReservations = payoutRequests.filter((request) => inArrayValue(request.status, ["pending", "approved", "paid"]));
   const reservedPayoutCents = payoutReservations.reduce((sum, request) => sum + request.amountCents, 0);
   const availableGrossCents = settledSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0);

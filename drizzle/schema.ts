@@ -1284,6 +1284,8 @@ export const marketplaceBeats = mysqlTable("marketplace_beats", {
   description: text("description"),
   tags: text("tags"),
   artworkUrl: varchar("artworkUrl", { length: 512 }),
+  youtubeUrl: varchar("youtubeUrl", { length: 512 }),
+  masterDeliveryStatus: mysqlEnum("masterDeliveryStatus", ["ready", "producer_required"]).default("ready").notNull(),
   previewFileKey: varchar("previewFileKey", { length: 512 }).notNull(),
   previewFileUrl: varchar("previewFileUrl", { length: 512 }).notNull(),
   previewStartSeconds: int("previewStartSeconds").default(0).notNull(),

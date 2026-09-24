@@ -102,7 +102,7 @@ import { BEAT_LICENSE_CODES, BEAT_PRO_ANNUAL_PRICE_CENTS, BEAT_PRO_MONTHLY_PRICE
 import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger, updateBeatProducerSubscription } from "./beat-marketplace-service";
 import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
-import { fetchYouTubeMetadata } from "./youtube-import";
+import { fetchYouTubeMetadata, fetchYouTubeChannelVideos, parseYouTubeUrl } from "./youtube-import";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -5913,6 +5913,67 @@ export const appRouter = router({
           return fetchYouTubeMetadata(input.url);
         }),
 
+      importYouTubeChannel: protectedProcedure
+        .input(z.object({ url: z.string().trim().min(1).max(500) }))
+        .mutation(async ({ ctx, input }) => {
+          await requireBeatPro(ctx.user.id, "YouTube channel beat import");
+          return fetchYouTubeChannelVideos(input.url);
+        }),
+
+      publishYouTubeBeats: protectedProcedure
+        .input(z.object({
+          videos: z.array(z.object({
+            videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+            title: z.string().trim().min(1).max(160),
+            canonicalUrl: z.string().url(),
+            thumbnailUrl: z.string().url().nullable().optional(),
+            genre: z.string().trim().min(1).max(80).default("Hip-Hop"),
+          })).min(1).max(50),
+        }))
+        .mutation(async ({ ctx, input }) => {
+          await requireBeatPro(ctx.user.id, "YouTube channel beat import");
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const producerName = ctx.user.artistName || ctx.user.name || "Producer";
+          const results: Array<{ id: number; title: string; duplicate?: boolean }> = [];
+          for (const video of input.videos) {
+            const parsed = parseYouTubeUrl(video.canonicalUrl);
+            if (!parsed || parsed.videoId !== video.videoId) throw new TRPCError({ code: "BAD_REQUEST", message: "One of the selected YouTube videos is invalid." });
+            const [duplicate] = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
+              .where(and(eq(marketplaceBeats.producerId, ctx.user.id), eq(marketplaceBeats.youtubeUrl, parsed.canonicalUrl))).limit(1);
+            if (duplicate) { results.push({ id: duplicate.id, title: video.title, duplicate: true }); continue; }
+            const baseSlug = video.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "youtube-beat";
+            const slug = `${baseSlug}-${Date.now().toString(36)}-${video.videoId.slice(0, 4)}`.slice(0, 180);
+            const insert = await db.insert(marketplaceBeats).values({
+              producerId: ctx.user.id,
+              licenseProducerName: producerName,
+              slug,
+              title: video.title,
+              genre: video.genre,
+              artworkUrl: video.thumbnailUrl || null,
+              youtubeUrl: parsed.canonicalUrl,
+              masterDeliveryStatus: "producer_required",
+              previewFileKey: `youtube/${video.videoId}`,
+              previewFileUrl: parsed.canonicalUrl,
+              previewStartSeconds: 0,
+              previewTagSource: "none",
+              previewTagAtSeconds: 0,
+              masterFileKey: `youtube/${video.videoId}/master-pending`,
+              masterFileUrl: "",
+              status: "active",
+            });
+            const beatId = Number((insert as any)[0]?.insertId ?? (insert as any).insertId);
+            await db.insert(beatLicenses).values([
+              { beatId, code: "basic", name: "Basic Lease", priceCents: 2999, terms: JSON.stringify(createBeatLicenseTerms({ code: "basic", name: "Basic Lease", priceCents: 2999, includesStems: false, distributionLimit: 5000, videoLimit: 1, monetizedViewLimit: 100000, customTerms: null })), includesStems: false, sortOrder: 0 },
+              { beatId, code: "premium", name: "Premium Lease", priceCents: 7999, terms: JSON.stringify(createBeatLicenseTerms({ code: "premium", name: "Premium Lease", priceCents: 7999, includesStems: false, distributionLimit: 100000, videoLimit: 2, monetizedViewLimit: 1000000, customTerms: null })), includesStems: false, sortOrder: 1 },
+              { beatId, code: "exclusive", name: "Exclusive License", priceCents: 29999, terms: JSON.stringify(createBeatLicenseTerms({ code: "exclusive", name: "Exclusive License", priceCents: 29999, includesStems: true, distributionLimit: null, videoLimit: null, monetizedViewLimit: null, customTerms: null })), includesStems: true, sortOrder: 2 },
+            ]);
+            results.push({ id: beatId, title: video.title });
+          }
+          await ensureProducerAccountLabel(ctx.user.id);
+          return { created: results.filter((item) => !item.duplicate).length, skipped: results.filter((item) => item.duplicate).length, results };
+        }),
+
       mine: protectedProcedure.query(async ({ ctx }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
@@ -6218,7 +6279,7 @@ export const appRouter = router({
           }
           if (input.previewTag && input.previewTag.source !== "none") await requireBeatPro(ctx.user.id, "Tagged audio previews");
           const replacementFields = input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl
-            ? { previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl,
+            ? { previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl, masterDeliveryStatus: "ready" as const,
               previewTagSource: input.previewTagSource ?? beat.previewTagSource, previewTagFileKey: input.previewTagFileKey ?? beat.previewTagFileKey, previewTagFileUrl: input.previewTagFileUrl ?? beat.previewTagFileUrl, previewTagAtSeconds: input.previewTagAtSeconds ?? beat.previewTagAtSeconds }
             : {};
           if ((input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl) && (!input.masterFileKey || !input.masterFileUrl || !input.previewFileKey || !input.previewFileUrl)) {
@@ -6453,6 +6514,11 @@ export const appRouter = router({
           const result = await db.insert(beatPayoutRequests).values({ producerId: ctx.user.id, ...input });
           return { id: Number((result as any)[0]?.insertId ?? (result as any).insertId), availableAfterCents: ledger.availableCents - input.amountCents };
         }),
+      myPayouts: protectedProcedure.query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        return db.select().from(beatPayoutRequests).where(eq(beatPayoutRequests.producerId, ctx.user.id)).orderBy(desc(beatPayoutRequests.createdAt));
+      }),
     }),
 
     admin: router({
@@ -6792,13 +6858,14 @@ export const appRouter = router({
     myOrders: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-      const rows = await db.select({ sale: beatSales, contract: beatContracts, directPayment: beatDirectPayments })
+      const rows = await db.select({ sale: beatSales, beat: marketplaceBeats, contract: beatContracts, directPayment: beatDirectPayments })
         .from(beatSales)
+        .leftJoin(marketplaceBeats, eq(marketplaceBeats.id, beatSales.beatId))
         .leftJoin(beatContracts, eq(beatContracts.saleId, beatSales.id))
         .leftJoin(beatDirectPayments, eq(beatDirectPayments.saleId, beatSales.id))
         .where(eq(beatSales.buyerId, ctx.user.id))
         .orderBy(desc(beatSales.createdAt));
-      return rows.map(({ sale, contract, directPayment }) => ({ ...sale, contract, directPayment }));
+      return rows.map(({ sale, beat, contract, directPayment }) => ({ ...sale, masterDeliveryStatus: beat?.masterDeliveryStatus || "ready", contract, directPayment }));
     }),
 
     getDelivery: protectedProcedure
@@ -6806,8 +6873,14 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-        const [sale] = await db.select().from(beatSales).where(and(eq(beatSales.id, input.saleId), eq(beatSales.buyerId, ctx.user.id), eq(beatSales.status, "paid"))).limit(1);
+        const [purchase] = await db.select({ sale: beatSales, beat: marketplaceBeats }).from(beatSales)
+          .leftJoin(marketplaceBeats, eq(marketplaceBeats.id, beatSales.beatId))
+          .where(and(eq(beatSales.id, input.saleId), eq(beatSales.buyerId, ctx.user.id), eq(beatSales.status, "paid"))).limit(1);
+        const sale = purchase?.sale;
         if (!sale) throw new TRPCError({ code: "NOT_FOUND", message: "Purchase not found." });
+        if (input.asset === "master" && purchase?.beat?.masterDeliveryStatus === "producer_required") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "The producer is still preparing the downloadable master. Your license agreement is available now." });
+        }
         const contract = input.asset === "contract"
           ? (await db.select({ storageKey: beatContracts.storageKey, contractNumber: beatContracts.contractNumber }).from(beatContracts).where(eq(beatContracts.saleId, sale.id)).limit(1))[0]
           : null;

@@ -20,6 +20,7 @@ import {
   Sparkles,
   Upload,
   UserRound,
+  Youtube,
 } from "lucide-react";
 
 function cents(value: number) {
@@ -40,7 +41,7 @@ function BeatArtwork({ beat, large = false }: { beat: any; large?: boolean }) {
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent" />
       <div className="absolute bottom-3 right-3">
-        <AudioPlayButton url={beat.previewFileUrl} title={beat.title} artist={beat.producerName} size={large ? "lg" : "md"} className="border border-white/25 bg-red-600 hover:bg-red-500" />
+        {beat.youtubeUrl ? <a href={beat.youtubeUrl} target="_blank" rel="noreferrer" aria-label={`Preview ${beat.title} on YouTube`} className="flex items-center gap-2 border border-white/25 bg-red-600 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-red-500"><Youtube className="h-4 w-4" />Preview</a> : <AudioPlayButton url={beat.previewFileUrl} title={beat.title} artist={beat.producerName} size={large ? "lg" : "md"} className="border border-white/25 bg-red-600 hover:bg-red-500" />}
       </div>
     </div>
   );
@@ -61,6 +62,7 @@ function BeatCard({ beat, isOwner, onEdit }: { beat: any; isOwner: boolean; onEd
           {beat.bpm && <><span className="text-white/15">/</span><span>{beat.bpm} BPM</span></>}
           {beat.musicalKey && <><span className="text-white/15">/</span><span>{beat.musicalKey}</span></>}
         </div>
+        {beat.masterDeliveryStatus === "producer_required" && <p className="border border-yellow-500/25 bg-yellow-500/[.05] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-yellow-200">YouTube preview · master supplied after sale</p>}
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-white/45">{lowest === null ? "Licenses soon" : `From ${cents(lowest)}`}</span>
           {isOwner ? <button type="button" onClick={() => onEdit(beat.id)} className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-yellow-300 hover:text-yellow-100"><Edit3 className="h-3.5 w-3.5" />Edit</button> : <Link href={`/beats/${beat.slug}`} className="text-[10px] font-black uppercase tracking-widest text-red-400">View beat</Link>}
