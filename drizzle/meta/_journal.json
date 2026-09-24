@@ -421,6 +421,13 @@
       "when": 1790176148970,
       "tag": "0059_yummy_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "5",
+      "when": 1790214864106,
+      "tag": "0060_military_roxanne_simpson",
+      "breakpoints": true
     }
   ]
 }

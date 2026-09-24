@@ -66,6 +66,7 @@ import BeatDetail from "./pages/BeatDetail";
 import BeatProducer from "./pages/BeatProducer";
 import BeatLibrary from "./pages/BeatLibrary";
 import AdminBeatPayouts from "./pages/AdminBeatPayouts";
+import BeatProInvite from "./pages/BeatProInvite";
 
 function Router() {
   return (
@@ -90,6 +91,7 @@ function Router() {
       <Route path={"/beats"} component={BeatMarketplace} />
       <Route path={"/beats/producer"} component={BeatProducer} />
       <Route path={"/beats/library"} component={BeatLibrary} />
+      <Route path={"/beats/pro-invite/:token"} component={BeatProInvite} />
       <Route path={"/beats/:slug"} component={BeatDetail} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />

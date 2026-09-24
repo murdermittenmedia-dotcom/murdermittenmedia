@@ -4,6 +4,7 @@ import {
   beatContracts,
   beatLicenses,
   beatProducerMemberships,
+  beatProTrialInvites,
   beatPayoutRequests,
   beatSales,
   marketplaceBeats,
@@ -97,7 +98,7 @@ export async function getActiveBeatProducerMembership(userId: number) {
     .where(eq(beatProducerMemberships.userId, userId)).limit(1);
   if (!membership) return null;
   if (membership.adminGranted) return membership;
-  if (membership.status !== "active") return null;
+  if (membership.status !== "active" && membership.status !== "trialing") return null;
   if (membership.currentPeriodEnd && membership.currentPeriodEnd.getTime() <= Date.now()) return null;
   return membership;
 }
@@ -125,18 +126,26 @@ export async function fulfillBeatProducerSubscription(session: Stripe.Checkout.S
   if (!db) throw new Error("Database unavailable");
   const subscriptionId = typeof session.subscription === "string" ? session.subscription : null;
   let currentPeriodEnd: Date | null = null;
+  let trialEndsAt: Date | null = null;
+  let subscriptionStatus: "active" | "trialing" = "active";
+  let cancelAtPeriodEnd = false;
   if (subscriptionId) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription & { current_period_end?: number };
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription & { current_period_end?: number; trial_end?: number | null; cancel_at_period_end?: boolean };
     if (typeof subscription.current_period_end === "number") currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+    if (typeof subscription.trial_end === "number") trialEndsAt = new Date(subscription.trial_end * 1000);
+    subscriptionStatus = subscription.status === "trialing" ? "trialing" : "active";
+    cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
   }
   const [existing] = await db.select().from(beatProducerMemberships)
     .where(eq(beatProducerMemberships.userId, userId)).limit(1);
   const values = {
     stripeCheckoutSessionId: session.id,
     stripeSubscriptionId: subscriptionId,
-    status: "active" as const,
+    status: subscriptionStatus,
     currentPeriodEnd,
+    trialEndsAt,
+    cancelAtPeriodEnd,
   };
   if (existing) {
     await db.update(beatProducerMemberships).set(values)
@@ -144,11 +153,22 @@ export async function fulfillBeatProducerSubscription(session: Stripe.Checkout.S
   } else {
     await db.insert(beatProducerMemberships).values({ userId, ...values });
   }
+  const inviteId = Number(session.metadata?.beat_pro_trial_invite_id);
+  if (Number.isInteger(inviteId) && inviteId > 0) {
+    await db.update(beatProTrialInvites).set({
+      status: "redeemed",
+      stripeCheckoutSessionId: session.id,
+      usedByUserId: userId,
+      redeemedAt: new Date(),
+    }).where(eq(beatProTrialInvites.id, inviteId));
+  }
   await db.insert(notifications).values({
     userId,
-    type: "beat_pro_active",
-    title: "Beat Pro is active",
-    body: "Add your direct payment destinations so buyers can pay you from every beat checkout page.",
+    type: subscriptionStatus === "trialing" ? "beat_pro_trial_started" : "beat_pro_active",
+    title: subscriptionStatus === "trialing" ? "Your 30-day Beat Pro trial started" : "Beat Pro is active",
+    body: subscriptionStatus === "trialing"
+      ? "Your card is saved and will begin the $9.99 monthly Beat Pro plan after your trial unless you cancel before then. Add payment destinations now."
+      : "Add your direct payment destinations so buyers can pay you from every beat checkout page.",
     link: "/beats/producer",
   });
   return { userId, subscriptionId };
@@ -157,15 +177,20 @@ export async function fulfillBeatProducerSubscription(session: Stripe.Checkout.S
 export async function updateBeatProducerSubscription(subscription: Stripe.Subscription) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const periodEnd = (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end;
-  const status = subscription.status === "active" || subscription.status === "trialing"
-    ? "active" as const
+  const subscriptionState = subscription as Stripe.Subscription & { current_period_end?: number; trial_end?: number | null; cancel_at_period_end?: boolean };
+  const periodEnd = subscriptionState.current_period_end;
+  const status = subscription.status === "trialing"
+    ? "trialing" as const
+    : subscription.status === "active"
+      ? "active" as const
     : subscription.status === "past_due"
       ? "past_due" as const
       : "canceled" as const;
   await db.update(beatProducerMemberships).set({
     status,
     currentPeriodEnd: typeof periodEnd === "number" ? new Date(periodEnd * 1000) : null,
+    trialEndsAt: typeof subscriptionState.trial_end === "number" ? new Date(subscriptionState.trial_end * 1000) : null,
+    cancelAtPeriodEnd: subscriptionState.cancel_at_period_end === true,
   }).where(eq(beatProducerMemberships.stripeSubscriptionId, subscription.id));
 }
 

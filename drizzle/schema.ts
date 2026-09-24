@@ -1195,8 +1195,10 @@ export const beatProducerMemberships = mysqlTable("beat_producer_memberships", {
   userId: int("userId").notNull().unique(),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }).unique(),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 256 }).unique(),
-  status: mysqlEnum("status", ["active", "past_due", "canceled", "inactive"]).default("inactive").notNull(),
+  status: mysqlEnum("status", ["trialing", "active", "past_due", "canceled", "inactive"]).default("inactive").notNull(),
   currentPeriodEnd: timestamp("currentPeriodEnd"),
+  trialEndsAt: timestamp("trialEndsAt"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
   adminGranted: boolean("adminGranted").default(false).notNull(),
   adminGrantedAt: timestamp("adminGrantedAt"),
   adminGrantedBy: int("adminGrantedBy"),
@@ -1205,6 +1207,24 @@ export const beatProducerMemberships = mysqlTable("beat_producer_memberships", {
 });
 export type BeatProducerMembership = typeof beatProducerMemberships.$inferSelect;
 export type InsertBeatProducerMembership = typeof beatProducerMemberships.$inferInsert;
+
+// Email-bound invite links start a 30-day Stripe-backed Beat Pro trial. A card is
+// collected in Checkout, and Stripe renews at the advertised monthly plan price.
+export const beatProTrialInvites = mysqlTable("beat_pro_trial_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  createdBy: int("createdBy").notNull(),
+  status: mysqlEnum("status", ["pending", "checkout_started", "redeemed", "revoked", "expired"]).default("pending").notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }).unique(),
+  usedByUserId: int("usedByUserId"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  redeemedAt: timestamp("redeemedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatProTrialInvite = typeof beatProTrialInvites.$inferSelect;
+export type InsertBeatProTrialInvite = typeof beatProTrialInvites.$inferInsert;
 
 // A Connect account is optional. When it is active, Stripe can deliver the
 // producer share automatically; otherwise sales remain visible in the payout ledger.

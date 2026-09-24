@@ -80,7 +80,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatPayoutRequests, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatPayoutRequests, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -99,7 +99,7 @@ import {
 import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
 import { BEAT_LICENSE_CODES, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, createBeatLicenseTerms, parseBeatLicenseTerms } from "../shared/beat-marketplace";
-import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger } from "./beat-marketplace-service";
+import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger, updateBeatProducerSubscription } from "./beat-marketplace-service";
 import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
 import { fetchYouTubeMetadata } from "./youtube-import";
@@ -5809,8 +5809,90 @@ export const appRouter = router({
           uploadsThisMonth: plan.uploadsThisMonth,
           uploadLimit: plan.isPro ? null : FREE_PRODUCER_UPLOAD_LIMIT,
           currentPeriodEnd: plan.membership?.currentPeriodEnd ?? null,
+          trialEndsAt: plan.membership?.trialEndsAt ?? null,
+          membershipStatus: plan.membership?.status ?? "inactive",
+          cancelAtPeriodEnd: plan.membership?.cancelAtPeriodEnd ?? false,
+          stripeSubscriptionId: plan.membership?.stripeSubscriptionId ?? null,
         };
       }),
+
+      getTrialInvite: protectedProcedure
+        .input(z.object({ token: z.string().trim().regex(/^[a-f0-9]{64}$/i, "Invalid Beat Pro invitation.") }))
+        .query(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [invite] = await db.select().from(beatProTrialInvites).where(eq(beatProTrialInvites.token, input.token)).limit(1);
+          if (!invite) throw new TRPCError({ code: "NOT_FOUND", message: "This Beat Pro invitation is unavailable." });
+          const userEmail = ctx.user.email?.trim().toLowerCase();
+          if (!userEmail || userEmail !== invite.recipientEmail.toLowerCase()) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Sign in with the email address this Beat Pro invitation was sent to." });
+          }
+          if (invite.status === "revoked" || invite.status === "redeemed") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: invite.status === "redeemed" ? "This Beat Pro invitation has already been used." : "This Beat Pro invitation was revoked." });
+          }
+          if (invite.expiresAt.getTime() <= Date.now()) {
+            if (invite.status !== "expired") await db.update(beatProTrialInvites).set({ status: "expired" }).where(eq(beatProTrialInvites.id, invite.id));
+            throw new TRPCError({ code: "BAD_REQUEST", message: "This Beat Pro invitation has expired." });
+          }
+          return { recipientEmail: invite.recipientEmail, expiresAt: invite.expiresAt, trialDays: 30, monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS };
+        }),
+
+      startTrialInviteCheckout: protectedProcedure
+        .input(z.object({ token: z.string().trim().regex(/^[a-f0-9]{64}$/i, "Invalid Beat Pro invitation."), origin: z.string().url() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [invite, activeMembership] = await Promise.all([
+            db.select().from(beatProTrialInvites).where(eq(beatProTrialInvites.token, input.token)).limit(1),
+            getActiveBeatProducerMembership(ctx.user.id),
+          ]);
+          const record = invite[0];
+          const userEmail = ctx.user.email?.trim().toLowerCase();
+          if (!record || !userEmail || record.recipientEmail.toLowerCase() !== userEmail) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Sign in with the email address this Beat Pro invitation was sent to." });
+          }
+          if (record.status === "redeemed" || record.status === "revoked" || record.expiresAt.getTime() <= Date.now()) {
+            if (record.status !== "expired" && record.expiresAt.getTime() <= Date.now()) await db.update(beatProTrialInvites).set({ status: "expired" }).where(eq(beatProTrialInvites.id, record.id));
+            throw new TRPCError({ code: "BAD_REQUEST", message: "This Beat Pro invitation is no longer available." });
+          }
+          if (activeMembership) throw new TRPCError({ code: "BAD_REQUEST", message: "Beat Pro is already active on this account." });
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+          if (record.stripeCheckoutSessionId) {
+            const existing = await stripe.checkout.sessions.retrieve(record.stripeCheckoutSessionId);
+            if (existing.status === "open" && existing.url) return { checkoutUrl: existing.url };
+          }
+          const session = await stripe.checkout.sessions.create({
+            mode: "subscription",
+            customer_email: userEmail,
+            client_reference_id: String(ctx.user.id),
+            metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id) },
+            payment_method_collection: "always",
+            subscription_data: {
+              trial_period_days: 30,
+              metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id) },
+            },
+            line_items: [{ price_data: { currency: "usd", product_data: { name: "Murder Mitten Beat Pro", description: "30 days included, then $9.99/month until canceled. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: BEAT_PRO_MONTHLY_PRICE_CENTS, recurring: { interval: "month" } }, quantity: 1 }],
+            success_url: `${input.origin}/beats/producer?pro_trial_success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${input.origin}/beats/pro-invite/${record.token}?checkout_canceled=true`,
+          });
+          if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL." });
+          await db.update(beatProTrialInvites).set({ status: "checkout_started", stripeCheckoutSessionId: session.id }).where(eq(beatProTrialInvites.id, record.id));
+          return { checkoutUrl: session.url };
+        }),
+
+      cancelSubscription: protectedProcedure
+        .mutation(async ({ ctx }) => {
+          const membership = await getActiveBeatProducerMembership(ctx.user.id);
+          if (!membership?.stripeSubscriptionId) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "There is no self-managed Beat Pro subscription to cancel on this account." });
+          }
+          if (membership.cancelAtPeriodEnd) return { alreadyScheduled: true as const, endsAt: membership.currentPeriodEnd };
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+          const subscription = await stripe.subscriptions.update(membership.stripeSubscriptionId, { cancel_at_period_end: true });
+          await updateBeatProducerSubscription(subscription);
+          const subscriptionState = subscription as Stripe.Subscription & { current_period_end?: number };
+          return { alreadyScheduled: false as const, endsAt: typeof subscriptionState.current_period_end === "number" ? new Date(subscriptionState.current_period_end * 1000) : membership.currentPeriodEnd };
+        }),
 
       importYouTube: protectedProcedure
         .input(z.object({ url: z.string().trim().min(1).max(500) }))
@@ -6360,6 +6442,39 @@ export const appRouter = router({
     }),
 
     admin: router({
+      createProducerProTrialInvite: adminProcedure
+        .input(z.object({ recipientEmail: z.string().trim().email().max(320), origin: z.string().url() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const recipientEmail = input.recipientEmail.toLowerCase();
+          const token = randomBytes(32).toString("hex");
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          const result = await db.insert(beatProTrialInvites).values({ token, recipientEmail, createdBy: ctx.user.id, expiresAt });
+          const inviteId = Number((result as any)[0]?.insertId ?? (result as any).insertId);
+          const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, recipientEmail)).limit(1);
+          const inviteLink = `${input.origin}/beats/pro-invite/${token}`;
+          if (existingUser) {
+            await db.insert(notifications).values({
+              userId: existingUser.id,
+              type: "beat_pro_trial_invite",
+              title: "You received a Beat Pro invitation",
+              body: "Activate your included 30 days of Beat Pro. A payment method is collected now; $9.99/month begins after the trial unless you cancel.",
+              link: `/beats/pro-invite/${token}`,
+            });
+          }
+          return { id: inviteId, recipientEmail, inviteLink, expiresAt, trialDays: 30, monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS };
+        }),
+
+      revokeProducerProTrialInvite: adminProcedure
+        .input(z.object({ id: z.number().int().positive() }))
+        .mutation(async ({ input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          await db.update(beatProTrialInvites).set({ status: "revoked" }).where(and(eq(beatProTrialInvites.id, input.id), eq(beatProTrialInvites.status, "pending")));
+          return { success: true as const };
+        }),
+
       setProducerProAccess: adminProcedure
         .input(z.object({ userId: z.number().int().positive(), granted: z.boolean() }))
         .mutation(async ({ ctx, input }) => {

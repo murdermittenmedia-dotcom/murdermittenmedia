@@ -5257,3 +5257,11 @@
 - [x] Convert valid YouTube, Shorts, embed, and live links into YTMP3.CC’s supported `#VIDEO_ID/mp3` autofill format
 - [x] Keep the helper disabled until a valid YouTube video ID is present
 - [x] Verify the destination redirect and run the full project checks
+
+## Beat Pro 30-day trial invitations — 2026-09-23
+- [x] Add email-bound one-time administrator invitation links for 30 days of Beat Pro.
+- [x] Start a Stripe subscription with a payment method collected at checkout, a 30-day trial, and automatic $9.99 monthly renewal after the trial.
+- [x] Add a secure invitation landing page that requires the invited email address and clearly explains the renewal and cancellation terms.
+- [x] Add self-service cancellation from the producer dashboard; cancellation takes effect at the end of the trial or current period without another renewal.
+- [x] Persist invitation, trial-end, and cancel-at-period-end state, update it through verified Stripe webhook lifecycle events, and apply migration 0060.
+- [x] Validate database fields, responsive UI, focused tests, full regression suite, TypeScript, production build, and diff integrity.
