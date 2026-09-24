@@ -5251,3 +5251,9 @@
 - [x] Autofill the beat title, cover thumbnail, and AI discovery tags inside the upload wizard
 - [x] Keep protected master delivery rights-safe by requiring the producer’s owned audio upload rather than ripping YouTube audio
 - [x] Add parser coverage, verify a live oEmbed response, and pass TypeScript checks
+
+## YTMP3.CC YouTube download helper — 2026-09-23
+- [x] Add a producer-uploader hyperlink that appears beside the YouTube import field
+- [x] Convert valid YouTube, Shorts, embed, and live links into YTMP3.CC’s supported `#VIDEO_ID/mp3` autofill format
+- [x] Keep the helper disabled until a valid YouTube video ID is present
+- [x] Verify the destination redirect and run the full project checks
