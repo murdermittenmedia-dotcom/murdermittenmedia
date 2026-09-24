@@ -14,7 +14,7 @@ describe("Beat Pro trial invitation workflow", () => {
     expect(router).not.toContain("recipientEmail: z.string().trim().email().max(320), origin: z.string().url()");
     expect(router).toContain('recipientEmail: "shared-link"');
     expect(router).toContain("startTrialInviteCheckout: protectedProcedure");
-    expect(router).toContain("trial_period_days: BEAT_PRO_TRIAL_DAYS");
+    expect(router).toContain("trial_end: Math.floor(Date.now() / 1000) + BEAT_PRO_TRIAL_DAYS * 24 * 60 * 60");
     expect(router).toContain('payment_method_collection: "always"');
     expect(router).toContain("beat_pro_trial_redemption_id");
     expect(router).toContain("BEAT_PRO_ANNUAL_PRICE_CENTS");

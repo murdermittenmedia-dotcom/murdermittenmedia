@@ -5880,7 +5880,7 @@ export const appRouter = router({
             metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id), beat_pro_trial_redemption_id: String(redemptionId) },
             payment_method_collection: "always",
             subscription_data: {
-              trial_period_days: BEAT_PRO_TRIAL_DAYS,
+              trial_end: Math.floor(Date.now() / 1000) + BEAT_PRO_TRIAL_DAYS * 24 * 60 * 60,
               metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id), beat_pro_trial_redemption_id: String(redemptionId) },
             },
             line_items: [{ price_data: { currency: "usd", product_data: { name: "Murder Mitten Beat Pro Annual", description: "30 days included, then $50/year until canceled. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: BEAT_PRO_ANNUAL_PRICE_CENTS, recurring: { interval: "year" } }, quantity: 1 }],
