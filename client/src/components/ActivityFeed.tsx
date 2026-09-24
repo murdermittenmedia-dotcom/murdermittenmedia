@@ -20,12 +20,14 @@ export function ActivityFeed() {
   useEffect(() => {
     const socket = io({ path: "/api/socket.io", transports: ["websocket", "polling"] });
     const handleNewEvent = (event: { id: number; type: string; message: string; metadata: string | null; createdAt: string | Date }) => {
+      let metadata: { href?: string; detail?: string; profileId?: number | null } = {};
+      try { metadata = event.metadata ? JSON.parse(event.metadata) : {}; } catch {}
       const next: ActivityEvent = {
         id: `event-${event.id}`,
         kind: event.type === "battle" ? "battle" : event.type === "community" ? "community" : "review",
         title: event.message,
-        detail: event.metadata ?? "Latest activity from Murder Mitten Media",
-        href: event.type === "battle" ? "/music-wars" : event.type === "community" ? "/forum" : "/review",
+        detail: metadata.detail ?? (metadata.profileId ? "New member in the Mitten" : event.metadata ?? "Latest activity from Murder Mitten Media"),
+        href: metadata.href ?? (event.type === "battle" ? "/music-wars" : event.type === "community" ? "/forum" : "/review"),
         createdAt: event.createdAt,
       };
       setLiveEvents((current) => [next, ...current.filter((item) => item.id !== next.id)].slice(0, 12));

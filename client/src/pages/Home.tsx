@@ -224,6 +224,26 @@ function ActivityFeedSection() {
   );
 }
 
+function BeatMarketplaceHomeSection() {
+  const { data: beats = [], isLoading } = trpc.beats.list.useQuery({ sort: "newest" });
+  const featured = beats.slice(0, 3) as any[];
+  return (
+    <section className="border-b border-white/10 bg-gradient-to-br from-red-950/20 via-[#080808] to-[#080808] py-16 md:py-20">
+      <div className="container">
+        <div className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div className="max-w-2xl">
+            <div className="mb-4 flex items-center gap-3"><div className="h-px w-8 bg-red-600" /><span className="text-xs font-semibold uppercase tracking-[0.3em] text-red-500">New on Murder Mitten</span></div>
+            <h2 className="font-['Anton'] text-5xl uppercase leading-none md:text-7xl">The <span className="text-red-600">Beat</span> Marketplace</h2>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/55 md:text-base">Michigan producers are putting their sound in the room. Browse beats, preview the latest uploads, and license directly with clear terms and protected delivery.</p>
+          </div>
+          <div className="flex flex-wrap gap-3"><Link href="/beats" className="inline-flex items-center gap-2 bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest hover:bg-red-500">Browse Beats <ArrowUpRight className="h-4 w-4" /></Link><Link href="/beats/producer" className="inline-flex items-center gap-2 border border-white/25 px-5 py-3 text-xs font-black uppercase tracking-widest text-white/75 hover:border-white hover:text-white">Sell Your Beats <ArrowUpRight className="h-4 w-4" /></Link></div>
+        </div>
+        {isLoading ? <div className="grid gap-3 md:grid-cols-3">{[1, 2, 3].map((item) => <div key={item} className="h-44 animate-pulse border border-white/10 bg-white/[.03]" />)}</div> : featured.length ? <div className="grid gap-3 md:grid-cols-3">{featured.map((beat) => { const lowest = beat.licenses?.length ? Math.min(...beat.licenses.map((license: any) => license.priceCents)) : null; return <Link key={beat.id} href={`/beats/${beat.slug}`} className="group overflow-hidden border border-white/10 bg-black/30 transition hover:-translate-y-1 hover:border-red-500/50"><div className="relative aspect-[2/1] overflow-hidden bg-gradient-to-br from-red-950 via-zinc-900 to-black">{beat.artworkUrl ? <img src={beat.artworkUrl} alt={`${beat.title} artwork`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid h-full place-items-center font-['Anton'] text-5xl text-white/15">MMM</div>}<div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" /></div><div className="flex items-end justify-between gap-3 p-4"><div className="min-w-0"><p className="truncate font-['Anton'] text-xl uppercase text-white group-hover:text-red-400">{beat.title}</p><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-white/45">{beat.producerName}</p></div><span className="shrink-0 text-xs text-white/55">{lowest === null ? "View" : `From $${(lowest / 100).toFixed(0)}`}</span></div></Link>; })}</div> : <div className="border border-dashed border-white/15 p-8 text-sm text-white/45">The first producer drops are loading in now.</div>}
+      </div>
+    </section>
+  );
+}
+
 // --- Main -----------------------------------------------------
 export default function Home() {
   const { ref: statsRef, inView: statsInView } = useInView(0.2);
@@ -440,6 +460,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <BeatMarketplaceHomeSection />
 
       {/* ══════════════════════════════════════════════════════
           MERCH DROP CALLOUT -- First Collection Banner
