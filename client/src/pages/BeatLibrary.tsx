@@ -26,7 +26,18 @@ export default function BeatLibrary() {
   const download = async (saleId: number, asset: "master" | "contract") => {
     try {
       const result = await utils.beats.getDelivery.fetch({ saleId, asset });
-      window.open(result.url, "_blank", "noopener,noreferrer");
+      const response = await fetch(result.url, { credentials: "omit" });
+      if (!response.ok) throw new Error("The delivery file could not be fetched.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = result.filename;
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
     } catch (error: any) { toast.error(error.message || "Could not prepare this download."); }
   };
 

@@ -220,7 +220,7 @@ export async function fulfillBeatSaleFromCheckoutSession(session: Stripe.Checkou
   let contract = existingContract;
   if (!contract) {
     const contractNumber = `MMM-BEAT-${sale.id}-${new Date().getUTCFullYear()}`;
-    const pdf = buildBeatLicensePdf({
+    const pdf = await buildBeatLicensePdf({
       contractNumber,
       effectiveDate: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
       buyerName: sale.buyerName,
@@ -289,7 +289,7 @@ export async function fulfillDirectBeatSale(saleId: number, producerId: number) 
   }).where(eq(beatSales.id, sale.id));
 
   const contractNumber = `MMM-BEAT-${sale.id}-${new Date().getUTCFullYear()}`;
-  const pdf = buildBeatLicensePdf({
+  const pdf = await buildBeatLicensePdf({
     contractNumber,
     effectiveDate: paidAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
     buyerName: sale.buyerName,

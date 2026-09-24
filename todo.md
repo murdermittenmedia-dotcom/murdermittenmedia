@@ -5240,3 +5240,8 @@
 - [x] Make the uploader rely on the browser-built preview instead of the server FFmpeg fallback that could fail on production hosts.
 - [x] Accept one to seven direct-payment destination entries and reject only duplicate providers, resolving the obsolete six-item validation mismatch.
 - [x] Validate focused tests, full regression suite, TypeScript, and production build.
+
+## Beat delivery and branded agreement fix — 2026-09-23
+- [x] Replace new-tab delivery behavior with authenticated blob downloads using the returned filename for both My Orders and Beat Library
+- [x] Rebuild the agreement as a Murder Mitten Media branded multi-page PDF with masthead, red/gold visual system, transaction summary, producer/buyer record, section hierarchy, acknowledgement lines, and page footer
+- [x] Validate PDF rendering, focused marketplace tests, full test suite, TypeScript, production build, and diff cleanliness

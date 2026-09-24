@@ -27,7 +27,7 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(getProducerSettlementAvailableAt(paidAt, new Date("2026-09-28T12:00:00.000Z")).toISOString()).toBe("2026-09-28T12:00:00.000Z");
   });
 
-  it("provides human-readable lease terms and a real PDF document", () => {
+  it("provides human-readable lease terms and a branded PDF document", async () => {
     const snapshot = {
       contractNumber: "MMM-BEAT-42-2026",
       effectiveDate: "September 21, 2026",
@@ -43,9 +43,10 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(terms).toContain("5,000");
     expect(terms).toContain("non-exclusive");
     expect(terms).toContain("not legal advice");
-    const pdf = buildBeatLicensePdf(snapshot);
-    expect(pdf.subarray(0, 8).toString()).toBe("%PDF-1.4");
-    expect(pdf.toString()).toContain("MMM-BEAT-42-2026");
+    const pdf = await buildBeatLicensePdf(snapshot);
+    expect(pdf.subarray(0, 8).toString()).toBe("%PDF-1.3");
+    expect(pdf.length).toBeGreaterThan(5000);
+    expect(readFileSync(resolve(process.cwd(), "server/beat-contract-pdf.ts"), "utf8")).toContain("MURDER MITTEN MEDIA");
   });
 
   it("supports no-cost non-exclusive licenses for protected delivery testing", () => {
@@ -106,6 +107,10 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(orders).toContain("Download beat");
     expect(orders).toContain("Agreement PDF");
     expect(orders).toContain("trpc.merch.orders.getMyOrders.useQuery");
+    expect(library).toContain("URL.createObjectURL(blob)");
+    expect(orders).toContain("URL.createObjectURL(blob)");
+    expect(library).not.toContain('window.open(result.url');
+    expect(orders).not.toContain('window.open(result.url');
     expect(nav).toContain('label: "My Orders"');
   });
 
