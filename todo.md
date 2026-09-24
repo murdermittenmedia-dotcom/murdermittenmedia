@@ -5265,3 +5265,9 @@
 - [x] Add self-service cancellation from the producer dashboard; cancellation takes effect at the end of the trial or current period without another renewal.
 - [x] Persist invitation, trial-end, and cancel-at-period-end state, update it through verified Stripe webhook lifecycle events, and apply migration 0060.
 - [x] Validate database fields, responsive UI, focused tests, full regression suite, TypeScript, production build, and diff integrity.
+
+## Reusable Beat Pro trial link — 2026-09-23
+- [x] Replace recipient-email-bound trial links with reusable share links that can be copied and resent.
+- [x] Keep the 30-day Stripe trial, saved payment method, $9.99 monthly renewal, and self-service cancellation intact.
+- [x] Add a durable per-account redemption record so each account can use a Beat Pro trial only once, even across multiple shared links.
+- [x] Apply migration 0061 and validate the database table, focused tests, full regression suite, TypeScript, production build, and diff integrity.

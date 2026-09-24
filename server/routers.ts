@@ -80,7 +80,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatPayoutRequests, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatProTrialRedemptions, beatPayoutRequests, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -5823,10 +5823,6 @@ export const appRouter = router({
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
           const [invite] = await db.select().from(beatProTrialInvites).where(eq(beatProTrialInvites.token, input.token)).limit(1);
           if (!invite) throw new TRPCError({ code: "NOT_FOUND", message: "This Beat Pro invitation is unavailable." });
-          const userEmail = ctx.user.email?.trim().toLowerCase();
-          if (!userEmail || userEmail !== invite.recipientEmail.toLowerCase()) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "Sign in with the email address this Beat Pro invitation was sent to." });
-          }
           if (invite.status === "revoked" || invite.status === "redeemed") {
             throw new TRPCError({ code: "BAD_REQUEST", message: invite.status === "redeemed" ? "This Beat Pro invitation has already been used." : "This Beat Pro invitation was revoked." });
           }
@@ -5834,7 +5830,14 @@ export const appRouter = router({
             if (invite.status !== "expired") await db.update(beatProTrialInvites).set({ status: "expired" }).where(eq(beatProTrialInvites.id, invite.id));
             throw new TRPCError({ code: "BAD_REQUEST", message: "This Beat Pro invitation has expired." });
           }
-          return { recipientEmail: invite.recipientEmail, expiresAt: invite.expiresAt, trialDays: 30, monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS };
+          const [priorRedemption] = await db.select({ id: beatProTrialRedemptions.id, status: beatProTrialRedemptions.status })
+            .from(beatProTrialRedemptions).where(eq(beatProTrialRedemptions.userId, ctx.user.id)).limit(1);
+          return {
+            expiresAt: invite.expiresAt,
+            trialDays: 30,
+            monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS,
+            alreadyUsedByThisAccount: priorRedemption?.status === "redeemed",
+          };
         }),
 
       startTrialInviteCheckout: protectedProcedure
@@ -5842,41 +5845,50 @@ export const appRouter = router({
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-          const [invite, activeMembership] = await Promise.all([
+          const [invite, activeMembership, priorRedemption] = await Promise.all([
             db.select().from(beatProTrialInvites).where(eq(beatProTrialInvites.token, input.token)).limit(1),
             getActiveBeatProducerMembership(ctx.user.id),
+            db.select().from(beatProTrialRedemptions).where(eq(beatProTrialRedemptions.userId, ctx.user.id)).limit(1),
           ]);
           const record = invite[0];
           const userEmail = ctx.user.email?.trim().toLowerCase();
-          if (!record || !userEmail || record.recipientEmail.toLowerCase() !== userEmail) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "Sign in with the email address this Beat Pro invitation was sent to." });
-          }
+          if (!record || !userEmail) throw new TRPCError({ code: "BAD_REQUEST", message: "A signed-in account with an email address is required to start your Beat Pro trial." });
           if (record.status === "redeemed" || record.status === "revoked" || record.expiresAt.getTime() <= Date.now()) {
             if (record.status !== "expired" && record.expiresAt.getTime() <= Date.now()) await db.update(beatProTrialInvites).set({ status: "expired" }).where(eq(beatProTrialInvites.id, record.id));
             throw new TRPCError({ code: "BAD_REQUEST", message: "This Beat Pro invitation is no longer available." });
           }
           if (activeMembership) throw new TRPCError({ code: "BAD_REQUEST", message: "Beat Pro is already active on this account." });
+          const redemption = priorRedemption[0];
+          if (redemption?.status === "redeemed") throw new TRPCError({ code: "BAD_REQUEST", message: "This account has already used its Beat Pro trial." });
           const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
-          if (record.stripeCheckoutSessionId) {
-            const existing = await stripe.checkout.sessions.retrieve(record.stripeCheckoutSessionId);
+          if (redemption?.stripeCheckoutSessionId) {
+            const existing = await stripe.checkout.sessions.retrieve(redemption.stripeCheckoutSessionId);
             if (existing.status === "open" && existing.url) return { checkoutUrl: existing.url };
+          }
+          let redemptionId = redemption?.id;
+          if (!redemptionId) {
+            const inserted = await db.insert(beatProTrialRedemptions).values({ inviteId: record.id, userId: ctx.user.id });
+            redemptionId = Number((inserted as any)[0]?.insertId ?? (inserted as any).insertId);
+          }
+          if (!Number.isInteger(redemptionId) || redemptionId <= 0) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not reserve this Beat Pro trial." });
           }
           const session = await stripe.checkout.sessions.create({
             mode: "subscription",
             customer_email: userEmail,
             client_reference_id: String(ctx.user.id),
-            metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id) },
+            metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id), beat_pro_trial_redemption_id: String(redemptionId) },
             payment_method_collection: "always",
             subscription_data: {
               trial_period_days: 30,
-              metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id) },
+              metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id), beat_pro_trial_redemption_id: String(redemptionId) },
             },
             line_items: [{ price_data: { currency: "usd", product_data: { name: "Murder Mitten Beat Pro", description: "30 days included, then $9.99/month until canceled. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: BEAT_PRO_MONTHLY_PRICE_CENTS, recurring: { interval: "month" } }, quantity: 1 }],
             success_url: `${input.origin}/beats/producer?pro_trial_success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${input.origin}/beats/pro-invite/${record.token}?checkout_canceled=true`,
           });
           if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL." });
-          await db.update(beatProTrialInvites).set({ status: "checkout_started", stripeCheckoutSessionId: session.id }).where(eq(beatProTrialInvites.id, record.id));
+          await db.update(beatProTrialRedemptions).set({ inviteId: record.id, status: "checkout_started", stripeCheckoutSessionId: session.id }).where(eq(beatProTrialRedemptions.id, redemptionId));
           return { checkoutUrl: session.url };
         }),
 
@@ -6443,27 +6455,16 @@ export const appRouter = router({
 
     admin: router({
       createProducerProTrialInvite: adminProcedure
-        .input(z.object({ recipientEmail: z.string().trim().email().max(320), origin: z.string().url() }))
+        .input(z.object({ origin: z.string().url() }))
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-          const recipientEmail = input.recipientEmail.toLowerCase();
           const token = randomBytes(32).toString("hex");
           const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-          const result = await db.insert(beatProTrialInvites).values({ token, recipientEmail, createdBy: ctx.user.id, expiresAt });
+          const result = await db.insert(beatProTrialInvites).values({ token, recipientEmail: "shared-link", createdBy: ctx.user.id, expiresAt });
           const inviteId = Number((result as any)[0]?.insertId ?? (result as any).insertId);
-          const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, recipientEmail)).limit(1);
           const inviteLink = `${input.origin}/beats/pro-invite/${token}`;
-          if (existingUser) {
-            await db.insert(notifications).values({
-              userId: existingUser.id,
-              type: "beat_pro_trial_invite",
-              title: "You received a Beat Pro invitation",
-              body: "Activate your included 30 days of Beat Pro. A payment method is collected now; $9.99/month begins after the trial unless you cancel.",
-              link: `/beats/pro-invite/${token}`,
-            });
-          }
-          return { id: inviteId, recipientEmail, inviteLink, expiresAt, trialDays: 30, monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS };
+          return { id: inviteId, inviteLink, expiresAt, trialDays: 30, monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS };
         }),
 
       revokeProducerProTrialInvite: adminProcedure

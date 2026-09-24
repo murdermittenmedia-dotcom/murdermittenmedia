@@ -273,7 +273,6 @@ function UsersTab() {
   const [addCoinsUserId, setAddCoinsUserId] = useState<number | null>(null);
   const [addCoinsAmount, setAddCoinsAmount] = useState(100);
   const [addCoinsReason, setAddCoinsReason] = useState("");
-  const [trialRecipientEmail, setTrialRecipientEmail] = useState("");
   const [trialInviteLink, setTrialInviteLink] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
@@ -332,7 +331,7 @@ function UsersTab() {
   const createProducerProTrialInvite = trpc.beats.admin.createProducerProTrialInvite.useMutation({
     onSuccess: (invite) => {
       setTrialInviteLink(invite.inviteLink);
-      toast.success(`30-day Beat Pro trial link created for ${invite.recipientEmail}.`);
+      toast.success("Reusable 30-day Beat Pro trial link created.");
     },
     onError: (error) => toast.error(error.message),
   });
@@ -384,11 +383,10 @@ function UsersTab() {
       <section className="mb-6 border border-yellow-500/35 bg-yellow-500/[.045] p-4">
         <p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Beat Pro invitation</p>
         <h2 className="mt-1 font-['Anton'] text-2xl uppercase text-white">Send 30 days of Beat Pro</h2>
-        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/50">Create a one-time link bound to an email address. Stripe collects a payment method, gives the recipient 30 days of Beat Pro, then begins the $9.99 monthly plan unless they cancel from their producer account.</p>
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <Input value={trialRecipientEmail} onChange={(event) => setTrialRecipientEmail(event.target.value)} type="email" placeholder="producer@email.com" className="bg-black/30 border-white/15 text-white placeholder:text-white/30" />
-          <Button className="bg-yellow-400 text-black hover:bg-yellow-300" disabled={!trialRecipientEmail.trim() || createProducerProTrialInvite.isPending} onClick={() => createProducerProTrialInvite.mutate({ recipientEmail: trialRecipientEmail.trim(), origin: window.location.origin })}>
-            <Crown className="mr-2 h-4 w-4" />{createProducerProTrialInvite.isPending ? "Creating…" : "Create trial link"}
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/50">Create one link and send it to anyone. Each account can use a Beat Pro trial only once. Stripe collects a payment method, gives the recipient 30 days of Beat Pro, then begins the $9.99 monthly plan unless they cancel from their producer account.</p>
+        <div className="mt-4">
+          <Button className="bg-yellow-400 text-black hover:bg-yellow-300" disabled={createProducerProTrialInvite.isPending} onClick={() => createProducerProTrialInvite.mutate({ origin: window.location.origin })}>
+            <Crown className="mr-2 h-4 w-4" />{createProducerProTrialInvite.isPending ? "Creating…" : "Create shareable trial link"}
           </Button>
         </div>
         {trialInviteLink && <div className="mt-3 flex flex-col gap-2 border border-yellow-500/25 bg-black/30 p-3 sm:flex-row"><code className="min-w-0 flex-1 break-all text-xs text-yellow-100">{trialInviteLink}</code><Button size="sm" variant="outline" className="border-yellow-500/40 text-yellow-200 hover:bg-yellow-500/10" onClick={() => navigator.clipboard.writeText(trialInviteLink).then(() => toast.success("Trial link copied."), () => toast.error("Could not copy the link."))}>Copy link</Button></div>}

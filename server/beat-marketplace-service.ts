@@ -4,7 +4,7 @@ import {
   beatContracts,
   beatLicenses,
   beatProducerMemberships,
-  beatProTrialInvites,
+  beatProTrialRedemptions,
   beatPayoutRequests,
   beatSales,
   marketplaceBeats,
@@ -153,14 +153,14 @@ export async function fulfillBeatProducerSubscription(session: Stripe.Checkout.S
   } else {
     await db.insert(beatProducerMemberships).values({ userId, ...values });
   }
-  const inviteId = Number(session.metadata?.beat_pro_trial_invite_id);
-  if (Number.isInteger(inviteId) && inviteId > 0) {
-    await db.update(beatProTrialInvites).set({
+  const redemptionId = Number(session.metadata?.beat_pro_trial_redemption_id);
+  if (Number.isInteger(redemptionId) && redemptionId > 0) {
+    await db.update(beatProTrialRedemptions).set({
       status: "redeemed",
       stripeCheckoutSessionId: session.id,
-      usedByUserId: userId,
+      stripeSubscriptionId: subscriptionId,
       redeemedAt: new Date(),
-    }).where(eq(beatProTrialInvites.id, inviteId));
+    }).where(and(eq(beatProTrialRedemptions.id, redemptionId), eq(beatProTrialRedemptions.userId, userId)));
   }
   await db.insert(notifications).values({
     userId,

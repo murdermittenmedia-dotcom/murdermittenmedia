@@ -1208,7 +1208,7 @@ export const beatProducerMemberships = mysqlTable("beat_producer_memberships", {
 export type BeatProducerMembership = typeof beatProducerMemberships.$inferSelect;
 export type InsertBeatProducerMembership = typeof beatProducerMemberships.$inferInsert;
 
-// Email-bound invite links start a 30-day Stripe-backed Beat Pro trial. A card is
+// Reusable share links start a 30-day Stripe-backed Beat Pro trial. A card is
 // collected in Checkout, and Stripe renews at the advertised monthly plan price.
 export const beatProTrialInvites = mysqlTable("beat_pro_trial_invites", {
   id: int("id").autoincrement().primaryKey(),
@@ -1225,6 +1225,22 @@ export const beatProTrialInvites = mysqlTable("beat_pro_trial_invites", {
 });
 export type BeatProTrialInvite = typeof beatProTrialInvites.$inferSelect;
 export type InsertBeatProTrialInvite = typeof beatProTrialInvites.$inferInsert;
+
+// One redemption record per account prevents the same producer from starting a
+// new trial through another shared link, while a single link remains shareable.
+export const beatProTrialRedemptions = mysqlTable("beat_pro_trial_redemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  inviteId: int("inviteId").notNull(),
+  userId: int("userId").notNull().unique(),
+  status: mysqlEnum("status", ["checkout_started", "redeemed", "cancelled"]).default("checkout_started").notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }).unique(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 256 }).unique(),
+  redeemedAt: timestamp("redeemedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BeatProTrialRedemption = typeof beatProTrialRedemptions.$inferSelect;
+export type InsertBeatProTrialRedemption = typeof beatProTrialRedemptions.$inferInsert;
 
 // A Connect account is optional. When it is active, Stripe can deliver the
 // producer share automatically; otherwise sales remain visible in the payout ledger.
