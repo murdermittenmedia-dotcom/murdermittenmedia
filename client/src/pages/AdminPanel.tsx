@@ -458,7 +458,7 @@ function UsersTab() {
                   )}
                   {/* Role change */}
                   <div>
-                    <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Grant Account Labels <span className="text-white/30 normal-case font-normal">(multi-select)</span></p>
+                    <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Grant Account Labels <span className="text-white/30 normal-case font-normal">(multi-select · VERIFIED is admin-only)</span></p>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {ALL_LABEL_OPTIONS.map(opt => {
                         const rawLabels = (user as { accountLabels?: string | null }).accountLabels;

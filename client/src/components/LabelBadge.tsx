@@ -12,7 +12,8 @@ export type AccountLabel =
   | "brand_owner"
   | "audio_engineer"
   | "judge"
-  | "admin";
+  | "admin"
+  | "verified";
 
 const LABEL_CONFIG: Record<AccountLabel, { display: string; className: string }> = {
   fan:            { display: "FAN",            className: "bg-zinc-700 text-zinc-200 border-zinc-600" },
@@ -24,6 +25,7 @@ const LABEL_CONFIG: Record<AccountLabel, { display: string; className: string }>
   audio_engineer: { display: "AUDIO ENGINEER", className: "bg-cyan-900/70 text-cyan-300 border-cyan-700" },
   judge:          { display: "JUDGE",          className: "bg-yellow-500/20 text-yellow-300 border-yellow-500" },
   admin:          { display: "ADMIN",          className: "bg-red-600/30 text-red-400 border-red-500 font-black" },
+  verified:       { display: "VERIFIED",       className: "bg-sky-500/20 text-sky-300 border-sky-400 font-black" },
 };
 
 interface LabelBadgeProps {
@@ -82,4 +84,5 @@ export const ALL_LABEL_OPTIONS: { value: AccountLabel; display: string }[] = [
   ...USER_LABEL_OPTIONS,
   { value: "judge", display: "JUDGE" },
   { value: "admin", display: "ADMIN" },
+  { value: "verified", display: "VERIFIED" },
 ];

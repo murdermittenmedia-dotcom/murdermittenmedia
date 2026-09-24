@@ -979,7 +979,7 @@ export async function setUserRole(userId: number, role: "user" | "admin" | "judg
 // -- Account Label ------------------------------------------
 
 export const USER_SELECTABLE_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer"] as const;
-export const ALL_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin"] as const;
+export const ALL_LABELS = ["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin", "verified"] as const;
 export type AccountLabel = typeof ALL_LABELS[number];
 
 /** Serialize labels array to JSON string for DB storage */

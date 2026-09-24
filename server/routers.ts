@@ -2191,11 +2191,11 @@ export const appRouter = router({
         await setUserRole(input.userId, input.role);
         return { success: true };
       }),
-    // Grant any account labels including ADMIN/JUDGE (admin only)
+    // Grant any account labels including VERIFIED, ADMIN/JUDGE (admin only)
     setAccountLabels: adminProcedure
       .input(z.object({
         userId: z.number(),
-        labels: z.array(z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin"])),
+        labels: z.array(z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin", "verified"])),
       }))
       .mutation(async ({ input }) => {
         await setAccountLabelsAdmin(input.userId, input.labels);
@@ -3067,11 +3067,11 @@ export const appRouter = router({
         });
         return { success: true };
       }),
-    // Grant any account labels including ADMIN/JUDGE (admin only)
+    // Grant any account labels including VERIFIED, ADMIN/JUDGE (admin only)
     setAccountLabels: adminProcedure
       .input(z.object({
         userId: z.number(),
-        labels: z.array(z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin"])),
+        labels: z.array(z.enum(["fan", "artist", "producer", "videographer", "blogger", "brand_owner", "audio_engineer", "judge", "admin", "verified"])),
       }))
       .mutation(async ({ input }) => {
         await setAccountLabelsAdmin(input.userId, input.labels);
