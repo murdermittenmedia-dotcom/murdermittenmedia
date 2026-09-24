@@ -56,6 +56,8 @@ export default function OrderHistory() {
   const completedSession = useRef<string | null>(null);
   const sessionId = new URLSearchParams(window.location.search).get("session_id");
   const isBeatCheckoutReturn = new URLSearchParams(window.location.search).get("beat_success") === "true";
+  const freeSaleId = Number(new URLSearchParams(window.location.search).get("free_sale"));
+  const isFreeLicenseReturn = Number.isInteger(freeSaleId) && freeSaleId > 0;
 
   const merchOrders = trpc.merch.orders.getMyOrders.useQuery(undefined, {
     enabled: !!user,
@@ -123,7 +125,7 @@ export default function OrderHistory() {
     </header>
 
     {(isBeatCheckoutReturn || confirmBeatCheckout.isPending || recentBeatSaleId) && <div className="mt-6 border border-green-400/30 bg-green-400/10 p-4">
-      <div className="flex items-start gap-3"><FileCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-green-300" /><div><p className="text-sm font-bold text-green-100">Beat payment received</p><p className="mt-1 text-xs leading-relaxed text-green-100/70">{confirmBeatCheckout.isPending ? "Generating your agreement and preparing protected downloads…" : "Your master file and full licensing agreement are ready below."}</p></div></div>
+      <div className="flex items-start gap-3"><FileCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-green-300" /><div><p className="text-sm font-bold text-green-100">{isFreeLicenseReturn ? "Free license ready" : "Beat payment received"}</p><p className="mt-1 text-xs leading-relaxed text-green-100/70">{confirmBeatCheckout.isPending ? "Generating your agreement and preparing protected downloads…" : isFreeLicenseReturn ? "Your master file and full licensing agreement are ready below." : "Your master file and full licensing agreement are ready below."}</p></div></div>
     </div>}
 
     <div className="mt-7 flex flex-wrap gap-2 border-b border-white/10 pb-4">

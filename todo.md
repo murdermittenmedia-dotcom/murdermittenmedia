@@ -5232,3 +5232,11 @@
 - [x] Enable the Beat Pro listing wizard for both new and existing beat listings.
 - [x] Normalize marketplace edit deep-link IDs before locating the producer-owned listing.
 - [x] Validate focused marketplace tests, TypeScript, production build, and producer workspace rendering.
+
+## Beat Marketplace free-license and uploader reliability — 2026-09-23
+
+- [x] Allow producers to price non-exclusive Beat Marketplace leases at $0.00 for legitimate free releases and protected-delivery testing.
+- [x] Add immediate buyer claim flow for free licenses with a generated agreement, protected beat delivery, notification, and My Orders handoff; free exclusive licenses remain blocked.
+- [x] Make the uploader rely on the browser-built preview instead of the server FFmpeg fallback that could fail on production hosts.
+- [x] Accept one to seven direct-payment destination entries and reject only duplicate providers, resolving the obsolete six-item validation mismatch.
+- [x] Validate focused tests, full regression suite, TypeScript, and production build.

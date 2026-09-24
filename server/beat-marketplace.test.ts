@@ -48,6 +48,40 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(pdf.toString()).toContain("MMM-BEAT-42-2026");
   });
 
+  it("supports no-cost non-exclusive licenses for protected delivery testing", () => {
+    const freeLicense = createBeatLicenseTerms({
+      code: "basic",
+      name: "Free Test Lease",
+      priceCents: 0,
+      includesStems: false,
+    });
+    expect(freeLicense.defaultPriceCents).toBe(0);
+    const terms = buildBeatLicenseContractText({
+      contractNumber: "MMM-BEAT-FREE-2026",
+      effectiveDate: "September 23, 2026",
+      buyerName: "Test Artist",
+      buyerEmail: "test@example.com",
+      producerName: "Test Producer",
+      producerEmail: "producer@example.com",
+      beatTitle: "Free Delivery Check",
+      license: freeLicense,
+      amountCents: 0,
+    }).join(" ");
+    expect(terms).toContain("no-cost marketplace license");
+    const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const detail = readFileSync(resolve(process.cwd(), "client/src/pages/BeatDetail.tsx"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    const marketplace = readFileSync(resolve(process.cwd(), "client/src/pages/BeatMarketplace.tsx"), "utf8");
+    expect(router).toContain("claimFree: protectedProcedure");
+    expect(router).toContain("license.priceCents !== 0");
+    expect(router).toContain("Free exclusive licenses are not supported");
+    expect(detail).toContain("claimFree.useMutation");
+    expect(detail).toContain("Get free license");
+    expect(producer).toContain("Price (USD · 0 = free)");
+    expect(marketplace).toContain("contract generated with every license");
+    expect(marketplace).toContain("Free claim or secure checkout");
+  });
+
   it("keeps master file fields out of public catalog response assembly", () => {
     const source = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     expect(source).toContain("const { masterFileKey: _masterFileKey, masterFileUrl: _masterFileUrl, ...publicBeat }");
@@ -98,7 +132,9 @@ describe("Beat Marketplace plan and licensing rules", () => {
     const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
     const market = readFileSync(resolve(process.cwd(), "client/src/pages/BeatMarketplace.tsx"), "utf8");
-    expect(router).toContain("createBeatPreviewClip");
+    expect(router).toContain("browserPreviewBase64");
+    expect(router).toContain("must be built in your browser before upload");
+    expect(router).not.toContain("createBeatPreviewClip");
     expect(router).not.toContain("previewBase64");
     expect(router).toContain("update: protectedProcedure");
     expect(router).toContain("searchCoverImages: protectedProcedure");
@@ -192,7 +228,8 @@ describe("Beat Marketplace plan and licensing rules", () => {
     const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
     expect(router).toContain('z.enum(["cashapp", "paypal", "zelle", "venmo", "apple_pay", "chime", "other"])');
-    expect(router).toContain("methods: z.array(beatDirectPaymentMethodInput).length(7)");
+    expect(router).toContain("methods: z.array(beatDirectPaymentMethodInput).min(1).max(7)");
+    expect(router).toContain("Each payment destination can only be saved once.");
     expect(producer).toContain('label: "Other payment link"');
   });
 

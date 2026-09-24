@@ -100,7 +100,7 @@ import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
 import { BEAT_LICENSE_CODES, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, createBeatLicenseTerms, parseBeatLicenseTerms } from "../shared/beat-marketplace";
 import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger } from "./beat-marketplace-service";
-import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, createBeatPreviewClip, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
+import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
@@ -124,7 +124,9 @@ const siteAnnouncementInput = z.object({
 const beatLicenseInput = z.object({
   code: z.enum(BEAT_LICENSE_CODES),
   name: z.string().trim().min(2).max(96).optional(),
-  priceCents: z.number().int().min(100).max(1_000_000),
+  // A producer may set a non-exclusive lease to $0 for a legitimate free
+  // release or to test the protected delivery and agreement flow.
+  priceCents: z.number().int().min(0).max(1_000_000),
   includesStems: z.boolean().optional(),
   distributionLimit: z.number().int().min(1).max(100_000_000).nullable().optional(),
   videoLimit: z.number().int().min(1).max(10_000).nullable().optional(),
@@ -5874,11 +5876,14 @@ export const appRouter = router({
       saveDirectPaymentMethods: protectedProcedure
         // The producer dashboard exposes seven destinations: Cash App, PayPal,
         // Zelle, Venmo, Apple Pay, Chime, and one flexible "Other" option.
-        .input(z.object({ methods: z.array(beatDirectPaymentMethodInput).length(7) }))
+        .input(z.object({ methods: z.array(beatDirectPaymentMethodInput).min(1).max(7) }))
         .mutation(async ({ ctx, input }) => {
           await requireBeatPro(ctx.user.id, "Direct producer payments");
           const db = await getDb();
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          if (new Set(input.methods.map((method) => method.provider)).size !== input.methods.length) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Each payment destination can only be saved once." });
+          }
           for (const method of input.methods) {
             if (method.isActive && !method.destination) {
               throw new TRPCError({ code: "BAD_REQUEST", message: `Add a destination for ${method.provider}.` });
@@ -5982,9 +5987,12 @@ export const appRouter = router({
           if (browserPreview && (input.browserPreviewMimeType !== "audio/wav" || browserPreview.length < 64_000 || browserPreview.length > 5_600_000)) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "The browser preview is invalid. Rebuild the 30-second preview and try again." });
           }
-          const previewBuffer = browserPreview ?? await createBeatPreviewClip({ source: masterBuffer, mimeType: input.masterMimeType, startSeconds: input.previewStartSeconds, tag: previewTag.renderTag });
-          const previewMimeType = browserPreview ? "audio/wav" : "audio/mpeg";
-          const previewExtension = browserPreview ? "wav" : "mp3";
+          if (!browserPreview) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "The 30-second client preview must be built in your browser before upload. Select the audio again and wait for Build & Listen to finish." });
+          }
+          const previewBuffer = browserPreview;
+          const previewMimeType = "audio/wav";
+          const previewExtension = "wav";
           const [preview, master] = await Promise.all([
             storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-${safeTitle}.${previewExtension}`, previewBuffer, previewMimeType),
             storagePut(`beat-marketplace/${ctx.user.id}/masters/${Date.now()}-${safeTitle}.${masterExt}`, masterBuffer, input.masterMimeType),
@@ -6048,6 +6056,9 @@ export const appRouter = router({
           if (!plan.isPro && plan.uploadsThisMonth >= FREE_PRODUCER_UPLOAD_LIMIT) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Free producers can publish up to 10 beats each month. Upgrade to Beat Pro for unlimited uploads." });
           }
+          if (input.licenses.some((license) => license.code === "exclusive" && license.priceCents === 0)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Free pricing is available for non-exclusive leases only." });
+          }
           const baseSlug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "beat";
           const slug = `${baseSlug}-${Date.now().toString(36)}`.slice(0, 180);
           const insert = await db.insert(marketplaceBeats).values({
@@ -6098,6 +6109,9 @@ export const appRouter = router({
           const [beat] = await db.select().from(marketplaceBeats).where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id))).limit(1);
           if (!beat) throw new TRPCError({ code: "NOT_FOUND", message: "Beat not found" });
           if (beat.status === "sold_exclusive") throw new TRPCError({ code: "BAD_REQUEST", message: "An exclusive sale has closed this beat from future licensing." });
+          if (input.licenses.some((license) => license.code === "exclusive" && license.priceCents === 0)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Free pricing is available for non-exclusive leases only." });
+          }
           if (input.previewTag && input.previewTag.source !== "none") await requireBeatPro(ctx.user.id, "Tagged audio previews");
           const replacementFields = input.masterFileKey || input.masterFileUrl || input.previewFileKey || input.previewFileUrl
             ? { previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds, masterFileKey: input.masterFileKey, masterFileUrl: input.masterFileUrl,
@@ -6117,11 +6131,11 @@ export const appRouter = router({
             if (browserPreview && (input.browserPreviewMimeType !== "audio/wav" || browserPreview.length < 64_000 || browserPreview.length > 5_600_000)) {
               throw new TRPCError({ code: "BAD_REQUEST", message: "The browser preview is invalid. Rebuild the 30-second preview and try again." });
             }
-            const preview = browserPreview ?? await (async () => {
-              const master = await downloadPreviewTag(beat.masterFileKey);
-              return createBeatPreviewClip({ source: master, mimeType: audioMimeTypeForName(beat.masterFileKey), startSeconds: beat.previewStartSeconds, tag: resolvedTag.renderTag });
-            })();
-            const storedPreview = await storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-tagged-preview.${browserPreview ? "wav" : "mp3"}`, preview, browserPreview ? "audio/wav" : "audio/mpeg");
+            if (!browserPreview) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: "Rebuild the client preview before changing its tag. Replace the audio if your browser cannot build the preview." });
+            }
+            const preview = browserPreview;
+            const storedPreview = await storagePut(`beat-marketplace/${ctx.user.id}/previews/${Date.now()}-tagged-preview.wav`, preview, "audio/wav");
             tagOnlyFields = { previewFileKey: storedPreview.key, previewFileUrl: storedPreview.url, previewTagSource: resolvedTag.source, previewTagFileKey: resolvedTag.fileKey, previewTagFileUrl: resolvedTag.fileUrl, previewTagAtSeconds: resolvedTag.atSeconds };
           }
           await db.update(marketplaceBeats).set({
@@ -6442,6 +6456,58 @@ export const appRouter = router({
     }),
 
     checkout: router({
+      claimFree: protectedProcedure
+        .input(z.object({ beatId: z.number().int().positive(), licenseId: z.number().int().positive() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [beat] = await db.select().from(marketplaceBeats).where(eq(marketplaceBeats.id, input.beatId)).limit(1);
+          const [license] = await db.select().from(beatLicenses)
+            .where(and(eq(beatLicenses.id, input.licenseId), eq(beatLicenses.beatId, input.beatId), eq(beatLicenses.isActive, true))).limit(1);
+          if (!beat || beat.status !== "active" || !license) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "This beat or license is no longer available." });
+          }
+          if (beat.producerId === ctx.user.id) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot claim your own beat." });
+          }
+          if (license.priceCents !== 0) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "This license requires payment. Choose the secure checkout option." });
+          }
+          if (license.code === "exclusive") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Free exclusive licenses are not supported. Set a non-zero exclusive price." });
+          }
+          const [producer] = await db.select().from(users).where(eq(users.id, beat.producerId)).limit(1);
+          if (!producer) throw new TRPCError({ code: "NOT_FOUND", message: "Producer not found." });
+          const split = calculateBeatSaleSplit(0, !!(await getActiveBeatProducerMembership(beat.producerId)));
+          const buyerName = ctx.user.artistName || ctx.user.name || "Artist";
+          const saleResult = await db.insert(beatSales).values({
+            beatId: beat.id,
+            licenseId: license.id,
+            buyerId: ctx.user.id,
+            producerId: beat.producerId,
+            buyerName,
+            buyerEmail: ctx.user.email ?? null,
+            beatTitleSnapshot: beat.title,
+            producerNameSnapshot: producer.artistName || producer.name || "Producer",
+            licenseNameSnapshot: license.name,
+            licenseTermsSnapshot: license.terms,
+            masterFileKeySnapshot: beat.masterFileKey,
+            amountCents: 0,
+            ...split,
+            stripeCheckoutSessionId: `free_${randomBytes(18).toString("hex")}`,
+          });
+          const saleId = Number((saleResult as any)[0]?.insertId ?? (saleResult as any).insertId);
+          const result = await fulfillDirectBeatSale(saleId, beat.producerId);
+          await db.insert(notifications).values({
+            userId: ctx.user.id,
+            type: "beat_free_license_ready",
+            title: "Free beat license ready",
+            body: `${beat.title} and its licensing agreement are ready to download in My Orders.`,
+            link: "/account/orders",
+          });
+          return { success: true as const, saleId: result.sale.id, contractId: result.contract.id };
+        }),
+
       create: protectedProcedure
         .input(z.object({ beatId: z.number().int().positive(), licenseId: z.number().int().positive(), origin: z.string().url() }))
         .mutation(async ({ ctx, input }) => {
@@ -6451,6 +6517,7 @@ export const appRouter = router({
           const [license] = await db.select().from(beatLicenses).where(and(eq(beatLicenses.id, input.licenseId), eq(beatLicenses.beatId, input.beatId), eq(beatLicenses.isActive, true))).limit(1);
           if (!beat || beat.status !== "active" || !license) throw new TRPCError({ code: "NOT_FOUND", message: "This beat or license is no longer available." });
           if (beat.producerId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot purchase your own beat." });
+          if (license.priceCents === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "This is a free license. Use the free download button instead." });
           const [producer] = await db.select().from(users).where(eq(users.id, beat.producerId)).limit(1);
           if (!producer) throw new TRPCError({ code: "NOT_FOUND", message: "Producer not found." });
           const isPro = !!(await getActiveBeatProducerMembership(beat.producerId));

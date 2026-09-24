@@ -203,7 +203,9 @@ export function buildBeatLicenseContractText(snapshot: ContractSnapshot) {
     exclusivity,
     ...(license.customTerms ? ["PRODUCER-SPECIFIC TERMS.", license.customTerms] : []),
     "PAYMENT AND RECORD.",
-    `The license price is $${(snapshot.amountCents / 100).toFixed(2)} USD. Payment through Murder Mitten Media is the Artist's acceptance of this license. This PDF is the marketplace record of the issued license.`,
+    snapshot.amountCents === 0
+      ? "This is a no-cost marketplace license. The Artist’s free claim is acceptance of this license. This PDF is the marketplace record of the issued license."
+      : `The license price is ${(snapshot.amountCents / 100).toFixed(2)} USD. Payment through Murder Mitten Media is the Artist's acceptance of this license. This PDF is the marketplace record of the issued license.`,
     "NOTICE.",
     "This marketplace template is provided for transaction documentation and is not legal advice. Producers and artists should obtain advice from a qualified attorney for releases, split sheets, publishing, samples, or terms that need to be tailored to a particular project.",
   ];
