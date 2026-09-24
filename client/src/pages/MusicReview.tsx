@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
+import { requestProfileCompletion } from "@/components/OnboardingModal";
 import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
 import { ArtistLink } from "@/components/ArtistLink";
@@ -2956,7 +2957,13 @@ export default function MusicReview() {
                       <div>
                         <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
                         <button
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => {
+                            if (user && !user.profileComplete) {
+                              requestProfileCompletion({ required: true });
+                              return;
+                            }
+                            fileInputRef.current?.click();
+                          }}
                           className="w-full bg-white/5 border border-dashed border-white/20 rounded-xl text-white/50 px-4 py-6 hover:border-white/40 hover:text-white/70 transition-all text-sm text-center"
                         >
                           {audioFile ? `✓ ${audioFile.name}` : "Click to upload MP3 / Audio file"}

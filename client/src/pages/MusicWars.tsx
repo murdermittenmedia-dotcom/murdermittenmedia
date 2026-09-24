@@ -12,7 +12,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { LiveRadioBanner } from "@/components/LiveRadioBanner";
 import { ArtistStatModal } from "@/components/ArtistStatModal";
-import { OnboardingModal } from "@/components/OnboardingModal";
 import { TuneInButton } from "@/components/TuneInButton";
 import { useChat, type ChatMessage, type BattlePlayback } from "@/hooks/useChat";
 import LabelBadge from "@/components/LabelBadge";
@@ -2289,7 +2288,6 @@ export default function MusicWars() {
     <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
       <LiveRadioBanner filter="wars" />
-      <OnboardingModal />
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <div className="pt-16 relative overflow-hidden">

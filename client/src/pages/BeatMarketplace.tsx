@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
+import { requestProfileCompletion } from "@/components/OnboardingModal";
 import {
   ArrowRight,
   AudioLines,
@@ -89,8 +90,8 @@ export default function BeatMarketplace() {
       return;
     }
     if (!user.profileComplete) {
-      toast.info("Complete your profile before uploading beats.");
-      navigate("/profile?from=beat-upload");
+      toast.info("Finish your profile here, then upload your beat.");
+      requestProfileCompletion({ required: true });
       return;
     }
     navigate("/beats/producer");

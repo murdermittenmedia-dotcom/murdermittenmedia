@@ -20,6 +20,7 @@ import { Link } from "wouter";
 import CoinBalance from "@/components/CoinBalance";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
+import { OnboardingModal } from "@/components/OnboardingModal";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -137,6 +138,7 @@ export function SiteNav({ transparent = false }: { transparent?: boolean }) {
 
   return (
     <>
+      <OnboardingModal />
       <nav
         ref={navRef}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${bg}`}
