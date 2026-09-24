@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { toast } from "sonner";
 import {
   ArrowRight,
   AudioLines,
@@ -82,7 +83,18 @@ export default function BeatMarketplace() {
   const { data: beats = [], isLoading } = trpc.beats.list.useQuery({ search: search || undefined, genre, sort });
   const activeGenres = useMemo(() => genres.slice(0, 10), [genres]);
   const catalogBeats = beats;
-  const goProducer = () => user ? navigate("/beats/producer") : (window.location.href = getLoginUrl("/beats/producer"));
+  const goProducer = () => {
+    if (!user) {
+      window.location.href = getLoginUrl("/beats/producer");
+      return;
+    }
+    if (!user.profileComplete) {
+      toast.info("Complete your profile before uploading beats.");
+      navigate("/profile?from=beat-upload");
+      return;
+    }
+    navigate("/beats/producer");
+  };
   const scrollToCatalog = () => document.getElementById("beat-catalog")?.scrollIntoView({ behavior: "smooth" });
 
   return (
@@ -97,6 +109,7 @@ export default function BeatMarketplace() {
               <h1 className="max-w-4xl font-['Anton'] text-[clamp(3.7rem,12vw,8.8rem)] uppercase leading-[.82] tracking-tight">Michigan's<br /><span className="text-red-600">Beat</span><br />Marketplace</h1>
               <p className="mt-7 max-w-2xl text-base leading-relaxed text-white/60 md:text-lg">Producers — put your beats where Michigan artists are looking. Upload your catalog, get discovered, and build your producer presence on Murder Mitten Media with clear terms and protected downloads.</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row"><ActionButton label="Claim 30 Days Free" onClick={goProducer} /><ActionButton label="Browse the Beats" onClick={scrollToCatalog} secondary /></div>
+              <button type="button" onClick={goProducer} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 border border-red-500/45 bg-red-600/10 px-5 text-xs font-black uppercase tracking-[.14em] text-red-200 transition hover:border-red-400 hover:bg-red-600/20 sm:w-auto"><Upload className="h-4 w-4" />Upload Beats <ArrowRight className="h-4 w-4" /></button>
               <p className="mt-4 max-w-xl text-[11px] leading-relaxed text-white/35">Have a Pro invite? Sign in first, then claim the 30-day promotion. The annual plan and any payment terms are shown clearly before checkout.</p>
             </div>
             <div className="border border-red-500/35 bg-black/55 p-5 shadow-[0_0_60px_rgba(120,0,0,.12)] backdrop-blur-sm md:p-6">

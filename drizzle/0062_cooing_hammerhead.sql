@@ -1,0 +1,1 @@
+ALTER TABLE `marketplace_beats` ADD `licenseProducerName` varchar(160) DEFAULT 'Producer' NOT NULL;

@@ -1274,6 +1274,7 @@ export type InsertBeatProducerDirectPaymentMethod = typeof beatProducerDirectPay
 export const marketplaceBeats = mysqlTable("marketplace_beats", {
   id: int("id").autoincrement().primaryKey(),
   producerId: int("producerId").notNull(),
+  licenseProducerName: varchar("licenseProducerName", { length: 160 }).notNull().default("Producer"),
   slug: varchar("slug", { length: 180 }).notNull().unique(),
   title: varchar("title", { length: 160 }).notNull(),
   genre: varchar("genre", { length: 80 }).notNull(),

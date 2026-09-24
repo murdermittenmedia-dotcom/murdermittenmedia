@@ -6128,6 +6128,7 @@ export const appRouter = router({
       create: protectedProcedure
         .input(z.object({
           title: z.string().trim().min(1).max(160),
+          licenseProducerName: z.string().trim().min(1, "Enter the producer name for the license agreement.").max(160),
           genre: z.string().trim().min(1).max(80),
           bpm: z.number().int().min(30).max(300).nullable().optional(),
           musicalKey: z.string().trim().max(24).nullable().optional(),
@@ -6164,7 +6165,7 @@ export const appRouter = router({
           const baseSlug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "beat";
           const slug = `${baseSlug}-${Date.now().toString(36)}`.slice(0, 180);
           const insert = await db.insert(marketplaceBeats).values({
-            producerId: ctx.user.id, slug, title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
+            producerId: ctx.user.id, licenseProducerName: input.licenseProducerName, slug, title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
             mood: input.mood ?? null, description: input.description ?? null, tags: input.tags ?? null, artworkUrl: input.artworkUrl ?? null,
             previewFileKey: input.previewFileKey, previewFileUrl: input.previewFileUrl, previewStartSeconds: input.previewStartSeconds,
             previewTagSource: input.previewTagSource, previewTagFileKey: input.previewTagFileKey ?? null, previewTagFileUrl: input.previewTagFileUrl ?? null, previewTagAtSeconds: input.previewTagAtSeconds,
@@ -6183,6 +6184,7 @@ export const appRouter = router({
         .input(z.object({
           id: z.number().int().positive(),
           title: z.string().trim().min(1).max(160),
+          licenseProducerName: z.string().trim().min(1, "Enter the producer name for the license agreement.").max(160),
           genre: z.string().trim().min(1).max(80),
           bpm: z.number().int().min(30).max(300).nullable().optional(),
           musicalKey: z.string().trim().max(24).nullable().optional(),
@@ -6241,7 +6243,7 @@ export const appRouter = router({
             tagOnlyFields = { previewFileKey: storedPreview.key, previewFileUrl: storedPreview.url, previewTagSource: resolvedTag.source, previewTagFileKey: resolvedTag.fileKey, previewTagFileUrl: resolvedTag.fileUrl, previewTagAtSeconds: resolvedTag.atSeconds };
           }
           await db.update(marketplaceBeats).set({
-            title: input.title, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
+            title: input.title, licenseProducerName: input.licenseProducerName, genre: input.genre, bpm: input.bpm ?? null, musicalKey: input.musicalKey ?? null,
             mood: input.mood ?? null, description: input.description ?? null, tags: input.tags ?? null,
             artworkUrl: input.artworkUrl ?? null, status: input.status, ...replacementFields, ...tagOnlyFields,
           }).where(eq(marketplaceBeats.id, beat.id));
@@ -6612,7 +6614,7 @@ export const appRouter = router({
             buyerName,
             buyerEmail: ctx.user.email ?? null,
             beatTitleSnapshot: beat.title,
-            producerNameSnapshot: producer.artistName || producer.name || "Producer",
+            producerNameSnapshot: beat.licenseProducerName || producer.artistName || producer.name || "Producer",
             licenseNameSnapshot: license.name,
             licenseTermsSnapshot: license.terms,
             masterFileKeySnapshot: beat.masterFileKey,
@@ -6649,7 +6651,7 @@ export const appRouter = router({
           const buyerName = ctx.user.artistName || ctx.user.name || "Artist";
           const saleResult = await db.insert(beatSales).values({
             beatId: beat.id, licenseId: license.id, buyerId: ctx.user.id, producerId: beat.producerId, buyerName, buyerEmail: ctx.user.email ?? null,
-            beatTitleSnapshot: beat.title, producerNameSnapshot: producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
+            beatTitleSnapshot: beat.title, producerNameSnapshot: beat.licenseProducerName || producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
             licenseTermsSnapshot: license.terms, masterFileKeySnapshot: beat.masterFileKey, amountCents: license.priceCents, ...split, stripeCheckoutSessionId: `pending_${randomBytes(18).toString("hex")}`,
           });
           const saleId = Number((saleResult as any)[0]?.insertId ?? (saleResult as any).insertId);
@@ -6691,7 +6693,7 @@ export const appRouter = router({
           const buyerName = ctx.user.artistName || ctx.user.name || "Artist";
           const saleResult = await db.insert(beatSales).values({
             beatId: beat.id, licenseId: license.id, buyerId: ctx.user.id, producerId: beat.producerId, buyerName, buyerEmail: ctx.user.email ?? null,
-            beatTitleSnapshot: beat.title, producerNameSnapshot: producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
+            beatTitleSnapshot: beat.title, producerNameSnapshot: beat.licenseProducerName || producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
             licenseTermsSnapshot: license.terms, masterFileKeySnapshot: beat.masterFileKey, amountCents: license.priceCents,
             platformFeeCents: 0, producerEarningsCents: license.priceCents, stripeCheckoutSessionId: `direct_${randomBytes(18).toString("hex")}`,
           });
@@ -6723,7 +6725,7 @@ export const appRouter = router({
           const split = calculateBeatSaleSplit(license.priceCents, false);
           const saleResult = await db.insert(beatSales).values({
             beatId: beat.id, licenseId: license.id, buyerId: ctx.user.id, producerId: beat.producerId, buyerName, buyerEmail: ctx.user.email ?? null,
-            beatTitleSnapshot: beat.title, producerNameSnapshot: producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
+            beatTitleSnapshot: beat.title, producerNameSnapshot: beat.licenseProducerName || producer.artistName || producer.name || "Producer", licenseNameSnapshot: license.name,
             licenseTermsSnapshot: license.terms, masterFileKeySnapshot: beat.masterFileKey, amountCents: license.priceCents, ...split,
             stripeCheckoutSessionId: `platform_direct_${randomBytes(18).toString("hex")}`,
           });
