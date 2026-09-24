@@ -6483,6 +6483,10 @@ export const appRouter = router({
           const session = await stripe.checkout.sessions.create({
             mode: "subscription", customer_email: ctx.user.email ?? undefined, client_reference_id: String(ctx.user.id),
             metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id) },
+            payment_method_collection: "always",
+            subscription_data: input.interval === "year"
+              ? { trial_period_days: BEAT_PRO_TRIAL_DAYS, metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id) } }
+              : { metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id) } },
             line_items: [{ price_data: { currency: "usd", product_data: { name: input.interval === "year" ? "Murder Mitten Beat Pro Annual" : "Murder Mitten Beat Pro Monthly", description: input.interval === "year" ? "$50/year. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." : "$10/month. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: input.interval === "year" ? BEAT_PRO_ANNUAL_PRICE_CENTS : BEAT_PRO_MONTHLY_PRICE_CENTS, recurring: { interval: input.interval } }, quantity: 1 }],
             success_url: `${input.origin}/beats/producer?pro_success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${input.origin}/beats/producer?pro_canceled=true`,

@@ -21,6 +21,9 @@ describe("Beat Pro trial invitation workflow", () => {
     expect(router).toContain("This account has already used its Beat Pro trial.");
     expect(router).toContain("cancelSubscription: protectedProcedure");
     expect(router).toContain("cancel_at_period_end: true");
+    expect(router).toContain('createProCheckout: protectedProcedure');
+    expect(router).toContain('trial_period_days: BEAT_PRO_TRIAL_DAYS');
+    expect(router).toContain('payment_method_collection: "always"');
   });
 
   it("keeps trial access active through the paid period and exposes self-service cancellation", () => {
@@ -35,6 +38,7 @@ describe("Beat Pro trial invitation workflow", () => {
     expect(producer).toContain("Cancel at period end");
     expect(admin).toContain("Create shareable trial link");
     expect(invite).toContain("Shareable invitation");
+    expect(producer).toContain("$0 today · $50/year after 30 days");
     expect(invite).toContain("Start 30-day trial · $50/year after");
     expect(invite).toContain("Each account can use a Beat Pro trial once");
   });
