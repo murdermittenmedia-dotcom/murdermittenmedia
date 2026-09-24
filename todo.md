@@ -5271,3 +5271,9 @@
 - [x] Keep the 30-day Stripe trial, saved payment method, $9.99 monthly renewal, and self-service cancellation intact.
 - [x] Add a durable per-account redemption record so each account can use a Beat Pro trial only once, even across multiple shared links.
 - [x] Apply migration 0061 and validate the database table, focused tests, full regression suite, TypeScript, production build, and diff integrity.
+
+## Beat Marketplace social previews — 2026-09-23
+- [x] Add route-aware Open Graph and Twitter metadata for /beats.
+- [x] Add matching preview metadata for reusable /beats/pro-invite links.
+- [x] Create and upload a dedicated 1200×630 Murder Mitten Beat Marketplace share graphic.
+- [x] Validate live HTML metadata, 47 test files / 185 tests, TypeScript, production build, and diff integrity.

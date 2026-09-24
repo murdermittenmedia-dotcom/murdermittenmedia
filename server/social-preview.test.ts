@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildCreatorPreviewMeta } from "./social-preview";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 describe("buildCreatorPreviewMeta", () => {
   it("uses the creator display name and selected avatar", () => {
@@ -16,5 +18,17 @@ describe("buildCreatorPreviewMeta", () => {
     expect(result.title).toBe("Creator | Murder Mitten Media");
     expect(result.description).toContain("Follow Creator");
     expect(result.image).toContain("mmm_logo_8689da6b.png");
+  });
+});
+
+describe("Beat Marketplace route previews", () => {
+  it("defines branded metadata for the catalog and reusable Beat Pro invite links", () => {
+    const vite = readFileSync(resolve(process.cwd(), "server/_core/vite.ts"), "utf8");
+    expect(vite).toContain('p === "/beats" || p === "/beats/"');
+    expect(vite).toContain("Beat Marketplace | Murder Mitten Media");
+    expect(vite).toContain("Find your next record from independent producers");
+    expect(vite).toContain("You’re Invited to Beat Pro | Murder Mitten Media");
+    expect(vite).toContain("/^\\/beats\\/pro-invite\\/[a-f0-9]{64}\\/?$/i");
+    expect(vite).toContain('property="og:image"');
   });
 });

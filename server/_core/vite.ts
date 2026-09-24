@@ -41,6 +41,28 @@ const ROUTE_META: Array<{ test: (p: string) => boolean; meta: RouteMeta }> = [
       url: BASE_URL,
     },
   },
+  {
+    test: (p) => p === "/beats" || p === "/beats/",
+    meta: {
+      title: "Beat Marketplace | Murder Mitten Media",
+      description: "Find your next record from independent producers. Preview beats, choose clear license terms, claim free leases, and download your contract.",
+      image: `${BASE_URL}/manus-storage/beat-marketplace-share_f0b543a8.png`,
+      imageWidth: "1200",
+      imageHeight: "630",
+      url: `${BASE_URL}/beats`,
+    },
+  },
+  {
+    test: (p) => /^\/beats\/pro-invite\/[a-f0-9]{64}\/?$/i.test(p),
+    meta: {
+      title: "You’re Invited to Beat Pro | Murder Mitten Media",
+      description: "Unlock 30 days of Beat Pro: unlimited uploads, 100% producer earnings, direct payment tools, AI listing help, cover discovery, and more.",
+      image: `${BASE_URL}/manus-storage/beat-marketplace-share_f0b543a8.png`,
+      imageWidth: "1200",
+      imageHeight: "630",
+      url: `${BASE_URL}/beats`,
+    },
+  },
 ];
 
 function escapeHtml(value: string): string {
