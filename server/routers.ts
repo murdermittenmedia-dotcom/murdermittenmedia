@@ -102,6 +102,7 @@ import { BEAT_LICENSE_CODES, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_
 import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger } from "./beat-marketplace-service";
 import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
+import { fetchYouTubeMetadata } from "./youtube-import";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -5810,6 +5811,13 @@ export const appRouter = router({
           currentPeriodEnd: plan.membership?.currentPeriodEnd ?? null,
         };
       }),
+
+      importYouTube: protectedProcedure
+        .input(z.object({ url: z.string().trim().min(1).max(500) }))
+        .mutation(async ({ ctx, input }) => {
+          await requireBeatPro(ctx.user.id, "YouTube beat import");
+          return fetchYouTubeMetadata(input.url);
+        }),
 
       mine: protectedProcedure.query(async ({ ctx }) => {
         const db = await getDb();

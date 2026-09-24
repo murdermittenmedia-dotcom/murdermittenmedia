@@ -1,0 +1,17 @@
+import { describe, expect, it } from "vitest";
+import { parseYouTubeUrl } from "./youtube-import";
+
+describe("YouTube beat import", () => {
+  it("accepts watch, short, Shorts, and embed links without downloading audio", () => {
+    expect(parseYouTubeUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")?.videoId).toBe("dQw4w9WgXcQ");
+    expect(parseYouTubeUrl("https://youtu.be/dQw4w9WgXcQ")?.videoId).toBe("dQw4w9WgXcQ");
+    expect(parseYouTubeUrl("https://youtube.com/shorts/dQw4w9WgXcQ")?.videoId).toBe("dQw4w9WgXcQ");
+    expect(parseYouTubeUrl("https://youtube.com/embed/dQw4w9WgXcQ")?.canonicalUrl).toContain("watch?v=dQw4w9WgXcQ");
+  });
+
+  it("rejects unrelated or malformed URLs", () => {
+    expect(parseYouTubeUrl("https://example.com/watch?v=dQw4w9WgXcQ")).toBeNull();
+    expect(parseYouTubeUrl("not a url")).toBeNull();
+    expect(parseYouTubeUrl("https://youtu.be/short")).toBeNull();
+  });
+});

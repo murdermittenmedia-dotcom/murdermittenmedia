@@ -5245,3 +5245,9 @@
 - [x] Replace new-tab delivery behavior with authenticated blob downloads using the returned filename for both My Orders and Beat Library
 - [x] Rebuild the agreement as a Murder Mitten Media branded multi-page PDF with masthead, red/gold visual system, transaction summary, producer/buyer record, section hierarchy, acknowledgement lines, and page footer
 - [x] Validate PDF rendering, focused marketplace tests, full test suite, TypeScript, production build, and diff cleanliness
+
+## Pro YouTube beat import — 2026-09-23
+- [x] Add Pro-gated YouTube and Shorts URL parsing through YouTube’s official oEmbed metadata endpoint
+- [x] Autofill the beat title, cover thumbnail, and AI discovery tags inside the upload wizard
+- [x] Keep protected master delivery rights-safe by requiring the producer’s owned audio upload rather than ripping YouTube audio
+- [x] Add parser coverage, verify a live oEmbed response, and pass TypeScript checks
