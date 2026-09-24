@@ -42,7 +42,7 @@ export async function fetchYouTubeMetadata(value: string): Promise<YouTubeImport
     if (!title) throw new Error("That YouTube video did not provide a usable title.");
     return {
       ...parsed,
-      title: title.slice(0, 160),
+      title,
       creator: typeof data.author_name === "string" ? data.author_name.slice(0, 160) : "YouTube creator",
       thumbnailUrl: typeof data.thumbnail_url === "string" ? data.thumbnail_url : null,
       embedUrl: `https://www.youtube-nocookie.com/embed/${parsed.videoId}`,
@@ -144,7 +144,7 @@ export async function fetchYouTubeChannelVideos(value: string): Promise<{ channe
       if (!videoId || !title || seen.has(videoId)) continue;
       seen.add(videoId);
       const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      videos.push({ videoId, canonicalUrl, title: title.slice(0, 160), creator: "YouTube channel", thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`, publishedAt });
+      videos.push({ videoId, canonicalUrl, title, creator: "YouTube channel", thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`, publishedAt });
       if (videos.length >= 50) break;
     }
     return { channelUrl: parsed.canonicalUrl, videos };

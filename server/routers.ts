@@ -5924,17 +5924,21 @@ export const appRouter = router({
         .input(z.object({
           videos: z.array(z.object({
             videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
-            title: z.string().trim().min(1).max(160),
+            title: z.string().trim().min(1).max(512),
             canonicalUrl: z.string().url(),
             thumbnailUrl: z.string().url().nullable().optional(),
             genre: z.string().trim().min(1).max(80).default("Hip-Hop"),
           })).min(1).max(50),
+          licenses: z.array(beatLicenseInput).min(1).max(3),
         }))
         .mutation(async ({ ctx, input }) => {
           await requireBeatPro(ctx.user.id, "YouTube channel beat import");
           const db = await getDb();
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
           const producerName = ctx.user.artistName || ctx.user.name || "Producer";
+          if (input.licenses.some((license) => license.code === "exclusive" && license.priceCents === 0)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Free pricing is available for non-exclusive leases only." });
+          }
           const results: Array<{ id: number; title: string; duplicate?: boolean }> = [];
           for (const video of input.videos) {
             const parsed = parseYouTubeUrl(video.canonicalUrl);
@@ -5963,11 +5967,10 @@ export const appRouter = router({
               status: "active",
             });
             const beatId = Number((insert as any)[0]?.insertId ?? (insert as any).insertId);
-            await db.insert(beatLicenses).values([
-              { beatId, code: "basic", name: "Basic Lease", priceCents: 2999, terms: JSON.stringify(createBeatLicenseTerms({ code: "basic", name: "Basic Lease", priceCents: 2999, includesStems: false, distributionLimit: 5000, videoLimit: 1, monetizedViewLimit: 100000, customTerms: null })), includesStems: false, sortOrder: 0 },
-              { beatId, code: "premium", name: "Premium Lease", priceCents: 7999, terms: JSON.stringify(createBeatLicenseTerms({ code: "premium", name: "Premium Lease", priceCents: 7999, includesStems: false, distributionLimit: 100000, videoLimit: 2, monetizedViewLimit: 1000000, customTerms: null })), includesStems: false, sortOrder: 1 },
-              { beatId, code: "exclusive", name: "Exclusive License", priceCents: 29999, terms: JSON.stringify(createBeatLicenseTerms({ code: "exclusive", name: "Exclusive License", priceCents: 29999, includesStems: true, distributionLimit: null, videoLimit: null, monetizedViewLimit: null, customTerms: null })), includesStems: true, sortOrder: 2 },
-            ]);
+            await db.insert(beatLicenses).values(input.licenses.map((license, index) => {
+              const terms = createBeatLicenseTerms(license);
+              return { beatId, code: license.code, name: terms.name, priceCents: license.priceCents, terms: JSON.stringify(terms), includesStems: terms.includesStems, sortOrder: index };
+            }));
             results.push({ id: beatId, title: video.title });
           }
           await ensureProducerAccountLabel(ctx.user.id);

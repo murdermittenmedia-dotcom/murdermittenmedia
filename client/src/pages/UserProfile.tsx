@@ -11,6 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SiteNav } from "@/components/SiteNav";
 import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { YouTubePreviewButton } from "@/components/YouTubePreviewButton";
 import { toast } from "sonner";
 import LabelBadge, { USER_LABEL_OPTIONS, AccountLabel } from "@/components/LabelBadge";
 import { ProfileRewards } from "@/components/ProfileRewards";
@@ -841,7 +842,7 @@ export default function UserProfile() {
                       <div className="min-w-0 flex-1">
                         <Link href={`/beats/${beat.slug}`} className="block truncate font-bold text-white hover:text-red-400">{beat.title}</Link>
                         <p className="mt-1 text-xs text-white/45">{beat.genre}{beat.bpm ? ` · ${beat.bpm} BPM` : ""}{lowest !== null ? ` · From $${(lowest / 100).toFixed(0)}` : ""}</p>
-                        <div className="mt-2">{beat.youtubeUrl ? <a href={beat.youtubeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 border border-white/15 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-yellow-300 hover:border-yellow-300"><Youtube className="h-3.5 w-3.5" />Preview on YouTube</a> : <AudioPlayButton url={beat.previewFileUrl} title={beat.title} artist={displayName} size="sm" />}</div>
+                        <div className="mt-2">{beat.youtubeUrl ? <YouTubePreviewButton videoId={beat.youtubeUrl.match(/[?&]v=([^&]+)/)?.[1] || ""} title={beat.title} /> : <AudioPlayButton url={beat.previewFileUrl} title={beat.title} artist={displayName} size="sm" />}</div>
                       </div>
                     </article>
                   );

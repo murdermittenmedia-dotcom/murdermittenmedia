@@ -43,4 +43,20 @@ describe("YouTube beat import", () => {
     const routers = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     expect(routers).toContain('beat.masterDeliveryStatus === "producer_required" || !beat.masterFileUrl');
   });
+  it("publishes one producer-selected lease set across a channel batch", () => {
+    const routers = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
+    expect(routers).toContain("licenses: z.array(beatLicenseInput).min(1).max(3)");
+    expect(routers).toContain("input.licenses.map((license, index)");
+    expect(producer).toContain("Set lease options for every selected upload");
+    expect(producer).toContain("licenses });");
+  });
+  it("uses a clipped, non-linking preview for imported videos", () => {
+    const player = readFileSync(resolve(process.cwd(), "client/src/components/YouTubePreviewButton.tsx"), "utf8");
+    const marketplace = readFileSync(resolve(process.cwd(), "client/src/pages/BeatMarketplace.tsx"), "utf8");
+    expect(player).toContain("end=30");
+    expect(player).toContain("pointer-events-none");
+    expect(marketplace).toContain("YouTubePreviewButton");
+    expect(marketplace).not.toContain('aria-label={`Preview ${beat.title} on YouTube`}');
+  });
 });
