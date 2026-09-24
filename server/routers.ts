@@ -5994,6 +5994,9 @@ export const appRouter = router({
           const [beat] = await db.select().from(marketplaceBeats)
             .where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id))).limit(1);
           if (!beat) throw new TRPCError({ code: "NOT_FOUND", message: "That beat is not in your catalogue." });
+          if (beat.masterDeliveryStatus === "producer_required" || !beat.masterFileUrl) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Upload the owned master audio before downloading this YouTube-imported beat." });
+          }
           const extension = beat.masterFileKey.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "audio";
           const safeTitle = beat.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "beat";
           return { url: await storageGetSignedUrl(beat.masterFileKey), filename: `${safeTitle}.${extension}` };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parseYouTubeChannelUrl, parseYouTubeUrl } from "./youtube-import";
+import { parseYouTubeChannelPageVideos, parseYouTubeChannelUrl, parseYouTubeUrl } from "./youtube-import";
 
 describe("YouTube beat import", () => {
   it("accepts watch, short, Shorts, and embed links without downloading audio", () => {
@@ -26,5 +26,16 @@ describe("YouTube beat import", () => {
     expect(producer).toContain("if (imported.thumbnailUrl) { setArtwork(null); setRemoteArtworkUrl(imported.thumbnailUrl); }");
     expect(producer).toContain("importYouTubeChannel");
     expect(producer).toContain("publishYouTubeBeats");
+  });
+  it("parses the rendered channel uploads and de-duplicates video cards", () => {
+    const html = 'videoId":"dQw4w9WgXcQ" ... metadata":{"lockupMetadataViewModel":{"title":{"content":"First \\u0026 Latest"}}} videoId":"dQw4w9WgXcQ" ... metadata":{"lockupMetadataViewModel":{"title":{"content":"Duplicate"}}} videoId":"9bZkp7q19f0" ... metadata":{"lockupMetadataViewModel":{"title":{"content":"Second"}}}';
+    const videos = parseYouTubeChannelPageVideos(html);
+    expect(videos).toHaveLength(2);
+    expect(videos[0]?.title).toBe("First & Latest");
+    expect(videos[1]?.canonicalUrl).toContain("9bZkp7q19f0");
+  });
+  it("keeps pending YouTube masters unavailable until the producer uploads audio", () => {
+    const routers = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    expect(routers).toContain('beat.masterDeliveryStatus === "producer_required" || !beat.masterFileUrl');
   });
 });

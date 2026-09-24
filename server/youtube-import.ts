@@ -62,6 +62,45 @@ function extractChannelIdFromHtml(html: string) {
   return match?.[1] || null;
 }
 
+function decodeYouTubeText(value: string) {
+  return value
+    .replace(/\\u0026/g, "&")
+    .replace(/\\u003d/g, "=")
+    .replace(/\\u0027/g, "'")
+    .replace(/\\u0022/g, '"')
+    .replace(/\\\\/g, "\\")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
+}
+
+/** Extracts the uploads currently rendered on a channel's Videos page. */
+export function parseYouTubeChannelPageVideos(html: string): YouTubeChannelVideo[] {
+  const videos: YouTubeChannelVideo[] = [];
+  const seen = new Set<string>();
+  const pattern = /videoId":"([A-Za-z0-9_-]{11})"[\s\S]{0,12000}?metadata":\{"lockupMetadataViewModel":\{"title":\{"content":"([^"]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(html))) {
+    const videoId = match[1];
+    if (seen.has(videoId)) continue;
+    seen.add(videoId);
+    const title = decodeYouTubeText(match[2]).slice(0, 160);
+    if (!title) continue;
+    videos.push({
+      videoId,
+      canonicalUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      title,
+      creator: "YouTube channel",
+      thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
+      publishedAt: null,
+    });
+    if (videos.length >= 50) break;
+  }
+  return videos;
+}
+
 export function parseYouTubeChannelUrl(value: string) {
   try {
     const url = new URL(value.trim());
@@ -82,25 +121,28 @@ export async function fetchYouTubeChannelVideos(value: string): Promise<{ channe
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    let channelId = parsed.channelId;
-    if (!channelId) {
-      const page = await fetch(parsed.canonicalUrl, { signal: controller.signal, headers: { "User-Agent": "MurderMittenMedia/1.0 YouTube channel import" } });
-      if (!page.ok) throw new Error("YouTube could not open that channel.");
-      channelId = extractChannelIdFromHtml(await page.text());
-    }
+    const pageUrl = parsed.canonicalUrl.replace(/\/$/, "") + "/videos";
+    const page = await fetch(pageUrl, { signal: controller.signal, headers: { "User-Agent": "MurderMittenMedia/1.0 YouTube channel import" } });
+    if (!page.ok) throw new Error("YouTube could not open that channel.");
+    const pageHtml = await page.text();
+    let channelId = parsed.channelId || extractChannelIdFromHtml(pageHtml);
     if (!channelId) throw new Error("Could not identify that YouTube channel. Try its /channel/ URL.");
+    const pageVideos = parseYouTubeChannelPageVideos(pageHtml);
     const feed = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, { signal: controller.signal, headers: { "User-Agent": "MurderMittenMedia/1.0 YouTube channel import" } });
     if (!feed.ok) throw new Error("YouTube could not return this channel's uploads.");
     const xml = await feed.text();
-    const videos: YouTubeChannelVideo[] = [];
+    const videos: YouTubeChannelVideo[] = [...pageVideos];
+    const seen = new Set(videos.map((video) => video.videoId));
     const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
-    for (const entry of entries.slice(0, 50)) {
+    for (const entry of entries) {
       const videoId = entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1]?.trim();
-      const title = entry.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")?.trim();
+      const title = entry.match(/<title>([\s\S]*?)<\/title>/)?.[1] ? decodeYouTubeText(entry.match(/<title>([\s\S]*?)<\/title>/)![1]) : "";
       const publishedAt = entry.match(/<published>([^<]+)<\/published>/)?.[1] || null;
-      if (!videoId || !title) continue;
+      if (!videoId || !title || seen.has(videoId)) continue;
+      seen.add(videoId);
       const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
       videos.push({ videoId, canonicalUrl, title: title.slice(0, 160), creator: "YouTube channel", thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`, publishedAt });
+      if (videos.length >= 50) break;
     }
     return { channelUrl: parsed.canonicalUrl, videos };
   } catch (error) {
