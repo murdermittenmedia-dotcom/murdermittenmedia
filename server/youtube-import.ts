@@ -129,8 +129,11 @@ export async function fetchYouTubeChannelVideos(value: string): Promise<{ channe
     if (!channelId) throw new Error("Could not identify that YouTube channel. Try its /channel/ URL.");
     const pageVideos = parseYouTubeChannelPageVideos(pageHtml);
     const feed = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, { signal: controller.signal, headers: { "User-Agent": "MurderMittenMedia/1.0 YouTube channel import" } });
-    if (!feed.ok) throw new Error("YouTube could not return this channel's uploads.");
-    const xml = await feed.text();
+    // YouTube intermittently returns 404 for the legacy feeds endpoint on handle-based
+    // channels. The Videos page is already sufficient for the picker, so only fail if
+    // both sources are unavailable.
+    if (!feed.ok && !pageVideos.length) throw new Error("YouTube could not return this channel's uploads.");
+    const xml = feed.ok ? await feed.text() : "";
     const videos: YouTubeChannelVideo[] = [...pageVideos];
     const seen = new Set(videos.map((video) => video.videoId));
     const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];

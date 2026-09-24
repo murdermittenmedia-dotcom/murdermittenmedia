@@ -34,6 +34,11 @@ describe("YouTube beat import", () => {
     expect(videos[0]?.title).toBe("First & Latest");
     expect(videos[1]?.canonicalUrl).toContain("9bZkp7q19f0");
   });
+  it("allows rendered channel uploads when YouTube's legacy RSS feed is unavailable", () => {
+    const importer = readFileSync(resolve(process.cwd(), "server/youtube-import.ts"), "utf8");
+    expect(importer).toContain("if (!feed.ok && !pageVideos.length)");
+    expect(importer).toContain('const xml = feed.ok ? await feed.text() : "";');
+  });
   it("keeps pending YouTube masters unavailable until the producer uploads audio", () => {
     const routers = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     expect(routers).toContain('beat.masterDeliveryStatus === "producer_required" || !beat.masterFileUrl');
