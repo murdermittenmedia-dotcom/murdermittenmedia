@@ -8,7 +8,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { eq, and, inArray, desc, asc, ne, gte, lt, sql } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, ne, gte, lt, sql, isNotNull } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
@@ -6328,6 +6328,47 @@ export const appRouter = router({
           return { success: true, id: beat.id, slug: beat.slug };
         }),
 
+      bulkUpdateYouTube: protectedProcedure
+        .input(z.object({
+          ids: z.array(z.number().int().positive()).min(1).max(50),
+          tags: z.string().trim().max(320).optional(),
+          prices: z.object({ basic: z.number().int().min(0).max(1_000_000).optional(), premium: z.number().int().min(0).max(1_000_000).optional(), exclusive: z.number().int().min(0).max(1_000_000).optional() }).optional(),
+          artworkBase64: z.string().optional(),
+          artworkMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional(),
+          artworkName: z.string().max(255).optional(),
+        }).refine((input) => input.tags !== undefined || input.prices !== undefined || input.artworkBase64 !== undefined, { message: "Choose at least one bulk edit." }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          if (input.artworkBase64 && !input.artworkMimeType) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a valid cover image type." });
+          let artworkUrl: string | undefined;
+          if (input.artworkBase64 && input.artworkMimeType) {
+            const artworkBuffer = Buffer.from(input.artworkBase64, "base64");
+            if (artworkBuffer.length > 3 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cover art must be under 3MB." });
+            const extension = input.artworkName?.split(".").pop()?.toLowerCase() || "jpg";
+            artworkUrl = (await storagePut(`beat-marketplace/${ctx.user.id}/artwork/${Date.now()}-bulk-cover.${extension}`, artworkBuffer, input.artworkMimeType)).url;
+          }
+          const beats = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
+            .where(and(inArray(marketplaceBeats.id, input.ids), eq(marketplaceBeats.producerId, ctx.user.id), isNotNull(marketplaceBeats.youtubeUrl)));
+          if (beats.length !== input.ids.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Select only your YouTube-imported beats." });
+          if (input.prices?.exclusive === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Exclusive licenses cannot be free." });
+          const fields: Record<string, unknown> = {};
+          if (input.tags !== undefined) fields.tags = input.tags || null;
+          if (artworkUrl !== undefined) fields.artworkUrl = artworkUrl;
+          if (Object.keys(fields).length) await db.update(marketplaceBeats).set(fields).where(inArray(marketplaceBeats.id, input.ids));
+          if (input.prices) {
+            const licenses = await db.select().from(beatLicenses).where(inArray(beatLicenses.beatId, input.ids));
+            for (const license of licenses) {
+              const priceCents = input.prices[license.code as keyof typeof input.prices];
+              if (priceCents === undefined) continue;
+              let terms: Record<string, unknown> = {};
+              try { terms = JSON.parse(license.terms) as Record<string, unknown>; } catch { /* preserve malformed legacy terms below */ }
+              await db.update(beatLicenses).set({ priceCents, terms: JSON.stringify({ ...terms, priceCents }) }).where(eq(beatLicenses.id, license.id));
+            }
+          }
+          return { updated: beats.length };
+        }),
+
       suggestMetadata: protectedProcedure
         .input(z.object({ title: z.string().trim().min(1).max(160), genre: z.string().trim().max(80).optional(), bpm: z.number().int().min(30).max(300).optional(), musicalKey: z.string().trim().max(24).optional(), mood: z.string().trim().max(120).optional() }))
         .mutation(async ({ ctx, input }) => {
@@ -6475,6 +6516,21 @@ export const appRouter = router({
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
           await db.update(marketplaceBeats).set({ status: input.status }).where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id)));
           return { success: true };
+        }),
+
+      deleteBeat: protectedProcedure
+        .input(z.object({ id: z.number().int().positive() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [beat] = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
+            .where(and(eq(marketplaceBeats.id, input.id), eq(marketplaceBeats.producerId, ctx.user.id))).limit(1);
+          if (!beat) throw new TRPCError({ code: "NOT_FOUND", message: "Beat not found." });
+          const [sale] = await db.select({ id: beatSales.id }).from(beatSales).where(eq(beatSales.beatId, beat.id)).limit(1);
+          if (sale) throw new TRPCError({ code: "CONFLICT", message: "This beat has sales and cannot be permanently deleted. Archive it instead." });
+          await db.delete(beatLicenses).where(eq(beatLicenses.beatId, beat.id));
+          await db.delete(marketplaceBeats).where(eq(marketplaceBeats.id, beat.id));
+          return { success: true as const, id: beat.id };
         }),
 
       createProCheckout: protectedProcedure
