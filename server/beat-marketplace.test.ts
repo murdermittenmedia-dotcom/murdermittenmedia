@@ -302,7 +302,7 @@ describe("Beat Marketplace plan and licensing rules", () => {
     expect(profile).toContain("Beat Catalogue");
     expect(profile).toContain("trpc.beats.byProducer.useQuery");
     expect(market).toContain("Free Producer");
-    expect(market).toContain("Beat Pro · $9.99/month");
+    expect(market).toContain("Beat Pro · $10/month or $50/year");
     expect(market).toContain("AI listing wizard, cover discovery, and tagged client previews");
   });
 

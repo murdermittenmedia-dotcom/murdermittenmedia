@@ -98,7 +98,7 @@ import {
 } from "./rewards";
 import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
-import { BEAT_LICENSE_CODES, BEAT_PRO_MONTHLY_PRICE_CENTS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, createBeatLicenseTerms, parseBeatLicenseTerms } from "../shared/beat-marketplace";
+import { BEAT_LICENSE_CODES, BEAT_PRO_ANNUAL_PRICE_CENTS, BEAT_PRO_MONTHLY_PRICE_CENTS, BEAT_PRO_TRIAL_DAYS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, createBeatLicenseTerms, parseBeatLicenseTerms } from "../shared/beat-marketplace";
 import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger, updateBeatProducerSubscription } from "./beat-marketplace-service";
 import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
@@ -210,7 +210,7 @@ async function resolveBeatPreviewTag({
 async function requireBeatPro(userId: number, feature: string) {
   const plan = await getBeatProducerPlan(userId);
   if (!plan.isPro) {
-    throw new TRPCError({ code: "FORBIDDEN", message: `${feature} is available with Beat Pro ($9.99/month).` });
+    throw new TRPCError({ code: "FORBIDDEN", message: `${feature} is available with Beat Pro ($10/month or $50/year).` });
   }
   return plan;
 }
@@ -5834,8 +5834,8 @@ export const appRouter = router({
             .from(beatProTrialRedemptions).where(eq(beatProTrialRedemptions.userId, ctx.user.id)).limit(1);
           return {
             expiresAt: invite.expiresAt,
-            trialDays: 30,
-            monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS,
+            trialDays: BEAT_PRO_TRIAL_DAYS,
+            annualPriceCents: BEAT_PRO_ANNUAL_PRICE_CENTS,
             alreadyUsedByThisAccount: priorRedemption?.status === "redeemed",
           };
         }),
@@ -5880,10 +5880,10 @@ export const appRouter = router({
             metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id), beat_pro_trial_redemption_id: String(redemptionId) },
             payment_method_collection: "always",
             subscription_data: {
-              trial_period_days: 30,
+              trial_period_days: BEAT_PRO_TRIAL_DAYS,
               metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id), beat_pro_trial_invite_id: String(record.id), beat_pro_trial_redemption_id: String(redemptionId) },
             },
-            line_items: [{ price_data: { currency: "usd", product_data: { name: "Murder Mitten Beat Pro", description: "30 days included, then $9.99/month until canceled. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: BEAT_PRO_MONTHLY_PRICE_CENTS, recurring: { interval: "month" } }, quantity: 1 }],
+            line_items: [{ price_data: { currency: "usd", product_data: { name: "Murder Mitten Beat Pro Annual", description: "30 days included, then $50/year until canceled. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: BEAT_PRO_ANNUAL_PRICE_CENTS, recurring: { interval: "year" } }, quantity: 1 }],
             success_url: `${input.origin}/beats/producer?pro_trial_success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${input.origin}/beats/pro-invite/${record.token}?checkout_canceled=true`,
           });
@@ -6067,7 +6067,7 @@ export const appRouter = router({
             throw new TRPCError({ code: "FORBIDDEN", message: "Free producers can publish up to 10 beats each month. Upgrade to Beat Pro for unlimited uploads." });
           }
           if (!plan.isPro && input.previewTag.source !== "none") {
-            throw new TRPCError({ code: "FORBIDDEN", message: "Tagged audio previews are available with Beat Pro ($9.99/month)." });
+            throw new TRPCError({ code: "FORBIDDEN", message: "Tagged audio previews are available with Beat Pro ($10/month or $50/year)." });
           }
           if (input.replaceBeatId) {
             const [existingBeat] = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
@@ -6409,7 +6409,7 @@ export const appRouter = router({
         }),
 
       createProCheckout: protectedProcedure
-        .input(z.object({ origin: z.string().url() }))
+        .input(z.object({ origin: z.string().url(), interval: z.enum(["month", "year"]).default("month") }))
         .mutation(async ({ ctx, input }) => {
           const membership = await getActiveBeatProducerMembership(ctx.user.id);
           if (membership) return { alreadyActive: true as const, checkoutUrl: null as string | null };
@@ -6417,7 +6417,7 @@ export const appRouter = router({
           const session = await stripe.checkout.sessions.create({
             mode: "subscription", customer_email: ctx.user.email ?? undefined, client_reference_id: String(ctx.user.id),
             metadata: { kind: "beat_producer_pro", user_id: String(ctx.user.id) },
-            line_items: [{ price_data: { currency: "usd", product_data: { name: "Murder Mitten Beat Pro", description: "Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: BEAT_PRO_MONTHLY_PRICE_CENTS, recurring: { interval: "month" } }, quantity: 1 }],
+            line_items: [{ price_data: { currency: "usd", product_data: { name: input.interval === "year" ? "Murder Mitten Beat Pro Annual" : "Murder Mitten Beat Pro Monthly", description: input.interval === "year" ? "$50/year. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." : "$10/month. Unlimited Beat Marketplace uploads and 100% producer marketplace earnings." }, unit_amount: input.interval === "year" ? BEAT_PRO_ANNUAL_PRICE_CENTS : BEAT_PRO_MONTHLY_PRICE_CENTS, recurring: { interval: input.interval } }, quantity: 1 }],
             success_url: `${input.origin}/beats/producer?pro_success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${input.origin}/beats/producer?pro_canceled=true`,
           });
@@ -6464,7 +6464,7 @@ export const appRouter = router({
           const result = await db.insert(beatProTrialInvites).values({ token, recipientEmail: "shared-link", createdBy: ctx.user.id, expiresAt });
           const inviteId = Number((result as any)[0]?.insertId ?? (result as any).insertId);
           const inviteLink = `${input.origin}/beats/pro-invite/${token}`;
-          return { id: inviteId, inviteLink, expiresAt, trialDays: 30, monthlyPriceCents: BEAT_PRO_MONTHLY_PRICE_CENTS };
+          return { id: inviteId, inviteLink, expiresAt, trialDays: BEAT_PRO_TRIAL_DAYS, annualPriceCents: BEAT_PRO_ANNUAL_PRICE_CENTS };
         }),
 
       revokeProducerProTrialInvite: adminProcedure

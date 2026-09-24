@@ -383,7 +383,7 @@ function UsersTab() {
       <section className="mb-6 border border-yellow-500/35 bg-yellow-500/[.045] p-4">
         <p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Beat Pro invitation</p>
         <h2 className="mt-1 font-['Anton'] text-2xl uppercase text-white">Send 30 days of Beat Pro</h2>
-        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/50">Create one link and send it to anyone. Each account can use a Beat Pro trial only once. Stripe collects a payment method, gives the recipient 30 days of Beat Pro, then begins the $9.99 monthly plan unless they cancel from their producer account.</p>
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/50">Create one link and send it to anyone. Each account can use a Beat Pro trial only once. Stripe collects a payment method, gives the recipient 30 days of Beat Pro, then begins the $50 annual plan unless they cancel from their producer account.</p>
         <div className="mt-4">
           <Button className="bg-yellow-400 text-black hover:bg-yellow-300" disabled={createProducerProTrialInvite.isPending} onClick={() => createProducerProTrialInvite.mutate({ origin: window.location.origin })}>
             <Crown className="mr-2 h-4 w-4" />{createProducerProTrialInvite.isPending ? "Creating…" : "Create shareable trial link"}

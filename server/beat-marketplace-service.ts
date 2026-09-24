@@ -167,7 +167,7 @@ export async function fulfillBeatProducerSubscription(session: Stripe.Checkout.S
     type: subscriptionStatus === "trialing" ? "beat_pro_trial_started" : "beat_pro_active",
     title: subscriptionStatus === "trialing" ? "Your 30-day Beat Pro trial started" : "Beat Pro is active",
     body: subscriptionStatus === "trialing"
-      ? "Your card is saved and will begin the $9.99 monthly Beat Pro plan after your trial unless you cancel before then. Add payment destinations now."
+      ? "Your card is saved and will begin the $10 monthly or $50 annual Beat Pro plan after your trial unless you cancel before then. Add payment destinations now."
       : "Add your direct payment destinations so buyers can pay you from every beat checkout page.",
     link: "/beats/producer",
   });
