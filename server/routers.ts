@@ -3897,7 +3897,9 @@ export const appRouter = router({
         if (stream.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         const now = new Date();
         await db.update(liveStreams).set({ status: "ended", endedAt: now }).where(eq(liveStreams.id, input.streamId));
-        await deleteRoom(stream.livekitRoomName);
+        await deleteRoom(stream.livekitRoomName).catch((e: unknown) => {
+          console.warn('[live.end] Room delete failed (non-fatal; stream is already ended in the database):', e);
+        });
         // Always delete the RTMP ingress to free up the LiveKit ingress quota
         if ((stream as any).ingressId) {
           await deleteIngress((stream as any).ingressId).catch((e: unknown) => {

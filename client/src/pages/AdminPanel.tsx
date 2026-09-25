@@ -1277,8 +1277,8 @@ function LiveCookUpAdminTab() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const endStreamMutation = trpc.admin.adminMarkPayoutSent.useMutation({
-    onSuccess: () => { toast.success("Stream marked as paid out"); refetchStreams(); },
+  const endStreamMutation = trpc.live.end.useMutation({
+    onSuccess: () => { toast.success("Broadcast ended."); refetchStreams(); },
     onError: (err: any) => toast.error(err.message),
   });
 
