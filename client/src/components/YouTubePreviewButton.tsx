@@ -19,9 +19,20 @@ export function YouTubePreviewButton({ videoId, title, className = "" }: { video
         if (data.event === "onStateChange" && data.info === 0) setIsPlaying(false);
       } catch { /* Ignore non-player messages. */ }
     };
+    const onOtherPreview = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      if (detail !== videoId && isPlaying) {
+        send("pauseVideo");
+        setIsPlaying(false);
+      }
+    };
     window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [loaded]);
+    window.addEventListener("murder-mitten-youtube-preview", onOtherPreview);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      window.removeEventListener("murder-mitten-youtube-preview", onOtherPreview);
+    };
+  }, [loaded, isPlaying, videoId]);
 
   const toggle = () => {
     if (!loaded) return;
@@ -29,6 +40,7 @@ export function YouTubePreviewButton({ videoId, title, className = "" }: { video
       send("pauseVideo");
       setIsPlaying(false);
     } else {
+      window.dispatchEvent(new CustomEvent("murder-mitten-youtube-preview", { detail: videoId }));
       send("playVideo");
       setIsPlaying(true);
     }

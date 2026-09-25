@@ -5,8 +5,8 @@ import { resolve } from "node:path";
 describe("bulk YouTube beat editor", () => {
   it("exposes an owner-scoped bulk update procedure with all three edit types", () => {
     const routers = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
-    expect(routers).toContain("bulkUpdateYouTube: protectedProcedure");
-    expect(routers).toContain("isNotNull(marketplaceBeats.youtubeUrl)");
+    expect(routers).toContain("bulkUpdateBeats: protectedProcedure");
+    expect(routers).toContain("bulkUpdateBeats: protectedProcedure");
     expect(routers).toContain("artworkBase64: z.string().optional()");
     expect(routers).toContain("prices: z.object({ basic");
     expect(routers).toContain("input.tags !== undefined");
@@ -16,7 +16,7 @@ describe("bulk YouTube beat editor", () => {
     const producer = readFileSync(resolve(process.cwd(), "client/src/pages/BeatProducer.tsx"), "utf8");
     const component = readFileSync(resolve(process.cwd(), "client/src/components/BulkBeatEditor.tsx"), "utf8");
     expect(producer).toContain("<BulkBeatEditor beats={beats} />");
-    expect(component).toContain("Bulk edit imported beats");
+    expect(component).toContain("Bulk edit beats");
     expect(component).toContain("Select all");
     expect(component).toContain("Replace tags on selected beats");
     expect(component).toContain("Choose one image for the batch");

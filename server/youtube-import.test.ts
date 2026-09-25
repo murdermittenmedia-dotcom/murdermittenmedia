@@ -33,6 +33,8 @@ describe("YouTube beat import", () => {
     expect(videos).toHaveLength(2);
     expect(videos[0]?.title).toBe("First & Latest");
     expect(videos[1]?.canonicalUrl).toContain("9bZkp7q19f0");
+    expect(videos[0]?.thumbnailUrl).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
+    expect(videos[1]?.thumbnailUrl).toBe("https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg");
   });
   it("allows rendered channel uploads when YouTube's legacy RSS feed is unavailable", () => {
     const importer = readFileSync(resolve(process.cwd(), "server/youtube-import.ts"), "utf8");

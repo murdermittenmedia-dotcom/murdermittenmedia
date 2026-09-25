@@ -8,7 +8,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { eq, and, inArray, desc, asc, ne, gte, lt, sql, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, ne, gte, lt, sql } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { validateFreeShippingPromoCode } from "./promo-codes";
@@ -80,7 +80,7 @@ import {
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatProTrialRedemptions, beatPayoutRequests, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatProTrialRedemptions, beatPayoutRequests, beatWalletAdjustments, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -6328,7 +6328,7 @@ export const appRouter = router({
           return { success: true, id: beat.id, slug: beat.slug };
         }),
 
-      bulkUpdateYouTube: protectedProcedure
+      bulkUpdateBeats: protectedProcedure
         .input(z.object({
           ids: z.array(z.number().int().positive()).min(1).max(50),
           tags: z.string().trim().max(320).optional(),
@@ -6349,7 +6349,7 @@ export const appRouter = router({
             artworkUrl = (await storagePut(`beat-marketplace/${ctx.user.id}/artwork/${Date.now()}-bulk-cover.${extension}`, artworkBuffer, input.artworkMimeType)).url;
           }
           const beats = await db.select({ id: marketplaceBeats.id }).from(marketplaceBeats)
-            .where(and(inArray(marketplaceBeats.id, input.ids), eq(marketplaceBeats.producerId, ctx.user.id), isNotNull(marketplaceBeats.youtubeUrl)));
+            .where(and(inArray(marketplaceBeats.id, input.ids), eq(marketplaceBeats.producerId, ctx.user.id)));
           if (beats.length !== input.ids.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Select only your YouTube-imported beats." });
           if (input.prices?.exclusive === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Exclusive licenses cannot be free." });
           const fields: Record<string, unknown> = {};
@@ -6710,6 +6710,17 @@ export const appRouter = router({
           await db.update(beatPayoutRequests).set({ status: input.status, adminNote: input.adminNote ?? null, processedAt: new Date(), processedBy: ctx.user.id })
             .where(eq(beatPayoutRequests.id, input.id));
           return { success: true };
+        }),
+      adjustProducerWallet: adminProcedure
+        .input(z.object({ producerId: z.number().int().positive(), amountCents: z.number().int().min(-10_000_000).max(10_000_000).refine((value) => value !== 0), reason: z.string().trim().min(3).max(512) }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+          const [producer] = await db.select({ id: users.id }).from(users).where(eq(users.id, input.producerId)).limit(1);
+          if (!producer) throw new TRPCError({ code: "NOT_FOUND", message: "Producer account not found." });
+          await db.insert(beatWalletAdjustments).values({ producerId: input.producerId, amountCents: input.amountCents, reason: input.reason, adminId: ctx.user.id });
+          await db.insert(notifications).values({ userId: input.producerId, type: "beat_wallet_adjustment", title: "Beat wallet updated", body: `${input.amountCents >= 0 ? "A credit" : "A debit"} of $${Math.abs(input.amountCents / 100).toFixed(2)} was applied to your producer wallet.`, link: "/beats/producer" });
+          return { success: true as const };
         }),
     }),
 

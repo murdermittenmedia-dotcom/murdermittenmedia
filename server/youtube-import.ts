@@ -79,19 +79,26 @@ function decodeYouTubeText(value: string) {
 export function parseYouTubeChannelPageVideos(html: string): YouTubeChannelVideo[] {
   const videos: YouTubeChannelVideo[] = [];
   const seen = new Set<string>();
-  const pattern = /videoId":"([A-Za-z0-9_-]{11})"[\s\S]{0,12000}?metadata":\{"lockupMetadataViewModel":\{"title":\{"content":"([^"]+)/g;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(html))) {
+  // Parse each rendered card independently. The previous 12k-character
+  // look-ahead could pair one card's video ID with the next card's title.
+  const matches = Array.from(html.matchAll(/videoId":"([A-Za-z0-9_-]{11})"/g));
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
     const videoId = match[1];
     if (seen.has(videoId)) continue;
-    seen.add(videoId);
-    const title = decodeYouTubeText(match[2]).slice(0, 160);
+    const cardEnd = matches[index + 1]?.index ?? html.length;
+    const card = html.slice(match.index ?? 0, cardEnd);
+    const titleMatch = card.match(/(?:lockupMetadataViewModel|videoDetails)[\s\S]*?title(?:":\{|":)\{"content":"([^"]+)/);
+    const title = titleMatch ? decodeYouTubeText(titleMatch[1]).slice(0, 512) : "";
     if (!title) continue;
+    seen.add(videoId);
     videos.push({
       videoId,
       canonicalUrl: `https://www.youtube.com/watch?v=${videoId}`,
       title,
       creator: "YouTube channel",
+      // Always derive artwork from the same card's video ID. YouTube's page
+      // payload also contains playback URLs, avatars, and unrelated images.
       thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
       publishedAt: null,

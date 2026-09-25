@@ -6,6 +6,7 @@ import {
   beatProducerMemberships,
   beatProTrialRedemptions,
   beatPayoutRequests,
+  beatWalletAdjustments,
   beatSales,
   marketplaceBeats,
   notifications,
@@ -60,9 +61,10 @@ export async function getProducerSettlementLedger(producerId: number, now = new 
     eq(beatSales.producerEarningsStatus, "pending"),
     lte(beatSales.producerEarningsAvailableAt, now),
   ));
-  const [sales, payoutRequests] = await Promise.all([
+  const [sales, payoutRequests, adjustments] = await Promise.all([
     db.select().from(beatSales).where(eq(beatSales.producerId, producerId)),
     db.select().from(beatPayoutRequests).where(eq(beatPayoutRequests.producerId, producerId)),
+    db.select().from(beatWalletAdjustments).where(eq(beatWalletAdjustments.producerId, producerId)),
   ]);
   const paidSales = sales.filter((sale) => sale.status === "paid");
   // Producer-direct payments are already in the producer's external wallet.
@@ -71,7 +73,8 @@ export async function getProducerSettlementLedger(producerId: number, now = new 
   const pendingSales = paidSales.filter((sale) => !sale.stripeCheckoutSessionId.startsWith("direct_") && (!sale.producerEarningsAvailableAt || sale.producerEarningsAvailableAt.getTime() > now.getTime()));
   const payoutReservations = payoutRequests.filter((request) => inArrayValue(request.status, ["pending", "approved", "paid"]));
   const reservedPayoutCents = payoutReservations.reduce((sum, request) => sum + request.amountCents, 0);
-  const availableGrossCents = settledSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0);
+  const adjustmentCents = adjustments.reduce((sum, adjustment) => sum + adjustment.amountCents, 0);
+  const availableGrossCents = settledSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0) + adjustmentCents;
   const nextAvailableAt = pendingSales.reduce<Date | null>((next, sale) => {
     if (!sale.producerEarningsAvailableAt) return next;
     if (!next || sale.producerEarningsAvailableAt.getTime() < next.getTime()) return sale.producerEarningsAvailableAt;
@@ -79,7 +82,7 @@ export async function getProducerSettlementLedger(producerId: number, now = new 
   }, null);
   return {
     sales,
-    totalEarnedCents: paidSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0),
+    totalEarnedCents: paidSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0) + adjustmentCents,
     pendingCents: pendingSales.reduce((sum, sale) => sum + sale.producerEarningsCents, 0),
     availableGrossCents,
     availableCents: Math.max(0, availableGrossCents - reservedPayoutCents),

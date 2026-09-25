@@ -1399,6 +1399,17 @@ export const beatPayoutRequests = mysqlTable("beat_payout_requests", {
 export type BeatPayoutRequest = typeof beatPayoutRequests.$inferSelect;
 export type InsertBeatPayoutRequest = typeof beatPayoutRequests.$inferInsert;
 
+export const beatWalletAdjustments = mysqlTable("beat_wallet_adjustments", {
+  id: int("id").autoincrement().primaryKey(),
+  producerId: int("producerId").notNull(),
+  amountCents: int("amountCents").notNull(),
+  reason: varchar("reason", { length: 512 }).notNull(),
+  adminId: int("adminId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type BeatWalletAdjustment = typeof beatWalletAdjustments.$inferSelect;
+export type InsertBeatWalletAdjustment = typeof beatWalletAdjustments.$inferInsert;
+
 // Idempotency: prevent duplicate webhook processing
 export const processedStripeEvents = mysqlTable("processed_stripe_events", {
   stripeEventId: varchar("stripeEventId", { length: 256 }).primaryKey(),

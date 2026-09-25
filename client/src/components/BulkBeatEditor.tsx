@@ -16,13 +16,13 @@ async function base64For(file: File) {
 }
 
 export function BulkBeatEditor({ beats }: { beats: Beat[] }) {
-  const imported = useMemo(() => beats.filter((beat) => !!beat.youtubeUrl), [beats]);
+  const imported = useMemo(() => beats, [beats]);
   const [selected, setSelected] = useState<number[]>([]);
   const [applyTags, setApplyTags] = useState(false);
   const [tags, setTags] = useState("");
   const [prices, setPrices] = useState<Record<PriceCode, string>>({ basic: "", premium: "", exclusive: "" });
   const [cover, setCover] = useState<File | null>(null);
-  const update = trpc.beats.producer.bulkUpdateYouTube.useMutation({
+  const update = trpc.beats.producer.bulkUpdateBeats.useMutation({
     onSuccess: (result) => {
       toast.success(`${result.updated} imported beat${result.updated === 1 ? "" : "s"} updated.`);
       setSelected([]); setApplyTags(false); setTags(""); setPrices({ basic: "", premium: "", exclusive: "" }); setCover(null);
@@ -46,7 +46,7 @@ export function BulkBeatEditor({ beats }: { beats: Beat[] }) {
     await Promise.all([utils.beats.producer.mine.invalidate(), utils.beats.invalidate()]);
   };
   return <section className="border border-yellow-500/30 bg-yellow-500/[.04] p-5">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Bulk edit imported beats</p><h3 className="mt-1 font-['Anton'] text-2xl uppercase">Update the batch</h3><p className="mt-1 text-xs leading-relaxed text-white/50">Select YouTube-imported listings, then apply new prices, tags, or one cover image to all of them.</p></div><button type="button" onClick={() => setSelected(allSelected ? [] : imported.map((beat) => beat.id))} className="border border-yellow-400/40 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-yellow-200 hover:bg-yellow-400 hover:text-black">{allSelected ? "Clear all" : "Select all"}</button></div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Bulk edit beats</p><h3 className="mt-1 font-['Anton'] text-2xl uppercase">Update the batch</h3><p className="mt-1 text-xs leading-relaxed text-white/50">Select any listings, then apply new prices, tags, or one cover image to all of them.</p></div><button type="button" onClick={() => setSelected(allSelected ? [] : imported.map((beat) => beat.id))} className="border border-yellow-400/40 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-yellow-200 hover:bg-yellow-400 hover:text-black">{allSelected ? "Clear all" : "Select all"}</button></div>
     <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{imported.map((beat) => <label key={beat.id} className={`flex cursor-pointer items-center gap-3 border p-3 transition ${selected.includes(beat.id) ? "border-yellow-400 bg-yellow-400/10" : "border-white/10 bg-black/20 hover:border-white/25"}`}><input type="checkbox" checked={selected.includes(beat.id)} onChange={() => toggle(beat.id)} className="h-4 w-4 accent-yellow-400" />{beat.artworkUrl ? <img src={beat.artworkUrl} alt="" className="h-10 w-10 shrink-0 object-cover" /> : <div className="grid h-10 w-10 shrink-0 place-items-center bg-white/10"><ImagePlus className="h-4 w-4 text-white/35" /></div>}<span className="min-w-0 truncate text-xs font-bold text-white">{beat.title}</span></label>)}</div>
     {!!selected.length && <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_1fr_1fr_auto]">
       <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-white/45">Prices · leave blank to keep</span><div className="space-y-2">{(["basic", "premium", "exclusive"] as PriceCode[]).map((code) => <input key={code} type="number" min="0" step="0.01" value={prices[code]} onChange={(event) => setPrices((current) => ({ ...current, [code]: event.target.value }))} placeholder={`${code} price`} className="w-full border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-yellow-400" />)}</div></label>
