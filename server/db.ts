@@ -107,8 +107,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
           .limit(1);
         const { notifications } = await import("../drizzle/schema");
         const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
-        const displayName = newUser?.artistName || newUser?.name || "A new member";
-        void createActivityEvent("community", `${displayName} joined the Mitten`, { href: newUser?.id ? `/profile/${newUser.id}` : "/explore", profileId: newUser?.id ?? null });
+        const displayName = newUser?.name || newUser?.artistName || "A new member";
+        void createActivityEvent("community", `${displayName} joined the Mitten`, { href: newUser?.id ? `/profile/${newUser.id}` : "/explore", profileId: newUser?.id ?? null, displayName });
         for (const admin of admins) {
           if (admin.id === newUser?.id) continue;
           await db.insert(notifications).values({
@@ -3018,15 +3018,28 @@ export async function getPublicActivityFeed(limit = 8): Promise<PublicActivityEv
     .limit(limit);
 
   if (storedEvents.length > 0) {
+    const memberIds = storedEvents.flatMap((event) => {
+      try {
+        const metadata = event.metadata ? JSON.parse(event.metadata) as Record<string, unknown> : {};
+        return typeof metadata.profileId === "number" ? [metadata.profileId] : [];
+      } catch { return []; }
+    });
+    const memberRows = memberIds.length > 0
+      ? await db.select({ id: users.id, name: users.name, artistName: users.artistName }).from(users).where(inArray(users.id, memberIds))
+      : [];
+    const memberMap = new Map(memberRows.map((member) => [member.id, member]));
     return storedEvents.map((event) => {
       let metadata: Record<string, unknown> = {};
       try { metadata = event.metadata ? JSON.parse(event.metadata) : {}; } catch {}
+      const profileId = typeof metadata.profileId === "number" ? metadata.profileId : null;
+      const member = profileId ? memberMap.get(profileId) : null;
+      const displayName = member?.name || member?.artistName;
       return {
         id: `event-${event.id}`,
         kind: event.type === "battle" ? "battle" : event.type === "community" ? "community" : "review",
-        title: event.message,
-        detail: typeof metadata.detail === "string" ? metadata.detail : metadata.profileId ? "New member in the Mitten" : event.metadata ?? "Latest activity from Murder Mitten Media",
-        href: typeof metadata.href === "string" ? metadata.href : event.type === "battle" ? "/music-wars" : event.type === "community" ? "/forum" : "/review",
+        title: displayName && profileId ? `${displayName} joined the Mitten` : event.message,
+        detail: typeof metadata.detail === "string" ? metadata.detail : profileId ? "New member in the Mitten" : event.metadata ?? "Latest activity from Murder Mitten Media",
+        href: profileId ? `/profile/${profileId}` : typeof metadata.href === "string" ? metadata.href : event.type === "battle" ? "/music-wars" : event.type === "community" ? "/forum" : "/review",
         createdAt: event.createdAt,
       };
     });
