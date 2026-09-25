@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { trpc } from "@/lib/trpc";
-import { ExternalLink, Heart, MessageCircle, RefreshCw, Instagram } from "lucide-react";
+import { ExternalLink, Heart, MessageCircle, RefreshCw, Instagram, ArrowUpRight, BookOpen } from "lucide-react";
 import { selectNewsPosts } from "@shared/news-feed";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -214,6 +214,9 @@ export default function News() {
       refetchOnWindowFocus: false,
     }
   );
+  const { data: articles = [], isLoading: articlesLoading } = trpc.news.getArticles.useQuery(undefined, {
+    staleTime: 60 * 1000,
+  });
 
   // Use live posts when available; never present stale curated posts as current.
   const allPosts: NewsPost[] = selectNewsPosts(
@@ -278,6 +281,32 @@ export default function News() {
             </div>
           </div>
         </div>
+
+        {/* Admin-published editorial desk */}
+        {(articlesLoading || articles.length > 0) && (
+          <section className="mb-10 border-y border-red-600/20 bg-gradient-to-br from-red-950/20 via-white/[0.02] to-transparent py-6">
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div>
+                <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-red-400"><BookOpen className="h-3.5 w-3.5" /> Murder Mitten Editorial</div>
+                <h2 className="font-['Anton'] text-3xl uppercase tracking-wide">Featured <span className="text-red-600">Stories</span></h2>
+              </div>
+              <span className="text-xs uppercase tracking-widest text-white/30">Original articles</span>
+            </div>
+            {articlesLoading ? <div className="h-28 animate-pulse bg-white/5" /> : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {articles.slice(0, 4).map(article => (
+                  <a key={article.id} href={`/news/${article.slug}`} className="group flex min-h-32 overflow-hidden border border-white/10 bg-black/30 transition hover:border-red-600/60">
+                    {article.thumbnailUrl && <img src={article.thumbnailUrl} alt="" className="w-32 shrink-0 object-cover transition duration-500 group-hover:scale-105" />}
+                    <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
+                      <div><div className="mb-2 text-[10px] uppercase tracking-widest text-red-400">{article.mediaType === "ARTICLE" ? "Feature" : "News"}</div><h3 className="line-clamp-2 font-['Anton'] text-xl uppercase leading-tight text-white">{article.title}</h3><p className="mt-2 line-clamp-2 text-xs leading-5 text-white/45">{article.caption}</p></div>
+                      <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-white/35 group-hover:text-red-400">Read story <ArrowUpRight className="h-3 w-3" /></span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Search + Filter bar */}
         <div className="flex items-center gap-3 mb-6 flex-wrap">

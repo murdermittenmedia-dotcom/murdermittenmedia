@@ -42,6 +42,7 @@ import { PWAInstallBanner } from "./components/PWAInstallBanner";
 import FireOrTrash from "./pages/FireOrTrash";
 import Wallet from "./pages/Wallet";
 import News from "./pages/News";
+import ArticleReader from "./pages/ArticleReader";
 import Notifications from "./pages/Notifications";
 import FireVoteWallet from "./pages/FireVoteWallet";
 import CreatorWallet from "./pages/CreatorWallet";
@@ -124,6 +125,7 @@ function Router() {
       <Route path={"/fire-or-trash"} component={FireOrTrash} />
       <Route path={"/cashout"} component={Wallet} />
       <Route path={"/wallet"} component={Wallet} />
+      <Route path={"/news/:slug"} component={ArticleReader} />
       <Route path={"/news"} component={News} />
       <Route path={"/notifications"} component={Notifications} />
       <Route path={"/fire-vote-wallet"} component={FireVoteWallet} />

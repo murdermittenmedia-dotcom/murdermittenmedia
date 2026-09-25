@@ -864,7 +864,7 @@ function AnalyticsTab() {
 // ─── Site Settings Tab ────────────────────────────────────────
 function SiteSettingsTab() {
   const utils = trpc.useUtils();
-  const [activeSubTab, setActiveSubTab] = useState<"settings" | "aow">("settings");
+  const [activeSubTab, setActiveSubTab] = useState<"settings" | "aow" | "articles">("settings");
 
   // Settings
   const { data: settings, isLoading: settingsLoading } = trpc.admin.getSettings.useQuery();
@@ -879,6 +879,28 @@ function SiteSettingsTab() {
     onSuccess: () => { utils.admin.getArtistsOfWeek.invalidate(); toast.success("Artist of the Week updated!"); },
     onError: (e) => toast.error(e.message),
   });
+
+  const { data: articles = [], isLoading: articlesLoading } = trpc.admin.listArticles.useQuery(undefined, { enabled: activeSubTab === "articles" });
+  const [editingArticleId, setEditingArticleId] = useState<number | undefined>();
+  const [articleForm, setArticleForm] = useState({ title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
+  const saveArticle = trpc.admin.saveArticle.useMutation({
+    onSuccess: () => { utils.admin.listArticles.invalidate(); toast.success("Article saved"); resetArticleForm(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteArticle = trpc.admin.deleteArticle.useMutation({
+    onSuccess: () => { utils.admin.listArticles.invalidate(); toast.success("Article deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
+  function resetArticleForm() {
+    setEditingArticleId(undefined);
+    setArticleForm({ title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
+  }
+  function editArticle(article: NonNullable<typeof articles>[number]) {
+    let images: string[] = [];
+    try { images = article.referenceImages ? JSON.parse(article.referenceImages) : []; } catch { images = []; }
+    setEditingArticleId(article.id);
+    setArticleForm({ title: article.title, caption: article.caption, content: article.content ?? "", thumbnailUrl: article.thumbnailUrl ?? "", referenceImages: images.join("\n"), keywords: article.keywords ?? "", seoTitle: article.seoTitle ?? "", seoDescription: article.seoDescription ?? "", isPublished: article.isPublished });
+  }
 
   const [aowForm, setAowForm] = useState({
     artistName: "", bio: "", imageUrl: "", instagramUrl: "",
@@ -923,6 +945,12 @@ function SiteSettingsTab() {
           className={`px-4 py-2 text-sm font-semibold uppercase tracking-widest transition-colors ${activeSubTab === "aow" ? "bg-red-600 text-white" : "border border-white/20 text-white/50 hover:text-white"}`}
         >
           Artist of the Week
+        </button>
+        <button
+          onClick={() => setActiveSubTab("articles")}
+          className={`px-4 py-2 text-sm font-semibold uppercase tracking-widest transition-colors ${activeSubTab === "articles" ? "bg-red-600 text-white" : "border border-white/20 text-white/50 hover:text-white"}`}
+        >
+          Editorial Desk
         </button>
       </div>
 
@@ -971,6 +999,62 @@ function SiteSettingsTab() {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {activeSubTab === "articles" && (
+        <div className="space-y-6">
+          <div className="border border-red-600/30 bg-red-600/5 rounded-lg p-5">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <h3 className="text-white font-semibold">{editingArticleId ? "Edit article" : "Publish a new article"}</h3>
+                <p className="mt-1 text-xs leading-5 text-white/40">Paste a full story, use Markdown-style headings and links, then add supporting image URLs. The public page turns it into a clean editorial reading experience.</p>
+              </div>
+              {editingArticleId && <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={resetArticleForm}>New article</Button>}
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Headline *</label>
+                <Input value={articleForm.title} onChange={e => setArticleForm(prev => ({ ...prev, title: e.target.value }))} placeholder="Headline that earns the click" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+              </div>
+              <div>
+                <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Deck / short introduction</label>
+                <Textarea value={articleForm.caption} onChange={e => setArticleForm(prev => ({ ...prev, caption: e.target.value }))} placeholder="A sharp one or two sentence setup..." rows={2} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+              </div>
+              <div>
+                <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Article body</label>
+                <Textarea value={articleForm.content} onChange={e => setArticleForm(prev => ({ ...prev, content: e.target.value }))} placeholder={'Paste the full article here...\n\nUse ## SECTION HEADINGS, > pull quotes, - bullet points, [hyperlinks](https://example.com), and ![image caption](https://image-url.com/photo.jpg)'} rows={15} className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono text-sm leading-6" />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Cover image URL</label>
+                  <Input value={articleForm.thumbnailUrl} onChange={e => setArticleForm(prev => ({ ...prev, thumbnailUrl: e.target.value }))} placeholder="https://..." className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Reference images (one URL per line)</label>
+                  <Textarea value={articleForm.referenceImages} onChange={e => setArticleForm(prev => ({ ...prev, referenceImages: e.target.value }))} placeholder="https://image-one.jpg\nhttps://image-two.jpg" rows={3} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Keywords</label>
+                  <Input value={articleForm.keywords} onChange={e => setArticleForm(prev => ({ ...prev, keywords: e.target.value }))} placeholder="detroit rap, michigan music, interview" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">SEO title</label>
+                  <Input value={articleForm.seoTitle} onChange={e => setArticleForm(prev => ({ ...prev, seoTitle: e.target.value }))} placeholder="Optional search title" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">SEO description</label>
+                  <Textarea value={articleForm.seoDescription} onChange={e => setArticleForm(prev => ({ ...prev, seoDescription: e.target.value }))} placeholder="Optional search description" rows={2} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
+              </div>
+              <label className="flex items-center gap-3 text-sm text-white/65"><input type="checkbox" checked={articleForm.isPublished} onChange={e => setArticleForm(prev => ({ ...prev, isPublished: e.target.checked }))} className="accent-red-600" /> Publish immediately</label>
+              <Button className="bg-red-600 hover:bg-red-700" disabled={!articleForm.title.trim() || saveArticle.isPending} onClick={() => saveArticle.mutate({ id: editingArticleId, ...articleForm, referenceImages: articleForm.referenceImages.split(/\r?\n/).map(url => url.trim()).filter(url => { try { new URL(url); return true; } catch { return false; } }) })}>{saveArticle.isPending ? "Saving..." : editingArticleId ? "Save changes" : "Publish article"}</Button>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-white/50 text-xs uppercase tracking-widest mb-3">Published and draft articles</h3>
+            {articlesLoading ? <div className="py-8 text-center text-white/30">Loading editorial desk...</div> : articles.length === 0 ? <div className="border border-white/10 p-8 text-center text-white/30">No articles yet.</div> : <div className="space-y-2">{articles.map(article => <div key={article.id} className="flex items-center gap-3 border border-white/10 bg-white/[0.02] rounded-lg p-3">{article.thumbnailUrl ? <img src={article.thumbnailUrl} alt="" className="h-12 w-16 object-cover" /> : <div className="h-12 w-16 bg-white/5" />}<div className="min-w-0 flex-1"><div className="truncate text-white font-semibold">{article.title}</div><div className="text-xs text-white/35">{article.isPublished ? "Published" : "Draft"} · /news/{article.slug}</div></div><Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={() => editArticle(article)}>Edit</Button><Button size="sm" variant="outline" className="border-red-600/30 text-red-400" onClick={() => { if (window.confirm("Delete this article?")) deleteArticle.mutate({ id: article.id }); }}>Delete</Button></div>)}</div>}
+          </div>
         </div>
       )}
 

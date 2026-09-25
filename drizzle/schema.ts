@@ -1491,6 +1491,7 @@ export const articles = mysqlTable("articles", {
   slug: varchar("slug", { length: 512 }).notNull().unique(), // URL-friendly slug
   caption: text("caption").notNull(), // Original Instagram caption
   content: text("content"), // Expanded article content
+  referenceImages: text("referenceImages"), // JSON array of supporting image URLs
   thumbnailUrl: varchar("thumbnailUrl", { length: 512 }), // AI-generated or Instagram image
   instagramImageUrl: varchar("instagramImageUrl", { length: 512 }), // Original Instagram image
   mediaType: varchar("mediaType", { length: 32 }), // IMAGE, VIDEO, CAROUSEL_ALBUM

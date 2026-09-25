@@ -79,8 +79,9 @@ import {
   createShopProduct, updateShopProduct, softDeleteShopProduct,
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
+  getAllArticles, getArticleBySlug, getArticleById, generateSlug,
 } from "./db";
-import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatProTrialRedemptions, beatPayoutRequests, beatWalletAdjustments, beatProducerDirectPaymentMethods, beatDirectPayments } from "../drizzle/schema";
+import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatProTrialRedemptions, beatPayoutRequests, beatWalletAdjustments, beatProducerDirectPaymentMethods, beatDirectPayments, articles } from "../drizzle/schema";
 import {
   generateRoomName, generateStreamerToken, generateViewerToken,
   deleteRoom, getRoomParticipantCount,
@@ -2797,6 +2798,65 @@ export const appRouter = router({
       return getAdminAnalytics();
     }),
 
+    // Editorial news desk — admins can paste, format, illustrate, and publish articles.
+    listArticles: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      return db.select().from(articles).orderBy(desc(articles.updatedAt));
+    }),
+    saveArticle: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        title: z.string().trim().min(1).max(512),
+        caption: z.string().trim().max(10000).default(""),
+        content: z.string().trim().max(200000).default(""),
+        thumbnailUrl: z.string().trim().max(512).default(""),
+        referenceImages: z.array(z.string().trim().url()).max(12).default([]),
+        keywords: z.string().trim().max(5000).default(""),
+        seoTitle: z.string().trim().max(160).default(""),
+        seoDescription: z.string().trim().max(160).default(""),
+        isPublished: z.boolean().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const values = {
+          title: input.title,
+          caption: input.caption || input.title,
+          content: input.content || null,
+          referenceImages: input.referenceImages.length ? JSON.stringify(input.referenceImages) : null,
+          thumbnailUrl: input.thumbnailUrl || null,
+          keywords: input.keywords || null,
+          seoTitle: input.seoTitle || input.title.slice(0, 160),
+          seoDescription: input.seoDescription || (input.caption || input.title).slice(0, 160),
+          isPublished: input.isPublished,
+          publishedAt: input.isPublished ? new Date() : null,
+          updatedAt: new Date(),
+        };
+        if (input.id) {
+          await db.update(articles).set(values).where(eq(articles.id, input.id));
+          return { id: input.id, slug: (await getArticleBySlug((await getArticleById(input.id))?.slug ?? ""))?.slug ?? null };
+        }
+        const slug = await generateSlug(input.title);
+        const instagramPostId = `manual-${Date.now()}-${randomBytes(4).toString("hex")}`;
+        const result = await db.insert(articles).values({
+          ...values,
+          instagramPostId,
+          slug,
+          mediaType: "ARTICLE",
+          publishedAt: input.isPublished ? new Date() : null,
+        });
+        return { id: Number((result as any)[0]?.insertId ?? 0), slug };
+      }),
+    deleteArticle: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        await db.delete(articles).where(eq(articles.id, input.id));
+        return { success: true };
+      }),
+
     // User management — paginated list with server-side search
     listUsers: adminProcedure
       .input(z.object({
@@ -5277,6 +5337,10 @@ export const appRouter = router({
         commentsCount: post.comments,
       }));
     }),
+    getArticles: publicProcedure.query(async () => getAllArticles()),
+    getArticle: publicProcedure
+      .input(z.object({ slug: z.string().min(1).max(512) }))
+      .query(async ({ input }) => getArticleBySlug(input.slug)),
   }),
 
   // Stripe payment integration

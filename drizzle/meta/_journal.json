@@ -463,6 +463,13 @@
       "when": 1790355589082,
       "tag": "0065_nappy_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1790377963369,
+      "tag": "0066_funny_silhouette",
+      "breakpoints": true
     }
   ]
 }
