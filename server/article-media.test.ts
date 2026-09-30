@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizeArticleCatalogLinks } from "./article-media";
+import { parsePastedArticleLinks } from "@shared/article-links";
 
 describe("article catalog media", () => {
   it("normalizes Spotify, Apple Music, and YouTube links into safe browser embeds", () => {
@@ -38,5 +39,37 @@ describe("article catalog media", () => {
     expect(links[1]).toMatchObject({ platform: "soundcloud", category: "player", label: "Latest Release" });
     expect(links[2]).toMatchObject({ platform: "audiomack", category: "link", label: "Audiomack" });
     expect(links[3]).toMatchObject({ platform: "website", category: "link", label: "Official Website" });
+  });
+
+  it("parses heading-based artist link sheets and ignores section headings", () => {
+    const pasted = `ItsManMan Full Links
+Music
+Spotify: https://open.spotify.com/artist/6kghbirzrs0QvOBBKJLLKv
+Apple Music: https://music.apple.com/us/artist/itsmanman/1673724763
+Social
+Instagram: https://www.instagram.com/itsmanman31/
+TikTok: https://www.tiktok.com/@_ItsManMan
+YouTube: https://www.youtube.com/@ItsManMan
+Music Videos
+CHRIS ROCC (Official Video): https://www.youtube.com/watch?v=v9rq9Ug6gfA
+TRAVIS HUNTER (Official Video): https://www.youtube.com/watch?v=sz-P_jopTz0
+MICHAEL BLACKSON (Official Video): https://www.youtube.com/watch?v=7HLFhigwfgM`;
+    const parsed = parsePastedArticleLinks(pasted);
+    expect(parsed).toHaveLength(8);
+    expect(parsed.map(link => link.label)).toEqual([
+      "Spotify",
+      "Apple Music",
+      "Instagram",
+      "TikTok",
+      "YouTube",
+      "CHRIS ROCC (Official Video)",
+      "TRAVIS HUNTER (Official Video)",
+      "MICHAEL BLACKSON (Official Video)",
+    ]);
+    const normalized = normalizeArticleCatalogLinks(parsed);
+    expect(normalized.filter(link => link.category === "player")).toHaveLength(5);
+    expect(normalized.filter(link => link.category === "social")).toHaveLength(2);
+    expect(normalized.find(link => link.label === "YouTube")).toMatchObject({ platform: "youtube", category: "link" });
+    expect(normalized.find(link => link.label === "CHRIS ROCC (Official Video)")?.embedUrl).toBe("https://www.youtube.com/embed/v9rq9Ug6gfA");
   });
 });

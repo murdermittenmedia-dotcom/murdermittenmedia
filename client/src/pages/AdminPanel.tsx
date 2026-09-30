@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { parsePastedArticleLinks } from "@shared/article-links";
 import {
   Users, ShoppingBag, BarChart3, Settings, Shield,
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
@@ -859,27 +860,6 @@ function AnalyticsTab() {
       </div>
     </div>
   );
-}
-
-function parsePastedArticleLinks(value: string): Array<{ url: string; label?: string }> {
-  const results: Array<{ url: string; label?: string }> = [];
-  for (const rawLine of value.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const pipeParts = line.split("|");
-    const candidate = pipeParts[0]?.trim() ?? "";
-    const explicitLabel = pipeParts.slice(1).join("|").trim();
-    const matches = Array.from(candidate.matchAll(/https?:\/\/[^\s<>()]+/gi));
-    if (!matches.length) continue;
-    for (const match of matches) {
-      const url = match[0].replace(/[),.;!?]+$/, "");
-      const before = candidate.slice(0, match.index ?? 0).trim().replace(/[|\-–—:]+$/, "").trim();
-      const after = candidate.slice((match.index ?? 0) + match[0].length).trim().replace(/^[|\-–—:]+/, "").trim();
-      const label = explicitLabel || before || after || undefined;
-      results.push(label ? { url, label } : { url });
-    }
-  }
-  return results;
 }
 
 // ─── Site Settings Tab ────────────────────────────────────────
