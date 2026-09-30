@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter";
-import { ArrowLeft, ArrowUpRight, CalendarDays, ExternalLink, Image as ImageIcon, Music2, Play } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarDays, ExternalLink, Image as ImageIcon, Link2, Music2, Play, Radio, Users } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { trpc } from "@/lib/trpc";
 
@@ -44,12 +44,19 @@ function ArticleBody({ content, referenceImages = [] }: { content: string; refer
 
 function CatalogEmbeds({ links }: { links: Array<{ platform: string; label: string; url: string; embedUrl?: string; category?: string }> }) {
   if (!links.length) return null;
-  const playable = links.filter(link => link.embedUrl);
-  const buttons = links.filter(link => !link.embedUrl);
-  return <section className="my-10 border-y border-red-600/20 py-7">
-    <div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-red-400"><Music2 className="h-4 w-4" /> Listen, watch, and connect</div>
-    {playable.length > 0 && <div className="grid gap-4">{playable.map((link, index) => <div key={`${link.url}-${index}`} className="overflow-hidden rounded-sm border border-white/10 bg-black/40"><div className="flex items-center justify-between border-b border-white/10 px-4 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-white"><Play className="h-3.5 w-3.5 fill-red-500 text-red-500" /> {link.label}</span><span className="text-[10px] uppercase tracking-widest text-white/30">{link.platform}</span></div><iframe title={`${link.label} ${link.platform} player`} src={link.embedUrl} className="h-[152px] w-full border-0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" allowFullScreen /> </div>)}</div>}
-    {buttons.length > 0 && <div className="mt-5 flex flex-wrap gap-3">{buttons.map((link, index) => <a key={`${link.url}-${index}`} href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 border border-white/15 bg-white/[0.03] px-4 py-3 text-xs font-semibold uppercase tracking-widest text-white/70 transition hover:border-red-500 hover:text-white"><ExternalLink className="h-3.5 w-3.5 text-red-400" /> {link.label}</a>)}</div>}
+  const musicPlatforms = new Set(["spotify", "apple", "soundcloud"]);
+  const music = links.filter(link => link.embedUrl && musicPlatforms.has(link.platform));
+  const watch = links.filter(link => link.embedUrl && link.platform === "youtube");
+  const connect = links.filter(link => !link.embedUrl && ["instagram", "tiktok", "twitter", "facebook"].includes(link.platform));
+  const more = links.filter(link => !link.embedUrl && !connect.includes(link));
+  const embed = (link: typeof links[number], index: number) => <div key={`${link.url}-${index}`} className="overflow-hidden rounded-md border border-white/10 bg-black/50 shadow-[0_12px_40px_rgba(0,0,0,.25)]"><div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3"><span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white"><Play className="h-3.5 w-3.5 shrink-0 fill-red-500 text-red-500" /><span className="truncate">{link.label}</span></span><a href={link.url} target="_blank" rel="noreferrer" className="shrink-0 text-[10px] uppercase tracking-widest text-white/35 transition hover:text-yellow-300">Open <ExternalLink className="ml-1 inline h-3 w-3" /></a></div><iframe title={`${link.label} ${link.platform} player`} src={link.embedUrl} className={`w-full border-0 ${link.platform === "youtube" ? "aspect-video" : link.platform === "spotify" ? "h-[352px]" : "h-[166px]"}`} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" allowFullScreen /></div>;
+  const buttons = (items: typeof links) => <div className="flex flex-wrap gap-3">{items.map((link, index) => <a key={`${link.url}-${index}`} href={link.url} target="_blank" rel="noreferrer" className="group inline-flex min-h-12 items-center gap-3 border border-white/15 bg-white/[0.03] px-4 py-3 text-xs font-semibold uppercase tracking-widest text-white/75 transition hover:-translate-y-0.5 hover:border-red-500 hover:bg-red-600/10 hover:text-white"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-red-400 group-hover:bg-red-500 group-hover:text-white">{link.category === "social" ? <Users className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}</span><span>{link.label}</span><ExternalLink className="h-3.5 w-3.5 text-white/30 group-hover:text-red-400" /></a>)}</div>;
+  return <section className="my-10 space-y-8 border-y border-red-600/20 py-8">
+    <div><div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-red-400"><Radio className="h-4 w-4" /> Artist links</div><p className="text-sm leading-6 text-white/45">Listen to the catalog, watch the latest videos, and follow the artist without leaving the story.</p></div>
+    {music.length > 0 && <div><div className="mb-4 flex items-center gap-2 font-['Anton'] text-2xl uppercase tracking-wide text-white"><Music2 className="h-5 w-5 text-yellow-300" /> Music</div><div className="grid gap-4">{music.map(embed)}</div></div>}
+    {watch.length > 0 && <div><div className="mb-4 flex items-center gap-2 font-['Anton'] text-2xl uppercase tracking-wide text-white"><Play className="h-5 w-5 fill-red-500 text-red-500" /> Watch</div><div className="grid gap-4 md:grid-cols-2">{watch.map(embed)}</div></div>}
+    {connect.length > 0 && <div><div className="mb-4 flex items-center gap-2 font-['Anton'] text-2xl uppercase tracking-wide text-white"><Users className="h-5 w-5 text-yellow-300" /> Connect</div>{buttons(connect)}</div>}
+    {more.length > 0 && <div><div className="mb-4 flex items-center gap-2 font-['Anton'] text-2xl uppercase tracking-wide text-white"><Link2 className="h-5 w-5 text-red-400" /> More from the artist</div>{buttons(more)}</div>}
   </section>;
 }
 
