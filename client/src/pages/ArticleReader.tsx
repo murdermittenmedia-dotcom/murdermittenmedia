@@ -42,9 +42,15 @@ function ArticleBody({ content, referenceImages = [] }: { content: string; refer
   );
 }
 
-function CatalogEmbeds({ links }: { links: Array<{ platform: string; label: string; embedUrl: string }> }) {
+function CatalogEmbeds({ links }: { links: Array<{ platform: string; label: string; url: string; embedUrl?: string; category?: string }> }) {
   if (!links.length) return null;
-  return <section className="my-10 border-y border-red-600/20 py-7"><div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-red-400"><Music2 className="h-4 w-4" /> Listen to the catalog</div><div className="grid gap-4">{links.map((link, index) => <div key={`${link.embedUrl}-${index}`} className="overflow-hidden rounded-sm border border-white/10 bg-black/40"><div className="flex items-center justify-between border-b border-white/10 px-4 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-white"><Play className="h-3.5 w-3.5 fill-red-500 text-red-500" /> {link.label}</span><span className="text-[10px] uppercase tracking-widest text-white/30">{link.platform}</span></div><iframe title={`${link.label} ${link.platform} player`} src={link.embedUrl} className="h-[152px] w-full border-0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" allowFullScreen /> </div>)}</div></section>;
+  const playable = links.filter(link => link.embedUrl);
+  const buttons = links.filter(link => !link.embedUrl);
+  return <section className="my-10 border-y border-red-600/20 py-7">
+    <div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-red-400"><Music2 className="h-4 w-4" /> Listen, watch, and connect</div>
+    {playable.length > 0 && <div className="grid gap-4">{playable.map((link, index) => <div key={`${link.url}-${index}`} className="overflow-hidden rounded-sm border border-white/10 bg-black/40"><div className="flex items-center justify-between border-b border-white/10 px-4 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-white"><Play className="h-3.5 w-3.5 fill-red-500 text-red-500" /> {link.label}</span><span className="text-[10px] uppercase tracking-widest text-white/30">{link.platform}</span></div><iframe title={`${link.label} ${link.platform} player`} src={link.embedUrl} className="h-[152px] w-full border-0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" allowFullScreen /> </div>)}</div>}
+    {buttons.length > 0 && <div className="mt-5 flex flex-wrap gap-3">{buttons.map((link, index) => <a key={`${link.url}-${index}`} href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 border border-white/15 bg-white/[0.03] px-4 py-3 text-xs font-semibold uppercase tracking-widest text-white/70 transition hover:border-red-500 hover:text-white"><ExternalLink className="h-3.5 w-3.5 text-red-400" /> {link.label}</a>)}</div>}
+  </section>;
 }
 
 export default function ArticleReader() {
@@ -56,7 +62,7 @@ export default function ArticleReader() {
   if (!article) return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><div className="container py-28 text-center"><p className="text-white/50">Article not found.</p><Link href="/news" className="mt-5 inline-flex items-center gap-2 text-red-400 hover:text-white"><ArrowLeft className="w-4 h-4" /> Back to Latest News</Link></div></div>;
 
   let referenceImages: string[] = [];
-  let catalogLinks: Array<{ platform: string; label: string; embedUrl: string }> = [];
+  let catalogLinks: Array<{ platform: string; label: string; url: string; embedUrl?: string; category?: string }> = [];
   try { referenceImages = article.referenceImages ? JSON.parse(article.referenceImages) : []; } catch { referenceImages = []; }
   try { catalogLinks = article.catalogLinks ? JSON.parse(article.catalogLinks) : []; } catch { catalogLinks = []; }
   const published = article.publishedAt ? new Date(article.publishedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) : "Murder Mitten Media";

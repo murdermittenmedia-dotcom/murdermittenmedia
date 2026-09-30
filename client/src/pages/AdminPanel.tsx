@@ -861,6 +861,27 @@ function AnalyticsTab() {
   );
 }
 
+function parsePastedArticleLinks(value: string): Array<{ url: string; label?: string }> {
+  const results: Array<{ url: string; label?: string }> = [];
+  for (const rawLine of value.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const pipeParts = line.split("|");
+    const candidate = pipeParts[0]?.trim() ?? "";
+    const explicitLabel = pipeParts.slice(1).join("|").trim();
+    const matches = Array.from(candidate.matchAll(/https?:\/\/[^\s<>()]+/gi));
+    if (!matches.length) continue;
+    for (const match of matches) {
+      const url = match[0].replace(/[),.;!?]+$/, "");
+      const before = candidate.slice(0, match.index ?? 0).trim().replace(/[|\-–—:]+$/, "").trim();
+      const after = candidate.slice((match.index ?? 0) + match[0].length).trim().replace(/^[|\-–—:]+/, "").trim();
+      const label = explicitLabel || before || after || undefined;
+      results.push(label ? { url, label } : { url });
+    }
+  }
+  return results;
+}
+
 // ─── Site Settings Tab ────────────────────────────────────────
 function SiteSettingsTab() {
   const utils = trpc.useUtils();
@@ -1042,8 +1063,8 @@ function SiteSettingsTab() {
               </div>
               <div>
                 <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Spotify, Apple Music, or YouTube links</label>
-                <Textarea value={articleForm.catalogLinks} onChange={e => setArticleForm(prev => ({ ...prev, catalogLinks: e.target.value }))} placeholder={'One link per line — labels are automatic\nhttps://open.spotify.com/album/...\nhttps://music.apple.com/us/album/...\nhttps://youtu.be/...'} rows={4} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
-                <p className="mt-1 text-xs text-white/30">Optional label format: <code>link | Latest Release</code>. First two links default to Latest Release and Latest Project.</p>
+                <Textarea value={articleForm.catalogLinks} onChange={e => setArticleForm(prev => ({ ...prev, catalogLinks: e.target.value }))} placeholder={'Paste as many links as you want — one per line, with or without labels\nhttps://open.spotify.com/artist/...\nLatest Release | https://music.apple.com/us/album/...\nInstagram: https://instagram.com/artist\nhttps://youtu.be/...'} rows={6} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                <p className="mt-1 text-xs text-white/30">We preserve Spotify, Apple Music, YouTube, SoundCloud, Audiomack, Tidal, Instagram, TikTok, X, Facebook, websites, and labeled links. Use <code>link | Label</code> or <code>Label: link</code>.</p>
               </div>
               <div>
                 <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Article body</label>
@@ -1063,7 +1084,7 @@ function SiteSettingsTab() {
                 <div className="md:col-span-2"><details className="border-t border-white/10 pt-3"><summary className="cursor-pointer text-xs uppercase tracking-widest text-white/40">Optional SEO fields</summary><div className="mt-3 grid gap-3 md:grid-cols-2"><Input value={articleForm.keywords} onChange={e => setArticleForm(prev => ({ ...prev, keywords: e.target.value }))} placeholder="Keywords" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" /><Input value={articleForm.seoTitle} onChange={e => setArticleForm(prev => ({ ...prev, seoTitle: e.target.value }))} placeholder="SEO title" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" /><Textarea value={articleForm.seoDescription} onChange={e => setArticleForm(prev => ({ ...prev, seoDescription: e.target.value }))} placeholder="SEO description" rows={2} className="bg-white/5 border-white/10 text-white placeholder:text-white/20 md:col-span-2" /></div></details></div>
               </div>
               <label className="flex items-center gap-3 text-sm text-white/65"><input type="checkbox" checked={articleForm.isPublished} onChange={e => setArticleForm(prev => ({ ...prev, isPublished: e.target.checked }))} className="accent-red-600" /> Publish immediately</label>
-              <Button className="bg-red-600 hover:bg-red-700" disabled={!articleForm.artistName.trim() || !articleForm.title.trim() || !articleForm.content.trim() || saveArticle.isPending} onClick={() => saveArticle.mutate({ id: editingArticleId, ...articleForm, caption: articleForm.content.trim().slice(0, 240), catalogLinks: articleForm.catalogLinks.split(/\r?\n/).map(line => { const [url, ...label] = line.split("|"); return { url: url.trim(), label: label.join("|").trim() || undefined }; }).filter(item => { try { new URL(item.url); return true; } catch { return false; } }), referenceImages: articleForm.referenceImages.split(/\r?\n/).map(url => url.trim()).filter(url => { try { new URL(url); return true; } catch { return false; } }) })}>{saveArticle.isPending ? "Saving..." : editingArticleId ? "Save changes" : "Publish article"}</Button>
+              <Button className="bg-red-600 hover:bg-red-700" disabled={!articleForm.artistName.trim() || !articleForm.title.trim() || !articleForm.content.trim() || saveArticle.isPending} onClick={() => saveArticle.mutate({ id: editingArticleId, ...articleForm, caption: articleForm.content.trim().slice(0, 240), catalogLinks: parsePastedArticleLinks(articleForm.catalogLinks), referenceImages: articleForm.referenceImages.split(/\r?\n/).map(url => url.trim()).filter(url => { try { new URL(url); return true; } catch { return false; } }) })}>{saveArticle.isPending ? "Saving..." : editingArticleId ? "Save changes" : "Publish article"}</Button>
             </div>
           </div>
           <div>
