@@ -294,7 +294,7 @@ export default function News() {
             </div>
             {articlesLoading ? <div className="h-28 animate-pulse bg-white/5" /> : (
               <div className="grid gap-4 md:grid-cols-2">
-                {articles.slice(0, 4).map(article => (
+                {articles.map(article => (
                   <a key={article.id} href={`/news/${article.slug}`} className="group flex min-h-32 overflow-hidden border border-white/10 bg-black/30 transition hover:border-red-600/60">
                     {article.thumbnailUrl && <img src={article.thumbnailUrl} alt="" className="w-32 shrink-0 object-cover transition duration-500 group-hover:scale-105" />}
                     <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
