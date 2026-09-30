@@ -88,6 +88,7 @@ import {
   createRtmpIngress, deleteIngress, getIngressStatus,
 } from "./livekit";
 import { ENV } from "./_core/env";
+import { normalizeArticleCatalogLinks } from "./article-media";
 import { desc as drizzleDesc } from "drizzle-orm";
 import {
   awardXP, getAllRewards, getRewardById, createReward, updateReward,
@@ -2804,9 +2805,24 @@ export const appRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       return db.select().from(articles).orderBy(desc(articles.updatedAt));
     }),
+    uploadArticleImage: adminProcedure
+      .input(z.object({
+        base64: z.string().max(8_000_000),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+        kind: z.enum(["header", "gallery"]).default("gallery"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const buffer = Buffer.from(input.base64, "base64");
+        if (buffer.length > 6 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Image must be under 6MB" });
+        const extension = input.mimeType.split("/")[1].replace("jpeg", "jpg");
+        const key = `editorial/${ctx.user.id}/${input.kind}-${Date.now()}.${extension}`;
+        return storagePut(key, buffer, input.mimeType);
+      }),
     saveArticle: adminProcedure
       .input(z.object({
         id: z.number().int().positive().optional(),
+        artistName: z.string().trim().max(256).default(""),
+        catalogLinks: z.array(z.object({ url: z.string().trim().url(), label: z.string().trim().max(80).optional() })).max(24).default([]),
         title: z.string().trim().min(1).max(512),
         caption: z.string().trim().max(10000).default(""),
         content: z.string().trim().max(200000).default(""),
@@ -2821,6 +2837,8 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
         const values = {
+          artistName: input.artistName || null,
+          catalogLinks: JSON.stringify(normalizeArticleCatalogLinks(input.catalogLinks)),
           title: input.title,
           caption: input.caption || input.title,
           content: input.content || null,

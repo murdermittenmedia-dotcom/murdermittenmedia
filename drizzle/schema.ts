@@ -1487,6 +1487,8 @@ export type InsertStudioReview = typeof studioReviews.$inferInsert;
 export const articles = mysqlTable("articles", {
   id: int("id").autoincrement().primaryKey(),
   instagramPostId: varchar("instagramPostId", { length: 128 }).notNull().unique(), // Instagram post ID
+  artistName: varchar("artistName", { length: 256 }), // Editorial artist profile name
+  catalogLinks: text("catalogLinks"), // JSON array of normalized playable Spotify/Apple/YouTube links
   title: varchar("title", { length: 512 }).notNull(), // Generated from caption
   slug: varchar("slug", { length: 512 }).notNull().unique(), // URL-friendly slug
   caption: text("caption").notNull(), // Original Instagram caption

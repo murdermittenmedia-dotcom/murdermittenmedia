@@ -22,7 +22,7 @@ import {
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
   ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift, CreditCard, DollarSign,
-  Bell, PlayCircle,
+  Bell, PlayCircle, ImagePlus,
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -882,7 +882,7 @@ function SiteSettingsTab() {
 
   const { data: articles = [], isLoading: articlesLoading } = trpc.admin.listArticles.useQuery(undefined, { enabled: activeSubTab === "articles" });
   const [editingArticleId, setEditingArticleId] = useState<number | undefined>();
-  const [articleForm, setArticleForm] = useState({ title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
+  const [articleForm, setArticleForm] = useState({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
   const saveArticle = trpc.admin.saveArticle.useMutation({
     onSuccess: () => { utils.admin.listArticles.invalidate(); toast.success("Article saved"); resetArticleForm(); },
     onError: (e) => toast.error(e.message),
@@ -891,15 +891,32 @@ function SiteSettingsTab() {
     onSuccess: () => { utils.admin.listArticles.invalidate(); toast.success("Article deleted"); },
     onError: (e) => toast.error(e.message),
   });
+  const uploadArticleImage = trpc.admin.uploadArticleImage.useMutation({ onError: (e) => toast.error(e.message) });
+  async function readImage(file: File) {
+    if (!file.type.startsWith("image/")) throw new Error("Choose an image file");
+    if (file.size > 6 * 1024 * 1024) throw new Error("Images must be under 6MB");
+    const dataUrl = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error("Could not read image")); reader.readAsDataURL(file); });
+    return { base64: dataUrl.split(",")[1] ?? "", mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif" };
+  }
+  async function uploadHeader(file?: File) {
+    if (!file) return;
+    try { const result = await uploadArticleImage.mutateAsync({ ...(await readImage(file)), kind: "header" }); setArticleForm(prev => ({ ...prev, thumbnailUrl: result.url })); toast.success("Header image uploaded"); } catch (error) { toast.error(error instanceof Error ? error.message : "Image upload failed"); }
+  }
+  async function uploadGallery(files: FileList | null) {
+    if (!files?.length) return;
+    try { const uploaded: string[] = []; for (const file of Array.from(files).slice(0, 12)) uploaded.push((await uploadArticleImage.mutateAsync({ ...(await readImage(file)), kind: "gallery" })).url); setArticleForm(prev => ({ ...prev, referenceImages: [prev.referenceImages, ...uploaded].filter(Boolean).join("\n") })); toast.success(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} uploaded`); } catch (error) { toast.error(error instanceof Error ? error.message : "Image upload failed"); }
+  }
   function resetArticleForm() {
     setEditingArticleId(undefined);
-    setArticleForm({ title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
+    setArticleForm({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
   }
   function editArticle(article: NonNullable<typeof articles>[number]) {
     let images: string[] = [];
+    let links: Array<{ url: string; label?: string }> = [];
     try { images = article.referenceImages ? JSON.parse(article.referenceImages) : []; } catch { images = []; }
+    try { links = article.catalogLinks ? JSON.parse(article.catalogLinks) : []; } catch { links = []; }
     setEditingArticleId(article.id);
-    setArticleForm({ title: article.title, caption: article.caption, content: article.content ?? "", thumbnailUrl: article.thumbnailUrl ?? "", referenceImages: images.join("\n"), keywords: article.keywords ?? "", seoTitle: article.seoTitle ?? "", seoDescription: article.seoDescription ?? "", isPublished: article.isPublished });
+    setArticleForm({ artistName: article.artistName ?? "", catalogLinks: links.map(link => `${link.url}${link.label ? ` | ${link.label}` : ""}`).join("\n"), title: article.title, caption: article.caption, content: article.content ?? "", thumbnailUrl: article.thumbnailUrl ?? "", referenceImages: images.join("\n"), keywords: article.keywords ?? "", seoTitle: article.seoTitle ?? "", seoDescription: article.seoDescription ?? "", isPublished: article.isPublished });
   }
 
   const [aowForm, setAowForm] = useState({
@@ -1008,47 +1025,45 @@ function SiteSettingsTab() {
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <h3 className="text-white font-semibold">{editingArticleId ? "Edit article" : "Publish a new article"}</h3>
-                <p className="mt-1 text-xs leading-5 text-white/40">Paste a full story, use Markdown-style headings and links, then add supporting image URLs. The public page turns it into a clean editorial reading experience.</p>
+                <p className="mt-1 text-xs leading-5 text-white/40">Artist, links, headline, story, images. We turn the links into browser-playable catalog cards automatically.</p>
               </div>
               {editingArticleId && <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={resetArticleForm}>New article</Button>}
             </div>
             <div className="space-y-4">
-              <div>
-                <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Headline *</label>
-                <Input value={articleForm.title} onChange={e => setArticleForm(prev => ({ ...prev, title: e.target.value }))} placeholder="Headline that earns the click" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Artist name *</label>
+                  <Input value={articleForm.artistName} onChange={e => setArticleForm(prev => ({ ...prev, artistName: e.target.value }))} placeholder="Shaudy Kash" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Headline *</label>
+                  <Input value={articleForm.title} onChange={e => setArticleForm(prev => ({ ...prev, title: e.target.value }))} placeholder="Headline that earns the click" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
               </div>
               <div>
-                <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Deck / short introduction</label>
-                <Textarea value={articleForm.caption} onChange={e => setArticleForm(prev => ({ ...prev, caption: e.target.value }))} placeholder="A sharp one or two sentence setup..." rows={2} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Spotify, Apple Music, or YouTube links</label>
+                <Textarea value={articleForm.catalogLinks} onChange={e => setArticleForm(prev => ({ ...prev, catalogLinks: e.target.value }))} placeholder={'One link per line — labels are automatic\nhttps://open.spotify.com/album/...\nhttps://music.apple.com/us/album/...\nhttps://youtu.be/...'} rows={4} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                <p className="mt-1 text-xs text-white/30">Optional label format: <code>link | Latest Release</code>. First two links default to Latest Release and Latest Project.</p>
               </div>
               <div>
                 <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Article body</label>
-                <Textarea value={articleForm.content} onChange={e => setArticleForm(prev => ({ ...prev, content: e.target.value }))} placeholder={'Paste the full article here...\n\nUse ## SECTION HEADINGS, > pull quotes, - bullet points, [hyperlinks](https://example.com), and ![image caption](https://image-url.com/photo.jpg)'} rows={15} className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono text-sm leading-6" />
+                <Textarea value={articleForm.content} onChange={e => setArticleForm(prev => ({ ...prev, content: e.target.value }))} placeholder={'Paste the full article here...\n\nOptional formatting: ## section headings, > pull quotes, [links](https://...), and ![image caption](https://...)'} rows={12} className="bg-white/5 border-white/10 text-white placeholder:text-white/20 text-sm leading-6" />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Cover image URL</label>
                   <Input value={articleForm.thumbnailUrl} onChange={e => setArticleForm(prev => ({ ...prev, thumbnailUrl: e.target.value }))} placeholder="https://..." className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-white/45 hover:text-white"><ImagePlus className="h-4 w-4 text-red-400" /> Upload header image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => uploadHeader(e.target.files?.[0])} /></label>
                 </div>
                 <div>
                   <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Reference images (one URL per line)</label>
                   <Textarea value={articleForm.referenceImages} onChange={e => setArticleForm(prev => ({ ...prev, referenceImages: e.target.value }))} placeholder="https://image-one.jpg\nhttps://image-two.jpg" rows={3} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-white/45 hover:text-white"><ImagePlus className="h-4 w-4 text-yellow-300" /> Upload multiple article images<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => uploadGallery(e.target.files)} /></label>
                 </div>
-                <div>
-                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">Keywords</label>
-                  <Input value={articleForm.keywords} onChange={e => setArticleForm(prev => ({ ...prev, keywords: e.target.value }))} placeholder="detroit rap, michigan music, interview" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
-                </div>
-                <div>
-                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">SEO title</label>
-                  <Input value={articleForm.seoTitle} onChange={e => setArticleForm(prev => ({ ...prev, seoTitle: e.target.value }))} placeholder="Optional search title" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-white/50 text-xs uppercase tracking-widest block mb-1">SEO description</label>
-                  <Textarea value={articleForm.seoDescription} onChange={e => setArticleForm(prev => ({ ...prev, seoDescription: e.target.value }))} placeholder="Optional search description" rows={2} className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
-                </div>
+                <div className="md:col-span-2"><details className="border-t border-white/10 pt-3"><summary className="cursor-pointer text-xs uppercase tracking-widest text-white/40">Optional SEO fields</summary><div className="mt-3 grid gap-3 md:grid-cols-2"><Input value={articleForm.keywords} onChange={e => setArticleForm(prev => ({ ...prev, keywords: e.target.value }))} placeholder="Keywords" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" /><Input value={articleForm.seoTitle} onChange={e => setArticleForm(prev => ({ ...prev, seoTitle: e.target.value }))} placeholder="SEO title" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" /><Textarea value={articleForm.seoDescription} onChange={e => setArticleForm(prev => ({ ...prev, seoDescription: e.target.value }))} placeholder="SEO description" rows={2} className="bg-white/5 border-white/10 text-white placeholder:text-white/20 md:col-span-2" /></div></details></div>
               </div>
               <label className="flex items-center gap-3 text-sm text-white/65"><input type="checkbox" checked={articleForm.isPublished} onChange={e => setArticleForm(prev => ({ ...prev, isPublished: e.target.checked }))} className="accent-red-600" /> Publish immediately</label>
-              <Button className="bg-red-600 hover:bg-red-700" disabled={!articleForm.title.trim() || saveArticle.isPending} onClick={() => saveArticle.mutate({ id: editingArticleId, ...articleForm, referenceImages: articleForm.referenceImages.split(/\r?\n/).map(url => url.trim()).filter(url => { try { new URL(url); return true; } catch { return false; } }) })}>{saveArticle.isPending ? "Saving..." : editingArticleId ? "Save changes" : "Publish article"}</Button>
+              <Button className="bg-red-600 hover:bg-red-700" disabled={!articleForm.artistName.trim() || !articleForm.title.trim() || !articleForm.content.trim() || saveArticle.isPending} onClick={() => saveArticle.mutate({ id: editingArticleId, ...articleForm, caption: articleForm.content.trim().slice(0, 240), catalogLinks: articleForm.catalogLinks.split(/\r?\n/).map(line => { const [url, ...label] = line.split("|"); return { url: url.trim(), label: label.join("|").trim() || undefined }; }).filter(item => { try { new URL(item.url); return true; } catch { return false; } }), referenceImages: articleForm.referenceImages.split(/\r?\n/).map(url => url.trim()).filter(url => { try { new URL(url); return true; } catch { return false; } }) })}>{saveArticle.isPending ? "Saving..." : editingArticleId ? "Save changes" : "Publish article"}</Button>
             </div>
           </div>
           <div>

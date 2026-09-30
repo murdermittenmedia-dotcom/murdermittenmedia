@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter";
-import { ArrowLeft, ArrowUpRight, CalendarDays, ExternalLink, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarDays, ExternalLink, Image as ImageIcon, Music2, Play } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { trpc } from "@/lib/trpc";
 
@@ -17,8 +17,10 @@ function inlineParts(text: string) {
   });
 }
 
-function ArticleBody({ content }: { content: string }) {
+function ArticleBody({ content, referenceImages = [] }: { content: string; referenceImages?: string[] }) {
   const lines = content.split(/\r?\n/);
+  let proseBlocks = 0;
+  let imageCursor = 0;
   return (
     <div className="space-y-5 text-white/75 text-[17px] leading-8">
       {lines.map((line, index) => {
@@ -31,10 +33,18 @@ function ArticleBody({ content }: { content: string }) {
         if (trimmed.startsWith("# ")) return <h2 key={index} className="pt-7 font-['Anton'] text-4xl uppercase tracking-wide text-red-500">{inlineParts(trimmed.slice(2))}</h2>;
         if (trimmed.startsWith("> ")) return <blockquote key={index} className="border-l-2 border-red-600 pl-5 italic text-white/60">{inlineParts(trimmed.slice(2))}</blockquote>;
         if (trimmed.startsWith("- ")) return <li key={index} className="ml-5 list-disc pl-2">{inlineParts(trimmed.slice(2))}</li>;
-        return <p key={index}>{inlineParts(trimmed)}</p>;
+        proseBlocks += 1;
+        const automaticImage = proseBlocks > 1 && proseBlocks % 3 === 0 && referenceImages[imageCursor];
+        if (automaticImage) imageCursor += 1;
+        return <div key={index}><p>{inlineParts(trimmed)}</p>{automaticImage && <figure className="my-8 overflow-hidden border border-white/10 bg-white/[0.03]"><img src={automaticImage} alt="Article reference" className="max-h-[520px] w-full object-cover" loading="lazy" /></figure>}</div>;
       })}
     </div>
   );
+}
+
+function CatalogEmbeds({ links }: { links: Array<{ platform: string; label: string; embedUrl: string }> }) {
+  if (!links.length) return null;
+  return <section className="my-10 border-y border-red-600/20 py-7"><div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-red-400"><Music2 className="h-4 w-4" /> Listen to the catalog</div><div className="grid gap-4">{links.map((link, index) => <div key={`${link.embedUrl}-${index}`} className="overflow-hidden rounded-sm border border-white/10 bg-black/40"><div className="flex items-center justify-between border-b border-white/10 px-4 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-white"><Play className="h-3.5 w-3.5 fill-red-500 text-red-500" /> {link.label}</span><span className="text-[10px] uppercase tracking-widest text-white/30">{link.platform}</span></div><iframe title={`${link.label} ${link.platform} player`} src={link.embedUrl} className="h-[152px] w-full border-0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" allowFullScreen /> </div>)}</div></section>;
 }
 
 export default function ArticleReader() {
@@ -46,7 +56,9 @@ export default function ArticleReader() {
   if (!article) return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><div className="container py-28 text-center"><p className="text-white/50">Article not found.</p><Link href="/news" className="mt-5 inline-flex items-center gap-2 text-red-400 hover:text-white"><ArrowLeft className="w-4 h-4" /> Back to Latest News</Link></div></div>;
 
   let referenceImages: string[] = [];
+  let catalogLinks: Array<{ platform: string; label: string; embedUrl: string }> = [];
   try { referenceImages = article.referenceImages ? JSON.parse(article.referenceImages) : []; } catch { referenceImages = []; }
+  try { catalogLinks = article.catalogLinks ? JSON.parse(article.catalogLinks) : []; } catch { catalogLinks = []; }
   const published = article.publishedAt ? new Date(article.publishedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) : "Murder Mitten Media";
 
   return (
@@ -59,9 +71,11 @@ export default function ArticleReader() {
           <div className="mx-auto max-w-3xl px-6 py-10 md:px-12 md:py-14">
             <div className="mb-5 flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-[0.25em] text-red-400"><span className="h-px w-8 bg-red-600" /> Murder Mitten Editorial <span className="text-white/25">/</span><span className="flex items-center gap-1 text-white/35"><CalendarDays className="h-3.5 w-3.5" /> {published}</span></div>
             <h1 className="font-['Anton'] text-5xl uppercase leading-[.95] tracking-wide md:text-7xl">{article.title}</h1>
+            {article.artistName && <div className="mt-4 text-sm uppercase tracking-[0.2em] text-yellow-400">Featuring {article.artistName}</div>}
             {article.caption && <p className="mt-6 border-l-2 border-red-600 pl-5 text-lg leading-8 text-white/55">{article.caption}</p>}
+            <CatalogEmbeds links={catalogLinks} />
             <div className="my-10 h-px bg-white/10" />
-            <ArticleBody content={article.content || article.caption} />
+            <ArticleBody content={article.content || article.caption} referenceImages={referenceImages} />
             {referenceImages.length > 0 && <section className="mt-14 border-t border-white/10 pt-8"><div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/45"><ImageIcon className="h-4 w-4 text-red-500" /> Reference Images</div><div className="grid gap-4 sm:grid-cols-2">{referenceImages.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="group overflow-hidden border border-white/10 bg-black"><img src={url} alt={`Reference ${index + 1}`} className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" /><div className="flex items-center justify-between px-3 py-2 text-xs text-white/35">View image <ExternalLink className="h-3 w-3" /></div></a>)}</div></section>}
             <div className="mt-12 flex flex-wrap gap-3"><a href={article.permalink || "/news"} target={article.permalink ? "_blank" : undefined} rel="noreferrer" className="inline-flex items-center gap-2 border border-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white/55 hover:border-red-600 hover:text-white">Source <ArrowUpRight className="h-3.5 w-3.5" /></a>{article.keywords && <span className="px-4 py-2 text-xs text-white/30">{article.keywords.split(",").map(k => `#${k.trim()}`).join("  ")}</span>}</div>
           </div>
