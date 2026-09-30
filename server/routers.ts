@@ -89,6 +89,7 @@ import {
 } from "./livekit";
 import { ENV } from "./_core/env";
 import { normalizeArticleCatalogLinks } from "./article-media";
+import { parsePastedArticleLinks } from "@shared/article-links";
 import { desc as drizzleDesc } from "drizzle-orm";
 import {
   awardXP, getAllRewards, getRewardById, createReward, updateReward,
@@ -2822,7 +2823,10 @@ export const appRouter = router({
       .input(z.object({
         id: z.number().int().positive().optional(),
         artistName: z.string().trim().max(256).default(""),
-        catalogLinks: z.array(z.object({ url: z.string().trim().url(), label: z.string().trim().max(80).optional() })).max(24).default([]),
+        catalogLinks: z.preprocess(
+          value => typeof value === "string" ? parsePastedArticleLinks(value) : value,
+          z.array(z.object({ url: z.string().trim().url(), label: z.string().trim().max(80).optional() })).max(48).default([]),
+        ),
         title: z.string().trim().min(1).max(512),
         caption: z.string().trim().max(10000).default(""),
         content: z.string().trim().max(200000).default(""),

@@ -885,7 +885,7 @@ function SiteSettingsTab() {
   const [editingArticleId, setEditingArticleId] = useState<number | undefined>();
   const [articleForm, setArticleForm] = useState({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
   const saveArticle = trpc.admin.saveArticle.useMutation({
-    onSuccess: () => { utils.admin.listArticles.invalidate(); toast.success("Article saved"); resetArticleForm(); },
+    onSuccess: () => { utils.admin.listArticles.invalidate(); utils.news.getArticles.invalidate(); utils.news.getArticle.invalidate(); toast.success("Article saved — links integrated"); resetArticleForm(); },
     onError: (e) => toast.error(e.message),
   });
   const deleteArticle = trpc.admin.deleteArticle.useMutation({
