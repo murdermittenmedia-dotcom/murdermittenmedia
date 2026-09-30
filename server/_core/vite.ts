@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
-import { getPublicLinkPageBySlug } from "../db";
+import { getArticleBySlug, getPublicLinkPageBySlug } from "../db";
 import { buildCreatorPreviewMeta } from "../social-preview";
 
 // ── Per-route OG meta tag definitions ────────────────────────────────────────
@@ -14,6 +14,7 @@ const BASE_URL = "https://murdermittenmedia.com";
 interface RouteMeta {
   title: string;
   description: string;
+  type?: "website" | "article";
   image?: string;
   imageWidth?: string;
   imageHeight?: string;
@@ -74,7 +75,7 @@ function buildOgTags(meta: RouteMeta): string {
   const description = escapeHtml(meta.description);
   const url = escapeHtml(meta.url ?? BASE_URL);
   const tags: string[] = [
-    `<meta property="og:type" content="website" />`,
+    `<meta property="og:type" content="${meta.type ?? "website"}" />`,
     `<meta property="og:title" content="${title}" />`,
     `<meta property="og:description" content="${description}" />`,
     `<meta property="og:url" content="${url}" />`,
@@ -95,6 +96,28 @@ function buildOgTags(meta: RouteMeta): string {
 async function resolveRouteMeta(pathname: string): Promise<RouteMeta | null> {
   const route = ROUTE_META.find((r) => r.test(pathname));
   if (route) return route.meta;
+  const articleMatch = pathname.match(/^\/news\/([^/]+)\/?$/i);
+  if (articleMatch) {
+    try {
+      const slug = decodeURIComponent(articleMatch[1]);
+      const article = await getArticleBySlug(slug);
+      if (!article || !article.isPublished) return null;
+      const descriptionSource = article.seoDescription || article.caption || article.content || `Read ${article.title} on Murder Mitten Media.`;
+      const description = descriptionSource.replace(/\s+/g, " ").trim().slice(0, 160);
+      const image = article.thumbnailUrl || article.instagramImageUrl;
+      return {
+        type: "article",
+        title: article.title,
+        description,
+        image: image ? (image.startsWith("http") ? image : `${BASE_URL}${image.startsWith("/") ? "" : "/"}${image}`) : undefined,
+        imageWidth: image ? "1200" : undefined,
+        imageHeight: image ? "630" : undefined,
+        url: `${BASE_URL}/news/${encodeURIComponent(article.slug)}`,
+      };
+    } catch (error) {
+      console.warn("[OG] Could not resolve article metadata", error);
+    }
+  }
   const linkMatch = pathname.match(/^\/link\/([^/]+)\/?$/i);
   if (!linkMatch) return null;
   try {
