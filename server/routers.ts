@@ -975,6 +975,15 @@ export const appRouter = router({
         botFrequency: frequencyRaw === "low" || frequencyRaw === "high" ? frequencyRaw : "normal" as const,
       };
     }),
+    getJudgePanelVisibility: publicProcedure.query(async () => ({
+      visible: (await getSetting("review_judge_panel_visible")) !== "false",
+    })),
+    setJudgePanelVisibility: adminProcedure
+      .input(z.object({ visible: z.boolean() }))
+      .mutation(async ({ input }) => {
+        await setSetting("review_judge_panel_visible", String(input.visible));
+        return { success: true as const, visible: input.visible };
+      }),
     setReviewBotSettings: adminProcedure
       .input(z.object({ botEnabled: z.boolean(), botFrequency: z.enum(["low", "normal", "high"]) }))
       .mutation(async ({ input }) => {

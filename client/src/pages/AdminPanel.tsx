@@ -873,6 +873,14 @@ function SiteSettingsTab() {
     onSuccess: () => { utils.admin.getSettings.invalidate(); toast.success("Setting saved"); },
     onError: (e) => toast.error(e.message),
   });
+  const { data: judgePanelVisibility } = trpc.queue.getJudgePanelVisibility.useQuery(undefined, { refetchInterval: 5000 });
+  const setJudgePanelVisibility = trpc.queue.setJudgePanelVisibility.useMutation({
+    onSuccess: ({ visible }) => {
+      utils.queue.getJudgePanelVisibility.invalidate();
+      toast.success(visible ? "Judge panel is visible to viewers" : "Judge panel hidden from viewers");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   // Artist of the week
   const { data: aowList, isLoading: aowLoading } = trpc.admin.getArtistsOfWeek.useQuery();
@@ -974,6 +982,27 @@ function SiteSettingsTab() {
 
       {activeSubTab === "settings" && (
         <div className="space-y-3">
+          <div className="border border-red-500/25 bg-red-500/[0.04] rounded-lg p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-white font-semibold text-sm">Judge Panel Visibility</div>
+                <div className="text-white/40 text-xs mt-0.5">Show or hide the Mitten Panel for every viewer on the live review page.</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setJudgePanelVisibility.mutate({ visible: !(judgePanelVisibility?.visible ?? true) })}
+                disabled={setJudgePanelVisibility.isPending}
+                aria-pressed={judgePanelVisibility?.visible ?? true}
+                aria-label={judgePanelVisibility?.visible ?? true ? "Hide judge panel from viewers" : "Show judge panel to viewers"}
+                className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors ${(judgePanelVisibility?.visible ?? true) ? "border-green-400/50 bg-green-600" : "border-white/20 bg-white/10"}`}
+              >
+                <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-transform ${(judgePanelVisibility?.visible ?? true) ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+            </div>
+            <div className={`mt-3 text-[10px] font-bold uppercase tracking-[0.16em] ${(judgePanelVisibility?.visible ?? true) ? "text-green-300/80" : "text-white/40"}`}>
+              {(judgePanelVisibility?.visible ?? true) ? "Visible to viewers" : "Hidden from viewers"}
+            </div>
+          </div>
           {settingsLoading ? <div className="text-white/30 text-center py-10">Loading...</div> : (
             Object.entries(SETTING_LABELS).map(([key, meta]) => (
               <div key={key} className="border border-white/10 bg-white/[0.02] rounded-lg p-4">

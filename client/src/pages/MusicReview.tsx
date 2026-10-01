@@ -1562,10 +1562,16 @@ export default function MusicReview() {
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
   const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 5000 });
+  const { data: judgePanelVisibility } = trpc.queue.getJudgePanelVisibility.useQuery(undefined, { refetchInterval: 5000 });
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
+  const judgePanelVisible = judgePanelVisibility?.visible ?? true;
   const joinJudgeStage = useCallback(() => {
     if (!isJudge) {
       toast.error("Verified judge access is required to join the panel.");
+      return;
+    }
+    if (!judgePanelVisible) {
+      toast.error("The judge panel is currently hidden by the admin.");
       return;
     }
     if (!data?.state?.isLive) {
@@ -1574,7 +1580,7 @@ export default function MusicReview() {
     }
     setIsJoiningJudge(true);
     startJudgeBroadcast.mutate();
-  }, [data?.state?.isLive, isJudge, startJudgeBroadcast]);
+  }, [data?.state?.isLive, isJudge, judgePanelVisible, startJudgeBroadcast]);
 
   const [limitReachedData, setLimitReachedData] = useState<{ success: false; limitReached: true; message: string; upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
   const [pendingFormData, setPendingFormData] = useState<{
@@ -2352,7 +2358,7 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={listenToLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Listening Live" : "Listen Live"}
             </button>}
-            {isJudge && <button type="button" onClick={() => {
+            {isJudge && judgePanelVisible && <button type="button" onClick={() => {
               const status = panelSeat.data?.status;
               if (status === "approved" || (status === "active" && !judgeBroadcast)) { joinJudgeStage(); return; }
               if (!status || status === "ended" || status === "error") { requestPanelSeat.mutate(); return; }
@@ -2430,7 +2436,7 @@ export default function MusicReview() {
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Live review stage · performance, panel, crowd</p>
         </div>
         <div className="grid gap-5 lg:grid-cols-12">
-        <section className="order-1 min-w-0 lg:col-span-12">
+        {(judgePanelVisible || isAdmin) && <section className="order-1 min-w-0 lg:col-span-12">
           <JudgePanelStrip
             isReviewLive={isLive}
             isJudge={isJudge}
@@ -2442,7 +2448,7 @@ export default function MusicReview() {
             judgeBroadcast={judgeBroadcast}
             onStopBroadcast={() => { setJudgeBroadcast(null); setIsJoiningJudge(false); void panelSeat.refetch(); }}
           />
-        </section>
+        </section>}
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
         <section className="order-2 min-w-0 lg:col-span-8">
         {activeTrack ? (
