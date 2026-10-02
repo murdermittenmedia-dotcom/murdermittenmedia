@@ -1,9 +1,8 @@
-export type SkipType = "reentry5" | "reentry10" | "skip";
+export type SkipType = "skip" | "bundle3";
 
 const SKIP_LINE_PRICES_CENTS: Record<SkipType, number> = {
-  reentry5: 500,
-  reentry10: 1000,
-  skip: 2000,
+  skip: 1000,
+  bundle3: 2000,
 };
 
 export function getSkipLinePriceCents(skipType: SkipType): number {
@@ -11,6 +10,5 @@ export function getSkipLinePriceCents(skipType: SkipType): number {
 }
 
 export function getSkipLineLabel(skipType: SkipType): string {
-  if (skipType === "skip") return "Skip to front";
-  return skipType === "reentry10" ? "Move 10 spots up" : "Move 5 spots up";
+  return skipType === "bundle3" ? "3 line skips added to balance" : "Skip to front";
 }

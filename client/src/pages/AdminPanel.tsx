@@ -274,8 +274,14 @@ function UsersTab() {
   const [addCoinsUserId, setAddCoinsUserId] = useState<number | null>(null);
   const [addCoinsAmount, setAddCoinsAmount] = useState(100);
   const [addCoinsReason, setAddCoinsReason] = useState("");
+  const [addSkipsUserId, setAddSkipsUserId] = useState<number | null>(null);
+  const [addSkipsAmount, setAddSkipsAmount] = useState(1);
   const [trialInviteLink, setTrialInviteLink] = useState<string | null>(null);
   const utils = trpc.useUtils();
+  const addSkipsMutation = trpc.admin.addLineSkips.useMutation({
+    onSuccess: ({ amount }) => { toast.success(`Added ${amount} line skip${amount === 1 ? "" : "s"}.`); setAddSkipsUserId(null); setAddSkipsAmount(1); },
+    onError: (e) => toast.error(e.message),
+  });
 
   useEffect(() => {
     setPage(1);
@@ -614,6 +620,19 @@ function UsersTab() {
                       >
                         <Coins className="w-3 h-3 mr-1" /> Add Coins
                       </Button>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-white/10">
+                    <p className="text-white/50 text-xs uppercase tracking-widest mb-2">Manual Line Skip Balance</p>
+                    {addSkipsUserId === user.id ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Input type="number" min={1} max={1000} value={addSkipsAmount} onChange={e => setAddSkipsAmount(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))} className="w-24 bg-white/5 border-white/10 text-white text-sm" />
+                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => addSkipsMutation.mutate({ userId: user.id, amount: addSkipsAmount })} disabled={addSkipsMutation.isPending}>{addSkipsMutation.isPending ? "Adding..." : "Add Skips"}</Button>
+                        <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={() => setAddSkipsUserId(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="border-amber-600/40 text-amber-300 hover:bg-amber-600/20" onClick={() => setAddSkipsUserId(user.id)}>Add Skips</Button>
                     )}
                   </div>
 

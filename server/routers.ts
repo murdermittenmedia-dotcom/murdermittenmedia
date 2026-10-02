@@ -1131,10 +1131,22 @@ export const appRouter = router({
       }),
 
     confirmSkip: adminProcedure
-      .input(z.object({ id: z.number(), skipType: z.enum(["reentry5", "reentry10", "skip"]).optional() }))
+      .input(z.object({ id: z.number(), skipType: z.enum(["skip", "bundle3"]).optional() }))
       .mutation(async ({ input }) => {
         await confirmSkipPayment(input.id, input.skipType ?? "skip");
         return { success: true };
+      }),
+
+    requestSkip: protectedProcedure
+      .input(z.object({ submissionId: z.number().int().positive(), receiptUrl: z.string().max(512).optional(), paymentMethod: z.string().max(64).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [submission] = await db.select().from(reviewSubmissions).where(and(eq(reviewSubmissions.id, input.submissionId), eq(reviewSubmissions.userId, ctx.user.id))).limit(1);
+        if (!submission || submission.status === "removed" || submission.status === "reviewed") throw new TRPCError({ code: "BAD_REQUEST", message: "That track is no longer eligible for a skip." });
+        if (submission.skippedLine) throw new TRPCError({ code: "BAD_REQUEST", message: "That track already has a skip request." });
+        await db.update(reviewSubmissions).set({ skippedLine: true, skipPaymentConfirmed: false, paidSubmissionType: "skip", cashappPaymentReceiptUrl: input.receiptUrl ?? null }).where(eq(reviewSubmissions.id, input.submissionId));
+        return { success: true as const };
       }),
 
     // Confirm a paid submission (3rd+ song) — admin verifies payment received
@@ -3010,6 +3022,13 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await confirmSkipPayment(input.submissionId);
         return { success: true };
+      }),
+
+    addLineSkips: adminProcedure
+      .input(z.object({ userId: z.number().int().positive(), amount: z.number().int().min(1).max(1000) }))
+      .mutation(async ({ input }) => {
+        await grantLineSkipCredits(input.userId, input.amount);
+        return { success: true as const, amount: input.amount };
       }),
 
     // Confirm wheel payment
@@ -5614,14 +5633,14 @@ export const appRouter = router({
 
     createSkipCheckoutSession: protectedProcedure
       .input(z.object({
-        submissionId: z.number().int().positive(),
-        skipType: z.enum(["reentry5", "reentry10", "skip"]),
+        submissionId: z.number().int().positive().optional(),
+        skipType: z.enum(["skip", "bundle3"]),
         origin: z.string().url(),
       }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-        const [submission] = await db.select({
+        const [submission] = input.submissionId ? await db.select({
           id: reviewSubmissions.id,
           userId: reviewSubmissions.userId,
           songTitle: reviewSubmissions.songTitle,
@@ -5631,11 +5650,11 @@ export const appRouter = router({
         }).from(reviewSubmissions).where(and(
           eq(reviewSubmissions.id, input.submissionId),
           eq(reviewSubmissions.userId, ctx.user.id),
-        )).limit(1);
-        if (!submission || submission.status === "removed" || submission.status === "reviewed") {
+        )).limit(1) : [];
+        if (input.submissionId && (!submission || submission.status === "removed" || submission.status === "reviewed")) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "That queue submission is no longer eligible for a skip." });
         }
-        if (submission.skippedLine) {
+        if (submission?.skippedLine) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "That submission has already been moved up." });
         }
 
@@ -5646,19 +5665,19 @@ export const appRouter = router({
             payment_method_types: ["card"],
             mode: "payment",
             customer_email: ctx.user.email ?? undefined,
-            client_reference_id: `${ctx.user.id}:${submission.id}`,
+            client_reference_id: `${ctx.user.id}:${submission?.id ?? "balance"}`,
             metadata: {
               kind: "music_review_skip",
               user_id: String(ctx.user.id),
-              submission_id: String(submission.id),
+              ...(submission ? { submission_id: String(submission.id) } : {}),
               skip_type: input.skipType,
             },
             line_items: [{
               price_data: {
                 currency: "usd",
                 product_data: {
-                  name: `Music Review Skip — ${submission.songTitle}`,
-                  description: `${submission.artistName} · ${getSkipLineLabel(input.skipType)}`,
+                  name: input.skipType === "bundle3" ? "Music Review — 3 Line Skips" : `Music Review Skip — ${submission?.songTitle ?? "Add to balance"}`,
+                  description: submission ? `${submission.artistName} · ${getSkipLineLabel(input.skipType)}` : getSkipLineLabel(input.skipType),
                 },
                 unit_amount: amount,
               },
@@ -5686,13 +5705,21 @@ export const appRouter = router({
         if (session.metadata.user_id !== String(ctx.user.id)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "This payment does not belong to your account." });
         }
-        const submissionId = Number(session.metadata.submission_id);
-        const skipType = session.metadata.skip_type as "reentry5" | "reentry10" | "skip";
-        if (!Number.isInteger(submissionId) || !["reentry5", "reentry10", "skip"].includes(skipType)) {
+        const submissionId = session.metadata.submission_id ? Number(session.metadata.submission_id) : null;
+        const skipType = session.metadata.skip_type as "skip" | "bundle3";
+        if ((submissionId !== null && !Number.isInteger(submissionId)) || !["skip", "bundle3"].includes(skipType)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid skip payment metadata." });
+        }
+        if (skipType === "bundle3") {
+          await grantLineSkipCredits(ctx.user.id, 3);
+          return { success: true, submissionId: null, creditsAdded: 3 };
         }
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        if (submissionId === null) {
+          await grantLineSkipCredits(ctx.user.id, 1);
+          return { success: true, submissionId: null, creditsAdded: 1 };
+        }
         const [submission] = await db.select({ id: reviewSubmissions.id, userId: reviewSubmissions.userId, skippedLine: reviewSubmissions.skippedLine })
           .from(reviewSubmissions).where(and(eq(reviewSubmissions.id, submissionId), eq(reviewSubmissions.userId, ctx.user.id))).limit(1);
         if (!submission) throw new TRPCError({ code: "NOT_FOUND", message: "Queue submission not found." });

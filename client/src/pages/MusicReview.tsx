@@ -1081,7 +1081,7 @@ function AdminPanel({
                       <span className="text-yellow-400 text-[10px] ml-2 font-bold">{skipLabel}</span>
                     </div>
                     <button
-                      onClick={() => { confirmSkip.mutate({ id: s.id, skipType: s.paidSubmissionType ?? "skip" }); toast.success("Skip confirmed — queue updated"); }}
+                      onClick={() => { confirmSkip.mutate({ id: s.id, skipType: "skip" }); toast.success("Skip confirmed — queue updated"); }}
                       className="text-[10px] bg-yellow-500 text-black px-2 py-1 rounded font-bold uppercase hover:bg-yellow-400 transition-colors flex-shrink-0"
                     >
                       ✓ Confirm
@@ -1482,7 +1482,7 @@ export default function MusicReview() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Skip-the-line payment flow state
   const [skipStep, setSkipStep] = useState<"select" | "pay" | "confirm" | "done">("select");
-  const [selectedSkipType, setSelectedSkipType] = useState<"reentry5" | "reentry10" | "skip" | null>(null);
+  const [selectedSkipType, setSelectedSkipType] = useState<"skip" | "bundle3" | null>(null);
   const [skipReceiptUrl, setSkipReceiptUrl] = useState("");
   const [skipPaymentMethod, setSkipPaymentMethod] = useState("");
   const [paidReceiptUrl, setPaidReceiptUrl] = useState("");
@@ -1490,6 +1490,7 @@ export default function MusicReview() {
   const [skipSubmitting, setSkipSubmitting] = useState(false);
   const createSkipStripeCheckout = trpc.stripe.createSkipCheckoutSession.useMutation();
   const confirmSkipStripeCheckout = trpc.stripe.confirmSkipCheckout.useMutation();
+  const requestSkipMutation = trpc.queue.requestSkip.useMutation();
 
   const { user } = useAuth();
   const { data: savedBotSettings } = trpc.queue.getReviewBotSettings.useQuery(undefined, { refetchInterval: 5000 });
@@ -1989,6 +1990,8 @@ export default function MusicReview() {
           mimeType: audioFile.type || "audio/mpeg",
           contactInfo: form.contactInfo || undefined,
           wantsSkip: form.wantsSkip,
+          receiptUrl: form.wantsSkip ? (skipReceiptUrl || undefined) : undefined,
+          paymentMethod: form.wantsSkip ? "Cash App" : undefined,
         });
       };
       reader.readAsDataURL(audioFile);
@@ -2006,6 +2009,8 @@ export default function MusicReview() {
         youtubeUrl: form.youtubeUrl,
         contactInfo: form.contactInfo || undefined,
         wantsSkip: form.wantsSkip,
+        receiptUrl: form.wantsSkip ? (skipReceiptUrl || undefined) : undefined,
+        paymentMethod: form.wantsSkip ? "Cash App" : undefined,
       });
     }
   };
@@ -2079,18 +2084,14 @@ export default function MusicReview() {
   };
 
   // Standalone skip-the-line purchase (user already has a submission in queue)
-  const handleStripeSkipCheckout = async () => {
-    if (!selectedSkipType || !user) return;
-    const mySubmission = data?.submissions?.find(s => s.userId === user.id && (s.status === "pending" || s.status === "playing"));
-    if (!mySubmission) {
-      toast.error("You need to have a track in the queue first to purchase a skip.");
-      return;
-    }
+  const handleStripeSkipCheckout = async (requestedType: "skip" | "bundle3" | null = selectedSkipType) => {
+    if (!requestedType || !user) return;
+    const mySubmission = data?.submissions?.find(s => s.userId === user.id && (s.status === "pending" || s.status === "playing") && !s.skippedLine);
     setSkipSubmitting(true);
     try {
       const result = await createSkipStripeCheckout.mutateAsync({
-        submissionId: mySubmission.id,
-        skipType: selectedSkipType,
+        submissionId: mySubmission?.id,
+        skipType: requestedType,
         origin: window.location.origin,
       });
       window.location.assign(result.checkoutUrl);
@@ -2108,7 +2109,8 @@ export default function MusicReview() {
       setSkipStep("done");
       setSkipSubmitting(false);
       void refetch();
-      toast.success("Stripe payment received. Your skip is pending admin approval.");
+      void refetchLineSkipCredits();
+      toast.success("Stripe payment verified. Your skip balance is updated.");
       window.history.replaceState({}, "", window.location.pathname);
     }).catch((error: any) => {
       setSkipSubmitting(false);
@@ -2125,16 +2127,7 @@ export default function MusicReview() {
       return;
     }
     setSkipSubmitting(true);
-    submitMutation.mutate({
-      songTitle: mySubmission.songTitle,
-      submissionType: mySubmission.submissionType,
-      youtubeUrl: mySubmission.youtubeUrl ?? undefined,
-      contactInfo: mySubmission.contactInfo ?? undefined,
-      wantsSkip: true,
-      paidSubmissionType: selectedSkipType,
-      receiptUrl: skipReceiptUrl || undefined,
-      paymentMethod: skipPaymentMethod || undefined,
-    }, {
+    requestSkipMutation.mutate({ submissionId: mySubmission.id, receiptUrl: skipReceiptUrl || undefined, paymentMethod: skipPaymentMethod || undefined }, {
       onSuccess: () => {
         setSkipSubmitting(false);
         setSkipStep("done");
@@ -2984,6 +2977,25 @@ export default function MusicReview() {
                       className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
                     />
 
+                    <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.05] p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-300">Line Skip</p>
+                          <p className="mt-1 text-xs text-white/50">$10 per skip · 3 skips for $20 · verified skips go behind existing skips.</p>
+                        </div>
+                        <span className="shrink-0 rounded-full border border-amber-300/30 px-2.5 py-1 text-[10px] font-bold uppercase text-amber-200">Balance: {lineSkipCreditsData ?? 0}</span>
+                      </div>
+                      <label className="flex cursor-pointer items-start gap-2 text-xs text-white/70">
+                        <input type="checkbox" checked={form.wantsSkip} onChange={e => setForm(f => ({ ...f, wantsSkip: e.target.checked }))} className="mt-0.5 accent-red-600" />
+                        <span><strong className="text-white">Request a $10 line skip for this track</strong><br /><span className="text-white/40">Pay with the skip option below or include a Cash App receipt; admin verification is required.</span></span>
+                      </label>
+                      {form.wantsSkip && <input type="url" value={skipReceiptUrl} onChange={e => setSkipReceiptUrl(e.target.value)} placeholder="Cash App receipt URL (optional)" className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:border-[#00D632]/50 focus:outline-none" />}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => { setSelectedSkipType("skip"); void handleStripeSkipCheckout("skip"); }} className="rounded-lg border border-[#635bff]/40 bg-[#635bff]/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#635bff]/20">Buy 1 for $10</button>
+                        <button type="button" onClick={() => { setSelectedSkipType("bundle3"); void handleStripeSkipCheckout("bundle3"); }} className="rounded-lg border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-100 hover:bg-amber-300/20">Buy 3 for $20</button>
+                      </div>
+                    </div>
+
                     <button
                       onClick={(e: any) => handleSubmit(e)}
                       disabled={submitting || !form.songTitle.trim() || (submitType === "youtube" ? !form.youtubeUrl.trim() : !audioFile)}
@@ -3018,6 +3030,7 @@ export default function MusicReview() {
                         </div>
                         <div className="flex items-center gap-2">
                           {sub.skippedLine && <span className="text-[10px] bg-yellow-600/20 text-yellow-400 border border-yellow-600/30 px-2 py-0.5 rounded-full">Skip</span>}
+                          {user && sub.userId === user.id && !sub.skippedLine && (lineSkipCreditsData ?? 0) > 0 && <button type="button" onClick={() => useLineSkipMutation.mutate({ submissionId: sub.id })} disabled={useLineSkipMutation.isPending} className="rounded-lg border border-amber-400/35 bg-amber-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200 hover:bg-amber-400/20">Use Skip</button>}
                           <StatusBadge status={sub.status} />
                         </div>
                       </div>
@@ -3070,9 +3083,8 @@ export default function MusicReview() {
                     </div>
                     <div className="space-y-3">
                       {([
-                        { label: "5 Spots Up", price: "$5", type: "reentry5" as const, desc: "Move 5 positions forward in the queue" },
-                        { label: "10 Spots Up", price: "$10", type: "reentry10" as const, desc: "Move 10 positions forward in the queue" },
-                        { label: "Skip to Front", price: "$20", type: "skip" as const, desc: "Jump straight to the front of the queue" },
+                        { label: "One Line Skip", price: "$10", type: "skip" as const, desc: "Use it on your next track or apply it to a track already in the queue" },
+                        { label: "3 Line Skips", price: "$20", type: "bundle3" as const, desc: "Adds three skips to your balance" },
                       ] as const).map(opt => (
                         <button
                           key={opt.type}
@@ -3103,7 +3115,7 @@ export default function MusicReview() {
                     </button>
                     <div className="text-center mb-5">
                       <div className="text-2xl font-['Anton'] text-red-500 mb-1">
-                        {selectedSkipType === "reentry5" ? "$5 — 5 Spots Up" : selectedSkipType === "reentry10" ? "$10 — 10 Spots Up" : "$20 — Skip to Front"}
+                        {selectedSkipType === "bundle3" ? "$20 — 3 Line Skips" : "$10 — One Line Skip"}
                       </div>
                       <p className="text-white/40 text-xs">Choose a payment method and send the exact amount</p>
                     </div>
@@ -3133,7 +3145,7 @@ export default function MusicReview() {
                     <div className="space-y-3">
                       <button
                         type="button"
-                        onClick={handleStripeSkipCheckout}
+                        onClick={() => { void handleStripeSkipCheckout(); }}
                         disabled={skipSubmitting}
                         className="w-full flex items-center justify-center gap-2 bg-[#635bff] hover:bg-[#5148e8] disabled:opacity-50 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors"
                       >
@@ -3171,11 +3183,11 @@ export default function MusicReview() {
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-5 text-left space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-white/40">Skip Type</span>
-                        <span className="text-white font-semibold">{selectedSkipType === "reentry5" ? "5 Spots Up" : selectedSkipType === "reentry10" ? "10 Spots Up" : "Skip to Front"}</span>
+                        <span className="text-white font-semibold">{selectedSkipType === "bundle3" ? "3 Line Skips" : "One Line Skip"}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-white/40">Amount</span>
-                        <span className="text-red-400 font-bold">{selectedSkipType === "reentry5" ? "$5" : selectedSkipType === "reentry10" ? "$10" : "$20"}</span>
+                        <span className="text-red-400 font-bold">{selectedSkipType === "bundle3" ? "$20" : "$10"}</span>
                       </div>
                       {skipPaymentMethod && (
                         <div className="flex justify-between text-sm">

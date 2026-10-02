@@ -358,13 +358,13 @@ export async function completeAndAdvanceReviewQueue(
  *   "reentry10" → move 10 spots up
  *   "skip"      → move to front (position = 0, before all pending)
  */
-export async function confirmSkipPayment(id: number, skipType: "reentry5" | "reentry10" | "skip" = "skip") {
+export async function confirmSkipPayment(id: number, skipType: "skip" | "bundle3" = "skip") {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
 
   // Get all pending/playing submissions ordered by current position
   const allPending = await db
-    .select({ id: reviewSubmissions.id, position: reviewSubmissions.position })
+    .select({ id: reviewSubmissions.id, position: reviewSubmissions.position, skipPaymentConfirmed: reviewSubmissions.skipPaymentConfirmed })
     .from(reviewSubmissions)
     .where(and(
       ne(reviewSubmissions.status, "removed"),
@@ -379,13 +379,8 @@ export async function confirmSkipPayment(id: number, skipType: "reentry5" | "ree
   }
 
   let targetIdx: number;
-  if (skipType === "skip") {
-    targetIdx = 0; // front of queue
-  } else if (skipType === "reentry10") {
-    targetIdx = Math.max(0, currentIdx - 10);
-  } else {
-    targetIdx = Math.max(0, currentIdx - 5); // reentry5
-  }
+  // Keep verified skips in purchase order: behind existing skips, ahead of normal tracks.
+  targetIdx = allPending.filter((submission) => submission.id !== id && submission.skipPaymentConfirmed).length;
 
   // Rebuild position values: insert the submission at targetIdx
   const reordered = [...allPending];
