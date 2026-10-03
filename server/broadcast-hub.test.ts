@@ -19,6 +19,9 @@ describe("Music Review broadcast hub", () => {
     expect(app).toContain('<Route path={"/broadcast/review"} component={BroadcastReview} />');
     expect(broadcast).toContain("SyncedYouTubePlayer");
     expect(broadcast).toContain("AudioPlayButton");
-    expect(broadcast).toContain("Submit to the review");
+    expect(broadcast).toContain("Submit a track");
+    expect(broadcast).toContain("aspect-video");
+    expect(broadcast).toContain("slice(0, 10)");
+    expect(broadcast).toContain("Live synchronized player");
   });
 });
