@@ -1,7 +1,9 @@
-import { useEffect } from "react";
-import { Activity, Flame, Radio, SkipForward, ThumbsDown } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Activity, Flame, Radio, SkipForward, ThumbsDown, Upload, ExternalLink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLiveStatus } from "@/hooks/useLiveStatus";
+import { AudioPlayButton } from "@/components/AudioPlayButton";
+import { SyncedYouTubePlayer, type SyncedYouTubePlayerHandle } from "@/components/SyncedYouTubePlayer";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -10,6 +12,10 @@ type BroadcastSubmission = {
   artistName: string;
   songTitle: string;
   status: string;
+  submissionType: "youtube" | "file";
+  youtubeUrl: string | null;
+  fileUrl: string | null;
+  userId?: number | null;
   fireCount: number;
   trashCount: number;
   position: number;
@@ -18,10 +24,10 @@ type BroadcastSubmission = {
 export default function BroadcastReview() {
   const { reviewIsLive } = useLiveStatus();
   const { data, isLoading } = trpc.queue.getAll.useQuery(undefined, {
-    enabled: reviewIsLive,
-    refetchInterval: reviewIsLive ? 5_000 : false,
+    refetchInterval: 5_000,
     refetchOnWindowFocus: false,
   });
+  const syncedPlayerRef = useRef<SyncedYouTubePlayerHandle>(null);
 
   useEffect(() => {
     document.title = "Live Music Review | Murder Mitten Media";
@@ -30,7 +36,8 @@ export default function BroadcastReview() {
     };
   }, []);
 
-  const current = data?.currentPlaying as BroadcastSubmission | null | undefined;
+  const isOnAir = data?.state?.isLive ?? reviewIsLive;
+  const current = (isOnAir ? data?.currentPlaying : null) as BroadcastSubmission | null | undefined;
   const queue = ((data?.submissions ?? []) as BroadcastSubmission[])
     .filter((submission) => submission.status === "pending" && submission.id !== current?.id)
     .sort((a, b) => a.position - b.position)
@@ -49,8 +56,8 @@ export default function BroadcastReview() {
               <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.28em] text-white/45 sm:text-[11px]">Music Review Broadcast</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-red-300 sm:px-4 sm:py-2 sm:text-xs">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" /> Live Review
+          <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] sm:px-4 sm:py-2 sm:text-xs ${isOnAir ? "border-red-500/40 bg-red-500/10 text-red-300" : "border-white/15 bg-white/5 text-white/40"}`}>
+            <span className={`h-2 w-2 rounded-full ${isOnAir ? "animate-pulse bg-red-500" : "bg-white/25"}`} /> {isOnAir ? "Live Review" : "Review Offline"}
           </div>
         </div>
 
@@ -64,12 +71,16 @@ export default function BroadcastReview() {
                 <span className="flex items-center gap-2"><Flame className="h-5 w-5 text-red-500" /> {current.fireCount} fire</span>
                 <span className="flex items-center gap-2"><ThumbsDown className="h-5 w-5 text-white/60" /> {current.trashCount} trash</span>
               </div>
-            </> : <div><h1 className="font-['Anton'] text-6xl uppercase leading-none sm:text-8xl">Next track<br /><span className="text-red-600">loading</span></h1><p className="mt-5 text-white/50">The Mitten Panel is preparing the next review.</p></div>}
+              <div className="mt-8 max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                {current.submissionType === "youtube" && current.youtubeUrl ? <SyncedYouTubePlayer ref={syncedPlayerRef} videoId={current.youtubeUrl.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/)?.[1] ?? ""} submissionId={current.id} isAdmin={false} className="w-full" /> : current.fileUrl ? <div className="flex items-center gap-4 p-4"><AudioPlayButton url={current.fileUrl} title={current.songTitle} artist={current.artistName} sourcePage="Broadcast Review" submissionId={current.id} artistUserId={current.userId ?? undefined} size="lg" /><div><p className="text-sm font-bold text-white">Broadcast player</p><p className="text-xs text-white/40">Tap play to monitor the current submission.</p></div></div> : <p className="p-5 text-sm text-white/45">Player waiting for the current audio source.</p>}
+              </div>
+            </> : <div><h1 className="font-['Anton'] text-6xl uppercase leading-none sm:text-8xl">Next track<br /><span className="text-red-600">loading</span></h1><p className="mt-5 text-white/50">{isOnAir ? "The next review is loading." : "The live review is currently offline."}</p></div>}
           </section>
 
           <aside className="space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-3"><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-white/60"><Activity className="h-4 w-4 text-red-500" /> Queue</div><span className="text-[10px] uppercase tracking-widest text-white/30">Next up</span></div>
             {queue.length === 0 ? <div className="border border-dashed border-white/15 p-6 text-sm text-white/35">Queue is clear. Stay tuned for the next submission.</div> : queue.map((submission, index) => <div key={submission.id} className="flex items-center gap-4 border border-white/10 bg-white/[0.035] p-4 sm:p-5"><span className="font-['Anton'] text-3xl text-red-600/70">{String(index + 1).padStart(2, "0")}</span><div className="min-w-0"><p className="truncate font-['Anton'] text-xl uppercase sm:text-2xl">{submission.songTitle}</p><p className="truncate text-sm text-white/45">{submission.artistName}</p></div><SkipForward className="ml-auto h-4 w-4 shrink-0 text-white/25" /></div>)}
+            <div className="border border-white/10 bg-white/[0.025] p-5"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-red-300"><Upload className="h-4 w-4" /> Submit to the review</p><ol className="mt-4 space-y-3 text-sm text-white/55"><li><strong className="text-white">1.</strong> Open the full review page and sign in.</li><li><strong className="text-white">2.</strong> Choose Upload MP3 or YouTube Link.</li><li><strong className="text-white">3.</strong> Add your title, submit, and watch your queue position.</li></ol><a href="/review" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-red-500">Open submission form <ExternalLink className="h-3.5 w-3.5" /></a></div>
           </aside>
         </div>
 

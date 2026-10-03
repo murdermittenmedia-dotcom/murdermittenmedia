@@ -12,4 +12,13 @@ describe("Music Review broadcast hub", () => {
     expect(review).toContain('id="submit-track"');
     expect(review).toContain("Choose Upload MP3 or YouTube Link");
   });
+
+  it("keeps the canonical broadcast review route connected to a real player", () => {
+    const app = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
+    const broadcast = readFileSync(resolve(process.cwd(), "client/src/pages/BroadcastReview.tsx"), "utf8");
+    expect(app).toContain('<Route path={"/broadcast/review"} component={BroadcastReview} />');
+    expect(broadcast).toContain("SyncedYouTubePlayer");
+    expect(broadcast).toContain("AudioPlayButton");
+    expect(broadcast).toContain("Submit to the review");
+  });
 });
