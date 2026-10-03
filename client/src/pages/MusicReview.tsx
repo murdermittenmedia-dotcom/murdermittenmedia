@@ -1580,7 +1580,7 @@ export default function MusicReview() {
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
-  const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 5000 });
+  const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 3000, refetchOnWindowFocus: true });
   const { data: judgePanelVisibility } = trpc.queue.getJudgePanelVisibility.useQuery(undefined, { refetchInterval: 5000 });
   const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
   const judgePanelVisible = judgePanelVisibility?.visible ?? true;
@@ -1868,10 +1868,12 @@ export default function MusicReview() {
     chatControlsEmitRef.current = emitChatControls;
   });
 
-  // Initialize from DB for late joiners
+  // Initialize and reconcile from the server for late joiners and refreshes.
+  // Do not gate this on local socket state: a reconnect can leave an old track
+  // in memory while the authoritative queue has already advanced.
   useEffect(() => {
-    if (!liveReviewActive && data?.currentPlaying) {
-      const cp = data.currentPlaying;
+    const cp = data?.currentPlaying;
+    if (cp && liveReviewActive?.submissionId !== cp.id) {
       setActiveSubmissionId(cp.id);
       setLiveReviewActive({
         submissionId: cp.id,
@@ -1884,8 +1886,11 @@ export default function MusicReview() {
         fileKey: cp.fileKey ?? null,
         fileUrl: cp.fileUrl ?? null,
       });
+    } else if (data && !cp && liveReviewActive) {
+      setActiveSubmissionId(null);
+      setLiveReviewActive(null);
     }
-    }, [data?.currentPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data?.currentPlaying?.id, liveReviewActive?.submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset ghost votes when song changes
   useEffect(() => {

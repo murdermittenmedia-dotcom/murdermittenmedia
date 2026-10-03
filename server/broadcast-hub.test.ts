@@ -26,5 +26,7 @@ describe("Music Review broadcast hub", () => {
     expect(broadcast).toContain("viewerCount.toLocaleString()");
     expect(broadcast).toContain("Now playing");
     expect(broadcast).toContain("Next 5 songs");
+    expect(broadcast).toContain("Audio monitor");
+    expect(broadcast).not.toContain("Tap play to monitor audio");
   });
 });

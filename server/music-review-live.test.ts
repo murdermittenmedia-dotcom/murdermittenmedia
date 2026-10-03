@@ -38,4 +38,11 @@ describe("Music Review live-room state", () => {
     expect(playerSource).toContain("SyncedYouTubePlayerHandle");
     expect(playerSource).toContain("listenLive: handleUnlock");
   });
+
+  it("reconciles refreshes and late joins from the authoritative queue state", () => {
+    const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
+    expect(reviewSource).toContain("refetchInterval: 3000, refetchOnWindowFocus: true");
+    expect(reviewSource).toContain("liveReviewActive?.submissionId !== cp.id");
+    expect(reviewSource).toContain("data && !cp && liveReviewActive");
+  });
 });
