@@ -1539,6 +1539,7 @@ export default function MusicReview() {
   const isAdmin = user?.role === "admin";
   const isJudge = user?.role === "judge";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
+  const isBroadcastHub = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "broadcast";
   const panelSeat = trpc.review.getMyPanelSeat.useQuery(undefined, { enabled: isJudge, refetchInterval: isJudge ? 4_000 : false });
   const pendingPanelSeats = trpc.review.getPanelSeatRequests.useQuery(undefined, { enabled: isAdmin, refetchInterval: isAdmin ? 4_000 : false });
   const requestPanelSeat = trpc.review.requestPanelSeat.useMutation({
@@ -2330,7 +2331,7 @@ export default function MusicReview() {
               <h1 className="font-['Anton'] text-3xl uppercase tracking-wider leading-none">
                 Music <span className="text-red-600">Review</span>
               </h1>
-              <p className="text-white/30 text-xs uppercase tracking-widest mt-0.5">Live Session</p>
+              <p className="text-white/30 text-xs uppercase tracking-widest mt-0.5">{isBroadcastHub ? "Broadcast Hub · Stream View" : "Live Session"}</p>
             </div>
           </div>
           {/* LIVE VIEWER COUNT — optional and only visible while the review is live */}
@@ -2351,7 +2352,8 @@ export default function MusicReview() {
             {isLive && <button type="button" onClick={listenToLiveReview} className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${audioUnlocked ? "border-green-500/40 bg-green-500/10 text-green-300" : "border-red-500/40 bg-red-600 text-white hover:bg-red-500"}`}>
               {audioUnlocked ? "Listening Live" : "Listen Live"}
             </button>}
-            {isJudge && judgePanelVisible && <button type="button" onClick={() => {
+            <a href={isBroadcastHub ? "/review" : "/review?mode=broadcast"} className="rounded-full border border-white/15 bg-white/[0.03] px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white/65 transition-colors hover:border-red-400/40 hover:text-white">{isBroadcastHub ? "Full Review" : "Broadcast Hub"}</a>
+            {isJudge && judgePanelVisible && !isBroadcastHub && <button type="button" onClick={() => {
               const status = panelSeat.data?.status;
               if (status === "approved" || (status === "active" && !judgeBroadcast)) { joinJudgeStage(); return; }
               if (!status || status === "ended" || status === "error") { requestPanelSeat.mutate(); return; }
@@ -2417,6 +2419,26 @@ export default function MusicReview() {
           </section>
         )}
 
+        {isBroadcastHub && <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
+          <div className="rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-950/35 via-[#101010] to-black p-5 shadow-[0_20px_70px_rgba(180,0,0,0.12)] sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-300">Broadcast Hub</p><h2 className="mt-1 font-['Anton'] text-3xl uppercase tracking-wide text-white sm:text-4xl">On-air control view</h2><p className="mt-2 max-w-xl text-sm leading-relaxed text-white/50">Keep this clean view open on the stream computer. The player, current song, and queue stay synchronized with the live review.</p></div>
+              <div className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-widest ${isLive ? "border-green-400/35 bg-green-400/10 text-green-200" : "border-white/15 bg-white/5 text-white/40"}`}>{isLive ? "On air" : "Offline"}</div>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {isLive && <button type="button" onClick={listenToLiveReview} className="rounded-lg bg-red-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-red-500">{audioUnlocked ? "Live audio connected" : "Connect live audio"}</button>}
+              <a href="#submit-track" className="rounded-lg border border-white/15 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white/70 hover:border-red-400/40 hover:text-white">How to submit</a>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#0b0b0b] p-5">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Queue monitor</p><h3 className="mt-1 text-lg font-bold text-white">Up next</h3></div><span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold text-white/45">{pendingQueue.length} tracks</span></div>
+            <div className="mt-4 max-h-48 space-y-2 overflow-y-auto pr-1">
+              {pendingQueue.filter((track) => track.id !== currentPlaying?.id).slice(0, 8).map((track, index) => <div key={track.id} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5"><span className="w-5 text-center font-['Anton'] text-lg text-red-400">{index + 1}</span><div className="min-w-0"><p className="truncate text-xs font-semibold text-white">{track.songTitle}</p><p className="truncate text-[10px] text-white/40">{track.artistName}</p></div>{track.skippedLine && <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-amber-300">Priority</span>}</div>)}
+              {pendingQueue.filter((track) => track.id !== currentPlaying?.id).length === 0 && <p className="py-8 text-center text-xs text-white/30">Queue is clear — waiting for submissions.</p>}
+            </div>
+          </div>
+        </section>}
+
         <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <button type="button" onClick={handleShareReview} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Share Live Review</button>
           <button type="button" onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => toast.success("Review link copied"))} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Copy Link</button>
@@ -2429,7 +2451,7 @@ export default function MusicReview() {
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Live review stage · performance, panel, crowd</p>
         </div>
         <div className="grid gap-5 lg:grid-cols-12">
-        {(judgePanelVisible || isAdmin) && <section className="order-1 min-w-0 lg:col-span-12">
+        {judgePanelVisible && !isBroadcastHub && <section className="order-1 min-w-0 lg:col-span-12">
           <JudgePanelStrip
             isReviewLive={isLive}
             isJudge={isJudge}
@@ -2443,7 +2465,7 @@ export default function MusicReview() {
           />
         </section>}
         {/* ── NOW PLAYING (large, prominent) ─────────────────── */}
-        <section className="order-2 min-w-0 lg:col-span-8">
+        <section className={`order-2 min-w-0 ${isBroadcastHub ? "lg:col-span-12" : "lg:col-span-8"}`}>
         {activeTrack ? (
           <div className="relative rounded-2xl overflow-hidden border border-red-600/40 bg-gradient-to-br from-red-950/20 via-[#0d0d0d] to-[#080808]">
             {/* Glow corners */}
@@ -2666,7 +2688,7 @@ export default function MusicReview() {
         </section>
 
         {/* ── LIVE CHAT ───────────────────────────────────────── */}
-        <section className="order-3 min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/25 lg:col-span-4">
+        <section className={`order-3 min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/25 lg:col-span-4 ${isBroadcastHub ? "hidden" : ""}`}>
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Chat header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
@@ -2799,7 +2821,7 @@ export default function MusicReview() {
         </section>
 
         {/* ── BOTTOM MENU TABS ────────────────────────────────── */}
-        <section className="order-4 min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/25 lg:col-span-8">
+        <section className={`order-4 min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/25 ${isBroadcastHub ? "lg:col-span-12" : "lg:col-span-8"}`}>
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Tab navigation */}
           <div className="flex overflow-x-auto scrollbar-none border-b border-white/10">
@@ -2825,10 +2847,14 @@ export default function MusicReview() {
 
             {/* ── SUBMIT TAB ── */}
             {tab === "submit" && (
-              <div className="max-w-lg mx-auto space-y-4">
+              <div id="submit-track" className="max-w-lg mx-auto space-y-4 scroll-mt-24">
                 <div className="text-center mb-6">
                   <h2 className="font-['Anton'] text-3xl uppercase mb-1">Submit Your <span className="text-red-600">Track</span></h2>
                   <p className="text-white/40 text-sm">Get your music reviewed live on air</p>
+                  <div className="mt-4 grid gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.045] p-4 text-left sm:grid-cols-3">
+                    {["Choose Upload MP3 or YouTube Link", "Add your song title and track", "Submit and watch the queue"].map((step, index) => <div key={step} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white">{index + 1}</span><p className="text-[11px] leading-relaxed text-white/60">{step}</p></div>)}
+                  </div>
+                  <p className="mt-3 text-[10px] leading-relaxed text-white/35">Use an MP3 for the cleanest broadcast playback, or paste a YouTube link. Keep this page open for your queue position and live review status.</p>
                   <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-left">
                     <div className="flex items-center justify-between gap-3">
                       <div>

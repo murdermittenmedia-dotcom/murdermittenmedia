@@ -11,11 +11,12 @@ describe("judge panel visibility control", () => {
     expect(router).toContain('setSetting("review_judge_panel_visible", String(input.visible))');
   });
 
-  it("hides the public judge panel while preserving the admin view", () => {
+  it("hides the judge panel completely and keeps it out of broadcast mode", () => {
     const review = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
     const admin = readFileSync(resolve(process.cwd(), "client/src/pages/AdminPanel.tsx"), "utf8");
     expect(review).toContain("trpc.queue.getJudgePanelVisibility.useQuery");
-    expect(review).toContain("(judgePanelVisible || isAdmin)");
+    expect(review).toContain("judgePanelVisible && !isBroadcastHub");
+    expect(review).toContain("const isBroadcastHub");
     expect(review).toContain("The judge panel is currently hidden by the admin.");
     expect(admin).toContain("Judge Panel Visibility");
     expect(admin).toContain("trpc.queue.setJudgePanelVisibility.useMutation");
