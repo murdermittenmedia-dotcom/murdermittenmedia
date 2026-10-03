@@ -18,6 +18,10 @@ describe("judge panel visibility control", () => {
     expect(review).toContain("judgePanelVisible && !isBroadcastHub");
     expect(review).toContain("const isBroadcastHub");
     expect(review).toContain("The judge panel is currently hidden by the admin.");
+    expect(review).toContain("Hide Mitten Panel");
+    expect(review).toContain("Show Mitten Panel");
+    expect(review).toContain("setJudgePanelVisibility.mutate");
+    expect(review).toContain("useState(true)");
     expect(admin).toContain("Judge Panel Visibility");
     expect(admin).toContain("trpc.queue.setJudgePanelVisibility.useMutation");
   });

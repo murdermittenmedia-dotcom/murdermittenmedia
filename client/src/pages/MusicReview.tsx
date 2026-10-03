@@ -275,6 +275,14 @@ function AdminPanel({
     onError: (error) => toast.error(error.message),
   });
   const setLive = trpc.queue.setLive.useMutation({ onSuccess: () => refetch() });
+  const judgePanelVisibility = trpc.queue.getJudgePanelVisibility.useQuery(undefined, { enabled: currentUser?.role === "admin", refetchInterval: 5_000 });
+  const setJudgePanelVisibility = trpc.queue.setJudgePanelVisibility.useMutation({
+    onSuccess: ({ visible }) => {
+      void judgePanelVisibility.refetch();
+      toast.success(visible ? "Mitten Panel is visible to all viewers" : "Mitten Panel hidden from all viewers");
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const setPlaying = trpc.queue.setPlaying.useMutation({ onSuccess: () => refetch() });
   const updateStatus = trpc.queue.updateStatus.useMutation({ onSuccess: () => refetch() });
@@ -511,15 +519,24 @@ function AdminPanel({
   return (
     <div className="rounded-xl overflow-hidden mb-5 border border-red-600/30 bg-gradient-to-b from-[#1a0000] to-[#0a0000] shadow-[0_0_30px_rgba(209,0,0,0.08)]">
       {/* ── Admin header bar ── */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-600/15 via-red-600/5 to-transparent border-b border-red-600/20">
+        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-600/15 via-red-600/5 to-transparent border-b border-red-600/20">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-red-600/20 border border-red-600/30 flex items-center justify-center">
             <Crown className="w-3.5 h-3.5 text-red-500" />
           </div>
           <span className="text-red-400 text-xs uppercase tracking-[0.2em] font-bold">Control Board</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {isLive && (
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setJudgePanelVisibility.mutate({ visible: !(judgePanelVisibility.data?.visible ?? true) })}
+              disabled={setJudgePanelVisibility.isPending}
+              aria-pressed={judgePanelVisibility.data?.visible ?? true}
+              className={`rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors disabled:cursor-wait disabled:opacity-60 ${(judgePanelVisibility.data?.visible ?? true) ? "border-green-400/35 bg-green-400/10 text-green-200 hover:bg-green-400/20" : "border-amber-400/45 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20"}`}
+            >
+              {(judgePanelVisibility.data?.visible ?? true) ? "Hide Mitten Panel" : "Show Mitten Panel"}
+            </button>
+            {isLive && (
             <span className="flex items-center gap-1.5 bg-red-600/20 border border-red-600/40 rounded-full px-3 py-1">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">On Air</span>
@@ -1692,7 +1709,7 @@ export default function MusicReview() {
   });
 
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
-  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(true);
 
   // Tip artist state
   const [tipAmount, setTipAmount] = useState<string>("");
