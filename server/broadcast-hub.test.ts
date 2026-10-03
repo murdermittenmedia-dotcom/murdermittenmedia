@@ -21,7 +21,10 @@ describe("Music Review broadcast hub", () => {
     expect(broadcast).toContain("AudioPlayButton");
     expect(broadcast).toContain("Submit a track");
     expect(broadcast).toContain("aspect-video");
-    expect(broadcast).toContain("slice(0, 10)");
+    expect(broadcast).toContain("slice(0, 5)");
     expect(broadcast).toContain("Live synchronized player");
+    expect(broadcast).toContain("viewerCount.toLocaleString()");
+    expect(broadcast).toContain("Now playing");
+    expect(broadcast).toContain("Next 5 songs");
   });
 });
