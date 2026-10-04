@@ -68,12 +68,14 @@ import BeatProducer from "./pages/BeatProducer";
 import BeatLibrary from "./pages/BeatLibrary";
 import AdminBeatPayouts from "./pages/AdminBeatPayouts";
 import BeatProInvite from "./pages/BeatProInvite";
+import Login from "./pages/Login";
 
 function Router() {
   return (
     <Switch>
       {/* Core pages */}
       <Route path={"/"} component={Home} />
+      <Route path={"/login"} component={Login} />
       <Route path={"/promo"} component={Promo} />
       <Route path={"/merch"} component={Merch} />
       <Route path={"/shop"} component={Merch} />

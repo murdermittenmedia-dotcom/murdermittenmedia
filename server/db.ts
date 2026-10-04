@@ -59,6 +59,7 @@ import { summarizeVotes } from "../shared/voting";
 import { attachSongReactionTotals } from "../shared/song-reaction-totals";
 import { calculateReviewVerdict } from "../shared/review-verdict";
 import { getPageMeta } from "../shared/pagination";
+import { normalizeUsername } from "./password-auth";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -132,6 +133,30 @@ export async function getUserByOpenId(openId: string) {
   if (!db) { console.warn("[Database] Cannot get user: database not available"); return undefined; }
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByUsername(username: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.username, normalizeUsername(username))).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createLocalUser(input: { username: string; passwordHash: string; name?: string | null; email?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const username = normalizeUsername(input.username);
+  const openId = `local_${randomBytes(20).toString("hex")}`;
+  await db.insert(users).values({
+    openId,
+    username,
+    passwordHash: input.passwordHash,
+    name: input.name ?? username,
+    email: input.email ?? null,
+    loginMethod: "password",
+    lastSignedIn: new Date(),
+  });
+  return getUserByOpenId(openId);
 }
 
 export async function getUserById(id: number) {

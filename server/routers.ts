@@ -3,8 +3,9 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { buildNextWarEntries } from "../shared/next-war";
 import { createPickedNotification } from "../shared/picked-notification";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
@@ -64,7 +65,7 @@ import {
   removeWheelOfNamesEntry,
   trackPageView, upsertActiveSession, pruneStaleActiveSessions, getSiteStats,
   setAccountLabels, setAccountLabelsAdmin, USER_SELECTABLE_LABELS, ALL_LABELS,
-  getDb, ensureUserReferralCode, getUserReferralStatus, acceptUserReferralCode,
+  getDb, ensureUserReferralCode, getUserReferralStatus, acceptUserReferralCode, getUserByUsername, createLocalUser,
   createJudgeBroadcast, getActiveJudgeBroadcasts, getJudgeBroadcast, endJudgeBroadcast, completeAndAdvanceReviewQueue,
   getUserDailySpin, recordDailySpin, getAllDailySpins, getUserSpinHistory, getTodayEST,
   getUserLineSkipCredits, grantLineSkipCredits, useLineSkipCredit,
@@ -88,6 +89,7 @@ import {
   createRtmpIngress, deleteIngress, getIngressStatus,
 } from "./livekit";
 import { ENV } from "./_core/env";
+import { hashPassword, normalizeUsername, validatePassword, verifyPassword } from "./password-auth";
 import { normalizeArticleCatalogLinks } from "./article-media";
 import { parsePastedArticleLinks } from "@shared/article-links";
 import { desc as drizzleDesc } from "drizzle-orm";
@@ -417,8 +419,50 @@ export const appRouter = router({
           }
         }).catch(() => {});
       }
-      return opts.ctx.user;
+      if (!opts.ctx.user) return null;
+      const { passwordHash: _passwordHash, ...safeUser } = opts.ctx.user;
+      return safeUser;
     }),
+    register: publicProcedure
+      .input(z.object({
+        username: z.string().trim().min(3).max(64).regex(/^[a-zA-Z0-9_]+$/, "Use letters, numbers, and underscores only."),
+        password: z.string().min(8).max(128),
+        name: z.string().trim().max(128).optional(),
+        email: z.string().trim().email().max(320).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const username = normalizeUsername(input.username);
+        const passwordError = validatePassword(input.password);
+        if (passwordError) throw new TRPCError({ code: "BAD_REQUEST", message: passwordError });
+        if (await getUserByUsername(username)) {
+          throw new TRPCError({ code: "CONFLICT", message: "That username is already taken." });
+        }
+        let user;
+        try {
+          user = await createLocalUser({ username, passwordHash: hashPassword(input.password), name: input.name || username, email: input.email });
+        } catch (error: any) {
+          if (String(error?.message ?? "").toLowerCase().includes("duplicate")) {
+            throw new TRPCError({ code: "CONFLICT", message: "That username is already taken." });
+          }
+          throw error;
+        }
+        if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create your account." });
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? username, expiresInMs: ONE_YEAR_MS });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+        return { success: true } as const;
+      }),
+    login: publicProcedure
+      .input(z.object({ username: z.string().trim().min(1).max(64), password: z.string().min(1).max(128) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserByUsername(input.username);
+        if (!user?.passwordHash || !verifyPassword(input.password, user.passwordHash)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Username or password is incorrect." });
+        }
+        if (user.isBanned) throw new TRPCError({ code: "FORBIDDEN", message: "This account is currently restricted." });
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? user.username ?? "", expiresInMs: ONE_YEAR_MS });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+        return { success: true } as const;
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
