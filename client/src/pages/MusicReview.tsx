@@ -301,7 +301,20 @@ function AdminPanel({
   });
 
   const isLive = data?.state?.isLive ?? false;
-  const currentPlaying = data?.currentPlaying;
+  // A reconnect or older queue row can leave currentPlayingId unset while the
+  // submission itself is already marked playing. Resolve that row as a safe
+  // fallback so the admin never has to press Load just to restore the session.
+  const currentPlaying = data?.currentPlaying ?? data?.submissions?.find((submission: ReviewSubmission) => submission.status === "playing") ?? null;
+  const hydratedPlayingIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!currentPlaying || currentPlaying.submissionType !== "file" || !currentPlaying.fileUrl) {
+      if (!currentPlaying) hydratedPlayingIdRef.current = null;
+      return;
+    }
+    if (hydratedPlayingIdRef.current === currentPlaying.id) return;
+    hydratedPlayingIdRef.current = currentPlaying.id;
+    playTrack(currentPlaying);
+  }, [currentPlaying?.id, currentPlaying?.submissionType, currentPlaying?.fileUrl, playTrack]);
    const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? [];
   const queueKey = JSON.stringify(queue.map(s => s.id + ':' + s.status + ':' + s.position));
   // Drag-to-reorder state
@@ -1872,7 +1885,7 @@ export default function MusicReview() {
   // Do not gate this on local socket state: a reconnect can leave an old track
   // in memory while the authoritative queue has already advanced.
   useEffect(() => {
-    const cp = data?.currentPlaying;
+    const cp = data?.currentPlaying ?? data?.submissions?.find((submission: ReviewSubmission) => submission.status === "playing") ?? null;
     if (cp && liveReviewActive?.submissionId !== cp.id) {
       setActiveSubmissionId(cp.id);
       setLiveReviewActive({
@@ -1890,7 +1903,7 @@ export default function MusicReview() {
       setActiveSubmissionId(null);
       setLiveReviewActive(null);
     }
-  }, [data?.currentPlaying?.id, liveReviewActive?.submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data?.currentPlaying?.id, data?.submissions, liveReviewActive?.submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset ghost votes when song changes
   useEffect(() => {
@@ -2164,7 +2177,7 @@ export default function MusicReview() {
   };
 
   const pendingQueue = data?.submissions?.filter(s => s.status === "pending" || s.status === "playing") ?? [];
-  const currentPlaying = data?.currentPlaying;
+  const currentPlaying = data?.currentPlaying ?? data?.submissions?.find((submission: ReviewSubmission) => submission.status === "playing") ?? null;
   const isLive = data?.state?.isLive ?? false;
   const liveMessage = data?.state?.liveMessage;
   const streamUrl = data?.state?.streamUrl;

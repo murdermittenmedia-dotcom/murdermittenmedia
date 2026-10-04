@@ -44,5 +44,9 @@ describe("Music Review live-room state", () => {
     expect(reviewSource).toContain("refetchInterval: 3000, refetchOnWindowFocus: true");
     expect(reviewSource).toContain("liveReviewActive?.submissionId !== cp.id");
     expect(reviewSource).toContain("data && !cp && liveReviewActive");
+    expect(reviewSource).toContain("hydratedPlayingIdRef.current === currentPlaying.id");
+    expect(reviewSource).toContain("playTrack(currentPlaying)");
+    expect(reviewSource).toContain('submission.status === "playing"');
+    expect(reviewSource).toContain("data?.currentPlaying ?? data?.submissions?.find");
   });
 });
