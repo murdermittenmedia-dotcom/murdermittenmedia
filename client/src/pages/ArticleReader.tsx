@@ -65,8 +65,8 @@ export default function ArticleReader() {
   const slug = params?.slug ?? "";
   const { data: article, isLoading } = trpc.news.getArticle.useQuery({ slug }, { enabled: Boolean(slug) });
 
-  if (isLoading) return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><div className="container py-28 text-center text-white/40">Loading article...</div></div>;
-  if (!article) return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><div className="container py-28 text-center"><p className="text-white/50">Article not found.</p><Link href="/news" className="mt-5 inline-flex items-center gap-2 text-red-400 hover:text-white"><ArrowLeft className="w-4 h-4" /> Back to Latest News</Link></div></div>;
+  if (isLoading) return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><div className="container pt-32 text-center text-white/40">Loading article...</div></div>;
+  if (!article) return <div className="min-h-screen bg-[#080808] text-white"><SiteNav /><div className="container pt-32 text-center"><p className="text-white/50">Article not found.</p><Link href="/news" className="mt-5 inline-flex items-center gap-2 text-red-400 hover:text-white"><ArrowLeft className="w-4 h-4" /> Back to Latest News</Link></div></div>;
 
   let referenceImages: string[] = [];
   let catalogLinks: Array<{ platform: string; label: string; url: string; embedUrl?: string; category?: string }> = [];
@@ -77,19 +77,16 @@ export default function ArticleReader() {
   return (
     <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
-      <main className="container max-w-5xl pt-8 pb-24">
+      <main className="container max-w-5xl pt-24 pb-24 md:pt-28">
         <Link href="/news" className="mb-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/45 hover:text-white"><ArrowLeft className="w-4 h-4" /> Latest News</Link>
         <article className="overflow-hidden border border-white/10 bg-white/[0.02]">
-          {article.thumbnailUrl && <img src={article.thumbnailUrl} alt="" className="max-h-[560px] w-full object-cover" />}
+          {article.thumbnailUrl && <div className="flex max-h-[680px] justify-center overflow-hidden bg-black"><img src={article.thumbnailUrl} alt="" className="max-h-[680px] w-full object-contain" /></div>}
           <div className="mx-auto max-w-3xl px-6 py-10 md:px-12 md:py-14">
             <div className="mb-5 flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-[0.25em] text-red-400"><span className="h-px w-8 bg-red-600" /> Murder Mitten Editorial <span className="text-white/25">/</span><span className="flex items-center gap-1 text-white/35"><CalendarDays className="h-3.5 w-3.5" /> {published}</span></div>
             <h1 className="font-['Anton'] text-5xl uppercase leading-[.95] tracking-wide md:text-7xl">{article.title}</h1>
-            {article.artistName && <div className="mt-4 text-sm uppercase tracking-[0.2em] text-yellow-400">Featuring {article.artistName}</div>}
-            {article.caption && <p className="mt-6 border-l-2 border-red-600 pl-5 text-lg leading-8 text-white/55">{article.caption}</p>}
-            <CatalogEmbeds links={catalogLinks} />
-            <div className="my-10 h-px bg-white/10" />
             <ArticleBody content={article.content || article.caption} referenceImages={referenceImages} />
             {referenceImages.length > 0 && <section className="mt-14 border-t border-white/10 pt-8"><div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/45"><ImageIcon className="h-4 w-4 text-red-500" /> Reference Images</div><div className="grid gap-4 sm:grid-cols-2">{referenceImages.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="group overflow-hidden border border-white/10 bg-black"><img src={url} alt={`Reference ${index + 1}`} className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" /><div className="flex items-center justify-between px-3 py-2 text-xs text-white/35">View image <ExternalLink className="h-3 w-3" /></div></a>)}</div></section>}
+            {catalogLinks.length > 0 && <CatalogEmbeds links={catalogLinks} />}
             <div className="mt-12 flex flex-wrap gap-3"><a href={article.permalink || "/news"} target={article.permalink ? "_blank" : undefined} rel="noreferrer" className="inline-flex items-center gap-2 border border-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white/55 hover:border-red-600 hover:text-white">Source <ArrowUpRight className="h-3.5 w-3.5" /></a>{article.keywords && <span className="px-4 py-2 text-xs text-white/30">{article.keywords.split(",").map(k => `#${k.trim()}`).join("  ")}</span>}</div>
           </div>
         </article>
