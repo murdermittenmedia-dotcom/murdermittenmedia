@@ -1,393 +1,56 @@
-/* ============================================================
-   MURDER MITTEN MEDIA — Latest News / Instagram Feed
-   Shows latest posts from @murdermittenmedia
-   Auto-fetches from Instagram API (when configured) or shows
-   curated static posts as fallback
-   ============================================================ */
-
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { ArrowUpRight, BookOpen, Search } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { trpc } from "@/lib/trpc";
-import { ExternalLink, Heart, MessageCircle, RefreshCw, Instagram, ArrowUpRight, BookOpen } from "lucide-react";
-import { selectNewsPosts } from "@shared/news-feed";
 
-// ─── Types ────────────────────────────────────────────────────
-interface NewsPost {
-  id: string;
-  caption: string;
-  permalink: string;
-  mediaType: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
-  thumbnailUrl?: string;
-  mediaUrl?: string;
-  timestamp: string;
-  likeCount?: number;
-  commentsCount?: number;
+function formatDate(value: string | Date | null | undefined) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-// ─── Static fallback posts (curated from @murdermittenmedia) ──
-const STATIC_POSTS: NewsPost[] = [
-  {
-    id: "static_1",
-    caption: "Kid L just said the 'talentless rap wave' is over… but is it really though? 👀 For the last few years the game been flooded with fast drops, same flows, catchy but no real substance. The culture is starting to demand more. What do you think?",
-    permalink: "https://www.instagram.com/p/DW7yvHVDURj/",
-    mediaType: "CAROUSEL_ALBUM",
-    timestamp: "2026-06-20T18:00:00Z",
-    likeCount: 0,
-    commentsCount: 0,
-  },
-  {
-    id: "static_2",
-    caption: "New footage just surfaced showing what really went down inside before everything escalated 👀 Detroit streets don't miss nothing. Stay locked in.",
-    permalink: "https://www.instagram.com/p/DW7JKFTkZmV/",
-    mediaType: "CAROUSEL_ALBUM",
-    timestamp: "2026-06-19T20:00:00Z",
-    likeCount: 293,
-    commentsCount: 31,
-  },
-  {
-    id: "static_3",
-    caption: "@bigmoney.bigkey wasting ZERO time since touching back down… not even 60 days home and already locked in with @300ent 💯🔥 If you know, you know — 300 don't just stamp anybody. Detroit stay winning.",
-    permalink: "https://www.instagram.com/p/DW7DVqVETHU/",
-    mediaType: "CAROUSEL_ALBUM",
-    timestamp: "2026-06-18T16:00:00Z",
-    likeCount: 90,
-    commentsCount: 1,
-  },
-  {
-    id: "static_4",
-    caption: "Babyfxce E just took his performance to another level, hitting the stage with Meta glasses and giving fans a real time POV of what it look like from his eyes. This is the future of live performance fr.",
-    permalink: "https://www.instagram.com/p/DV_qt_jEaq1/",
-    mediaType: "CAROUSEL_ALBUM",
-    timestamp: "2026-06-15T14:00:00Z",
-    likeCount: 3234,
-    commentsCount: 41,
-  },
-  {
-    id: "static_5",
-    caption: "YLG stepping into a whole new lane with his first country record 'Summer Days.' The Michigan artist switching it up and it's already getting attention, even catching a co-sign from Luke Bryan. Michigan artists stay breaking barriers.",
-    permalink: "https://www.instagram.com/p/DWMcyMUEf7N/",
-    mediaType: "CAROUSEL_ALBUM",
-    timestamp: "2026-06-12T12:00:00Z",
-    likeCount: 56,
-    commentsCount: 7,
-  },
-  {
-    id: "static_6",
-    caption: "BandGang just dropped a new visual — Detroit staying active. New Single 'Plastic Cup' dropping this week. The whole city locked in. 🎬🔥",
-    permalink: "https://www.instagram.com/p/DWURFYAkb9s/",
-    mediaType: "VIDEO",
-    timestamp: "2026-06-10T22:00:00Z",
-    likeCount: 72,
-    commentsCount: 21,
-  },
-  {
-    id: "static_7",
-    caption: "ITSMANMAN is our Artist of the Month for June 2026. Detroit's rising force — MANMAN IVERSON is already making noise. Backed by a Propdemic co-sign, this is his moment. Read the full feature on the site.",
-    permalink: "https://www.instagram.com/murdermittenmedia/",
-    mediaType: "IMAGE",
-    timestamp: "2026-06-01T10:00:00Z",
-    likeCount: 412,
-    commentsCount: 38,
-  },
-  {
-    id: "static_8",
-    caption: "Murder Mitten Mic is back. Raw one-mic performances from Michigan's hottest artists. No studio tricks — just bars. Catch the latest drops on our YouTube channel. Link in bio.",
-    permalink: "https://www.instagram.com/murdermittenmedia/",
-    mediaType: "VIDEO",
-    timestamp: "2026-05-28T18:00:00Z",
-    likeCount: 187,
-    commentsCount: 14,
-  },
-];
-
-// ─── Post card ────────────────────────────────────────────────
-function PostCard({ post, index }: { post: NewsPost; index: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const truncated = post.caption.length > 200 ? post.caption.slice(0, 200) + "…" : post.caption;
-  const typeLabel = post.mediaType === "VIDEO" ? "Video" : post.mediaType === "CAROUSEL_ALBUM" ? "Gallery" : "Post";
-  const typeColor = post.mediaType === "VIDEO" ? "text-blue-400 border-blue-600/40" : post.mediaType === "CAROUSEL_ALBUM" ? "text-purple-400 border-purple-600/40" : "text-red-400 border-red-600/40";
-  const previewUrl = post.mediaType === "VIDEO"
-    ? post.thumbnailUrl || post.mediaUrl
-    : post.mediaUrl || post.thumbnailUrl;
-
-  const timeAgo = (ts: string) => {
-    const diff = Date.now() - new Date(ts).getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return "Today";
-    if (days === 1) return "Yesterday";
-    if (days < 7) return `${days}d ago`;
-    if (days < 30) return `${Math.floor(days / 7)}w ago`;
-    return `${Math.floor(days / 30)}mo ago`;
-  };
-
+function ArticleCard({ article, featured = false }: { article: any; featured?: boolean }) {
   return (
-    <a
-      href={post.permalink}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block border border-white/10 bg-white/[0.02] hover:border-red-600/40 hover:bg-white/[0.04] transition-all duration-300 group"
-      style={{ animationDelay: `${index * 60}ms` }}
-    >
-      {previewUrl && (
-        <div className="relative aspect-[4/3] overflow-hidden bg-black border-b border-white/5">
-          <img
-            src={previewUrl}
-            alt={post.caption ? post.caption.slice(0, 100) : "Instagram post from @murdermittenmedia"}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-            onError={(event) => { event.currentTarget.style.display = "none"; }}
-          />
-          {post.mediaType === "VIDEO" && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="w-10 h-10 rounded-full bg-black/70 border border-white/30 flex items-center justify-center text-white text-sm">▶</span>
-            </div>
-          )}
+    <a href={`/news/${article.slug}`} className={`group block overflow-hidden border border-white/10 bg-white/[0.025] transition duration-300 hover:-translate-y-0.5 hover:border-red-600/60 hover:bg-white/[0.05] ${featured ? "md:col-span-2" : ""}`}>
+      <div className={`grid ${featured ? "md:grid-cols-[1.15fr_0.85fr]" : "grid-rows-[auto_1fr]"}`}>
+        <div className={`relative overflow-hidden bg-[#111] ${featured ? "min-h-[260px] md:min-h-[360px]" : "aspect-[16/10]"}`}>
+          {article.thumbnailUrl ? <img src={article.thumbnailUrl} alt="" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /> : <div className="flex h-full min-h-44 items-center justify-center bg-gradient-to-br from-red-950/60 via-black to-white/[0.03]"><BookOpen className="h-10 w-10 text-red-500/50" /></div>}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <span className="absolute left-4 top-4 border border-red-500/50 bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-red-300">{article.mediaType === "ARTICLE" ? "Feature" : "Editorial"}</span>
         </div>
-      )}
-
-      {/* Card header */}
-      <div className="p-5 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center flex-shrink-0">
-              <Instagram className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <div className="text-white text-xs font-semibold">@murdermittenmedia</div>
-              <div className="text-white/30 text-xs">{timeAgo(post.timestamp)}</div>
-            </div>
+        <div className={`flex flex-col justify-between p-5 ${featured ? "md:p-8" : ""}`}>
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35"><span>{formatDate(article.publishedAt || article.createdAt)}</span>{article.artistName && <><span className="text-red-500">•</span><span>{article.artistName}</span></>}</div>
+            <h2 className={`font-['Anton'] uppercase leading-[0.95] text-white transition group-hover:text-red-200 ${featured ? "text-4xl md:text-6xl" : "text-2xl"}`}>{article.title}</h2>
+            {article.caption && <p className={`mt-4 leading-relaxed text-white/45 ${featured ? "max-w-xl text-base" : "line-clamp-3 text-sm"}`}>{article.caption}</p>}
           </div>
-          <span className={`text-xs border px-2 py-0.5 uppercase tracking-widest font-semibold ${typeColor}`}>
-            {typeLabel}
-          </span>
+          <span className="mt-6 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-red-400 transition group-hover:text-red-300">Read editorial <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></span>
         </div>
-
-        {/* Caption */}
-        <p className="text-white/75 text-sm leading-relaxed group-hover:text-white/90 transition-colors">
-          {expanded ? post.caption : truncated}
-        </p>
-        {post.caption.length > 200 && (
-          <button
-            onClick={e => { e.preventDefault(); setExpanded(!expanded); }}
-            className="text-red-500 text-xs mt-1 hover:text-red-400 transition-colors"
-          >
-            {expanded ? "Show less" : "Read more"}
-          </button>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-4 text-white/30 text-xs">
-          {post.likeCount !== undefined && (
-            <span className="flex items-center gap-1">
-              <Heart className="w-3.5 h-3.5" />
-              {post.likeCount.toLocaleString()}
-            </span>
-          )}
-          {post.commentsCount !== undefined && (
-            <span className="flex items-center gap-1">
-              <MessageCircle className="w-3.5 h-3.5" />
-              {post.commentsCount.toLocaleString()}
-            </span>
-          )}
-        </div>
-        <span className="flex items-center gap-1 text-red-500 text-xs group-hover:translate-x-0.5 transition-transform">
-          View on Instagram <ExternalLink className="w-3 h-3" />
-        </span>
       </div>
     </a>
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────
 export default function News() {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM">("all");
-
-  // Try to fetch live Instagram posts from backend
-  const { data: livePosts, isLoading, isError, refetch, isRefetching } = trpc.news.getPosts.useQuery(
-    undefined,
-    {
-      retry: false,
-      staleTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: false,
-    }
-  );
-  const { data: articles = [], isLoading: articlesLoading } = trpc.news.getArticles.useQuery(undefined, {
-    staleTime: 60 * 1000,
-  });
-
-  // Use live posts when available; never present stale curated posts as current.
-  const allPosts: NewsPost[] = selectNewsPosts(
-    livePosts as NewsPost[] | undefined,
-    STATIC_POSTS,
-  );
-
-  const isLive = Boolean(livePosts && livePosts.length > 0);
-
-  const filtered = allPosts.filter(post => {
-    const matchesFilter = filter === "all" || post.mediaType === filter;
-    const matchesSearch = !search || post.caption.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const { data: articles = [], isLoading, isError } = trpc.news.getArticles.useQuery(undefined, { staleTime: 60 * 1000 });
+  const filteredArticles = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return articles;
+    return articles.filter((article: any) => [article.title, article.caption, article.artistName, article.seoDescription].filter(Boolean).join(" ").toLowerCase().includes(query));
+  }, [articles, search]);
+  const [lead, ...rest] = filteredArticles;
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
       <SiteNav />
-      <div className="container pt-8 pb-16 max-w-4xl">
+      <main className="container max-w-6xl px-4 pb-20 pt-10 md:pt-16">
+        <header className="mb-10 border-b border-white/10 pb-8">
+          <div className="mb-4 flex items-center gap-3"><span className="h-px w-9 bg-red-600" /><span className="text-[10px] font-bold uppercase tracking-[0.35em] text-red-400">Murder Mitten Editorial Desk</span></div>
+          <div className="flex flex-col justify-between gap-7 md:flex-row md:items-end"><div><h1 className="font-['Anton'] text-6xl uppercase leading-[0.85] tracking-wide md:text-8xl">Latest <span className="text-red-600">News</span></h1><p className="mt-5 max-w-xl text-base leading-relaxed text-white/45">Original reporting, artist profiles, interviews, and culture stories from the people shaping Michigan music.</p></div><label className="relative block w-full md:w-72"><span className="sr-only">Search editorials</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search editorials" className="w-full border border-white/15 bg-white/[0.04] py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-red-600/60" /></label></div>
+        </header>
 
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-px bg-red-600" />
-            <span className="text-red-500 text-xs uppercase tracking-[0.3em] font-semibold">
-              {isLive ? "Live Feed" : "Latest Posts"}
-            </span>
-          </div>
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="font-['Anton'] text-5xl md:text-6xl uppercase tracking-wide leading-none">
-                LATEST<br /><span className="text-red-600">NEWS</span>
-              </h1>
-              <p className="text-white/40 text-sm mt-2">
-                {isLive
-                  ? "Live from @murdermittenmedia on Instagram"
-                  : isError
-                    ? "Instagram is temporarily unavailable · No stale posts are being shown"
-                    : "No current Instagram posts are available · Connect Instagram API for live updates"
-                }
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <a
-                href="https://www.instagram.com/murdermittenmedia/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 border border-white/20 hover:border-red-600/50 text-white/60 hover:text-white px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-all"
-              >
-                <Instagram className="w-3.5 h-3.5" />
-                Follow
-              </a>
-              <button
-                onClick={() => refetch()}
-                disabled={isLoading || isRefetching}
-                aria-label="Refresh Instagram feed"
-                className="flex items-center gap-2 border border-white/10 hover:border-white/30 text-white/40 hover:text-white/70 px-3 py-2 text-xs transition-all disabled:opacity-40"
-                title="Refresh feed"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Admin-published editorial desk */}
-        {(articlesLoading || articles.length > 0) && (
-          <section className="mb-10 border-y border-red-600/20 bg-gradient-to-br from-red-950/20 via-white/[0.02] to-transparent py-6">
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-red-400"><BookOpen className="h-3.5 w-3.5" /> Murder Mitten Editorial</div>
-                <h2 className="font-['Anton'] text-3xl uppercase tracking-wide">Featured <span className="text-red-600">Stories</span></h2>
-              </div>
-              <span className="text-xs uppercase tracking-widest text-white/30">Original articles</span>
-            </div>
-            {articlesLoading ? <div className="h-28 animate-pulse bg-white/5" /> : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {articles.map(article => (
-                  <a key={article.id} href={`/news/${article.slug}`} className="group flex min-h-32 overflow-hidden border border-white/10 bg-black/30 transition hover:border-red-600/60">
-                    {article.thumbnailUrl && <img src={article.thumbnailUrl} alt="" className="w-32 shrink-0 object-cover transition duration-500 group-hover:scale-105" />}
-                    <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
-                      <div><div className="mb-2 text-[10px] uppercase tracking-widest text-red-400">{article.mediaType === "ARTICLE" ? "Feature" : "News"}</div><h3 className="line-clamp-2 font-['Anton'] text-xl uppercase leading-tight text-white">{article.title}</h3><p className="mt-2 line-clamp-2 text-xs leading-5 text-white/45">{article.caption}</p></div>
-                      <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-white/35 group-hover:text-red-400">Read story <ArrowUpRight className="h-3 w-3" /></span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Search + Filter bar */}
-        <div className="flex items-center gap-3 mb-6 flex-wrap">
-          <input
-            type="text"
-            placeholder="Search posts..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-[200px] bg-white/5 border border-white/10 text-white placeholder:text-white/30 px-4 py-2.5 text-sm focus:outline-none focus:border-red-600/50 transition-colors"
-          />
-          <div className="flex items-center gap-2">
-            {(["all", "IMAGE", "VIDEO", "CAROUSEL_ALBUM"] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-2 text-xs font-semibold uppercase tracking-widest transition-all ${
-                  filter === f
-                    ? "bg-red-600 text-white"
-                    : "border border-white/10 text-white/40 hover:border-white/30 hover:text-white/70"
-                }`}
-              >
-                {f === "all" ? "All" : f === "CAROUSEL_ALBUM" ? "Gallery" : f === "VIDEO" ? "Video" : "Photo"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Posts grid */}
-        {isLoading ? (
-          <div className="grid md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="border border-white/10 bg-white/[0.02] p-5 animate-pulse">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-white/10" />
-                  <div className="flex-1">
-                    <div className="h-3 bg-white/10 rounded w-32 mb-1" />
-                    <div className="h-2 bg-white/5 rounded w-20" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 bg-white/10 rounded w-full" />
-                  <div className="h-3 bg-white/10 rounded w-5/6" />
-                  <div className="h-3 bg-white/10 rounded w-4/6" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-white/30">
-            <Instagram className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p>No posts match your search.</p>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            {filtered.map((post, i) => (
-              <PostCard key={post.id} post={post} index={i} />
-            ))}
-          </div>
-        )}
-
-        {/* Footer note */}
-        {!isLoading && !isLive && (
-          <div className="mt-8 border border-white/5 bg-white/[0.02] p-4 text-center">
-            <p className="text-white/30 text-xs">
-              {isError
-                ? "Instagram is temporarily unavailable. No stale posts are being shown."
-                : "No current Instagram posts are available. Configure Instagram API credentials for live updates."
-              }
-            </p>
-            <a
-              href="https://www.instagram.com/murdermittenmedia/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-red-500 hover:text-red-400 text-xs mt-2 transition-colors"
-            >
-              <Instagram className="w-3 h-3" />
-              Follow @murdermittenmedia for the latest
-            </a>
-          </div>
-        )}
-      </div>
+        {isLoading ? <div className="grid gap-5 md:grid-cols-2"><div className="h-[360px] animate-pulse bg-white/5 md:col-span-2" /><div className="h-72 animate-pulse bg-white/5" /><div className="h-72 animate-pulse bg-white/5" /></div> : isError ? <div className="border border-red-600/30 bg-red-950/20 p-10 text-center"><BookOpen className="mx-auto mb-4 h-9 w-9 text-red-400" /><h2 className="font-['Anton'] text-3xl uppercase">Editorials unavailable</h2><p className="mt-2 text-sm text-white/45">We couldn’t load the newsroom right now. Please try again shortly.</p></div> : filteredArticles.length === 0 ? <div className="border border-white/10 bg-white/[0.02] p-14 text-center"><BookOpen className="mx-auto mb-4 h-10 w-10 text-white/20" /><h2 className="font-['Anton'] text-3xl uppercase">No editorials found</h2><p className="mt-2 text-sm text-white/40">Try another search or check back for the next story.</p></div> : <><section className="mb-5 flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-white/35"><BookOpen className="h-4 w-4 text-red-500" /> From the newsroom</div><span className="text-xs text-white/30">{filteredArticles.length} {filteredArticles.length === 1 ? "story" : "stories"}</span></section><div className="grid gap-5 md:grid-cols-2">{lead && <ArticleCard article={lead} featured />}{rest.map((article: any) => <ArticleCard key={article.id} article={article} />)}</div></>}
+      </main>
     </div>
   );
 }
