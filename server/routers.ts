@@ -1056,8 +1056,9 @@ export const appRouter = router({
         return { url };
       }),
 
-    submit: protectedProcedure
+    submit: publicProcedure
       .input(z.object({
+        artistName: z.string().trim().max(128).optional(),
         songTitle: z.string().min(1).max(128),
         submissionType: z.enum(["youtube", "file"]),
         youtubeUrl: z.string().optional(),
@@ -1087,8 +1088,11 @@ export const appRouter = router({
         if (queueState?.playbackMode === "paid_only") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
-        // Check submission limit (max 2 free submissions per user per live session)
-        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
+        if (!ctx.user && input.paidSubmissionType) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Create an account or log in before submitting a paid track." });
+        }
+        // Guests can submit free tracks without an account.
+        const submissionCount = ctx.user ? await countUserSubmissionsInActiveSession(ctx.user.id) : 0;
         
         // If at limit and no paid type provided, return paywall options
         if (submissionCount >= 2 && !input.paidSubmissionType) {
@@ -1101,8 +1105,8 @@ export const appRouter = router({
         }
         
         // Auto-resolve artist name from the user's registered profile
-        const profile = await getArtistProfile(ctx.user.id);
-        const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
+        const profile = ctx.user ? await getArtistProfile(ctx.user.id) : null;
+        const artistName = input.artistName?.trim() || profile?.artistName || ctx.user?.artistName || ctx.user?.name || "Guest Artist";
         const isPaid = submissionCount >= 2 && !!input.paidSubmissionType;
         if (isPaid && !hasCashAppPaymentProof(input.receiptUrl, input.paymentMethod)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Paid submissions require a Cash App receipt URL and payment method. Send payment to $MittenMedia, then submit the receipt for admin approval." });
@@ -1110,7 +1114,7 @@ export const appRouter = router({
         // Get the active session to link this submission to it
         const session = await getOrCreateActiveMusicReviewSession();
         await addSubmission({
-          userId: ctx.user.id,
+          userId: ctx.user?.id ?? null,
           musicReviewSessionId: session.id,
           artistName,
           songTitle: input.songTitle,
@@ -1129,6 +1133,7 @@ export const appRouter = router({
         });
         // Auto-save to artist's music catalogue so it appears on their profile
         try {
+          if (!ctx.user) return { success: true, isPaid };
           await addUserSong({
             userId: ctx.user.id,
             title: input.songTitle,
@@ -1140,7 +1145,7 @@ export const appRouter = router({
           console.warn("[queue.submit] Failed to auto-save to catalogue:", e);
         }
         // Award XP for submitting a song to the review queue
-        if (!isPaid) awardXP(ctx.user.id, "review_submission").catch(() => {});
+        if (!isPaid && ctx.user) awardXP(ctx.user.id, "review_submission").catch(() => {});
         return { success: true, isPaid };
       }),
     setPlaying: adminProcedure
@@ -1271,7 +1276,7 @@ export const appRouter = router({
       }),
 
     // Upload audio file directly for a queue submission
-    uploadTrack: protectedProcedure
+    uploadTrack: publicProcedure
       .input(z.object({
         artistName: z.string().min(1).max(128),
         songTitle: z.string().min(1).max(128),
@@ -1297,7 +1302,10 @@ export const appRouter = router({
         if (queueState?.playbackMode === "paid_only") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
-        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
+        if (!ctx.user && input.paidSubmissionType) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Create an account or log in before submitting a paid track." });
+        }
+        const submissionCount = ctx.user ? await countUserSubmissionsInActiveSession(ctx.user.id) : 0;
         if (submissionCount >= 2 && !input.paidSubmissionType) {
           return {
             success: false,
@@ -1312,7 +1320,7 @@ export const appRouter = router({
         }
         const session = await getOrCreateActiveMusicReviewSession();
         await addSubmission({
-          userId: ctx.user.id,
+          userId: ctx.user?.id ?? null,
           musicReviewSessionId: session.id,
           artistName: input.artistName,
           songTitle: input.songTitle,
@@ -1328,13 +1336,14 @@ export const appRouter = router({
           status: "pending",
           position: 0,
         });
-        if (!isPaid) awardXP(ctx.user.id, "review_submission").catch(() => {});
+        if (!isPaid && ctx.user) awardXP(ctx.user.id, "review_submission").catch(() => {});
         return { success: true, isPaid };
       }),
 
     // Upload audio file bytes (base64) for a queue submission
-    uploadAudio: protectedProcedure
+    uploadAudio: publicProcedure
       .input(z.object({
+        artistName: z.string().trim().max(128).optional(),
         songTitle: z.string().min(1).max(128),
         fileName: z.string(),
         fileBase64: z.string(),
@@ -1359,8 +1368,11 @@ export const appRouter = router({
         if (queueState?.playbackMode === "paid_only") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
-        // Enforce 2-song per-session limit
-        const submissionCount = await countUserSubmissionsInActiveSession(ctx.user.id);
+        if (!ctx.user && input.paidSubmissionType) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Create an account or log in before submitting a paid track." });
+        }
+        // Guests may submit free tracks without an account.
+        const submissionCount = ctx.user ? await countUserSubmissionsInActiveSession(ctx.user.id) : 0;
         if (submissionCount >= 2 && !input.paidSubmissionType) {
           return {
             success: false,
@@ -1376,8 +1388,8 @@ export const appRouter = router({
         // Get the active session to link this submission to it
         const session = await getOrCreateActiveMusicReviewSession();
         // Auto-resolve artist name from the user's registered profile
-        const profile = await getArtistProfile(ctx.user.id);
-        const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
+        const profile = ctx.user ? await getArtistProfile(ctx.user.id) : null;
+        const artistName = input.artistName?.trim() || profile?.artistName || ctx.user?.artistName || ctx.user?.name || "Guest Artist";
         const buffer = Buffer.from(input.fileBase64, "base64");
         if (buffer.length > 20 * 1024 * 1024) {
           throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 20MB" });
@@ -1386,7 +1398,7 @@ export const appRouter = router({
         const key = `queue-submissions/${Date.now()}-${artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
         const { url } = await storagePut(key, buffer, input.mimeType);
         await addSubmission({
-          userId: ctx.user.id,
+          userId: ctx.user?.id ?? null,
           musicReviewSessionId: session.id,
           artistName,
           songTitle: input.songTitle,
@@ -1405,6 +1417,7 @@ export const appRouter = router({
         });
         // Auto-save to artist's music catalogue so it appears on their profile
         try {
+          if (!ctx.user) return { success: true, isPaid };
           await addUserSong({
             userId: ctx.user.id,
             title: input.songTitle,
@@ -1417,7 +1430,7 @@ export const appRouter = router({
           // Non-fatal — submission still goes through even if catalogue insert fails
           console.warn("[queue.uploadAudio] Failed to auto-save to catalogue:", e);
         }
-        if (!isPaid) awardXP(ctx.user.id, "review_submission").catch(() => {});
+        if (!isPaid && ctx.user) awardXP(ctx.user.id, "review_submission").catch(() => {});
         return { success: true, isPaid };
       }),
 

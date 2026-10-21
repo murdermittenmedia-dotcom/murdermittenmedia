@@ -1498,7 +1498,7 @@ function FireTrashPoll({
 export default function MusicReview() {
   const [tab, setTab] = useState<SubmitTab>("queue");
   const [submitType, setSubmitType] = useState<"youtube" | "file">("file");
-  const [form, setForm] = useState({ songTitle: "", youtubeUrl: "", contactInfo: "", wantsSkip: false });
+  const [form, setForm] = useState({ artistName: "", songTitle: "", youtubeUrl: "", contactInfo: "", wantsSkip: false });
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -1617,6 +1617,7 @@ export default function MusicReview() {
   const [limitReachedData, setLimitReachedData] = useState<{ success: false; limitReached: true; message: string; upgradeOptions: Array<{ type: string; price: number; label: string }> } | null>(null);
   const [pendingFormData, setPendingFormData] = useState<{
     type: 'youtube' | 'file';
+    artistName?: string;
     songTitle: string;
     youtubeUrl?: string;
     contactInfo?: string;
@@ -1958,10 +1959,11 @@ export default function MusicReview() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) { toast.error("Please login to submit your track"); return; }
+    if (!user && !form.artistName.trim()) { toast.error("Enter your artist name to submit as a guest"); return; }
     if (!form.songTitle) { toast.error("Please fill in song title"); return; }
     if (submitType === "youtube" && !form.youtubeUrl) { toast.error("Please enter a YouTube link"); return; }
     if (submitType === "file" && !audioFile) { toast.error("Please select an audio file"); return; }
+    if (submitType === "file" && audioFile && !/\.(mp3|wav|m4a)$/i.test(audioFile.name)) { toast.error("Upload an MP3, WAV, or M4A file"); return; }
         setSubmitting(true);
     const paidOnly = data?.state?.playbackMode === "paid_only";
     const paidType = selectedPaidType ?? "reentry5";
@@ -1979,7 +1981,7 @@ export default function MusicReview() {
                 fileName: audioFile.name,
                 mimeType: (audioFile.type || "audio/mpeg") as "audio/mpeg" | "audio/wav" | "audio/mp4" | "audio/x-m4a",
               });
-              setPendingFormData({ type: "file", songTitle: form.songTitle, contactInfo: form.contactInfo || undefined, wantsSkip: false, fileBase64: base64, fileName: audioFile.name, mimeType: audioFile.type || "audio/mpeg" });
+              setPendingFormData({ type: "file", artistName: form.artistName || undefined, songTitle: form.songTitle, contactInfo: form.contactInfo || undefined, wantsSkip: false, fileBase64: base64, fileName: audioFile.name, mimeType: audioFile.type || "audio/mpeg" });
               const checkout = await createPaidSubmissionCheckoutMutation.mutateAsync({
                 submissionType: "file", songTitle: form.songTitle, fileKey: prepared.fileKey, fileUrl: prepared.fileUrl,
                 contactInfo: form.contactInfo || undefined, paidSubmissionType: paidType, origin: window.location.origin,
@@ -1992,7 +1994,7 @@ export default function MusicReview() {
           };
           reader.readAsDataURL(audioFile);
         } else {
-          setPendingFormData({ type: "youtube", songTitle: form.songTitle, youtubeUrl: form.youtubeUrl, contactInfo: form.contactInfo || undefined, wantsSkip: false });
+          setPendingFormData({ type: "youtube", artistName: form.artistName || undefined, songTitle: form.songTitle, youtubeUrl: form.youtubeUrl, contactInfo: form.contactInfo || undefined, wantsSkip: false });
           const checkout = await createPaidSubmissionCheckoutMutation.mutateAsync({
             submissionType: "youtube", songTitle: form.songTitle, youtubeUrl: form.youtubeUrl,
             contactInfo: form.contactInfo || undefined, paidSubmissionType: paidType, origin: window.location.origin,
@@ -2012,6 +2014,7 @@ export default function MusicReview() {
         const base64 = (ev.target?.result as string).split(",")[1];
         setPendingFormData({
           type: 'file',
+          artistName: form.artistName || undefined,
           songTitle: form.songTitle,
           contactInfo: form.contactInfo || undefined,
           wantsSkip: form.wantsSkip,
@@ -2020,6 +2023,7 @@ export default function MusicReview() {
           mimeType: audioFile.type || "audio/mpeg",
         });
         uploadAudioMutation.mutate({
+          artistName: form.artistName || undefined,
           songTitle: form.songTitle,
           fileName: audioFile.name,
           fileBase64: base64,
@@ -2040,6 +2044,7 @@ export default function MusicReview() {
         wantsSkip: form.wantsSkip,
       });
       submitMutation.mutate({
+        artistName: form.artistName || undefined,
         songTitle: form.songTitle,
         submissionType: "youtube",
         youtubeUrl: form.youtubeUrl,
@@ -2927,15 +2932,7 @@ export default function MusicReview() {
                   </div>
                 </div>
 
-                {!user ? (
-                  <div className="text-center py-8 border border-white/10 rounded-2xl">
-                    <p className="text-white/40 text-sm mb-4">Login to submit your track</p>
-                    <a href={getLoginUrl()} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-xs uppercase tracking-widest transition-all">
-                      <LogIn className="w-4 h-4" />
-                      Login to Submit
-                    </a>
-                  </div>
-                ) : paidSubmitSuccess ? (
+                {paidSubmitSuccess ? (
                   <div className="text-center py-10 border border-yellow-500/30 bg-yellow-500/5 rounded-2xl">
                     <div className="text-4xl mb-3">🧾</div>
                     <div className="font-['Anton'] text-2xl uppercase mb-2">Payment Submitted</div>
@@ -2998,6 +2995,19 @@ export default function MusicReview() {
                       </button>
                     </div>
 
+                    {!user && (
+                      <div className="rounded-xl border border-red-500/25 bg-red-500/[0.05] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Guest submission</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/50">No login is required. Enter the artist name you want displayed with your track.</p>
+                        <input
+                          value={form.artistName}
+                          onChange={e => setForm(f => ({ ...f, artistName: e.target.value }))}
+                          placeholder="Artist Name *"
+                          className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 focus:border-red-600/40 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
                     {/* Form fields */}
                     <input
                       value={form.songTitle}
@@ -3015,7 +3025,7 @@ export default function MusicReview() {
                       />
                     ) : (
                       <div>
-                        <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
+                        <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a" className="hidden" onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
                         <button
                           onClick={() => {
                             if (user && !user.profileComplete) {
