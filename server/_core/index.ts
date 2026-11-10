@@ -22,6 +22,10 @@ import { and, desc, eq } from "drizzle-orm";
 import { setSiteAnnouncementBroadcaster } from "../site-announcement";
 import { generateEditorialArticleDraft } from "../editorial-ai";
 import { isValidChatGPTActionKey } from "../chatgpt-action";
+import { isValidMcpApiKey } from "../chatgpt-action";
+import { createEditorialMcpServer } from "../mcp-editorial";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { randomUUID } from "node:crypto";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -219,6 +223,15 @@ function getRoomList(room: string) {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  const mcpSessions = new Map<string, { transport: StreamableHTTPServerTransport; server: ReturnType<typeof createEditorialMcpServer>; lastUsed: number }>();
+  const mcpRate = new Map<string, { windowStartedAt: number; count: number }>();
+  const mcpSessionCleanup = setInterval(() => {
+    const cutoff = Date.now() - 30 * 60_000;
+    for (const [id, session] of Array.from(mcpSessions.entries())) {
+      if (session.lastUsed < cutoff) { void session.transport.close(); mcpSessions.delete(id); }
+    }
+  }, 5 * 60_000);
+  mcpSessionCleanup.unref();
 
   // ─── Socket.io for real-time chat + WebRTC signaling ──────
   const io = new SocketIOServer(server, {
@@ -1061,6 +1074,38 @@ async function startServer() {
 
   // MUST register Stripe webhook BEFORE express.json() for raw body signature verification
   registerStripeWebhook(app);
+  app.all("/api/mcp", express.json({ limit: "1mb" }), async (req, res) => {
+    const authorization = req.headers.authorization;
+    const token = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : req.headers["x-mcp-api-key"];
+    if (!(await isValidMcpApiKey(token))) return res.status(401).json({ error: "MCP authentication required" });
+    const clientKey = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "unknown").split(",")[0].trim();
+    const now = Date.now();
+    const bucket = mcpRate.get(clientKey);
+    if (!bucket || now - bucket.windowStartedAt >= 60_000) mcpRate.set(clientKey, { windowStartedAt: now, count: 1 });
+    else if (bucket.count >= 30) return res.status(429).json({ error: "MCP rate limit exceeded; retry after one minute" });
+    else bucket.count += 1;
+    if (req.body && JSON.stringify(req.body).length > 1_000_000) return res.status(413).json({ error: "MCP request is too large" });
+
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const existing = sessionId ? mcpSessions.get(sessionId) : undefined;
+    if (sessionId && !existing) return res.status(404).json({ error: "MCP session not found" });
+    if (existing) {
+      existing.lastUsed = now;
+      await existing.transport.handleRequest(req, res, req.body);
+      return;
+    }
+    const mcpServer = createEditorialMcpServer();
+    let transport: StreamableHTTPServerTransport;
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      enableJsonResponse: true,
+      onsessioninitialized: (id): void => { mcpSessions.set(id, { transport, server: mcpServer, lastUsed: Date.now() }); },
+    });
+    transport.onclose = () => { if (transport.sessionId) mcpSessions.delete(transport.sessionId); };
+    await mcpServer.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+    if (!transport.sessionId) await transport.close();
+  });
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);

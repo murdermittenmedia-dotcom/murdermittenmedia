@@ -108,7 +108,7 @@ import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFr
 import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
 import { fetchYouTubeMetadata, fetchYouTubeChannelVideos, parseYouTubeUrl } from "./youtube-import";
-import { getChatGPTActionApiKey } from "./chatgpt-action";
+import { getChatGPTActionApiKey, getMcpApiKey, rotateMcpApiKey } from "./chatgpt-action";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -2893,6 +2893,17 @@ export const appRouter = router({
       apiKey: getChatGPTActionApiKey(),
       openApiUrl: "https://murdermittenmedia.com/api/chatgpt/openapi.json",
       endpointUrl: "https://murdermittenmedia.com/api/chatgpt/editorial-drafts",
+    })),
+    getMcpConfig: adminProcedure.query(async () => ({
+      url: "https://murdermittenmedia.com/api/mcp",
+      protocol: "Streamable HTTP",
+      tool: "create_editorial_draft",
+      configured: Boolean(await getMcpApiKey()),
+      apiKey: await getMcpApiKey(),
+    })),
+    rotateMcpKey: adminProcedure.mutation(async () => ({
+      apiKey: await rotateMcpApiKey(),
+      rotatedAt: new Date().toISOString(),
     })),
     // Analytics overview
     analytics: adminProcedure.query(async () => {

@@ -884,6 +884,8 @@ function AnalyticsTab() {
 // ─── Site Settings Tab ────────────────────────────────────────
 function SiteSettingsTab() {
   const utils = trpc.useUtils();
+  const [location] = useLocation();
+  const articleIdFromUrl = Number(new URLSearchParams(location.split("?")[1] ?? "").get("articleId")) || undefined;
   const [activeSubTab, setActiveSubTab] = useState<"settings" | "aow" | "articles">("settings");
 
   // Settings
@@ -910,6 +912,8 @@ function SiteSettingsTab() {
 
   const { data: articles = [], isLoading: articlesLoading } = trpc.admin.listArticles.useQuery(undefined, { enabled: activeSubTab === "articles" });
   const { data: chatGptActionConfig } = trpc.admin.getChatGPTActionConfig.useQuery(undefined, { enabled: activeSubTab === "articles" });
+  const { data: mcpConfig, refetch: refetchMcpConfig } = trpc.admin.getMcpConfig.useQuery(undefined, { enabled: activeSubTab === "articles" });
+  const rotateMcpKey = trpc.admin.rotateMcpKey.useMutation();
   const [editingArticleId, setEditingArticleId] = useState<number | undefined>();
   const [articleForm, setArticleForm] = useState({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
   const [articleAiSource, setArticleAiSource] = useState("");
@@ -971,6 +975,23 @@ function SiteSettingsTab() {
   async function copyChatGPTActionValue(value: string, label: string) {
     try { await navigator.clipboard.writeText(value); toast.success(`${label} copied`); } catch { toast.error(`Could not copy ${label.toLowerCase()}`); }
   }
+  async function rotateEditorialMcpKey() {
+    if (!window.confirm("Rotate the MCP key? Connected ChatGPT MCP clients using the old key will stop working.")) return;
+    try {
+      const result = await rotateMcpKey.mutateAsync();
+      await navigator.clipboard.writeText(result.apiKey);
+      await refetchMcpConfig();
+      toast.success("New MCP key generated and copied");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not rotate MCP key"); }
+  }
+  useEffect(() => {
+    if (!articleIdFromUrl || !articles.length) return;
+    const article = articles.find(item => item.id === articleIdFromUrl);
+    if (article) {
+      setActiveSubTab("articles");
+      editArticle(article);
+    }
+  }, [articleIdFromUrl, articles]);
 
   const [aowForm, setAowForm] = useState({
     artistName: "", bio: "", imageUrl: "", instagramUrl: "",
@@ -1128,6 +1149,17 @@ function SiteSettingsTab() {
                   <div><label className="mb-1 block uppercase tracking-widest text-white/35">Bearer API key</label><div className="flex gap-2"><Input readOnly type="password" value={chatGptActionConfig?.apiKey ?? ""} placeholder="Loading…" className="bg-black/20 border-white/10 text-white/70 text-xs" /><Button type="button" size="sm" variant="outline" className="border-cyan-300/30 text-cyan-100" disabled={!chatGptActionConfig?.apiKey} onClick={() => chatGptActionConfig && copyChatGPTActionValue(chatGptActionConfig.apiKey, "API key")}>Copy</Button></div></div>
                 </div>
                 <p className="text-[11px] text-amber-200/70">Treat this key like a password. Only give it to your own Custom GPT or trusted ChatGPT connection.</p>
+                <div className="mt-4 border-t border-cyan-300/10 pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div><div className="text-xs font-semibold text-cyan-100">Remote MCP connection</div><div className="mt-1 text-[11px] text-white/40">Status: {mcpConfig?.configured ? "ready" : "not configured"} · Tool: {mcpConfig?.tool ?? "create_editorial_draft"}</div></div>
+                    <Button type="button" size="sm" variant="outline" className="border-red-400/40 text-red-200" onClick={rotateEditorialMcpKey} disabled={rotateMcpKey.isPending}>{rotateMcpKey.isPending ? "Rotating…" : "Rotate MCP key"}</Button>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div><label className="mb-1 block uppercase tracking-widest text-white/35">MCP server URL</label><div className="flex gap-2"><Input readOnly value={mcpConfig?.url ?? "Loading…"} className="bg-black/20 border-white/10 text-white/70 text-xs" /><Button type="button" size="sm" variant="outline" className="border-cyan-300/30 text-cyan-100" disabled={!mcpConfig?.url} onClick={() => mcpConfig && copyChatGPTActionValue(mcpConfig.url, "MCP URL")}>Copy</Button></div></div>
+                    <div><label className="mb-1 block uppercase tracking-widest text-white/35">MCP bearer key</label><div className="flex gap-2"><Input readOnly type="password" value={mcpConfig?.apiKey ?? ""} className="bg-black/20 border-white/10 text-white/70 text-xs" /><Button type="button" size="sm" variant="outline" className="border-cyan-300/30 text-cyan-100" disabled={!mcpConfig?.apiKey} onClick={() => mcpConfig && copyChatGPTActionValue(mcpConfig.apiKey, "MCP key")}>Copy</Button></div></div>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-5 text-white/40">In a ChatGPT MCP connection, add this URL, choose Bearer authentication, and use the MCP bearer key. Reconnect after rotating the key. This server exposes only <span className="text-cyan-100">create_editorial_draft</span>; every result stays unpublished.</p>
+                </div>
               </div>
             </details>
             <div className="space-y-4">
@@ -1788,7 +1820,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
 export default function AdminPanel() {
   const [, navigate] = useLocation();
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [activeTab, setActiveTab] = useState<Tab>(() => new URLSearchParams(window.location.search).get("tab") === "settings" ? "settings" : "overview");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (loading) {
