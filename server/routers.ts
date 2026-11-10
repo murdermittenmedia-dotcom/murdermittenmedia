@@ -108,6 +108,7 @@ import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFr
 import { BEAT_PREVIEW_TAG_SOURCES, DEFAULT_BEAT_PREVIEW_TAGS, downloadPreviewTag, type BeatPreviewTagSource } from "./beat-audio-preview";
 import { invokeLLM } from "./_core/llm";
 import { fetchYouTubeMetadata, fetchYouTubeChannelVideos, parseYouTubeUrl } from "./youtube-import";
+import { getChatGPTActionApiKey } from "./chatgpt-action";
 
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
@@ -2888,6 +2889,11 @@ export const appRouter = router({
   // ── Admin Panel ─────────────────────────────────────────────────────────────
   // Define adminProcedure if not already defined
   admin: router({
+    getChatGPTActionConfig: adminProcedure.query(() => ({
+      apiKey: getChatGPTActionApiKey(),
+      openApiUrl: "https://murdermittenmedia.com/api/chatgpt/openapi.json",
+      endpointUrl: "https://murdermittenmedia.com/api/chatgpt/editorial-drafts",
+    })),
     // Analytics overview
     analytics: adminProcedure.query(async () => {
       return getAdminAnalytics();

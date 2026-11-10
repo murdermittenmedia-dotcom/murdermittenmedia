@@ -909,6 +909,7 @@ function SiteSettingsTab() {
   });
 
   const { data: articles = [], isLoading: articlesLoading } = trpc.admin.listArticles.useQuery(undefined, { enabled: activeSubTab === "articles" });
+  const { data: chatGptActionConfig } = trpc.admin.getChatGPTActionConfig.useQuery(undefined, { enabled: activeSubTab === "articles" });
   const [editingArticleId, setEditingArticleId] = useState<number | undefined>();
   const [articleForm, setArticleForm] = useState({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
   const [articleAiSource, setArticleAiSource] = useState("");
@@ -965,6 +966,10 @@ function SiteSettingsTab() {
     try { links = article.catalogLinks ? JSON.parse(article.catalogLinks) : []; } catch { links = []; }
     setEditingArticleId(article.id);
     setArticleForm({ artistName: article.artistName ?? "", catalogLinks: links.map(link => `${link.url}${link.label ? ` | ${link.label}` : ""}`).join("\n"), title: article.title, caption: article.caption, content: article.content ?? "", thumbnailUrl: article.thumbnailUrl ?? "", referenceImages: images.join("\n"), keywords: article.keywords ?? "", seoTitle: article.seoTitle ?? "", seoDescription: article.seoDescription ?? "", isPublished: article.isPublished });
+  }
+
+  async function copyChatGPTActionValue(value: string, label: string) {
+    try { await navigator.clipboard.writeText(value); toast.success(`${label} copied`); } catch { toast.error(`Could not copy ${label.toLowerCase()}`); }
   }
 
   const [aowForm, setAowForm] = useState({
@@ -1114,6 +1119,17 @@ function SiteSettingsTab() {
                 </div>
               </div>
             </div>
+            <details className="mb-5 border border-cyan-400/20 bg-cyan-500/[0.04] rounded-lg p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-cyan-100">Connect ChatGPT website to this Editorial Desk</summary>
+              <div className="mt-3 space-y-3 text-xs text-white/50">
+                <p>In a Custom GPT on chatgpt.com, add an Action and import the OpenAPI schema below. Choose API Key authentication with Bearer format, then paste the key below. ChatGPT can create drafts; it cannot publish them.</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div><label className="mb-1 block uppercase tracking-widest text-white/35">OpenAPI schema URL</label><div className="flex gap-2"><Input readOnly value={chatGptActionConfig?.openApiUrl ?? "Loading…"} className="bg-black/20 border-white/10 text-white/70 text-xs" /><Button type="button" size="sm" variant="outline" className="border-cyan-300/30 text-cyan-100" disabled={!chatGptActionConfig?.openApiUrl} onClick={() => chatGptActionConfig && copyChatGPTActionValue(chatGptActionConfig.openApiUrl, "Schema URL")}>Copy</Button></div></div>
+                  <div><label className="mb-1 block uppercase tracking-widest text-white/35">Bearer API key</label><div className="flex gap-2"><Input readOnly type="password" value={chatGptActionConfig?.apiKey ?? ""} placeholder="Loading…" className="bg-black/20 border-white/10 text-white/70 text-xs" /><Button type="button" size="sm" variant="outline" className="border-cyan-300/30 text-cyan-100" disabled={!chatGptActionConfig?.apiKey} onClick={() => chatGptActionConfig && copyChatGPTActionValue(chatGptActionConfig.apiKey, "API key")}>Copy</Button></div></div>
+                </div>
+                <p className="text-[11px] text-amber-200/70">Treat this key like a password. Only give it to your own Custom GPT or trusted ChatGPT connection.</p>
+              </div>
+            </details>
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>

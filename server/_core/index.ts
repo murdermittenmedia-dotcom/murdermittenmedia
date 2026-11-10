@@ -20,6 +20,8 @@ import { shouldProcessReviewTrackEnd } from "../../shared/review-radio-transitio
 import { sdk } from "./sdk";
 import { and, desc, eq } from "drizzle-orm";
 import { setSiteAnnouncementBroadcaster } from "../site-announcement";
+import { generateEditorialArticleDraft } from "../editorial-ai";
+import { isValidChatGPTActionKey } from "../chatgpt-action";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -1063,6 +1065,46 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+
+  app.get("/api/chatgpt/openapi.json", (_req, res) => {
+    res.json({
+      openapi: "3.1.0",
+      info: { title: "Murder Mitten Media Editorial Desk", version: "1.0.0", description: "Create reviewable editorial article drafts from ChatGPT." },
+      servers: [{ url: "https://murdermittenmedia.com" }],
+      paths: {
+        "/api/chatgpt/editorial-drafts": {
+          post: {
+            operationId: "createEditorialDraft",
+            summary: "Create an Editorial Desk draft",
+            description: "Turns notes, transcripts, press releases, and labeled link sheets into a draft. It never publishes automatically.",
+            requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/EditorialDraftRequest" } } } },
+            responses: { "200": { description: "Draft created", content: { "application/json": { schema: { $ref: "#/components/schemas/EditorialDraft" } } } }, "400": { description: "Invalid request" }, "401": { description: "Invalid API key" } },
+          },
+        },
+      },
+      components: {
+        securitySchemes: { ChatGPTActionKey: { type: "http", scheme: "bearer", bearerFormat: "API key" } },
+        schemas: {
+          EditorialDraftRequest: { type: "object", required: ["sourceText"], properties: { sourceText: { type: "string", description: "Notes, transcript, press release, or link sheet to turn into a draft." } }, additionalProperties: false },
+          EditorialDraft: { type: "object", properties: { artistName: { type: "string" }, title: { type: "string" }, content: { type: "string" }, catalogLinks: { type: "array", items: { type: "object", properties: { url: { type: "string" }, label: { type: "string" } } } }, thumbnailUrl: { type: "string" }, referenceImages: { type: "array", items: { type: "string" } }, keywords: { type: "string" }, seoTitle: { type: "string" }, seoDescription: { type: "string" } }, required: ["artistName", "title", "content", "catalogLinks"] },
+        },
+      },
+      security: [{ ChatGPTActionKey: [] }],
+    });
+  });
+  app.post("/api/chatgpt/editorial-drafts", async (req, res) => {
+    const authorization = req.headers.authorization;
+    const token = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : req.headers["x-chatgpt-action-key"];
+    if (!isValidChatGPTActionKey(token)) return res.status(401).json({ error: "Invalid ChatGPT Action key" });
+    const sourceText = typeof req.body?.sourceText === "string" ? req.body.sourceText.trim() : "";
+    if (sourceText.length < 20 || sourceText.length > 60_000) return res.status(400).json({ error: "sourceText must be between 20 and 60,000 characters" });
+    try {
+      return res.json(await generateEditorialArticleDraft(sourceText));
+    } catch (error) {
+      console.error("[ChatGPT Action] Draft generation failed:", error);
+      return res.status(500).json({ error: "Could not create the editorial draft" });
+    }
+  });
 
   app.use(
     "/api/trpc",
