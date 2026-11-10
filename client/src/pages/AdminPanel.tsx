@@ -23,7 +23,7 @@ import {
   Search, Ban, CheckCircle, AlertTriangle, RefreshCw,
   Crown, Gavel, Music, Star, TrendingUp, FileText, Activity,
   ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Trophy, Disc, Radio, Coins, Gift, CreditCard, DollarSign,
-  Bell, PlayCircle, ImagePlus,
+  Bell, PlayCircle, ImagePlus, WandSparkles,
 } from "lucide-react";
 
 // ─── Role badge ───────────────────────────────────────────────
@@ -911,6 +911,25 @@ function SiteSettingsTab() {
   const { data: articles = [], isLoading: articlesLoading } = trpc.admin.listArticles.useQuery(undefined, { enabled: activeSubTab === "articles" });
   const [editingArticleId, setEditingArticleId] = useState<number | undefined>();
   const [articleForm, setArticleForm] = useState({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
+  const [articleAiSource, setArticleAiSource] = useState("");
+  const generateArticleDraft = trpc.admin.generateArticleDraft.useMutation({
+    onSuccess: (draft) => {
+      setArticleForm(prev => ({
+        ...prev,
+        artistName: draft.artistName,
+        title: draft.title,
+        content: draft.content,
+        catalogLinks: draft.catalogLinks.map((link: { url: string; label?: string }) => `${link.url}${link.label ? ` | ${link.label}` : ""}`).join("\n"),
+        thumbnailUrl: draft.thumbnailUrl,
+        referenceImages: draft.referenceImages.join("\n"),
+        keywords: draft.keywords,
+        seoTitle: draft.seoTitle,
+        seoDescription: draft.seoDescription,
+      }));
+      toast.success("ChatGPT filled the Editorial Desk form — review it before saving");
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const saveArticle = trpc.admin.saveArticle.useMutation({
     onSuccess: () => { utils.admin.listArticles.invalidate(); utils.news.getArticles.invalidate(); utils.news.getArticle.invalidate(); toast.success("Article saved — links integrated"); resetArticleForm(); },
     onError: (e) => toast.error(e.message),
@@ -936,6 +955,7 @@ function SiteSettingsTab() {
   }
   function resetArticleForm() {
     setEditingArticleId(undefined);
+    setArticleAiSource("");
     setArticleForm({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
   }
   function editArticle(article: NonNullable<typeof articles>[number]) {
@@ -1077,6 +1097,22 @@ function SiteSettingsTab() {
                 <p className="mt-1 text-xs leading-5 text-white/40">Artist, links, headline, story, images. We turn the links into browser-playable catalog cards automatically.</p>
               </div>
               {editingArticleId && <Button size="sm" variant="outline" className="border-white/20 text-white/60" onClick={resetArticleForm}>New article</Button>}
+            </div>
+            <div className="mb-5 border border-violet-400/25 bg-violet-500/[0.06] rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <WandSparkles className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-white">Fill this form with ChatGPT</div>
+                  <p className="mt-1 text-xs leading-5 text-white/45">Paste notes, an interview transcript, a press release, or a labeled link sheet. ChatGPT will draft the fields below and preserve only URLs found in your source. Review everything before publishing.</p>
+                  <Textarea value={articleAiSource} onChange={e => setArticleAiSource(e.target.value)} placeholder={'Paste your story material here…\n\nExample: Artist name, what happened, quotes, release details, and links such as\nSpotify: https://open.spotify.com/...\nInstagram: https://instagram.com/...'} rows={5} className="mt-3 bg-black/20 border-violet-300/20 text-white placeholder:text-white/20" />
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <Button type="button" className="bg-violet-600 hover:bg-violet-500 text-white" onClick={() => generateArticleDraft.mutate({ sourceText: articleAiSource })} disabled={articleAiSource.trim().length < 20 || generateArticleDraft.isPending}>
+                      <WandSparkles className="mr-2 h-4 w-4" />{generateArticleDraft.isPending ? "Filling form…" : "Fill form with ChatGPT"}
+                    </Button>
+                    <span className="text-[11px] text-white/30">Nothing is published automatically.</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
