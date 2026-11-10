@@ -101,7 +101,7 @@ import {
   ARTIST_LEVELS, FAN_LEVELS, getArtistLevelInfo, getFanLevelInfo, getNextArtistLevel,
   updateStreak,
 } from "./rewards";
-import { fetchInstagramPosts, type InstagramFeedPost } from "./instagram-feed";
+import { fetchInstagramPosts, fetchInstagramProfile, type InstagramFeedPost, type InstagramProfileStats } from "./instagram-feed";
 import { broadcastSiteAnnouncement, type SiteAnnouncement } from "./site-announcement";
 import { BEAT_LICENSE_CODES, BEAT_PRO_ANNUAL_PRICE_CENTS, BEAT_PRO_MONTHLY_PRICE_CENTS, BEAT_PRO_TRIAL_DAYS, FREE_PRODUCER_UPLOAD_LIMIT, calculateBeatSaleSplit, createBeatLicenseTerms, parseBeatLicenseTerms } from "../shared/beat-marketplace";
 import { getActiveBeatProducerMembership, getBeatProducerPlan, fulfillBeatSaleFromCheckoutSession, fulfillDirectBeatSale, getProducerSettlementLedger, updateBeatProducerSubscription } from "./beat-marketplace-service";
@@ -112,6 +112,12 @@ import { fetchYouTubeMetadata, fetchYouTubeChannelVideos, parseYouTubeUrl } from
 // --- Instagram feed cache (5 min TTL) ------------------------
 let igCache: { posts: InstagramFeedPost[]; fetchedAt: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const FOLLOWER_COUNT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+const INITIAL_FOLLOWER_COUNT = 47_700;
+let igProfileCache: { profile: InstagramProfileStats; fetchedAt: number } = {
+  profile: { username: "murdermittenmedia", followersCount: INITIAL_FOLLOWER_COUNT },
+  fetchedAt: 0,
+};
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -997,6 +1003,15 @@ export const appRouter = router({
 
   // -- Instagram live feed --------------------------------------
   instagram: router({
+    profileStats: publicProcedure.query(async () => {
+      const now = Date.now();
+      if (now - igProfileCache.fetchedAt < FOLLOWER_COUNT_REFRESH_MS) {
+        return { ...igProfileCache.profile, fetchedAt: igProfileCache.fetchedAt, refreshIntervalMs: FOLLOWER_COUNT_REFRESH_MS };
+      }
+      const profile = await fetchInstagramProfile();
+      if (profile) igProfileCache = { profile, fetchedAt: now };
+      return { ...igProfileCache.profile, fetchedAt: igProfileCache.fetchedAt, refreshIntervalMs: FOLLOWER_COUNT_REFRESH_MS };
+    }),
     feed: publicProcedure.query(async () => {
       const now = Date.now();
       if (igCache && now - igCache.fetchedAt < CACHE_TTL_MS) return igCache.posts;

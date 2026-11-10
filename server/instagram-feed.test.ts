@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchInstagramPosts } from "./instagram-feed";
+import { fetchInstagramPosts, fetchInstagramProfile } from "./instagram-feed";
 
 describe("Instagram feed helper", () => {
   it("keeps only posts created by the configured account and preserves video thumbnail fallbacks", async () => {
@@ -89,5 +89,20 @@ describe("Instagram feed helper", () => {
       timeoutMs: 5,
       fetchFn,
     })).resolves.toEqual([]);
+  });
+
+  it("reads the account follower count from the Instagram profile endpoint", async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
+      username: "murdermittenmedia",
+      followers_count: 47732,
+      media_count: 2998,
+    }), { status: 200 }));
+
+    await expect(fetchInstagramProfile({
+      accessToken: "token",
+      userId: "123",
+      fetchFn,
+    })).resolves.toEqual({ username: "murdermittenmedia", followersCount: 47732, mediaCount: 2998 });
+    expect(fetchFn).toHaveBeenCalledOnce();
   });
 });

@@ -21,6 +21,19 @@ type FetchInstagramPostsOptions = {
   timeoutMs?: number;
 };
 
+export type InstagramProfileStats = {
+  username: string;
+  followersCount: number;
+  mediaCount?: number;
+};
+
+type FetchInstagramProfileOptions = {
+  accessToken?: string;
+  userId?: string;
+  fetchFn?: FetchLike;
+  timeoutMs?: number;
+};
+
 const INSTAGRAM_API_HOST = "https://graph.instagram.com";
 const DEFAULT_TIMEOUT_MS = 8_000;
 const MEDIA_FIELDS = [
@@ -119,6 +132,42 @@ export async function fetchInstagramPosts(options: FetchInstagramPostsOptions = 
     const message = error instanceof Error ? error.message : "unknown error";
     console.error("[IG Feed] Failed:", message);
     return [];
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function fetchInstagramProfile(options: FetchInstagramProfileOptions = {}): Promise<InstagramProfileStats | null> {
+  const accessToken = options.accessToken ?? process.env.INSTAGRAM_ACCESS_TOKEN;
+  const userId = options.userId ?? process.env.INSTAGRAM_USER_ID;
+  if (!accessToken || !userId) return null;
+
+  const fetchFn = options.fetchFn ?? fetch;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const endpoint = new URL(`${INSTAGRAM_API_HOST}/${encodeURIComponent(userId)}`);
+    endpoint.searchParams.set("fields", "username,followers_count,media_count");
+    endpoint.searchParams.set("access_token", accessToken);
+    const response = await fetchFn(endpoint, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Instagram profile request failed with status ${response.status}`);
+
+    const profile = await response.json() as InstagramApiRecord;
+    const username = asString(profile.username);
+    const followersCount = profile.followers_count;
+    if (!username || typeof followersCount !== "number" || !Number.isFinite(followersCount) || followersCount < 0) return null;
+
+    return {
+      username,
+      followersCount: Math.floor(followersCount),
+      mediaCount: typeof profile.media_count === "number" && profile.media_count >= 0 ? Math.floor(profile.media_count) : undefined,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.error("[IG Profile] Failed:", message);
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }

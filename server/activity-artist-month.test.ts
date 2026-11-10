@@ -20,4 +20,14 @@ describe("activity names and homepage feature hub", () => {
     expect(homeSource).toContain("Everything Murder Mitten");
     expect(homeSource).toContain("Latest <span className=\"text-red-600\">Editorials</span>");
   });
+
+  it("uses the Instagram profile follower count instead of a hard-coded homepage value", () => {
+    const homeSource = readFileSync(resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8");
+    const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    expect(homeSource).toContain("trpc.instagram.profileStats.useQuery");
+    expect(homeSource).toContain("followerLabel");
+    expect(homeSource).not.toContain(">46.5K</p>");
+    expect(routerSource).toContain("profileStats: publicProcedure");
+    expect(routerSource).toContain("FOLLOWER_COUNT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000");
+  });
 });
