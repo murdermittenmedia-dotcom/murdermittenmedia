@@ -31,6 +31,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Search from "./pages/Search";
 import AdminModeration from "./pages/AdminModeration";
 import AdminPanel from "./pages/AdminPanel";
+import AdminEditorialDesk from "./pages/AdminEditorialDesk";
 import AdminSiteStats from "./pages/AdminSiteStats";
 import Banned from "./pages/Banned";
 import WheelOfNames from "./pages/WheelOfNames";
@@ -161,6 +162,7 @@ function Router() {
 
       {/* Admin */}
       <Route path={"/admin"} component={AdminPanel} />
+      <Route path={"/admin/editorial"} component={AdminEditorialDesk} />
       <Route path={"/admin/moderation"} component={AdminModeration} />
       <Route path={"/admin/stats"} component={AdminSiteStats} />
       <Route path={"/admin/golden-wheel"} component={AdminGoldenWheel} />

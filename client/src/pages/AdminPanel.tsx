@@ -882,11 +882,11 @@ function AnalyticsTab() {
 }
 
 // ─── Site Settings Tab ────────────────────────────────────────
-function SiteSettingsTab() {
+export function SiteSettingsTab({ editorialOnly = false }: { editorialOnly?: boolean } = {}) {
   const utils = trpc.useUtils();
   const [location] = useLocation();
   const articleIdFromUrl = Number(new URLSearchParams(location.split("?")[1] ?? "").get("articleId")) || undefined;
-  const [activeSubTab, setActiveSubTab] = useState<"settings" | "aow" | "articles">("settings");
+  const [activeSubTab, setActiveSubTab] = useState<"settings" | "aow" | "articles">(editorialOnly ? "articles" : "settings");
 
   // Settings
   const { data: settings, isLoading: settingsLoading } = trpc.admin.getSettings.useQuery();
@@ -1024,7 +1024,7 @@ function SiteSettingsTab() {
 
   return (
     <div>
-      <div className="flex gap-2 mb-6">
+      {!editorialOnly && <div className="flex gap-2 mb-6">
         <button
           onClick={() => setActiveSubTab("settings")}
           className={`px-4 py-2 text-sm font-semibold uppercase tracking-widest transition-colors ${activeSubTab === "settings" ? "bg-red-600 text-white" : "border border-white/20 text-white/50 hover:text-white"}`}
@@ -1043,7 +1043,7 @@ function SiteSettingsTab() {
         >
           Editorial Desk
         </button>
-      </div>
+      </div>}
 
       {activeSubTab === "settings" && (
         <div className="space-y-3">
@@ -1913,7 +1913,7 @@ export default function AdminPanel() {
           <header className="sticky top-16 z-30 border-b border-white/10 bg-[#080808]/90 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-10">
             <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
               <div className="flex items-center gap-3"><button type="button" onClick={() => setDrawerOpen(true)} className="rounded-lg border border-white/10 p-2 text-white/70 hover:border-red-500/50 lg:hidden" aria-label="Open admin navigation">☰</button><div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-400">Admin workspace</p><h2 className="mt-1 font-['Anton'] text-2xl uppercase tracking-wide sm:text-3xl">{activeTab === "overview" ? "Overview" : TABS.find((tab) => tab.id === activeTab)?.label ?? "Operations"}</h2></div></div>
-              <div className="flex items-center gap-2"><Link href="/admin/stats"><button className="hidden rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-green-300 hover:bg-green-500/20 sm:block">Live stats</button></Link><Link href="/review"><button className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-red-500">Open review</button></Link></div>
+              <div className="flex items-center gap-2"><Link href="/admin/stats"><button className="hidden rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-green-300 hover:bg-green-500/20 sm:block">Live stats</button></Link><Link href="/admin/editorial"><button className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-cyan-200 hover:bg-cyan-400/20">Editorial Desk</button></Link><Link href="/review"><button className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-red-500">Open review</button></Link></div>
             </div>
           </header>
           <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
