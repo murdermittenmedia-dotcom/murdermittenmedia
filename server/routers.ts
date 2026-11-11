@@ -80,7 +80,7 @@ import {
   createShopProduct, updateShopProduct, softDeleteShopProduct,
   getShopProductImages, addShopProductImage, deleteShopProductImage, updateShopProductImageOrder, updateShopProductImageMetadata,
   getShopVariants, upsertShopVariant, deleteShopVariantsByProduct, getShopVariantInventory,
-  getAllArticles, getArticleBySlug, getArticleById, generateSlug,
+  getAllArticles, getArticleBySlug, getArticleById, generateSlug, getArticleComments, createArticleComment, hideArticleComment,
 } from "./db";
 import { users, liveStreams, giftTypes, gifts, coinPurchases, coinBalances, musicReviewSessions, reviewPlusMemberships, reviewJudgeInvites, reviewSkipVotes, reviewSubmissions as reviewSubmissionsTable, liveRewards, fireVoteBalances, fireVoteConversions, walletTransactions, economyConfig, coinPackages, creatorCashouts, fraudLogs, notifications, judgeStreams, queueState, shopProducts, goldenWheelOrders, wheelEligibility, wheelSpins, wheelPrizes, marketplaceBeats, beatLicenses, beatSales, beatContracts, beatProducerMemberships, beatProTrialInvites, beatProTrialRedemptions, beatPayoutRequests, beatWalletAdjustments, beatProducerDirectPaymentMethods, beatDirectPayments, articles } from "../drizzle/schema";
 import {
@@ -3002,6 +3002,7 @@ export const appRouter = router({
         keywords: z.string().trim().max(5000).default(""),
         seoTitle: z.string().trim().max(160).default(""),
         seoDescription: z.string().trim().max(160).default(""),
+        publishedAt: z.coerce.date().nullable().optional(),
         isPublished: z.boolean().default(false),
       }))
       .mutation(async ({ input }) => {
@@ -3019,7 +3020,7 @@ export const appRouter = router({
           seoTitle: input.seoTitle || input.title.slice(0, 160),
           seoDescription: input.seoDescription || (input.caption || input.title).slice(0, 160),
           isPublished: input.isPublished,
-          publishedAt: input.isPublished ? new Date() : null,
+          publishedAt: input.isPublished ? (input.publishedAt ?? new Date()) : null,
           updatedAt: new Date(),
         };
         if (input.id) {
@@ -3033,7 +3034,7 @@ export const appRouter = router({
           instagramPostId,
           slug,
           mediaType: "ARTICLE",
-          publishedAt: input.isPublished ? new Date() : null,
+          publishedAt: input.isPublished ? (input.publishedAt ?? new Date()) : null,
         });
         return { id: Number((result as any)[0]?.insertId ?? 0), slug };
       }),
@@ -5537,6 +5538,29 @@ export const appRouter = router({
     getArticle: publicProcedure
       .input(z.object({ slug: z.string().min(1).max(512) }))
       .query(async ({ input }) => getArticleBySlug(input.slug)),
+    getComments: publicProcedure
+      .input(z.object({ slug: z.string().min(1).max(512) }))
+      .query(async ({ input }) => {
+        const article = await getArticleBySlug(input.slug);
+        return article ? getArticleComments(article.id) : [];
+      }),
+    addComment: protectedProcedure
+      .input(z.object({ slug: z.string().min(1).max(512), body: z.string().trim().min(1).max(2000) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const article = await getArticleBySlug(input.slug);
+        if (!article?.isPublished) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+        const result = await createArticleComment({ articleId: article.id, userId: ctx.user.id, body: input.body });
+        await db.update(articles).set({ commentCount: sql`${articles.commentCount} + 1` }).where(eq(articles.id, article.id));
+        return { id: Number((result as any)[0]?.insertId ?? 0) };
+      }),
+    adminHideComment: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await hideArticleComment(input.id);
+        return { success: true as const };
+      }),
   }),
 
   // Stripe payment integration

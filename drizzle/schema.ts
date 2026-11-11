@@ -1515,6 +1515,21 @@ export const articles = mysqlTable("articles", {
 export type Article = typeof articles.$inferSelect;
 export type InsertArticle = typeof articles.$inferInsert;
 
+// Reader comments on published editorials. Comments require a signed-in account;
+// admins can hide or remove them through the article moderation procedure.
+export const articleComments = mysqlTable("article_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  articleId: int("articleId").notNull(),
+  userId: int("userId").notNull(),
+  body: varchar("body", { length: 2000 }).notNull(),
+  isHidden: boolean("isHidden").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ArticleComment = typeof articleComments.$inferSelect;
+export type InsertArticleComment = typeof articleComments.$inferInsert;
+
 
 // Create A Link Analytics — privacy-conscious events for published creator pages.
 // visitorId is an anonymous client session identifier; no raw IP address is stored.

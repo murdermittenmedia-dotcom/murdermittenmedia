@@ -915,7 +915,7 @@ export function SiteSettingsTab({ editorialOnly = false }: { editorialOnly?: boo
   const { data: mcpConfig, refetch: refetchMcpConfig } = trpc.admin.getMcpConfig.useQuery(undefined, { enabled: activeSubTab === "articles" });
   const rotateMcpKey = trpc.admin.rotateMcpKey.useMutation();
   const [editingArticleId, setEditingArticleId] = useState<number | undefined>();
-  const [articleForm, setArticleForm] = useState({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
+  const [articleForm, setArticleForm] = useState({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", publishedAt: "", isPublished: true });
   const [articleAiSource, setArticleAiSource] = useState("");
   const generateArticleDraft = trpc.admin.generateArticleDraft.useMutation({
     onSuccess: (draft) => {
@@ -961,7 +961,7 @@ export function SiteSettingsTab({ editorialOnly = false }: { editorialOnly?: boo
   function resetArticleForm() {
     setEditingArticleId(undefined);
     setArticleAiSource("");
-    setArticleForm({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", isPublished: true });
+    setArticleForm({ artistName: "", catalogLinks: "", title: "", caption: "", content: "", thumbnailUrl: "", referenceImages: "", keywords: "", seoTitle: "", seoDescription: "", publishedAt: "", isPublished: true });
   }
   function editArticle(article: NonNullable<typeof articles>[number]) {
     let images: string[] = [];
@@ -969,7 +969,7 @@ export function SiteSettingsTab({ editorialOnly = false }: { editorialOnly?: boo
     try { images = article.referenceImages ? JSON.parse(article.referenceImages) : []; } catch { images = []; }
     try { links = article.catalogLinks ? JSON.parse(article.catalogLinks) : []; } catch { links = []; }
     setEditingArticleId(article.id);
-    setArticleForm({ artistName: article.artistName ?? "", catalogLinks: links.map(link => `${link.url}${link.label ? ` | ${link.label}` : ""}`).join("\n"), title: article.title, caption: article.caption, content: article.content ?? "", thumbnailUrl: article.thumbnailUrl ?? "", referenceImages: images.join("\n"), keywords: article.keywords ?? "", seoTitle: article.seoTitle ?? "", seoDescription: article.seoDescription ?? "", isPublished: article.isPublished });
+    setArticleForm({ artistName: article.artistName ?? "", catalogLinks: links.map(link => `${link.url}${link.label ? ` | ${link.label}` : ""}`).join("\n"), title: article.title, caption: article.caption, content: article.content ?? "", thumbnailUrl: article.thumbnailUrl ?? "", referenceImages: images.join("\n"), keywords: article.keywords ?? "", seoTitle: article.seoTitle ?? "", seoDescription: article.seoDescription ?? "", publishedAt: article.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : "", isPublished: article.isPublished });
   }
 
   async function copyChatGPTActionValue(value: string, label: string) {
@@ -1195,8 +1195,13 @@ export function SiteSettingsTab({ editorialOnly = false }: { editorialOnly?: boo
                 </div>
                 <div className="md:col-span-2"><details className="border-t border-white/10 pt-3"><summary className="cursor-pointer text-xs uppercase tracking-widest text-white/40">Optional SEO fields</summary><div className="mt-3 grid gap-3 md:grid-cols-2"><Input value={articleForm.keywords} onChange={e => setArticleForm(prev => ({ ...prev, keywords: e.target.value }))} placeholder="Keywords" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" /><Input value={articleForm.seoTitle} onChange={e => setArticleForm(prev => ({ ...prev, seoTitle: e.target.value }))} placeholder="SEO title" className="bg-white/5 border-white/10 text-white placeholder:text-white/20" /><Textarea value={articleForm.seoDescription} onChange={e => setArticleForm(prev => ({ ...prev, seoDescription: e.target.value }))} placeholder="SEO description" rows={2} className="bg-white/5 border-white/10 text-white placeholder:text-white/20 md:col-span-2" /></div></details></div>
               </div>
-              <label className="flex items-center gap-3 text-sm text-white/65"><input type="checkbox" checked={articleForm.isPublished} onChange={e => setArticleForm(prev => ({ ...prev, isPublished: e.target.checked }))} className="accent-red-600" /> Publish immediately</label>
-              <Button className="bg-red-600 hover:bg-red-700" disabled={!articleForm.artistName.trim() || !articleForm.title.trim() || !articleForm.content.trim() || saveArticle.isPending} onClick={() => saveArticle.mutate({ id: editingArticleId, ...articleForm, caption: articleForm.content.trim().slice(0, 240), catalogLinks: parsePastedArticleLinks(articleForm.catalogLinks), referenceImages: articleForm.referenceImages.split(/\r?\n/).map(url => url.trim()).filter(url => { try { new URL(url); return true; } catch { return false; } }) })}>{saveArticle.isPending ? "Saving..." : editingArticleId ? "Save changes" : "Publish article"}</Button>
+              <div className="flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex flex-wrap items-end gap-4">
+                  <label className="flex items-center gap-3 pb-2 text-sm text-white/65"><input type="checkbox" checked={articleForm.isPublished} onChange={e => setArticleForm(prev => ({ ...prev, isPublished: e.target.checked }))} className="accent-red-600" /> Publish immediately</label>
+                  <label className="block"><span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-white/35">Publication date</span><Input type="datetime-local" value={articleForm.publishedAt} onChange={e => setArticleForm(prev => ({ ...prev, publishedAt: e.target.value }))} className="bg-white/5 border-white/10 text-white text-sm" /></label>
+                </div>
+                <Button className="bg-red-600 hover:bg-red-700" disabled={!articleForm.artistName.trim() || !articleForm.title.trim() || !articleForm.content.trim() || saveArticle.isPending} onClick={() => saveArticle.mutate({ id: editingArticleId, ...articleForm, publishedAt: articleForm.publishedAt ? new Date(articleForm.publishedAt) : null, caption: articleForm.content.trim().slice(0, 240), catalogLinks: parsePastedArticleLinks(articleForm.catalogLinks), referenceImages: articleForm.referenceImages.split(/\r?\n/).map(url => url.trim()).filter(url => { try { new URL(url); return true; } catch { return false; } }) })}>{saveArticle.isPending ? "Saving..." : editingArticleId ? "Save changes" : "Publish article"}</Button>
+              </div>
             </div>
           </div>
           <div>

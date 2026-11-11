@@ -20,6 +20,7 @@ import {
   forumPosts, InsertForumPost,
   forumComments, InsertForumComment,
   forumReactions,
+  articleComments, InsertArticleComment,
   moderationLogs,
   activityFeed, InsertActivityFeedEvent,
   wheelOfNamesEntries, InsertWheelOfNamesEntry,
@@ -2839,6 +2840,30 @@ export async function getArticleById(id: number) {
   if (!db) return null;
   const result = await db.select().from(articles).where(eq(articles.id, id)).limit(1);
   return result[0] || null;
+}
+
+export async function getArticleComments(articleId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    comment: articleComments,
+    author: { id: users.id, name: users.name, artistName: users.artistName, avatarUrl: users.avatarUrl, role: users.role },
+  }).from(articleComments)
+    .leftJoin(users, eq(articleComments.userId, users.id))
+    .where(and(eq(articleComments.articleId, articleId), eq(articleComments.isHidden, false)))
+    .orderBy(asc(articleComments.createdAt));
+}
+
+export async function createArticleComment(data: InsertArticleComment) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(articleComments).values(data);
+}
+
+export async function hideArticleComment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(articleComments).set({ isHidden: true, updatedAt: new Date() }).where(eq(articleComments.id, id));
 }
 
 export async function getArticlesByKeyword(keyword: string) {
