@@ -18,6 +18,7 @@
 import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { trpc } from "@/lib/trpc";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
@@ -29,6 +30,7 @@ export interface LiveNowPlayingEvent {
   youtubeUrl: string | null;
   submissionType: string;
   startedAt?: number | null;
+  userId?: number | null;
 }
 
 function buildTrack(data: LiveNowPlayingEvent) {
@@ -40,6 +42,7 @@ function buildTrack(data: LiveNowPlayingEvent) {
     artworkUrl: LOGO,
     isStream: true, // shows LIVE badge in FloatingPlayer, disables viewer controls
     submissionId: data.submissionId,
+    artistUserId: data.userId ?? undefined,
     sourcePage: "Music Review",
     sourceUrl: "/review",
     youtubeUrl: data.youtubeUrl ?? null,
@@ -52,8 +55,12 @@ function isOurStream(track: { isStream?: boolean; sourcePage?: string } | null):
   return !!track?.isStream && track?.sourcePage === "Music Review";
 }
 
-export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
-  const { play, playWithSeek, pause, resume, stop, seek, track, getAudioElement } = useAudioPlayer();
+export function useLivePlayer({ isAdmin = false, suspended = false }: { isAdmin?: boolean; suspended?: boolean } = {}) {
+  const { play, playWithSeek, pause, resume, stop, seek, track, getAudioElement, onEnded } = useAudioPlayer();
+  const { data: queue } = trpc.queue.getAll.useQuery(undefined, { enabled: isAdmin && !suspended, refetchInterval: 2000, refetchIntervalInBackground: true });
+  const queueRef = useRef(queue);
+  queueRef.current = queue;
+  const endingIdRef = useRef<number | null>(null);
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
   // Keep refs so socket callbacks always see latest values without re-subscribing
@@ -75,21 +82,34 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   trackRef.current = track;
   getAudioElementRef.current = getAudioElement;
 
-  // NOTE: We intentionally do NOT emit radio:track_ended here.
-  // Auto-advance is handled exclusively by AdminPanel's onEnded callback via tRPC mutations.
-  // The server-side radio:track_ended handler is kept for emergency fallback only,
-  // but emitting it from the global hook caused double-advance (random skip) bugs.
-
   useEffect(() => {
+    if (suspended) return;
     // Connect without joining a room — we only need the global events
     const socket: Socket = io(window.location.origin, {
       path: "/api/socket.io",
       query: { room: "global" },
     });
     socketRef.current = socket;
+    const complete = (submissionId: number) => {
+      if (endingIdRef.current === submissionId || !socket.connected || !isAdminRef.current) return;
+      endingIdRef.current = submissionId;
+      socket.emit("radio:track_ended", { submissionId });
+    };
+    const unsubscribeEnded = onEnded((finished) => {
+      if (isOurStream(finished) && finished.submissionId) complete(finished.submissionId);
+    });
+    const cutoffTimer = window.setInterval(() => {
+      const current = queueRef.current?.currentPlaying;
+      const audio = getAudioElementRef.current();
+      if (!current || queueRef.current?.state?.playbackMode !== "90sec" || current.isPaidSubmission || current.paidSubmissionType) return;
+      if (current.submissionType !== "file" || !isOurStream(trackRef.current) || trackRef.current?.submissionId !== current.id) return;
+      if (audio && !audio.paused && audio.currentTime >= 90) { audio.pause(); complete(current.id); }
+    }, 500);
 
     const synchronizeAuthoritativeState = (data: (LiveNowPlayingEvent & { currentTime: number; pausedAt: number | null }) | null) => {
-      if (!data || (!data.audioUrl && !data.youtubeUrl) || data.submissionType === "youtube" || isAdminRef.current) return;
+      if (!data || (!data.audioUrl && !data.youtubeUrl) || data.submissionType === "youtube") return;
+      if (endingIdRef.current === data.submissionId) return;
+      endingIdRef.current = null;
       const liveTrack = buildTrack(data);
       const expectedPosition = Math.max(0, data.currentTime);
       const currentTrack = trackRef.current;
@@ -134,13 +154,15 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
         }
         return;
       }
-      // The Music Review admin controls the local player directly. Never let the
-      // global listener create a second competing player on the admin page.
-      if (isAdminRef.current) return;
+      if (endingIdRef.current === data.submissionId) return;
+      endingIdRef.current = null;
       // Keep YouTube playback inside SyncedYouTubePlayer on /review. Passing
       // an empty URL into the global audio element cannot produce usable audio
       // and can compete with the synchronized player when the page is open.
-      if (data.submissionType === "youtube") return;
+      if (data.submissionType === "youtube") {
+        if (isOurStream(trackRef.current)) stopRef.current();
+        return;
+      }
       // Support both file and YouTube submissions
       if (data.audioUrl || data.youtubeUrl) {
         const t = buildTrack(data);
@@ -197,8 +219,10 @@ export function useLivePlayer({ isAdmin = false }: { isAdmin?: boolean } = {}) {
 
     return () => {
       socketRef.current = null;
+      unsubscribeEnded();
+      window.clearInterval(cutoffTimer);
       window.clearInterval(driftCorrectionTimer);
       socket.disconnect();
     };
-  }, []); // mount once
+  }, [suspended, onEnded]);
 }

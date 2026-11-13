@@ -41,12 +41,14 @@ describe("Music Review live-room state", () => {
 
   it("reconciles refreshes and late joins from the authoritative queue state", () => {
     const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
-    expect(reviewSource).toContain("refetchInterval: 3000, refetchOnWindowFocus: true");
-    expect(reviewSource).toContain("liveReviewActive?.submissionId !== cp.id");
-    expect(reviewSource).toContain("data && !cp && liveReviewActive");
-    expect(reviewSource).toContain("hydratedPlayingIdRef.current === currentPlaying.id");
-    expect(reviewSource).toContain("playTrack(currentPlaying)");
-    expect(reviewSource).toContain('submission.status === "playing"');
-    expect(reviewSource).toContain("data?.currentPlaying ?? data?.submissions?.find");
+    const hook = readFileSync(resolve(process.cwd(), "client/src/hooks/useReviewQueue.ts"), "utf8");
+    expect(reviewSource).toContain("useReviewQueue()");
+    expect(reviewSource).toContain("const currentPlaying = data?.currentPlaying ?? null");
+    expect(reviewSource).not.toContain("reviewStopPendingRef");
+    expect(reviewSource).not.toContain("hydratedPlayingIdRef");
+    expect(hook).toContain("refetchIntervalInBackground: true");
+    expect(hook).toContain('socket.on("review:queue_updated", refresh)');
+    expect(hook).toContain("utils.queue.getReviewed.invalidate()");
+    expect(hook).toContain("utils.queue.getAll.cancel()");
   });
 });

@@ -775,7 +775,7 @@ export function useFakeLiveChat({
 
   const { data: allUsersPage } = trpc.admin.listUsers.useQuery(
     { page: 1, pageSize: 100 },
-    { staleTime: 1000 * 60 * 5, retry: false }
+    { enabled: isAdmin, staleTime: 1000 * 60 * 5, retry: false }
   );
   const allUsers = allUsersPage?.items;
 

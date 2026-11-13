@@ -9,6 +9,7 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { executeReviewTransport } from "./review-transport";
 import { eq, and, inArray, desc, asc, ne, gte, lt, sql } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
@@ -23,7 +24,7 @@ import { REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS, REVIEW_PLUS_MONTHLY_PRICE_CENTS }
 import { normalizeStudioInput } from "./studio-input";
 import { buildWheelCatalogueSong } from "../shared/wheel-catalogue";
 import {
-  getQueueSubmissions, getTodaySubmissionCount, getReviewedSubmissions, addSubmission, updateSubmissionStatus, completeReviewSubmission,
+  getReviewQueueSnapshot, getQueueSubmissions, getTodaySubmissionCount, getReviewedSubmissions, addSubmission, updateSubmissionStatus, completeReviewSubmission,
   confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus, setLiveReviewPlaybackState,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
@@ -1053,16 +1054,7 @@ export const appRouter = router({
         ]);
         return { success: true as const, ...input };
       }),
-    getAll: publicProcedure.query(async () => {
-      const [submissions, state] = await Promise.all([
-        getQueueSubmissions(),
-        getQueueState(),
-      ]);
-      const currentPlaying = state?.currentPlayingId
-        ? submissions.find(s => s.id === state.currentPlayingId) ?? null
-        : null;
-      return { submissions, state, currentPlaying };
-    }),
+    getAll: publicProcedure.query(async () => getReviewQueueSnapshot()),
 
     // Get a direct presigned S3 URL for a queue submission audio file
     getAudioUrl: publicProcedure
@@ -1165,12 +1157,10 @@ export const appRouter = router({
         return { success: true, isPaid };
       }),
     setPlaying: adminProcedure
-      .input(z.object({ submissionId: z.number().nullable() }))
+      .input(z.object({ submissionId: z.number().int().positive().nullable() }))
       .mutation(async ({ input }) => {
-        if (input.submissionId !== null) {
-          await updateSubmissionStatus(input.submissionId, "playing");
-        }
-        await setCurrentPlaying(input.submissionId);
+        await executeReviewTransport(input.submissionId === null
+          ? { action: "stop" } : { action: "start", submissionId: input.submissionId });
         return { success: true };
       }),
 
@@ -1180,7 +1170,7 @@ export const appRouter = router({
     completeAndAdvance: adminProcedure
       .input(z.object({ submissionId: z.number().int().positive(), skippedByVote: z.boolean().optional() }))
       .mutation(async ({ input }) => {
-        const result = await completeAndAdvanceReviewQueue(input.submissionId, { skippedByVote: input.skippedByVote });
+        const result = await executeReviewTransport({ action: "complete", submissionId: input.submissionId, skippedByVote: input.skippedByVote });
         return { success: !result.stale, ...result };
       }),
 
@@ -1190,7 +1180,16 @@ export const appRouter = router({
         status: z.enum(["pending", "playing", "reviewed", "removed"]),
       }))
       .mutation(async ({ input }) => {
-        if (input.status === "reviewed") await completeReviewSubmission(input.id);
+        const snapshot = await getReviewQueueSnapshot();
+        if (input.status === "playing") {
+          await executeReviewTransport({ action: "start", submissionId: input.id });
+        } else if (snapshot.currentPlaying?.id === input.id) {
+          if (input.status === "pending") await executeReviewTransport({ action: "stop" });
+          else {
+            await executeReviewTransport({ action: "complete", submissionId: input.id });
+            if (input.status === "removed") await updateSubmissionStatus(input.id, "removed");
+          }
+        } else if (input.status === "reviewed") await completeReviewSubmission(input.id);
         else await updateSubmissionStatus(input.id, input.status);
         return { success: true };
       }),
@@ -1253,13 +1252,7 @@ export const appRouter = router({
               console.error("[queue.setLive] Error ending session:", err);
               // Don't fail the entire mutation if session end fails
             }
-            await setLiveReviewPlaybackState({
-              currentPlayingId: null,
-              playbackState: "stopped",
-              startedAt: null,
-              positionMs: 0,
-            });
-            await setCurrentPlaying(null);
+            await executeReviewTransport({ action: "stop" });
           }
           await setLiveStatus(input.isLive, input.message, input.streamUrl);
           // Notify all users when going live

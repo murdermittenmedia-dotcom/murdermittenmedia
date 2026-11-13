@@ -145,7 +145,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       const { track: currentTrack, playlist, playlistIndex } = stateRef.current;
       // A source swap during the 90-second handoff can deliver a late ended
       // event from the previous file. Do not advance the new track because of it.
-      if (currentTrack?.url && audio.src && !audio.src.startsWith(currentTrack.url.split("?")[0])) return;
+      if (!audio.ended) return;
+      if (currentTrack?.url && audio.src) {
+        const expectedSource = new URL(currentTrack.url, window.location.origin).href;
+        if (!audio.src.startsWith(expectedSource.split("?")[0])) return;
+      }
       if (currentTrack) {
         endedCallbacks.forEach(cb => { try { cb(currentTrack); } catch {} });
       }

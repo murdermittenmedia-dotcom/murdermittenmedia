@@ -349,36 +349,50 @@ export async function completeAndAdvanceReviewQueue(
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const [state] = await db.select().from(queueState).limit(1);
-  if (!state?.currentPlayingId || state.currentPlayingId !== completedId) {
-    return { stale: true as const, next: null };
-  }
-
-  const claim = await db.update(queueState)
-    .set({ currentPlayingId: null })
-    .where(and(eq(queueState.id, state.id), eq(queueState.currentPlayingId, completedId)));
-  const affectedRows = (claim as any)?.affectedRows ?? (claim as any)?.[0]?.affectedRows ?? 0;
-  if (affectedRows !== 1) return { stale: true as const, next: null };
-
-  const [current] = await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, completedId)).limit(1);
-  if (!current || current.status !== "playing") return { stale: true as const, next: null };
-
-  await completeReviewSubmission(completedId, options);
-  const [next] = await db.select().from(reviewSubmissions)
-    .where(and(eq(reviewSubmissions.status, "pending"), ne(reviewSubmissions.id, completedId)))
-    .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt))
-    .limit(1);
-  if (!next) {
-    await setLiveReviewPlaybackState({ currentPlayingId: null, playbackState: "stopped", startedAt: null, positionMs: 0 });
-    return { stale: false as const, next: null };
-  }
-  await updateSubmissionStatus(next.id, "playing");
-  await setCurrentPlaying(next.id);
-  return { stale: false as const, next };
+  const counts = await getSongReactionCounts(completedId);
+  const verdict = calculateReviewVerdict({ crowdFire: counts.fire, crowdTrash: counts.trash,
+    judgeFire: counts.judgeFire, judgeTrash: counts.judgeTrash, skippedByVote: options.skippedByVote });
+  return db.transaction(async (tx) => {
+    const [state] = await tx.select().from(queueState).limit(1).for("update");
+    if (!state) return { stale: true as const, next: null };
+    const [current] = await tx.select().from(reviewSubmissions)
+      .where(eq(reviewSubmissions.id, completedId)).limit(1).for("update");
+    // Recover only an actually-playing row with a missing cursor. Never revive
+    // a reviewed track or let an old ended event finish the new current track.
+    if (!current || current.status !== "playing" ||
+      (state.currentPlayingId !== null && state.currentPlayingId !== completedId)) {
+      return { stale: true as const, next: null };
+    }
+    await tx.update(reviewSubmissions).set({ status: "reviewed", verdict: verdict.verdict,
+      crowdFirePct: verdict.crowdFirePct, crowdTrashPct: verdict.crowdTrashPct,
+      judgeFireCount: counts.judgeFire, judgeTrashCount: counts.judgeTrash,
+      totalVoteCount: verdict.totalVoteCount, skipVoteTriggered: options.skippedByVote ?? false,
+      reviewedAt: new Date(), updatedAt: new Date(),
+    }).where(eq(reviewSubmissions.id, completedId));
+    // Normalize old multiple-playing rows while holding the queue lock.
+    await tx.update(reviewSubmissions).set({ status: "pending" })
+      .where(eq(reviewSubmissions.status, "playing"));
+    const waiting = await tx.select().from(reviewSubmissions)
+      .where(eq(reviewSubmissions.status, "pending"))
+      .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position),
+        asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id)).for("update");
+    const next = waiting[0] ?? null;
+    for (let index = 0; index < waiting.length; index++) {
+      await tx.update(reviewSubmissions).set({
+        status: index === 0 ? "playing" : "pending", position: index === 0 ? 0 : index,
+      }).where(eq(reviewSubmissions.id, waiting[index].id));
+    }
+    await tx.update(queueState).set({ currentPlayingId: next?.id ?? null,
+      livePlaybackState: next ? "playing" : "stopped", livePlaybackStartedAt: next ? Date.now() : null,
+      livePlaybackPositionMs: 0, livePlaybackRevision: state.livePlaybackRevision + 1,
+    }).where(eq(queueState.id, state.id));
+    // The commit is all-or-nothing: history and cursor cannot be half advanced.
+    return { stale: false as const, next: next ? { ...next, status: "playing" as const, position: 0 } : null };
+  });
 }
 
 /**
- * Confirm a skip payment and reposition the submission in the queue.
+* Confirm a skip payment and reposition the submission in the queue.
  * skipType:
  *   "reentry5"  → move 5 spots up (lower position number)
  *   "reentry10" → move 10 spots up
@@ -456,6 +470,76 @@ export async function getQueueState() {
   return rows[0] ?? null;
 }
 
+/** Read cursor and songs in the same snapshot, not two racing HTTP queries. */
+export async function getReviewQueueSnapshot() {
+  const db = await getDb();
+  if (!db) return { submissions: [], state: null, currentPlaying: null };
+  return db.transaction(async (tx) => {
+    const [state] = await tx.select().from(queueState).limit(1);
+    const submissions = await tx.select().from(reviewSubmissions)
+      .where(ne(reviewSubmissions.status, "removed"))
+      .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position),
+        asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id));
+    const currentPlaying = submissions.find((song) => song.status === "playing" && song.id === state?.currentPlayingId)
+      ?? (state?.currentPlayingId == null ? submissions.find((song) => song.status === "playing") : null) ?? null;
+    return { submissions, state: state ?? null, currentPlaying };
+  });
+}
+
+export async function startReviewQueueTrack(submissionId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.transaction(async (tx) => {
+    let [state] = await tx.select().from(queueState).limit(1).for("update");
+    if (!state) {
+      await tx.insert(queueState).values({ isLive: true });
+      [state] = await tx.select().from(queueState).limit(1).for("update");
+    }
+    const [song] = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, submissionId)).limit(1).for("update");
+    if (!song || (song.status !== "pending" && song.status !== "playing")) {
+      throw new Error("That song is no longer in the active queue. Requeue it from Recently Played first.");
+    }
+    if (state.currentPlayingId === song.id && song.status === "playing" && state.livePlaybackState !== "stopped") return { ...song, status: "playing" as const };
+    const previous = await tx.select().from(reviewSubmissions)
+      .where(and(eq(reviewSubmissions.status, "playing"), ne(reviewSubmissions.id, song.id))).for("update");
+    for (const old of previous) {
+      const votes = await tx.select({ reaction: songReactions.reaction }).from(songReactions)
+        .innerJoin(users, eq(users.id, songReactions.userId))
+        .where(and(eq(songReactions.submissionId, old.id), eq(users.role, "judge")));
+      const judgeFire = votes.filter((vote) => vote.reaction === "fire").length;
+      const judgeTrash = votes.filter((vote) => vote.reaction === "trash").length;
+      const verdict = calculateReviewVerdict({ crowdFire: old.fireCount, crowdTrash: old.trashCount, judgeFire, judgeTrash });
+      await tx.update(reviewSubmissions).set({ status: "reviewed", reviewedAt: new Date(), updatedAt: new Date(),
+        verdict: verdict.verdict, crowdFirePct: verdict.crowdFirePct, crowdTrashPct: verdict.crowdTrashPct,
+        judgeFireCount: judgeFire, judgeTrashCount: judgeTrash, totalVoteCount: verdict.totalVoteCount,
+      }).where(eq(reviewSubmissions.id, old.id));
+    }
+    await tx.update(reviewSubmissions).set({ status: "playing", position: 0 }).where(eq(reviewSubmissions.id, song.id));
+    const waiting = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.status, "pending"))
+      .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id));
+    for (let index = 0; index < waiting.length; index++) {
+      await tx.update(reviewSubmissions).set({ position: index + 1 }).where(eq(reviewSubmissions.id, waiting[index].id));
+    }
+    await tx.update(queueState).set({ currentPlayingId: song.id, livePlaybackState: "playing",
+      livePlaybackStartedAt: Date.now(), livePlaybackPositionMs: 0,
+      livePlaybackRevision: state.livePlaybackRevision + 1,
+    }).where(eq(queueState.id, state.id));
+    return { ...song, status: "playing" as const, position: 0 };
+  });
+}
+
+export async function stopReviewQueuePlayback() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.transaction(async (tx) => {
+    const [state] = await tx.select().from(queueState).limit(1).for("update");
+    await tx.update(reviewSubmissions).set({ status: "pending" }).where(eq(reviewSubmissions.status, "playing"));
+    if (state) await tx.update(queueState).set({ currentPlayingId: null, livePlaybackState: "stopped",
+      livePlaybackStartedAt: null, livePlaybackPositionMs: 0, livePlaybackRevision: state.livePlaybackRevision + 1,
+    }).where(eq(queueState.id, state.id));
+  });
+}
+
 export async function setCurrentPlaying(submissionId: number | null) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -469,9 +553,21 @@ export async function setCurrentPlaying(submissionId: number | null) {
 
 export type LiveReviewPlaybackState = "playing" | "paused" | "stopped";
 
+/** Clock-only writes never own the queue cursor. An old player cannot restore
+ * its submission after a different command/instance has advanced the queue. */
+export async function updateLiveReviewClock(input: {
+  submissionId: number; playbackState: LiveReviewPlaybackState; startedAt: number | null; positionMs: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.update(queueState).set({ livePlaybackState: input.playbackState,
+    livePlaybackStartedAt: input.startedAt, livePlaybackPositionMs: Math.max(0, Math.round(input.positionMs)),
+  }).where(eq(queueState.currentPlayingId, input.submissionId));
+}
+
 /**
- * Persist the authoritative Music Review transport state. The socket layer owns
- * the transport clock; this row lets it survive a process restart or brief
+* Persist the authoritative Music Review transport state. The socket layer owns
+* the transport clock; this row lets it survive a process restart or brief
  * connection hiccup and lets late joiners calculate the same playback position.
  */
 export async function setLiveReviewPlaybackState(input: {

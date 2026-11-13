@@ -77,15 +77,18 @@ describe("/review 2.0 acceptance contracts", () => {
     expect(routerSource).toContain("completeAndAdvance");
     expect(routerSource).toContain("thresholdReached");
     expect(dbSource).toContain("completeAndAdvanceReviewQueue");
-    expect(dbSource).toContain("affectedRows");
-    expect(serverSource).toContain("completeAndAdvanceReviewQueue(completedId)");
+    expect(dbSource).toContain('for("update")');
+    expect(dbSource).toContain("db.transaction(async (tx)");
+    expect(serverSource).toContain('executeReviewTransport({ action: "complete", submissionId: data.submissionId })');
+    expect(routerSource).toContain('executeReviewTransport({ action: "complete", submissionId: input.submissionId');
     expect(judgeBroadcastSource).toContain("remoteVideoTrackRef");
     expect(judgeBroadcastSource).toContain("remoteAudioTrackRef");
     expect(serverSource).toContain("site:review_skip_requested");
     expect(serverSource).toContain("review:participant_joined");
     expect(navSource).toContain("site:review_skip_requested");
-    expect(reviewSource).toContain("reviewStopPendingRef");
-    expect(reviewSource).toContain('broadcastReviewPlayback({ action: playbackAction })');
+    expect(reviewSource).toContain("utils.queue.getReviewed.invalidate()");
+    expect(reviewSource).not.toContain("reviewStopPendingRef");
+    expect(reviewSource).not.toContain('broadcastReviewPlayback({ action: playbackAction })');
   });
 
   it("keeps Bot Chat truly off and retains a branded verdict for review history", () => {

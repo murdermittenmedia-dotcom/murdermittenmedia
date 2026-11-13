@@ -92,6 +92,8 @@ interface SyncedYouTubePlayerProps {
   initialCurrentTime?: number | null;
   initialUpdatedAt?: number | null;
   onEnded?: () => void;
+  maxPlaybackSeconds?: number;
+  autoPlayMuted?: boolean;
   className?: string;
 }
 
@@ -106,13 +108,15 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
   initialCurrentTime,
   initialUpdatedAt,
   onEnded,
+  maxPlaybackSeconds,
+  autoPlayMuted = false,
   className = "",
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [unlocked, setUnlocked] = useState(isAdmin); // admin auto-plays, viewers need tap
+  const [unlocked, setUnlocked] = useState(isAdmin || autoPlayMuted || sessionStorage.getItem("review-listen-live") === "true");
   const unlockedRef = useRef(unlocked);
   unlockedRef.current = unlocked;
   const listenRequestedRef = useRef(false);
@@ -124,6 +128,9 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
   isAdminRef.current = isAdmin;
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
+  const endedRef = useRef(false);
+  const cutoffRef = useRef(maxPlaybackSeconds);
+  cutoffRef.current = maxPlaybackSeconds;
 
   // Track latest tick for seeking after player becomes ready
   const latestTickRef = useRef<{ currentTime: number; updatedAt: number } | null>(null);
@@ -140,7 +147,11 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
     const driftCorrectionTimer = window.setInterval(requestAuthoritativeState, 4_000);
 
     socket.on("radio:state", (data: { submissionId: number | null; currentTime: number; pausedAt: number | null } | null) => {
-      if (!data || data.submissionId !== submissionIdRef.current) return;
+      if (!data || data.submissionId !== submissionIdRef.current) {
+        playerRef.current?.pauseVideo();
+        return;
+      }
+      if (endedRef.current) return;
       const syncedTime = Math.max(0, data.currentTime);
       serverPausedRef.current = data.pausedAt !== null;
       latestTickRef.current = { currentTime: syncedTime, updatedAt: Date.now() };
@@ -153,7 +164,7 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
 
     // Server-relayed admin clock update for all viewer/player instances.
     socket.on("youtube:tick", (data: { submissionId: number; currentTime: number; state: number; updatedAt: number }) => {
-      if (data.submissionId !== submissionIdRef.current) return;
+      if (data.submissionId !== submissionIdRef.current || endedRef.current) return;
       const syncedTime = data.currentTime + (Date.now() - data.updatedAt) / 1000;
       serverPausedRef.current = data.state === 2;
       latestTickRef.current = { currentTime: syncedTime, updatedAt: Date.now() };
@@ -163,6 +174,7 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
       if (data.state === 1 && player.getPlayerState() !== 1 && unlockedRef.current) player.playVideo();
       else if (data.state === 2 && player.getPlayerState() === 1) player.pauseVideo();
     });
+    socket.on("radio:stopped", () => { endedRef.current = true; playerRef.current?.pauseVideo(); });
 
     return () => {
       if (driftCorrectionTimer !== null) window.clearInterval(driftCorrectionTimer);
@@ -174,16 +186,25 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
   // Load YouTube IFrame API and create player
   useEffect(() => {
     let destroyed = false;
+    let ownedPlayer: YTPlayer | null = null;
     const container = containerRef.current;
     if (!container) return;
+    endedRef.current = false;
+    latestTickRef.current = null;
+    setPlayerReady(false);
+    // The API replaces its target node. Keep a stable React-owned host, and
+    // create a fresh child for every submission (even if the video ID repeats).
+    const mount = document.createElement("div");
+    container.replaceChildren(mount);
 
     loadYouTubeAPI().then(() => {
       if (destroyed || !containerRef.current) return;
 
-      const player = new window.YT.Player(containerRef.current, {
+      const player = new window.YT.Player(mount, {
         videoId,
         playerVars: {
-          autoplay: isAdmin ? 1 : 0,
+          autoplay: unlockedRef.current ? 1 : 0,
+          mute: autoPlayMuted ? 1 : 0,
           rel: 0,
           modestbranding: 1,
           playsinline: 1,
@@ -200,11 +221,17 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
               // Admin: start ticking every 2s
               tickIntervalRef.current = setInterval(() => {
                 const p = playerRef.current;
-                if (!p || !socketRef.current?.connected || serverPausedRef.current) return;
+                if (!p || !socketRef.current?.connected || serverPausedRef.current || endedRef.current) return;
                 const ct = p.getCurrentTime();
                 const state = p.getPlayerState();
+                if (cutoffRef.current && ct >= cutoffRef.current && state === 1) {
+                  endedRef.current = true;
+                  p.pauseVideo();
+                  onEndedRef.current?.();
+                  return;
+                }
                 socketRef.current.emit("youtube:tick", {
-                  submissionId: submissionIdRef.current,
+                  submissionId,
                   currentTime: ct,
                   state,
                 });
@@ -220,14 +247,15 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
                   e.target.seekTo(syncedTime, true);
                 }
               }
-              if (listenRequestedRef.current && !serverPausedRef.current) {
+              if (unlockedRef.current && !serverPausedRef.current) {
                 e.target.playVideo();
               }
             }
           },
           onStateChange: (e) => {
-            if (destroyed || !isAdmin) return;
+            if (destroyed || !isAdmin || endedRef.current) return;
             if (e.data === window.YT.PlayerState.ENDED) {
+              endedRef.current = true;
               onEndedRef.current?.();
               return;
             }
@@ -235,7 +263,7 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
             // explicit player state change is published to the server for all clients.
             if (socketRef.current?.connected) {
               socketRef.current.emit("youtube:tick", {
-                submissionId: submissionIdRef.current,
+                submissionId,
                 currentTime: e.target.getCurrentTime(),
                 state: e.data,
               });
@@ -244,6 +272,7 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
         },
       });
 
+      ownedPlayer = player;
       playerRef.current = player;
     });
 
@@ -253,18 +282,18 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
         clearInterval(tickIntervalRef.current);
         tickIntervalRef.current = null;
       }
-      // Destroy player after a tick to avoid React strict mode double-invoke issues
-      setTimeout(() => {
-        if (playerRef.current) {
-          try { playerRef.current.destroy(); } catch {}
-          playerRef.current = null;
-        }
-      }, 0);
+      // Destroy ONLY this effect's player. Deferred shared-ref cleanup could
+      // destroy the next video and leave the previous song stuck on screen.
+      if (ownedPlayer) {
+        try { ownedPlayer.destroy(); } catch {}
+        if (playerRef.current === ownedPlayer) playerRef.current = null;
+      }
     };
-  }, [videoId, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [videoId, submissionId, isAdmin, autoPlayMuted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUnlock = useCallback(() => {
     listenRequestedRef.current = true;
+    sessionStorage.setItem("review-listen-live", "true");
     unlockedRef.current = true;
     setUnlocked(true);
     // Called synchronously from Listen Live / the player overlay, preserving the

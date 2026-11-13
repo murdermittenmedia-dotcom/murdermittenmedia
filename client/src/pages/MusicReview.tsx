@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useReviewQueue } from "@/hooks/useReviewQueue";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
 import { requestProfileCompletion } from "@/components/OnboardingModal";
@@ -307,18 +308,8 @@ function AdminPanel({
   // A reconnect or older queue row can leave currentPlayingId unset while the
   // submission itself is already marked playing. Resolve that row as a safe
   // fallback so the admin never has to press Load just to restore the session.
-  const currentPlaying = data?.currentPlaying ?? data?.submissions?.find((submission: ReviewSubmission) => submission.status === "playing") ?? null;
-  const hydratedPlayingIdRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!currentPlaying || currentPlaying.submissionType !== "file" || !currentPlaying.fileUrl) {
-      if (!currentPlaying) hydratedPlayingIdRef.current = null;
-      return;
-    }
-    if (hydratedPlayingIdRef.current === currentPlaying.id) return;
-    hydratedPlayingIdRef.current = currentPlaying.id;
-    playTrack(currentPlaying);
-  }, [currentPlaying?.id, currentPlaying?.submissionType, currentPlaying?.fileUrl, playTrack]);
-   const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? [];
+  const currentPlaying = data?.currentPlaying ?? null;
+  const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending") ?? [];
   const queueKey = JSON.stringify(queue.map(s => s.id + ':' + s.status + ':' + s.position));
   // Drag-to-reorder state
   const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -360,7 +351,6 @@ function AdminPanel({
     // Stop local playback and broadcast the stop immediately; the mutation also
     // persists the stopped state so a reconnect cannot resurrect this stream.
     audioPlayer.stop();
-    broadcastReviewActive({ submissionId: null });
     setLive.mutate({ isLive: false, message: liveMsg || undefined, streamUrl: streamUrlInput || undefined }, {
       onSuccess: () => toast.success("Live stream ended for everyone"),
       onError: () => toast.error("Could not end the live stream. Try again."),
@@ -380,88 +370,32 @@ function AdminPanel({
 
   const currentIsYouTube = currentPlaying?.submissionType === "youtube";
 
-  const handleSetPlaying = async (id: number) => {
-    const sub = localQueue.find(s => s.id === id) ?? queue.find(s => s.id === id);
-    if (!sub) return;
-    setSelectedYouTube(null);
+  const handleSetPlaying = (id: number) => {
     setPlaying.mutate({ submissionId: id }, {
-      onSuccess: () => {
-        playTrack(sub);
-        broadcastReviewActive({
-          submissionId: sub.id,
-          userId: sub.userId ?? null,
-          artistName: sub.artistName,
-          songTitle: sub.songTitle,
-          audioUrl: null,
-          youtubeUrl: sub.youtubeUrl ?? null,
-          submissionType: sub.submissionType,
-          fileKey: sub.fileKey ?? null,
-          fileUrl: sub.fileUrl ?? null,
-        });
-        broadcastReviewQueueUpdated();
-        toast.success(`Now playing: ${sub.songTitle}`);
-      },
-      onError: (err) => toast.error("Failed to set playing: " + err.message),
+      onSuccess: () => { void refetch(); toast.success("Track loaded on the live feed"); },
+      onError: (error) => toast.error(error.message),
     });
   };
 
   const completeAndAdvanceMutation = trpc.queue.completeAndAdvance.useMutation();
 
-  const completeAndAdvance = (submissionId: number, playbackAction?: "skip") => {
-    if (completionInFlightRef.current === submissionId) return false;
+  const completeAndAdvance = (submissionId: number) => {
+    if (completionInFlightRef.current !== null || completeAndAdvanceMutation.isPending) return;
     completionInFlightRef.current = submissionId;
-    setLocalQueue((items) => items.filter((item) => item.id !== submissionId));
-    setSelectedYouTube(null);
-    // Clear this page's player immediately, but do not emit radio:load(null)
-    // before the guarded server handoff. That event clears queueState.currentPlayingId
-    // and makes completeAndAdvance look stale, which previously broke Skip Current.
-    // Clear the source immediately at the cutoff so a slow status mutation
-    // cannot leave the previous song audible during the handoff.
-    audioPlayer.stop();
     completeAndAdvanceMutation.mutate({ submissionId }, {
       onSuccess: (result) => {
-        if (result.stale) {
-          completionInFlightRef.current = null;
-          void refetch();
-          return;
-        }
-        refetch();
+        void utils.queue.getAll.invalidate();
         void utils.queue.getReviewed.invalidate();
-        if (playbackAction) broadcastReviewPlayback({ action: playbackAction });
-        if (!result.next) {
-          broadcastReviewActive({ submissionId: null });
-          broadcastReviewQueueUpdated();
-          toast("Queue finished — all tracks reviewed!");
-          return;
-        }
-        const next = result.next as ReviewSubmission;
-        playTrack(next);
-        broadcastReviewActive({
-          submissionId: next.id,
-          userId: next.userId ?? null,
-          artistName: next.artistName,
-          songTitle: next.songTitle,
-          audioUrl: null,
-          youtubeUrl: next.youtubeUrl ?? null,
-          submissionType: next.submissionType,
-          fileKey: next.fileKey ?? null,
-          fileUrl: next.fileUrl ?? null,
-        });
-        broadcastReviewQueueUpdated();
-        toast.success(`Now reviewing: ${next.songTitle}`);
+        if (result.stale) toast.message("The live queue has already moved. Controls refreshed.");
+        else toast.success(result.next ? `Now reviewing: ${result.next.songTitle}` : "Queue finished — all tracks in Recently Played");
       },
-      onError: (error) => {
-        completionInFlightRef.current = null;
-        void refetch();
-        toast.error("Unable to complete this track: " + error.message);
-      },
+      onError: (error) => { toast.error("Unable to advance: " + error.message); void refetch(); },
+      onSettled: () => { completionInFlightRef.current = null; },
     });
-    return true;
   };
 
-  const handleSkip = async () => {
-    if (!currentPlaying) return;
-    if (completeAndAdvance(currentPlaying.id, "skip")) toast.success("Skipped to next track");
+  const handleSkip = () => {
+    if (currentPlaying) completeAndAdvance(currentPlaying.id);
   };
 
   const handleRemove = (id: number) => {
@@ -469,73 +403,7 @@ function AdminPanel({
     toast.success("Removed from queue");
   };
 
-  const updateStatusRef = useRef(updateStatus);
-  updateStatusRef.current = updateStatus;
-  const refetchRef = useRef(refetch);
-  refetchRef.current = refetch;
-  const completeAndAdvanceRef = useRef(completeAndAdvance);
-  completeAndAdvanceRef.current = completeAndAdvance;
-
-  useEffect(() => {
-    if (completionInFlightRef.current !== data?.currentPlaying?.id) completionInFlightRef.current = null;
-  }, [data?.currentPlaying?.id]);
-
-  // ── 90-second cap: auto-advance when mode is "90sec" and track is not paid ──
   const playbackMode = data?.state?.playbackMode ?? "90sec";
-  const dataRef = useRef(data);
-  dataRef.current = data;
-  useEffect(() => {
-    if (playbackMode !== "90sec") return;
-    const cp = dataRef.current?.currentPlaying;
-    if (!cp) return;
-    // If the submission is a paid full-song submission, skip the cap
-    const isPaid = !!(cp as any).isPaidSubmission || (cp as any).paidSubmissionType === "reentry5" || (cp as any).paidSubmissionType === "reentry10";
-    if (isPaid) return;
-    // Only cap audio file tracks (YouTube is capped by the player itself)
-    if (cp.submissionType !== "file") return;
-    const audioEl = audioPlayer.getAudioElement?.();
-    if (!audioEl) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const checkTime = () => {
-      if (audioEl.currentTime >= 90) {
-        completeAndAdvanceRef.current(cp.id);
-      } else {
-        const remaining = 90 - audioEl.currentTime;
-        timer = setTimeout(checkTime, remaining * 1000);
-      }
-    };
-    const onPlay = () => {
-      if (timer) clearTimeout(timer);
-      if (audioEl.currentTime < 90) {
-        const remaining = 90 - audioEl.currentTime;
-        timer = setTimeout(checkTime, remaining * 1000);
-      }
-    };
-    const onPause = () => { if (timer) clearTimeout(timer); };
-    audioEl.addEventListener("play", onPlay);
-    audioEl.addEventListener("pause", onPause);
-    // Start immediately if already playing
-    if (!audioEl.paused && audioEl.currentTime < 90) {
-      const remaining = 90 - audioEl.currentTime;
-      timer = setTimeout(checkTime, remaining * 1000);
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
-      audioEl.removeEventListener("play", onPlay);
-      audioEl.removeEventListener("pause", onPause);
-    };
-  }, [playbackMode, data?.currentPlaying?.id, audioPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const unsubscribe = audioPlayer.onEnded((finishedTrack) => {
-      if (finishedTrack.sourcePage !== "Music Review" || !finishedTrack.submissionId) return;
-      const currentQueue = localQueueRef.current;
-      const match = currentQueue.find((submission) => submission.id === finishedTrack.submissionId);
-      if (!match) return;
-      completeAndAdvanceRef.current(match.id);
-    });
-    return unsubscribe;
-  }, [audioPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (compact) {
     return (
@@ -1619,9 +1487,9 @@ export default function MusicReview() {
   const audioPlayer = useAudioPlayer();
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
-  const { data, refetch, isLoading } = trpc.queue.getAll.useQuery(undefined, { refetchInterval: 3000, refetchOnWindowFocus: true });
+  const { data, refetch, isLoading } = useReviewQueue();
   const { data: judgePanelVisibility } = trpc.queue.getJudgePanelVisibility.useQuery(undefined, { refetchInterval: 5000 });
-  const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 30000 });
+  const { data: reviewedTracks } = trpc.queue.getReviewed.useQuery(undefined, { refetchInterval: 2000, refetchIntervalInBackground: true });
   const judgePanelVisible = judgePanelVisibility?.visible ?? true;
   const joinJudgeStage = useCallback(() => {
     if (!isJudge) {
@@ -1748,7 +1616,7 @@ export default function MusicReview() {
     onError: () => toast.error("Failed to re-queue song"),
   });
 
-  const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
+  const activeSubmissionId = data?.currentPlaying?.id ?? null;
 
   // Tip artist state
   const [tipAmount, setTipAmount] = useState<string>("");
@@ -1763,9 +1631,7 @@ export default function MusicReview() {
     },
     onError: (err: any) => toast.error(err.message),
   });
-  const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
   const [ytSyncState, setYtSyncState] = useState<{ currentTime: number; updatedAt: number } | null>(null);
-  const reviewStopPendingRef = useRef(false);
   const currentPlayingId = activeSubmissionId ?? data?.currentPlaying?.id ?? null;
 
   const { data: myReaction, refetch: refetchMyReaction } = trpc.queue.getMyReaction.useQuery(
@@ -1866,14 +1732,7 @@ export default function MusicReview() {
     onFakeChatMessage: receiveFakeMessage,
     onChatControlsReceived: receiveChatControls,
     onTriggerReaction: (data) => { if (!isAdmin) triggerReaction(data.reaction as any, data.duration); },
-    onReviewActiveChanged: (item) => {
-      reviewStopPendingRef.current = item.submissionId === null;
-      setActiveSubmissionId(item.submissionId);
-      setLiveReviewActive(item);
-      refetch();
-      refetchReactions();
-      refetchMyReaction();
-    },
+    onReviewActiveChanged: () => { void refetch(); },
     onReviewPlayback: (data: LiveReviewPlayback) => {
       if (!liveAudioRef.current) return;
       if (data.action === "play") liveAudioRef.current.play().catch(() => {});
@@ -1909,31 +1768,8 @@ export default function MusicReview() {
     chatControlsEmitRef.current = emitChatControls;
   });
 
-  // Initialize and reconcile from the server for late joiners and refreshes.
-  // Do not gate this on local socket state: a reconnect can leave an old track
-  // in memory while the authoritative queue has already advanced.
-  useEffect(() => {
-    const cp = data?.currentPlaying ?? data?.submissions?.find((submission: ReviewSubmission) => submission.status === "playing") ?? null;
-    if (reviewStopPendingRef.current && cp) return;
-    if (!cp) reviewStopPendingRef.current = false;
-    if (cp && liveReviewActive?.submissionId !== cp.id) {
-      setActiveSubmissionId(cp.id);
-      setLiveReviewActive({
-        submissionId: cp.id,
-        userId: cp.userId ?? null,
-        artistName: cp.artistName,
-        songTitle: cp.songTitle,
-        audioUrl: cp.fileUrl ?? null,
-        youtubeUrl: cp.youtubeUrl ?? null,
-        submissionType: cp.submissionType,
-        fileKey: cp.fileKey ?? null,
-        fileUrl: cp.fileUrl ?? null,
-      });
-    } else if (data && !cp && liveReviewActive) {
-      setActiveSubmissionId(null);
-      setLiveReviewActive(null);
-    }
-  }, [data?.currentPlaying?.id, data?.submissions, liveReviewActive?.submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The HTTP queue snapshot is the sole now-playing source; socket events
+  // invalidate it through useReviewQueue instead of overwriting local track state.
 
   // Reset ghost votes when song changes
   useEffect(() => {
@@ -2210,8 +2046,8 @@ export default function MusicReview() {
     });
   };
 
-  const pendingQueue = data?.submissions?.filter(s => s.status === "pending" || s.status === "playing") ?? [];
-  const currentPlaying = data?.currentPlaying ?? data?.submissions?.find((submission: ReviewSubmission) => submission.status === "playing") ?? null;
+  const pendingQueue = data?.submissions?.filter(s => s.status === "pending") ?? [];
+  const currentPlaying = data?.currentPlaying ?? null;
   const isLive = data?.state?.isLive ?? false;
   const liveMessage = data?.state?.liveMessage;
   const streamUrl = data?.state?.streamUrl;
@@ -2255,34 +2091,13 @@ export default function MusicReview() {
     : null;
   const fire = reactionCounts?.fire ?? activeTrackData?.fireCount ?? 0;
   const trash = reactionCounts?.trash ?? activeTrackData?.trashCount ?? 0;
-  // Normalize socket and database track data into the render contract. A stopped
-  // socket event carries { submissionId: null } and must not render a poll/player.
-  const activeTrack = liveReviewActive?.submissionId != null
-    ? {
-          submissionId: liveReviewActive.submissionId,
-          userId: liveReviewActive.userId ?? null,
-          artistName: liveReviewActive.artistName ?? "Unknown Artist",
-          songTitle: liveReviewActive.songTitle ?? "Untitled Submission",
-          audioUrl: liveReviewActive.audioUrl ?? null,
-          youtubeUrl: liveReviewActive.youtubeUrl ?? null,
-          submissionType: liveReviewActive.submissionType === "youtube" ? "youtube" as const : "file" as const,
-          fileKey: liveReviewActive.fileKey ?? null,
-          fileUrl: liveReviewActive.fileUrl ?? liveReviewActive.audioUrl ?? null,
-        }
-    : currentPlaying
-      ? {
-          submissionId: currentPlaying.id,
-          userId: currentPlaying.userId ?? null,
-          artistName: currentPlaying.artistName,
-          songTitle: currentPlaying.songTitle,
-          audioUrl: currentPlaying.fileUrl ?? null,
-          youtubeUrl: currentPlaying.youtubeUrl ?? null,
-          submissionType: currentPlaying.submissionType,
-          fileKey: currentPlaying.fileKey ?? null,
-          fileUrl: currentPlaying.fileUrl ?? null,
-        }
-      : null;
-
+  const activeTrack = currentPlaying ? {
+    submissionId: currentPlaying.id, userId: currentPlaying.userId ?? null,
+    artistName: currentPlaying.artistName, songTitle: currentPlaying.songTitle,
+    audioUrl: currentPlaying.fileUrl ?? null, youtubeUrl: currentPlaying.youtubeUrl ?? null,
+    submissionType: currentPlaying.submissionType, fileKey: currentPlaying.fileKey ?? null,
+    fileUrl: currentPlaying.fileUrl ?? null,
+  } : null;
   const syncedYouTubePlayerRef = useRef<SyncedYouTubePlayerHandle>(null);
   const listenToLiveReview = () => {
     setAudioUnlocked(true);
@@ -2297,6 +2112,7 @@ export default function MusicReview() {
         title: activeTrack.songTitle,
         artist: activeTrack.artistName,
         sourcePage: "Music Review",
+        isStream: true,
         submissionId: activeTrack.submissionId,
         artistUserId: activeTrack.userId ?? undefined,
       });
@@ -2631,6 +2447,8 @@ export default function MusicReview() {
                   initialCurrentTime={ytSyncState?.currentTime ?? null}
                   initialUpdatedAt={ytSyncState?.updatedAt ?? null}
                   isAdmin={isAdmin}
+                  key={activeTrack.submissionId}
+                  maxPlaybackSeconds={data?.state?.playbackMode === "90sec" && !(currentPlaying as any)?.isPaidSubmission && !(currentPlaying as any)?.paidSubmissionType ? 90 : undefined}
                   onEnded={isAdmin ? () => broadcastReviewTrackEnded(activeTrack.submissionId) : undefined}
                 />
                 </div>
@@ -2856,7 +2674,7 @@ export default function MusicReview() {
             {([
               { id: "submit", label: "Submit Now", icon: "🎵" },
               { id: "queue", label: "Queue", icon: "📋" },
-              { id: "history", label: "History", icon: "📜" },
+              { id: "history", label: "Recently Played", icon: "📜" },
               { id: "skip-info", label: "Skip Track", icon: "⏭️" },
             ] as const).map(t => (
               <button

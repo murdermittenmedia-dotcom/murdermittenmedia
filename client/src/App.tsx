@@ -99,6 +99,7 @@ function Router() {
       <Route path={"/beats/:slug"} component={BeatDetail} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
+      <Route path={"/broadcast/obs"} component={BroadcastReview} />
       <Route path={"/broadcast/review"} component={BroadcastReview} />
       <Route path={"/broadcast/radio"} component={BroadcastRadio} />
       <Route path={"/broadcast/rankings"} component={BroadcastRankings} />
@@ -185,8 +186,9 @@ function Router() {
 /** Mounts the live-player listeners inside AudioPlayerProvider context */
 function LivePlayerMount() {
   const { user } = useAuth();
+  const [location] = useLocation();
   const isAdmin = user?.role === "admin";
-  useLivePlayer({ isAdmin });
+  useLivePlayer({ isAdmin, suspended: location === "/admin-popout" || location === "/broadcast/obs" });
   useWarsLivePlayer();
   return null;
 }
@@ -199,7 +201,7 @@ function PageTrackerMount() {
 
 function App() {
   const [location] = useLocation();
-  const isBroadcastView = location.startsWith("/broadcast/");
+  const isBroadcastView = location.startsWith("/broadcast/") || location === "/admin-popout";
 
   return (
     <ErrorBoundary>

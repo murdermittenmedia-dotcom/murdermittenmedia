@@ -13,10 +13,10 @@ import { serveStatic, setupVite } from "./vite";
 import { getDb } from "../db";
 import { chatMessages, reviewPlusMemberships } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
-import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, completeAndAdvanceReviewQueue, setCurrentPlaying, getLiveReviewPlaybackState, setLiveReviewPlaybackState } from "../db";
+import { getWheelOfNamesEntries, createWheelOfNamesSpin, clearWheelOfNamesEntries, getTodaysWheelOfNamesSpin, updateSubmissionStatus, completeReviewSubmission, completeAndAdvanceReviewQueue, setCurrentPlaying, getLiveReviewPlaybackState, updateLiveReviewClock } from "../db";
 import { registerStripeWebhook } from "../stripe-webhook";
 import { sanitizeChatAvatarUrl } from "../../shared/chat-avatar";
-import { shouldProcessReviewTrackEnd } from "../../shared/review-radio-transition";
+import { executeReviewTransport, setReviewTransportPublisher, withReviewTransportLock } from "../review-transport";
 import { sdk } from "./sdk";
 import { and, desc, eq } from "drizzle-orm";
 import { setSiteAnnouncementBroadcaster } from "../site-announcement";
@@ -58,6 +58,7 @@ const roomParticipants = new Map<string, RoomParticipant>();
 // ─── Radio State (server-side source of truth) ────────────────────────────────
 type RadioState = {
   submissionId: number | null;
+  userId?: number | null;
   artistName: string;
   songTitle: string;
   audioUrl: string | null;       // direct presigned S3 URL (expires ~1hr)
@@ -89,7 +90,6 @@ let radioState: RadioState = {
 
 // Track the last played song so admin can put it back on the deck
 let lastRadioState: RadioState | null = null;
-let reviewTrackTransitionInFlight: number | null = null;
 
 const emptyRadioState = (): RadioState => ({
   submissionId: null,
@@ -114,13 +114,14 @@ function getAuthoritativePlaybackPositionMs(now = Date.now()) {
 }
 
 async function persistAuthoritativeRadioState() {
+  if (!radioState.submissionId) return;
   const playbackState = !radioState.submissionId
     ? "stopped"
     : radioState.pausedAt !== null
       ? "paused"
       : "playing";
-  await setLiveReviewPlaybackState({
-    currentPlayingId: radioState.submissionId,
+  await updateLiveReviewClock({
+    submissionId: radioState.submissionId,
     playbackState,
     startedAt: radioState.startedAt,
     positionMs: getAuthoritativePlaybackPositionMs(),
@@ -131,7 +132,7 @@ async function hydrateAuthoritativeRadioState() {
   const persisted = await getLiveReviewPlaybackState();
   const state = persisted?.state;
   const submission = persisted?.submission;
-  if (!state?.currentPlayingId || !submission || state.livePlaybackState === "stopped") {
+  if (!state?.currentPlayingId || !submission || submission.status !== "playing") {
     radioState = emptyRadioState();
     return;
   }
@@ -142,11 +143,12 @@ async function hydrateAuthoritativeRadioState() {
     try { audioUrl = await storageGetSignedUrl(fileKey); } catch { audioUrl = submission.fileUrl ?? null; }
   }
   const storedPositionMs = state.livePlaybackPositionMs ?? 0;
-  const startedAt = state.livePlaybackState === "playing"
+  const startedAt = state.livePlaybackState !== "paused"
     ? (state.livePlaybackStartedAt ?? Date.now() - storedPositionMs)
     : state.livePlaybackStartedAt;
   radioState = {
     submissionId: submission.id,
+    userId: submission.userId,
     artistName: submission.artistName,
     songTitle: submission.songTitle,
     audioUrl,
@@ -259,6 +261,21 @@ async function startServer() {
       currentTime: getAuthoritativePlaybackPositionMs() / 1000,
     });
   };
+
+  setReviewTransportPublisher(async () => {
+    const previous = { ...radioState };
+    await hydrateAuthoritativeRadioState();
+    if (previous.submissionId && previous.submissionId !== radioState.submissionId) lastRadioState = previous;
+    broadcastAuthoritativeRadioState();
+    if (radioState.submissionId && previous.submissionId !== radioState.submissionId) {
+      io.emit("radio:playing", { ...radioState });
+      io.emit("live:now_playing", { ...radioState });
+    } else if (!radioState.submissionId) {
+      io.emit("radio:stopped");
+      io.emit("live:now_playing", null);
+    }
+    io.emit("review:queue_updated");
+  });
 
   const broadcastPresence = () => io.emit("presence:count", io.engine.clientsCount);
 
@@ -580,101 +597,33 @@ async function startServer() {
     });
 
     // ── Live Radio Controls (admin → ALL viewers site-wide) ──────────────
-    // Admin loads a track: server resolves presigned URL, broadcasts to everyone
-    socket.on("radio:load", async (data: {
-      submissionId: number | null;
-      artistName?: string;
-      songTitle?: string;
-      fileKey?: string | null;
-      fileUrl?: string | null;   // /manus-storage/ path — we resolve it here
-      youtubeUrl?: string | null;
-      submissionType?: string;
-    }) => {
+    // Legacy socket loaders now use the same command as the admin HTTP endpoint.
+    // Metadata comes from the database, never from a stale browser queue row.
+    socket.on("radio:load", async (data: { submissionId: number | null }) => {
       if (!await isAuthoritativeReviewAdmin()) return;
-      if (data.submissionId === null) {
-        // Admin cleared the deck — also reset any playing songs in DB
-        radioState = emptyRadioState();
-        await persistAuthoritativeRadioState();
-        try { await setCurrentPlaying(null); } catch (e) { /* non-fatal */ }
-        io.emit("radio:stopped");
-        io.emit("live:now_playing", null);
-        return;
-      }
-
-      // Resolve presigned S3 URL server-side so all clients get a direct URL
-      // IMPORTANT: fileUrl has the correct hash-suffixed key (e.g. queue-submissions/song_a1b2c3d4.mp3)
-      // fileKey may be the original key without hash — always prefer fileUrl for key extraction
-      let resolvedAudioUrl: string | null = null;
-      const key = data.fileUrl?.replace(/^\/manus-storage\//, "") ?? data.fileKey ?? null;
-      if (key && data.submissionType !== "youtube") {
-        try {
-          resolvedAudioUrl = await storageGetSignedUrl(key);
-          console.log("[radio:load] Resolved presigned URL for key:", key);
-        } catch (e) {
-          console.error("[radio:load] Failed to resolve presigned URL for key:", key, e);
-          // Fall back to /manus-storage/ path — client will try to handle it
-          resolvedAudioUrl = data.fileUrl ?? null;
-        }
-      }
-
-      // Save current state as last before overwriting
-      if (radioState.submissionId) lastRadioState = { ...radioState };
-
-      // Sync DB status: reset any previously-playing submission to 'pending',
-      // then mark the new one as 'playing'. This ensures only one song ever
-      // shows the LIVE badge in the queue, regardless of which button was used.
       try {
-        await updateSubmissionStatus(data.submissionId, "playing");
-        await setCurrentPlaying(data.submissionId);
-      } catch (e) {
-        console.error("[radio:load] Failed to update DB status:", e);
+        await executeReviewTransport(data.submissionId === null
+          ? { action: "stop" } : { action: "start", submissionId: data.submissionId });
+      } catch (error) {
+        socket.emit("radio:error", { message: error instanceof Error ? error.message : "Unable to load track" });
       }
-
-      radioState = {
-        submissionId: data.submissionId,
-        artistName: data.artistName ?? "Unknown Artist",
-        songTitle: data.songTitle ?? "Live Review",
-        audioUrl: resolvedAudioUrl,
-        youtubeUrl: data.youtubeUrl ?? null,
-        submissionType: data.submissionType ?? "file",
-        startedAt: Date.now(),
-        pausedAt: null,
-        fileKey: key,
-        ytCurrentTime: null,
-        ytState: null,
-        ytUpdatedAt: null,
-      };
-
-      await persistAuthoritativeRadioState();
-      broadcastAuthoritativeRadioState();
-
-      const broadcast = { ...radioState };
-      // Broadcast to music_review room (for the review page UI)
-      io.to("music_review").emit("radio:playing", broadcast);
-      // Broadcast site-wide so FloatingPlayer on ALL pages auto-plays
-      io.emit("live:now_playing", {
-        submissionId: broadcast.submissionId,
-        artistName: broadcast.artistName,
-        songTitle: broadcast.songTitle,
-        audioUrl: broadcast.audioUrl,
-        youtubeUrl: broadcast.youtubeUrl,
-        submissionType: broadcast.submissionType,
-        startedAt: broadcast.startedAt,
-      });
     });
 
     // Admin pause/resume/seek — broadcast to all
     socket.on("radio:pause", async (data: { currentTime: number }) => {
       if (!await isAuthoritativeReviewAdmin()) return;
+      await withReviewTransportLock(async () => {
       if (!radioState.submissionId) return;
       radioState.pausedAt = data.currentTime;
       await persistAuthoritativeRadioState();
       broadcastAuthoritativeRadioState();
       io.emit("radio:paused", { pausedAt: data.currentTime });
+      });
     });
 
     socket.on("radio:resume", async (data: { currentTime: number }) => {
       if (!await isAuthoritativeReviewAdmin()) return;
+      await withReviewTransportLock(async () => {
       if (!radioState.submissionId) return;
       // Recalculate startedAt so late joiners can sync
       radioState.startedAt = Date.now() - data.currentTime * 1000;
@@ -682,91 +631,36 @@ async function startServer() {
       await persistAuthoritativeRadioState();
       broadcastAuthoritativeRadioState();
       io.emit("radio:resumed", { startedAt: radioState.startedAt });
+      });
     });
 
     socket.on("radio:seek", async (data: { currentTime: number }) => {
       if (!await isAuthoritativeReviewAdmin()) return;
+      await withReviewTransportLock(async () => {
       if (!radioState.submissionId) return;
       radioState.startedAt = Date.now() - data.currentTime * 1000;
       radioState.pausedAt = radioState.pausedAt !== null ? data.currentTime : null;
       await persistAuthoritativeRadioState();
       broadcastAuthoritativeRadioState();
       io.emit("radio:seeked", { currentTime: data.currentTime, startedAt: radioState.startedAt });
+      });
     });
 
-    // Track ended — auto-advance to next pending track in queue
+    // Natural ends and manual skips share one atomic commit and broadcaster.
     socket.on("radio:track_ended", async (data?: { submissionId?: number }) => {
-      if (!await isAuthoritativeReviewAdmin()) return;
-      // The admin pop-out may reconnect after a server restart while the
-      // persisted queue still has the active YouTube submission. Restore that
-      // cursor before validating the ended event instead of silently dropping
-      // the auto-advance signal.
-      if (!radioState.submissionId) await hydrateAuthoritativeRadioState();
-      const completedId = radioState.submissionId;
-      if (completedId === null) return;
-      if (!shouldProcessReviewTrackEnd(completedId, data?.submissionId, reviewTrackTransitionInFlight)) return;
-      reviewTrackTransitionInFlight = completedId;
+      if (!await isAuthoritativeReviewAdmin() || !data?.submissionId) return;
       try {
-        const handoff = await completeAndAdvanceReviewQueue(completedId);
-        if (handoff.stale) return;
-        if (handoff.next) {
-          const next = handoff.next;
-          // Resolve presigned URL
-          const key = next.fileUrl?.replace(/^\/manus-storage\//, "") ?? next.fileKey ?? null;
-          let resolvedUrl: string | null = null;
-          if (key && next.submissionType !== "youtube") {
-            try { resolvedUrl = await storageGetSignedUrl(key); } catch (e) { resolvedUrl = next.fileUrl; }
-          }
-          radioState = {
-            submissionId: next.id,
-            artistName: next.artistName,
-            songTitle: next.songTitle,
-            audioUrl: resolvedUrl,
-            youtubeUrl: next.youtubeUrl,
-            submissionType: next.submissionType,
-            startedAt: Date.now(),
-            pausedAt: null,
-            fileKey: key,
-            ytCurrentTime: null,
-            ytState: null,
-            ytUpdatedAt: null,
-          };
-          await persistAuthoritativeRadioState();
-          broadcastAuthoritativeRadioState();
-          io.to("music_review").emit("radio:playing", { ...radioState });
-          io.emit("live:now_playing", {
-            submissionId: radioState.submissionId,
-            artistName: radioState.artistName,
-            songTitle: radioState.songTitle,
-            audioUrl: radioState.audioUrl,
-            youtubeUrl: radioState.youtubeUrl,
-            submissionType: radioState.submissionType,
-            startedAt: radioState.startedAt,
-          });
-          // Notify queue updated
-          io.to("music_review").emit("review:queue_updated");
-          console.log("[radio:track_ended] Auto-advanced to:", next.songTitle);
-        } else {
-          // No more tracks — stop radio
-          await setCurrentPlaying(null);
-          radioState = emptyRadioState();
-          await persistAuthoritativeRadioState();
-          broadcastAuthoritativeRadioState();
-          io.emit("radio:stopped");
-          io.emit("live:now_playing", null);
-          io.to("music_review").emit("review:queue_updated");
-          console.log("[radio:track_ended] Queue empty — radio stopped");
-        }
-      } catch (err) {
-        console.error("[radio:track_ended] Error:", err);
-      } finally {
-        reviewTrackTransitionInFlight = null;
+        await executeReviewTransport({ action: "complete", submissionId: data.submissionId });
+      } catch (error) {
+        console.error("[radio:track_ended] Transition failed:", error);
+        socket.emit("radio:error", { message: "Queue could not advance. Try Skip Current again." });
       }
     });
 
     // Admin broadcasts YouTube player currentTime every ~2s for viewer sync
     socket.on("youtube:tick", async (data: { submissionId: number; currentTime: number; state: number }) => {
       if (!await isAuthoritativeReviewAdmin()) return;
+      await withReviewTransportLock(async () => {
       // Only accept ticks for the currently playing submission
       if (data.submissionId !== radioState.submissionId) return;
       radioState.ytCurrentTime = data.currentTime;
@@ -787,6 +681,7 @@ async function startServer() {
         currentTime: data.currentTime,
         state: data.state,
         updatedAt: radioState.ytUpdatedAt,
+      });
       });
     });
 
@@ -853,7 +748,9 @@ async function startServer() {
       fileKey?: string | null;
     }) => {
       // Forward to radio:load handler logic
-      socket.emit("radio:load", data);
+      if (!await isAuthoritativeReviewAdmin()) return;
+      await executeReviewTransport(data.submissionId === null
+        ? { action: "stop" } : { action: "start", submissionId: data.submissionId });
     });
 
     // Admin broadcasts playback state (play/pause/seek) — legacy compat

@@ -16,6 +16,7 @@ describe("Music Review broadcast hub", () => {
   it("keeps the canonical broadcast review route connected to a real player", () => {
     const app = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
     const broadcast = readFileSync(resolve(process.cwd(), "client/src/pages/BroadcastReview.tsx"), "utf8");
+    expect(app).toContain('<Route path={"/broadcast/obs"} component={BroadcastReview} />');
     expect(app).toContain('<Route path={"/broadcast/review"} component={BroadcastReview} />');
     expect(broadcast).toContain("SyncedYouTubePlayer");
     expect(broadcast).toContain("AudioPlayButton");
@@ -26,6 +27,9 @@ describe("Music Review broadcast hub", () => {
     expect(broadcast).toContain("viewerCount.toLocaleString()");
     expect(broadcast).toContain("Now playing");
     expect(broadcast).toContain("Next 5 songs");
+    expect(broadcast).toContain("OBS Viewer Feed");
+    expect(broadcast).toContain("inLineCount");
+    expect(broadcast).toContain("!isObsViewer");
     expect(broadcast).toContain("Audio monitor");
     expect(broadcast).not.toContain("Tap play to monitor audio");
   });
