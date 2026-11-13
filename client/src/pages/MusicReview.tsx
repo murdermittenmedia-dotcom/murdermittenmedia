@@ -412,10 +412,12 @@ function AdminPanel({
     completionInFlightRef.current = submissionId;
     setLocalQueue((items) => items.filter((item) => item.id !== submissionId));
     setSelectedYouTube(null);
+    // Clear this page's player immediately, but do not emit radio:load(null)
+    // before the guarded server handoff. That event clears queueState.currentPlayingId
+    // and makes completeAndAdvance look stale, which previously broke Skip Current.
     // Clear the source immediately at the cutoff so a slow status mutation
     // cannot leave the previous song audible during the handoff.
     audioPlayer.stop();
-    broadcastReviewActive({ submissionId: null });
     completeAndAdvanceMutation.mutate({ submissionId }, {
       onSuccess: (result) => {
         if (result.stale) {
@@ -450,6 +452,7 @@ function AdminPanel({
       },
       onError: (error) => {
         completionInFlightRef.current = null;
+        void refetch();
         toast.error("Unable to complete this track: " + error.message);
       },
     });

@@ -697,6 +697,11 @@ async function startServer() {
     // Track ended — auto-advance to next pending track in queue
     socket.on("radio:track_ended", async (data?: { submissionId?: number }) => {
       if (!await isAuthoritativeReviewAdmin()) return;
+      // The admin pop-out may reconnect after a server restart while the
+      // persisted queue still has the active YouTube submission. Restore that
+      // cursor before validating the ended event instead of silently dropping
+      // the auto-advance signal.
+      if (!radioState.submissionId) await hydrateAuthoritativeRadioState();
       const completedId = radioState.submissionId;
       if (completedId === null) return;
       if (!shouldProcessReviewTrackEnd(completedId, data?.submissionId, reviewTrackTransitionInFlight)) return;
