@@ -68,6 +68,7 @@ describe("/review 2.0 acceptance contracts", () => {
   });
 
   it("uses one guarded server handoff for queue completion and emits live activity notifications", () => {
+    const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
     const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     const serverSource = readFileSync(resolve(process.cwd(), "server/_core/index.ts"), "utf8");
     const dbSource = readFileSync(resolve(process.cwd(), "server/db.ts"), "utf8");
@@ -83,6 +84,8 @@ describe("/review 2.0 acceptance contracts", () => {
     expect(serverSource).toContain("site:review_skip_requested");
     expect(serverSource).toContain("review:participant_joined");
     expect(navSource).toContain("site:review_skip_requested");
+    expect(reviewSource).toContain("reviewStopPendingRef");
+    expect(reviewSource).toContain('broadcastReviewPlayback({ action: playbackAction })');
   });
 
   it("keeps Bot Chat truly off and retains a branded verdict for review history", () => {

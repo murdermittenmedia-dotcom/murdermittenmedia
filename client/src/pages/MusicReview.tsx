@@ -1762,6 +1762,7 @@ export default function MusicReview() {
   });
   const [liveReviewActive, setLiveReviewActive] = useState<LiveReviewActiveItem | null>(null);
   const [ytSyncState, setYtSyncState] = useState<{ currentTime: number; updatedAt: number } | null>(null);
+  const reviewStopPendingRef = useRef(false);
   const currentPlayingId = activeSubmissionId ?? data?.currentPlaying?.id ?? null;
 
   const { data: myReaction, refetch: refetchMyReaction } = trpc.queue.getMyReaction.useQuery(
@@ -1863,6 +1864,7 @@ export default function MusicReview() {
     onChatControlsReceived: receiveChatControls,
     onTriggerReaction: (data) => { if (!isAdmin) triggerReaction(data.reaction as any, data.duration); },
     onReviewActiveChanged: (item) => {
+      reviewStopPendingRef.current = item.submissionId === null;
       setActiveSubmissionId(item.submissionId);
       setLiveReviewActive(item);
       refetch();
@@ -1909,6 +1911,8 @@ export default function MusicReview() {
   // in memory while the authoritative queue has already advanced.
   useEffect(() => {
     const cp = data?.currentPlaying ?? data?.submissions?.find((submission: ReviewSubmission) => submission.status === "playing") ?? null;
+    if (reviewStopPendingRef.current && cp) return;
+    if (!cp) reviewStopPendingRef.current = false;
     if (cp && liveReviewActive?.submissionId !== cp.id) {
       setActiveSubmissionId(cp.id);
       setLiveReviewActive({
