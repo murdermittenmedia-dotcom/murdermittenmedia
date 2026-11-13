@@ -9,7 +9,7 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { executeReviewTransport } from "./review-transport";
+import { executeReviewTransport, mutateReviewQueue } from "./review-transport";
 import { eq, and, inArray, desc, asc, ne, gte, lt, sql } from "drizzle-orm";
 import { reviewSubmissions } from "../drizzle/schema";
 import { storagePut, storageGetSignedUrl } from "./storage";
@@ -25,7 +25,7 @@ import { normalizeStudioInput } from "./studio-input";
 import { buildWheelCatalogueSong } from "../shared/wheel-catalogue";
 import {
   getReviewQueueSnapshot, getQueueSubmissions, getTodaySubmissionCount, getReviewedSubmissions, addSubmission, updateSubmissionStatus, completeReviewSubmission,
-  confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus, setLiveReviewPlaybackState,
+  approveReviewPayment, confirmSkipPayment, requeueSubmission, reorderQueueSubmissions, getQueueState, setCurrentPlaying, setLiveStatus, setLiveReviewPlaybackState,
   getActiveArtistOfWeek, getAllArtistsOfWeek, upsertArtistOfWeek,
   getActiveWheelEntries, getAllWheelEntries, addWheelEntry,
   updateWheelEntryStatus, confirmWheelPayment, getUserWheelEntries,
@@ -1190,15 +1190,22 @@ export const appRouter = router({
             if (input.status === "removed") await updateSubmissionStatus(input.id, "removed");
           }
         } else if (input.status === "reviewed") await completeReviewSubmission(input.id);
-        else await updateSubmissionStatus(input.id, input.status);
+        else await mutateReviewQueue(() => updateSubmissionStatus(input.id, input.status));
         return { success: true };
       }),
 
     confirmSkip: adminProcedure
       .input(z.object({ id: z.number(), skipType: z.enum(["skip", "bundle3"]).optional() }))
       .mutation(async ({ input }) => {
-        await confirmSkipPayment(input.id, input.skipType ?? "skip");
+        await mutateReviewQueue(() => confirmSkipPayment(input.id, input.skipType ?? "skip"));
         return { success: true };
+      }),
+
+    approvePayment: adminProcedure
+      .input(z.object({ id: z.number().int().positive(), kind: z.enum(["skip", "paid_submission", "full_song"]) }))
+      .mutation(async ({ input }) => {
+        await mutateReviewQueue(() => approveReviewPayment(input.id, input.kind));
+        return { success: true as const };
       }),
 
     requestSkip: protectedProcedure
@@ -1217,7 +1224,7 @@ export const appRouter = router({
     confirmPaidSub: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await confirmPaidSubmission(input.id);
+        await mutateReviewQueue(() => confirmPaidSubmission(input.id));
         return { success: true };
       }),
 
@@ -1225,7 +1232,7 @@ export const appRouter = router({
     requeue: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await requeueSubmission(input.id);
+        await mutateReviewQueue(() => requeueSubmission(input.id));
         return { success: true };
       }),
 
@@ -1233,7 +1240,7 @@ export const appRouter = router({
     reorder: adminProcedure
       .input(z.object({ orderedIds: z.array(z.number()) }))
       .mutation(async ({ input }) => {
-        await reorderQueueSubmissions(input.orderedIds);
+        await mutateReviewQueue(() => reorderQueueSubmissions(input.orderedIds));
         return { success: true };
       }),
 

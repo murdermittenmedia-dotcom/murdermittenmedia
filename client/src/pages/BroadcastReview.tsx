@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Activity, Eye, ExternalLink, Flame, Radio, SkipForward, ThumbsDown, Upload, Youtube } from "lucide-react";
+import { isReviewSubmissionEligible } from "@shared/review-payment-access";
 import { trpc } from "@/lib/trpc";
 import { useReviewQueue } from "@/hooks/useReviewQueue";
 import { useLiveStatus } from "@/hooks/useLiveStatus";
@@ -22,6 +23,8 @@ type BroadcastSubmission = {
   position: number;
   userId?: number | null;
   skippedLine?: boolean;
+  isPaidSubmission?: boolean;
+  paidSubmissionConfirmed?: boolean;
 };
 
 function getYouTubeId(url: string | null) {
@@ -44,10 +47,10 @@ export default function BroadcastReview() {
   const isOnAir = data?.state?.isLive ?? reviewIsLive;
   const current = (isOnAir ? data?.currentPlaying : null) as BroadcastSubmission | null | undefined;
   const queue = ((data?.submissions ?? []) as BroadcastSubmission[])
-    .filter((submission) => submission.status === "pending")
+    .filter((submission) => submission.status === "pending" && isReviewSubmissionEligible(submission))
     .slice(0, 5);
   const inLineCount = ((data?.submissions ?? []) as BroadcastSubmission[])
-    .filter((submission) => submission.status === "pending").length;
+    .filter((submission) => submission.status === "pending" && isReviewSubmissionEligible(submission)).length;
   const youtubeId = current?.submissionType === "youtube" ? getYouTubeId(current.youtubeUrl) : null;
   const { data: votes } = trpc.queue.getReactions.useQuery({ submissionId: current?.id ?? 0 }, {
     enabled: !!current, refetchInterval: 1000, refetchIntervalInBackground: true,

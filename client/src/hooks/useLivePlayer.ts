@@ -18,6 +18,7 @@
 import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { hasApprovedFullSongAccess } from "@shared/review-payment-access";
 import { trpc } from "@/lib/trpc";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
@@ -101,7 +102,7 @@ export function useLivePlayer({ isAdmin = false, suspended = false }: { isAdmin?
     const cutoffTimer = window.setInterval(() => {
       const current = queueRef.current?.currentPlaying;
       const audio = getAudioElementRef.current();
-      if (!current || queueRef.current?.state?.playbackMode !== "90sec" || current.isPaidSubmission || current.paidSubmissionType) return;
+      if (!current || queueRef.current?.state?.playbackMode !== "90sec" || hasApprovedFullSongAccess(current)) return;
       if (current.submissionType !== "file" || !isOurStream(trackRef.current) || trackRef.current?.submissionId !== current.id) return;
       if (audio && !audio.paused && audio.currentTime >= 90) { audio.pause(); complete(current.id); }
     }, 500);

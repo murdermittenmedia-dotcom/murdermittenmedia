@@ -5,6 +5,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { ReviewPaymentApprovals } from "@/components/ReviewPaymentApprovals";
+import { hasApprovedFullSongAccess, isReviewSubmissionEligible } from "@shared/review-payment-access";
 import { useReviewQueue } from "@/hooks/useReviewQueue";
 import { toast } from "sonner";
 import { SiteNav } from "@/components/SiteNav";
@@ -30,7 +32,7 @@ import { JUDGE_PANEL_LAYOUT } from "@/lib/musicReviewLayout";
 
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; verdict?: string | null; crowdFirePct?: number | null; crowdTrashPct?: number | null; judgeFireCount: number; judgeTrashCount: number; totalVoteCount?: number; skipVoteTriggered?: boolean; reviewedAt?: Date | null; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string |
- null; paidSubmissionType?: "reentry5" | "reentry10" | "skip" | null };
+ null; isPaidSubmission?: boolean; paidSubmissionConfirmed?: boolean; stripePaymentSessionId?: string | null; paidSubmissionType?: "reentry5" | "reentry10" | "skip" | null };
 type QueueState = {
   id: number;
   isLive: boolean;
@@ -309,7 +311,7 @@ function AdminPanel({
   // submission itself is already marked playing. Resolve that row as a safe
   // fallback so the admin never has to press Load just to restore the session.
   const currentPlaying = data?.currentPlaying ?? null;
-  const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending") ?? [];
+  const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" && isReviewSubmissionEligible(s)) ?? [];
   const queueKey = JSON.stringify(queue.map(s => s.id + ':' + s.status + ':' + s.position));
   // Drag-to-reorder state
   const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -399,9 +401,24 @@ function AdminPanel({
   };
 
   const handleRemove = (id: number) => {
-    updateStatus.mutate({ id, status: "removed" });
-    toast.success("Removed from queue");
+    updateStatus.mutate({ id, status: "removed" }, {
+      onSuccess: () => { toast.success("Song removed from the queue"); void utils.queue.getReviewed.invalidate(); },
+      onError: (error) => toast.error(error.message),
+    });
   };
+  const moveQueueTrack = (id: number, direction: -1 | 1) => {
+    const ordered = [...queue];
+    const index = ordered.findIndex((track) => track.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= ordered.length || reorderMutation.isPending) return;
+    [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+    setLocalQueue(ordered);
+    reorderMutation.mutate({ orderedIds: ordered.map((track) => track.id) });
+  };
+  const approveFullSong = trpc.queue.approvePayment.useMutation({
+    onSuccess: () => { void utils.queue.getAll.invalidate(); toast.success("Full-song payment approved for this track"); },
+    onError: (error) => toast.error(error.message),
+  });
 
   const playbackMode = data?.state?.playbackMode ?? "90sec";
 
@@ -416,9 +433,28 @@ function AdminPanel({
           <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Now playing</p><p className="mt-1 truncate text-lg font-bold text-white">{currentPlaying?.songTitle ?? "No track loaded"}</p><p className="truncate text-xs text-white/40">{currentPlaying?.artistName ?? "Waiting for a submission"}</p></div><span className="text-[10px] font-bold uppercase tracking-widest text-white/30">{queue.length} in queue</span></div>
             <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={handleGoLive} disabled={setLive.isPending} className={`rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest ${streamIsActive ? "border border-red-500/40 bg-red-500/10 text-red-200" : "bg-red-600 text-white hover:bg-red-500"}`}>{streamIsActive ? "End live review" : "Go live"}</button><button type="button" onClick={handleSkip} disabled={!currentPlaying || completeAndAdvanceMutation.isPending} className="rounded-lg border border-white/15 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-400/40 hover:text-white disabled:opacity-40">Skip current</button></div>
+            {currentPlaying && <div className="mt-2 flex gap-2">
+              <button type="button" disabled={approveFullSong.isPending || hasApprovedFullSongAccess(currentPlaying)} onClick={() => approveFullSong.mutate({ id: currentPlaying.id, kind: "full_song" })} className="flex-1 rounded-lg border border-green-400/25 px-3 py-2 text-[9px] font-bold uppercase text-green-200 disabled:opacity-40">{hasApprovedFullSongAccess(currentPlaying) ? "Full song approved" : "Approve full song payment"}</button>
+              <button type="button" disabled={updateStatus.isPending} onClick={() => handleRemove(currentPlaying.id)} className="rounded-lg border border-red-400/25 px-3 py-2 text-[9px] font-bold uppercase text-red-200">Remove current</button>
+            </div>}
           </section>
-          <section className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4"><div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Queue</p><h2 className="mt-1 font-['Anton'] text-2xl uppercase">Choose next track</h2></div><span className="text-[10px] text-white/30">{localQueue.length} total</span></div><div className="mt-3 space-y-2">{localQueue.filter((track) => track.status !== "playing").slice(0, 8).map((track, index) => <div key={track.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"><span className="w-5 text-center font-['Anton'] text-lg text-red-500">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white">{track.songTitle}</p><p className="truncate text-[10px] text-white/40">{track.artistName} · {track.submissionType === "youtube" ? "YouTube" : "Audio"}</p></div><button type="button" onClick={() => handleSetPlaying(track.id)} disabled={setPlaying.isPending} className="rounded-md bg-red-600 px-2.5 py-2 text-[9px] font-black uppercase tracking-wider text-white hover:bg-red-500 disabled:opacity-40">Play</button></div>)}{localQueue.filter((track) => track.status !== "playing").length === 0 && <p className="py-5 text-center text-xs text-white/30">Queue is clear.</p>}</div></section>
-          {pendingSkips.length > 0 && <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.05] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-200">Payment review</p><h2 className="mt-1 font-['Anton'] text-xl uppercase text-white">Paid skips waiting</h2></div><span className="rounded-full border border-amber-300/30 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-amber-200">{pendingSkips.length} pending</span></div><div className="mt-3 space-y-2">{pendingSkips.map((skip) => <div key={skip.id} className="flex items-center gap-3 rounded-lg border border-amber-300/15 bg-black/20 p-3"><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-white">{skip.artistName} · {skip.songTitle}</p><p className="text-[10px] text-amber-200/60">{skip.paidSubmissionType === "reentry5" ? "5 spots up" : skip.paidSubmissionType === "reentry10" ? "10 spots up" : "Skip to front"}</p>{skip.cashappPaymentReceiptUrl && <a href={skip.cashappPaymentReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-300 underline">View receipt</a>}</div><button type="button" onClick={() => confirmSkip.mutate({ id: skip.id, skipType: "skip" })} disabled={confirmSkip.isPending} className="rounded-md bg-amber-300 px-2.5 py-2 text-[9px] font-black uppercase tracking-wider text-black hover:bg-amber-200 disabled:opacity-40">Approve skip</button></div>)}</div></section>}
+          <section className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4">
+            <div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Queue management</p><h2 className="mt-1 font-['Anton'] text-2xl uppercase">Waiting line</h2></div><span className="text-[10px] text-white/30">{queue.length} waiting</span></div>
+            <p className="mt-2 text-[10px] text-white/40">Move tracks up/down, remove entries, or choose what plays next. Payment approvals are below.</p>
+            <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto">
+              {localQueue.map((track, index) => <div key={track.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex items-center gap-3"><span className="w-5 text-center font-['Anton'] text-lg text-red-500">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white">{track.songTitle}</p><p className="truncate text-[10px] text-white/40">{track.artistName}{track.skipPaymentConfirmed ? " · Approved skip" : ""}</p></div><button type="button" onClick={() => handleSetPlaying(track.id)} disabled={setPlaying.isPending} className="rounded-md bg-red-600 px-2.5 py-2 text-[9px] font-black uppercase tracking-wider text-white disabled:opacity-40">Play</button></div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <button type="button" aria-label={`Move ${track.songTitle} up`} disabled={index === 0 || reorderMutation.isPending} onClick={() => moveQueueTrack(track.id, -1)} className="rounded-md border border-white/15 p-1.5 text-white/65 disabled:opacity-25"><ChevronUp className="h-3.5 w-3.5" /></button>
+                  <button type="button" aria-label={`Move ${track.songTitle} down`} disabled={index === localQueue.length - 1 || reorderMutation.isPending} onClick={() => moveQueueTrack(track.id, 1)} className="rounded-md border border-white/15 p-1.5 text-white/65 disabled:opacity-25"><ChevronDown className="h-3.5 w-3.5" /></button>
+                  <button type="button" disabled={updateStatus.isPending} onClick={() => handleRemove(track.id)} className="inline-flex items-center gap-1 rounded-md border border-red-400/25 px-2 py-1.5 text-[9px] font-bold text-red-200"><Trash2 className="h-3 w-3" />Remove</button>
+                  <button type="button" disabled={approveFullSong.isPending || hasApprovedFullSongAccess(track)} onClick={() => approveFullSong.mutate({ id: track.id, kind: "full_song" })} className="ml-auto rounded-md border border-green-400/25 px-2 py-1.5 text-[9px] font-bold text-green-200 disabled:opacity-40">{hasApprovedFullSongAccess(track) ? "Full song approved" : "Approve full song"}</button>
+                </div>
+              </div>)}
+              {queue.length === 0 && <p className="py-5 text-center text-xs text-white/30">Queue is clear.</p>}
+            </div>
+          </section>
+          <ReviewPaymentApprovals submissions={data?.submissions ?? []} />
           <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Queue tools</p><p className="mt-1 text-xs text-white/50">Finished tracks leave the active queue automatically. Requeue them from history when needed.</p></div><button type="button" onClick={() => setShowReviewed((value) => !value)} className="rounded-lg border border-white/15 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white/65 hover:border-red-400/40 hover:text-white">{showReviewed ? "Hide history" : "Requeue history"}</button></div>{showReviewed && <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">{(reviewedTracks ?? []).map((track) => <div key={track.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-3"><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-white">{track.songTitle}</p><p className="truncate text-[10px] text-white/40">{track.artistName} · Reviewed</p></div><button type="button" onClick={() => requeueMutation.mutate({ id: track.id })} disabled={requeueMutation.isPending} className="rounded-md border border-amber-300/35 px-2.5 py-2 text-[9px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-300/10 disabled:opacity-40">Requeue</button></div>)}{(reviewedTracks ?? []).length === 0 && <p className="py-4 text-center text-xs text-white/30">No finished tracks to requeue.</p>}</div>}</section>
           <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Audience controls</p><p className="mt-1 text-xs text-white/50">These changes update the review feed for everyone.</p></div><button type="button" onClick={() => setJudgePanelVisibility.mutate({ visible: !(judgePanelVisibility.data?.visible ?? true) })} disabled={setJudgePanelVisibility.isPending} className={`rounded-lg border px-3 py-2 text-[9px] font-black uppercase tracking-widest ${judgePanelVisibility.data?.visible ?? true ? "border-green-400/30 text-green-200" : "border-amber-400/35 text-amber-200"}`}>{judgePanelVisibility.data?.visible ?? true ? "Hide judge panel" : "Show judge panel"}</button></div><div className="mt-3 flex items-center gap-2"><label className="text-[9px] font-black uppercase tracking-widest text-white/35">Playback</label><select value={playbackMode} onChange={(event) => setPlaybackMode.mutate({ playbackMode: event.target.value as "90sec" | "full" | "paid_only" })} className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white"><option value="90sec">90-second preview</option><option value="full">Full song</option><option value="paid_only">Paid submissions only</option></select></div></section>
           <section className="overflow-hidden rounded-xl border border-red-400/25 bg-red-400/[0.04]"><button type="button" onClick={() => setShowAdvancedControls((value) => !value)} className="flex w-full items-center justify-between gap-3 p-4 text-left"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-200">Advanced controls</p><p className="mt-1 text-xs text-white/45">Ghost comments, viewer count, reactions, and live tuning.</p></div><span className="rounded-lg border border-red-300/30 px-2.5 py-2 text-[9px] font-black uppercase tracking-widest text-red-200">{showAdvancedControls ? "Collapse" : "Open"}</span></button>{showAdvancedControls && <div className="space-y-4 border-t border-red-400/15 p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold text-white">Ghost comment bot</p><p className="text-[10px] text-white/40">Generate simulated live-chat activity while on air.</p></div><button type="button" onClick={() => { const next = !botEnabled; setBotEnabled(next); }} className={`rounded-lg border px-3 py-2 text-[9px] font-black uppercase tracking-widest ${botEnabled ? "border-green-400/35 bg-green-400/10 text-green-200" : "border-white/15 text-white/45"}`}>{botEnabled ? "On" : "Off"}</button></div><div className="grid grid-cols-3 gap-2">{(["low", "normal", "high"] as const).map((frequency) => <button key={frequency} type="button" onClick={() => setBotFrequency(frequency)} disabled={!botEnabled} className={`rounded-md px-2 py-2 text-[9px] font-black uppercase tracking-wider ${botFrequency === frequency ? "bg-red-600 text-white" : "bg-white/[0.05] text-white/50"} disabled:opacity-30`}>{frequency}</button>)}</div><div><div className="mb-1 flex items-center justify-between"><label className="text-[10px] font-bold uppercase tracking-wider text-white/55">Comment interval</label><span className="text-[10px] text-white/35">{Math.round(commentIntervalMs / 1000)}s</span></div><input type="range" min={5000} max={120000} step={5000} value={commentIntervalMs} onChange={(event) => setCommentIntervalMs(Number(event.target.value))} className="w-full accent-red-500" /></div><div><div className="mb-1 flex items-center justify-between"><label className="text-[10px] font-bold uppercase tracking-wider text-white/55">Viewer count range</label><span className="text-[10px] text-white/35">{viewerMin}–{viewerMax}</span></div><div className="grid grid-cols-2 gap-2"><input type="number" min={10} max={viewerMax - 10} value={viewerMin} onChange={(event) => setViewerMin(Math.min(Number(event.target.value), viewerMax - 10))} className="rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-xs text-white" /><input type="number" min={viewerMin + 10} max={5000} value={viewerMax} onChange={(event) => setViewerMax(Math.max(Number(event.target.value), viewerMin + 10))} className="rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-xs text-white" /></div></div><div className="grid grid-cols-2 gap-3"><div><div className="mb-1 flex justify-between text-[10px] text-white/50"><span>Ghost fire</span><span>{ghostFireIntervalSec === 0 ? "Off" : `${ghostFireIntervalSec}s`}</span></div><input type="range" min={0} max={30} value={ghostFireIntervalSec} onChange={(event) => setGhostFireIntervalSec(Number(event.target.value))} className="w-full accent-orange-500" /></div><div><div className="mb-1 flex justify-between text-[10px] text-white/50"><span>Ghost trash</span><span>{ghostTrashIntervalSec === 0 ? "Off" : `${ghostTrashIntervalSec}s`}</span></div><input type="range" min={0} max={30} value={ghostTrashIntervalSec} onChange={(event) => setGhostTrashIntervalSec(Number(event.target.value))} className="w-full accent-blue-500" /></div></div><div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-wider text-white/55">Show viewer count while live</span><button type="button" onClick={() => setViewerCountVisible(!viewerCountVisible)} className={`rounded-lg border px-3 py-2 text-[9px] font-black uppercase tracking-widest ${viewerCountVisible ? "border-green-400/35 text-green-200" : "border-white/15 text-white/45"}`}>{viewerCountVisible ? "Visible" : "Hidden"}</button></div></div>}</section>
@@ -2046,7 +2082,7 @@ export default function MusicReview() {
     });
   };
 
-  const pendingQueue = data?.submissions?.filter(s => s.status === "pending") ?? [];
+  const pendingQueue = data?.submissions?.filter(s => s.status === "pending" && isReviewSubmissionEligible(s)) ?? [];
   const currentPlaying = data?.currentPlaying ?? null;
   const isLive = data?.state?.isLive ?? false;
   const liveMessage = data?.state?.liveMessage;
@@ -2448,7 +2484,7 @@ export default function MusicReview() {
                   initialUpdatedAt={ytSyncState?.updatedAt ?? null}
                   isAdmin={isAdmin}
                   key={activeTrack.submissionId}
-                  maxPlaybackSeconds={data?.state?.playbackMode === "90sec" && !(currentPlaying as any)?.isPaidSubmission && !(currentPlaying as any)?.paidSubmissionType ? 90 : undefined}
+                  maxPlaybackSeconds={data?.state?.playbackMode === "90sec" && !hasApprovedFullSongAccess(currentPlaying) ? 90 : undefined}
                   onEnded={isAdmin ? () => broadcastReviewTrackEnded(activeTrack.submissionId) : undefined}
                 />
                 </div>

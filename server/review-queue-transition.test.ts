@@ -74,7 +74,7 @@ function makeDatabase(tables: Record<string, any[]>, transactional = false): any
 }
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: () => makeDatabase(memory.tables) }));
 
-import { completeAndAdvanceReviewQueue, getReviewQueueSnapshot, startReviewQueueTrack, stopReviewQueuePlayback, updateLiveReviewClock } from "./db";
+import { approveReviewPayment, confirmSkipPayment, reorderQueueSubmissions, completeAndAdvanceReviewQueue, getReviewQueueSnapshot, startReviewQueueTrack, stopReviewQueuePlayback, updateLiveReviewClock } from "./db";
 import { executeReviewTransport, setReviewTransportPublisher, withReviewTransportLock } from "./review-transport";
 
 const song = (id: number, type = "youtube", priority = false) => ({ id, status: "pending", position: id,
@@ -154,8 +154,9 @@ describe("production live-review queue transitions", () => {
   });
 
   it("keeps paid priority ordering and renumbers the normal waiting line from one", async () => {
-    memory.tables.review_submissions.push(song(4, "youtube", true));
+    memory.tables.review_submissions.push(song(4));
     await startReviewQueueTrack(1);
+    await confirmSkipPayment(4);
     const result = await completeAndAdvanceReviewQueue(1);
     expect(result.next?.id).toBe(4);
     const waiting = (await getReviewQueueSnapshot()).submissions.filter((row) => row.status === "pending");
@@ -180,5 +181,39 @@ describe("production live-review queue transitions", () => {
     expect(snapshot.currentPlaying?.id).toBe(3);
     expect(snapshot.submissions.find((row) => row.id === 1)?.status).toBe("reviewed");
     expect(snapshot.submissions.filter((row) => row.status === "pending")).toMatchObject([{ id: 2, position: 1 }]);
+  });
+
+  it("holds an unpaid entry out of automatic playback until the administrator approves it", async () => {
+    Object.assign(memory.tables.review_submissions[1], { isPaidSubmission: true, paidSubmissionConfirmed: false, paidSubmissionType: "reentry5" });
+    await startReviewQueueTrack(1);
+    await expect(startReviewQueueTrack(2)).rejects.toThrow("no longer in the active queue");
+    expect((await completeAndAdvanceReviewQueue(1)).next?.id).toBe(3);
+    await approveReviewPayment(2, "paid_submission");
+    expect((await completeAndAdvanceReviewQueue(3)).next?.id).toBe(2);
+  });
+
+  it("approving a full-song payment or skip does not restart the current playback clock", async () => {
+    await startReviewQueueTrack(1);
+    const transport = structuredClone(memory.tables.queue_state[0]);
+    await approveReviewPayment(1, "full_song");
+    await approveReviewPayment(3, "skip");
+    expect(memory.tables.queue_state[0]).toEqual(transport);
+    expect(memory.tables.review_submissions.find((row) => row.id === 1).paidSubmissionConfirmed).toBe(true);
+    expect((await completeAndAdvanceReviewQueue(1)).next?.id).toBe(3);
+  });
+
+  it("manual reordering can override a paid skip without changing the playing song", async () => {
+    await startReviewQueueTrack(1);
+    await confirmSkipPayment(3);
+    await reorderQueueSubmissions([2, 3]);
+    expect((await getReviewQueueSnapshot()).currentPlaying?.id).toBe(1);
+    expect((await completeAndAdvanceReviewQueue(1)).next?.id).toBe(2);
+  });
+
+  it("a stale reorder cannot return the active or completed track to the waiting line", async () => {
+    await startReviewQueueTrack(1);
+    await expect(reorderQueueSubmissions([1, 2, 3])).rejects.toThrow("queue has changed");
+    expect((await getReviewQueueSnapshot()).currentPlaying?.id).toBe(1);
+    await expect(reorderQueueSubmissions([2, 2])).rejects.toThrow("unique");
   });
 });

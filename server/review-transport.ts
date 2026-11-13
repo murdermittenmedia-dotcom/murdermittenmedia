@@ -40,3 +40,12 @@ export function executeReviewTransport(command: ReviewTransportCommand) {
     return result;
   });
 }
+
+/** Live queue metadata updates publish after commit without reloading the song. */
+export function mutateReviewQueue<T>(operation: () => Promise<T>) {
+  return withReviewTransportLock(async () => {
+    const result = await operation();
+    await publisher?.();
+    return result;
+  });
+}

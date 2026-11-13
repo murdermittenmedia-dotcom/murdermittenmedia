@@ -1,3 +1,4 @@
+import { isReviewSubmissionEligible } from "../shared/review-payment-access";
 import { randomBytes } from "node:crypto";
 import { eq, asc, desc, ne, and, or, sql, isNotNull, isNull, inArray, count, sum, gte, lte, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -232,7 +233,7 @@ export async function getQueueSubmissions() {
   return db.select().from(reviewSubmissions)
     .where(ne(reviewSubmissions.status, "removed"))
     .orderBy(
-      desc(reviewSubmissions.skipPaymentConfirmed), // skip-line always first
+       // skip-line always first
       asc(reviewSubmissions.position),              // admin drag-reorder
       asc(reviewSubmissions.createdAt)              // fallback: submission time
     );
@@ -248,18 +249,21 @@ export async function getTodaySubmissionCount() {
   return submissions.filter(submission => submission.createdAt >= start).length;
 }
 
-/** Bulk-update position values for queue reordering (admin drag-and-drop) */
+/** Admin ordering is transactional and never changes current playback/status. */
 export async function reorderQueueSubmissions(orderedIds: number[]) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  // Update each submission's position to match its index in the new order
-  await Promise.all(
-    orderedIds.map((id, index) =>
-      db.update(reviewSubmissions)
-        .set({ position: index + 1 })
-        .where(eq(reviewSubmissions.id, id))
-    )
-  );
+  if (new Set(orderedIds).size !== orderedIds.length) throw new Error("Queue IDs must be unique");
+  await db.transaction(async (tx) => {
+    await tx.select().from(queueState).limit(1).for("update");
+    const waiting = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.status, "pending"))
+      .orderBy(asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id)).for("update");
+    if (orderedIds.some((id) => !waiting.some((song) => song.id === id))) throw new Error("The queue has changed. Refresh and reorder again.");
+    const order = [...orderedIds, ...waiting.filter((song) => !orderedIds.includes(song.id)).map((song) => song.id)];
+    for (let index = 0; index < order.length; index++) {
+      await tx.update(reviewSubmissions).set({ position: index + 1 }).where(eq(reviewSubmissions.id, order[index]));
+    }
+  });
 }
 
 export async function getReviewedSubmissions(limit = 50) {
@@ -374,13 +378,15 @@ export async function completeAndAdvanceReviewQueue(
       .where(eq(reviewSubmissions.status, "playing"));
     const waiting = await tx.select().from(reviewSubmissions)
       .where(eq(reviewSubmissions.status, "pending"))
-      .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position),
+      .orderBy( asc(reviewSubmissions.position),
         asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id)).for("update");
-    const next = waiting[0] ?? null;
-    for (let index = 0; index < waiting.length; index++) {
+    const next = waiting.find(isReviewSubmissionEligible) ?? null;
+    let waitingPosition = 1;
+    for (const queued of waiting) {
       await tx.update(reviewSubmissions).set({
-        status: index === 0 ? "playing" : "pending", position: index === 0 ? 0 : index,
-      }).where(eq(reviewSubmissions.id, waiting[index].id));
+        status: queued.id === next?.id ? "playing" : "pending",
+        position: queued.id === next?.id ? 0 : waitingPosition++,
+      }).where(eq(reviewSubmissions.id, queued.id));
     }
     await tx.update(queueState).set({ currentPlayingId: next?.id ?? null,
       livePlaybackState: next ? "playing" : "stopped", livePlaybackStartedAt: next ? Date.now() : null,
@@ -401,51 +407,39 @@ export async function completeAndAdvanceReviewQueue(
 export async function confirmSkipPayment(id: number, skipType: "skip" | "bundle3" = "skip") {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-
-  // Get all pending/playing submissions ordered by current position
-  const allPending = await db
-    .select({ id: reviewSubmissions.id, position: reviewSubmissions.position, skipPaymentConfirmed: reviewSubmissions.skipPaymentConfirmed })
-    .from(reviewSubmissions)
-    .where(and(
-      ne(reviewSubmissions.status, "removed"),
-      ne(reviewSubmissions.status, "reviewed")
-    ))
-    .orderBy(asc(reviewSubmissions.position));
-
-  const currentIdx = allPending.findIndex(s => s.id === id);
-  if (currentIdx === -1) {
-    // Submission not found in active queue — just confirm payment
-    return db.update(reviewSubmissions).set({ skipPaymentConfirmed: true, skippedLine: true }).where(eq(reviewSubmissions.id, id));
-  }
-
-  let targetIdx: number;
-  // Keep verified skips in purchase order: behind existing skips, ahead of normal tracks.
-  targetIdx = allPending.filter((submission) => submission.id !== id && submission.skipPaymentConfirmed).length;
-
-  // Rebuild position values: insert the submission at targetIdx
-  const reordered = [...allPending];
-  const [moved] = reordered.splice(currentIdx, 1);
-  reordered.splice(targetIdx, 0, moved);
-
-  // Update positions for all affected submissions
-  await Promise.all(
-    reordered.map((s, idx) =>
-      db.update(reviewSubmissions)
-        .set({ position: idx + 1 })
-        .where(eq(reviewSubmissions.id, s.id))
-    )
-  );
-
-  // Mark payment confirmed
-  return db.update(reviewSubmissions)
-    .set({ skipPaymentConfirmed: true, skippedLine: true })
-    .where(eq(reviewSubmissions.id, id));
+  return db.transaction(async (tx) => {
+    await tx.select().from(queueState).limit(1).for("update");
+    const [song] = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, id)).limit(1).for("update");
+    if (!song || !["pending", "playing"].includes(song.status)) throw new Error("That song is no longer in the queue.");
+    if (song.skipPaymentConfirmed) return; // repeated approvals must not reorder
+    if (song.status === "pending") {
+      const waiting = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.status, "pending"))
+        .orderBy(asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id)).for("update");
+      const others = waiting.filter((queued) => queued.id !== id);
+      const afterPriority = others.filter((queued) => queued.skipPaymentConfirmed).length;
+      others.splice(afterPriority, 0, song);
+      for (let index = 0; index < others.length; index++) {
+        await tx.update(reviewSubmissions).set({ position: index + 1 }).where(eq(reviewSubmissions.id, others[index].id));
+      }
+    }
+    await tx.update(reviewSubmissions).set({ skipPaymentConfirmed: true, skippedLine: true }).where(eq(reviewSubmissions.id, id));
+  });
 }
-/** Confirm a paid submission (3rd+ song) — marks it as confirmed so it enters the active queue */
-export async function confirmPaidSubmission(id: number) {
+
+/** Manual approval records a verified payment; it never charges the artist. */
+export async function approveReviewPayment(id: number, kind: "skip" | "paid_submission" | "full_song") {
+  if (kind === "skip") { await confirmSkipPayment(id); return; }
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  return db.update(reviewSubmissions).set({ paidSubmissionConfirmed: true }).where(eq(reviewSubmissions.id, id));
+  const [song] = await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, id)).limit(1);
+  if (!song || !["pending", "playing"].includes(song.status)) throw new Error("That song is no longer in the queue.");
+  if (kind === "paid_submission" && !song.isPaidSubmission) throw new Error("This song is not a paid submission.");
+  await db.update(reviewSubmissions).set({ paidSubmissionConfirmed: true }).where(eq(reviewSubmissions.id, id));
+  if (kind === "paid_submission" && song.paidSubmissionType === "skip") await confirmSkipPayment(id);
+}
+
+export async function confirmPaidSubmission(id: number) {
+  return approveReviewPayment(id, "paid_submission");
 }
 
 /** Re-queue a previously reviewed submission: reset to pending and move to end of queue */
@@ -478,7 +472,7 @@ export async function getReviewQueueSnapshot() {
     const [state] = await tx.select().from(queueState).limit(1);
     const submissions = await tx.select().from(reviewSubmissions)
       .where(ne(reviewSubmissions.status, "removed"))
-      .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position),
+      .orderBy( asc(reviewSubmissions.position),
         asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id));
     const currentPlaying = submissions.find((song) => song.status === "playing" && song.id === state?.currentPlayingId)
       ?? (state?.currentPlayingId == null ? submissions.find((song) => song.status === "playing") : null) ?? null;
@@ -496,7 +490,7 @@ export async function startReviewQueueTrack(submissionId: number) {
       [state] = await tx.select().from(queueState).limit(1).for("update");
     }
     const [song] = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, submissionId)).limit(1).for("update");
-    if (!song || (song.status !== "pending" && song.status !== "playing")) {
+    if (!song || !isReviewSubmissionEligible(song) || (song.status !== "pending" && song.status !== "playing")) {
       throw new Error("That song is no longer in the active queue. Requeue it from Recently Played first.");
     }
     if (state.currentPlayingId === song.id && song.status === "playing" && state.livePlaybackState !== "stopped") return { ...song, status: "playing" as const };
@@ -516,7 +510,7 @@ export async function startReviewQueueTrack(submissionId: number) {
     }
     await tx.update(reviewSubmissions).set({ status: "playing", position: 0 }).where(eq(reviewSubmissions.id, song.id));
     const waiting = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.status, "pending"))
-      .orderBy(desc(reviewSubmissions.skipPaymentConfirmed), asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id));
+      .orderBy( asc(reviewSubmissions.position), asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id));
     for (let index = 0; index < waiting.length; index++) {
       await tx.update(reviewSubmissions).set({ position: index + 1 }).where(eq(reviewSubmissions.id, waiting[index].id));
     }
