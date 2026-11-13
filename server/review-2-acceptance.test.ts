@@ -54,16 +54,17 @@ describe("/review 2.0 acceptance contracts", () => {
     expect(appSource).not.toContain('path={"/judge"} component={JudgeConsole}');
   });
 
-  it("keeps the compatibility popout protected while embedding the main admin controls on the review page", () => {
+  it("keeps the compatibility popout protected while opening focused admin controls separately", () => {
     const reviewSource = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
     const popoutSource = reviewSource.slice(reviewSource.indexOf("if (isAdminPopout)"), reviewSource.indexOf("\n  return (", reviewSource.indexOf("if (isAdminPopout)")));
     expect(popoutSource).toContain("<AdminPanel");
     expect(popoutSource).toContain("Admin access required");
     expect(popoutSource).not.toContain("<SiteNav");
     expect(popoutSource).not.toContain("JudgePanelStrip");
-    expect(reviewSource).toContain("Producer controls");
-    expect(reviewSource).toContain("isAdminPanelOpen");
-    expect(reviewSource).not.toContain("window.open('/admin-popout'");
+    expect(reviewSource).toContain("Admin controls are separate");
+    expect(reviewSource).toContain("openAdminControls");
+    expect(reviewSource).toContain('window.open("/admin-popout"');
+    expect(reviewSource).not.toContain("isAdminPanelOpen");
   });
 
   it("uses one guarded server handoff for queue completion and emits live activity notifications", () => {

@@ -189,7 +189,7 @@ function AdminPanel({
   commentIntervalMs, setCommentIntervalMs, viewerMin, setViewerMin, viewerMax, setViewerMax,
   ghostFireCount, setGhostFireCount, ghostTrashCount, setGhostTrashCount,
   ghostFireIntervalSec, setGhostFireIntervalSec, ghostTrashIntervalSec, setGhostTrashIntervalSec,
-  sentimentBias, setSentimentBias, viewerCountVisible, setViewerCountVisible,
+  sentimentBias, setSentimentBias, viewerCountVisible, setViewerCountVisible, compact = false,
 }: {
   data: QueueAllData | undefined;
   refetch: () => void;
@@ -229,6 +229,7 @@ function AdminPanel({
   setSentimentBias: (v: number) => void;
   viewerCountVisible: boolean;
   setViewerCountVisible: (v: boolean) => void;
+  compact?: boolean;
 }) {
   const [streamUrlInput, setStreamUrlInput] = useState(data?.state?.streamUrl ?? "");
   const [liveMsg, setLiveMsg] = useState(data?.state?.liveMessage ?? "");
@@ -528,6 +529,26 @@ function AdminPanel({
     });
     return unsubscribe;
   }, [audioPlayer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (compact) {
+    return (
+      <div className="min-h-screen bg-[#080808] p-4 text-white sm:p-5">
+        <div className="mx-auto max-w-xl space-y-4">
+          <header className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
+            <div><p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-400">Murder Mitten Media</p><h1 className="mt-1 font-['Anton'] text-3xl uppercase">Review controls</h1><p className="mt-1 text-xs text-white/40">This window is live-synced to the public review feed.</p></div>
+            <span className={`shrink-0 rounded-full border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest ${isLive ? "border-red-500/40 bg-red-500/10 text-red-200" : "border-white/15 bg-white/[0.04] text-white/35"}`}>{isLive ? "On air" : "Offline"}</span>
+          </header>
+          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Now playing</p><p className="mt-1 truncate text-lg font-bold text-white">{currentPlaying?.songTitle ?? "No track loaded"}</p><p className="truncate text-xs text-white/40">{currentPlaying?.artistName ?? "Waiting for a submission"}</p></div><span className="text-[10px] font-bold uppercase tracking-widest text-white/30">{queue.length} in queue</span></div>
+            <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={handleGoLive} disabled={setLive.isPending} className={`rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest ${streamIsActive ? "border border-red-500/40 bg-red-500/10 text-red-200" : "bg-red-600 text-white hover:bg-red-500"}`}>{streamIsActive ? "End live review" : "Go live"}</button><button type="button" onClick={handleSkip} disabled={!currentPlaying || completeAndAdvanceMutation.isPending} className="rounded-lg border border-white/15 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-400/40 hover:text-white disabled:opacity-40">Skip current</button></div>
+          </section>
+          <section className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4"><div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Queue</p><h2 className="mt-1 font-['Anton'] text-2xl uppercase">Choose next track</h2></div><span className="text-[10px] text-white/30">{localQueue.length} total</span></div><div className="mt-3 space-y-2">{localQueue.filter((track) => track.status !== "playing").slice(0, 8).map((track, index) => <div key={track.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"><span className="w-5 text-center font-['Anton'] text-lg text-red-500">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white">{track.songTitle}</p><p className="truncate text-[10px] text-white/40">{track.artistName} · {track.submissionType === "youtube" ? "YouTube" : "Audio"}</p></div><button type="button" onClick={() => handleSetPlaying(track.id)} disabled={setPlaying.isPending} className="rounded-md bg-red-600 px-2.5 py-2 text-[9px] font-black uppercase tracking-wider text-white hover:bg-red-500 disabled:opacity-40">Play</button></div>)}{localQueue.filter((track) => track.status !== "playing").length === 0 && <p className="py-5 text-center text-xs text-white/30">Queue is clear.</p>}</div></section>
+          <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Audience controls</p><p className="mt-1 text-xs text-white/50">These changes update the review feed for everyone.</p></div><button type="button" onClick={() => setJudgePanelVisibility.mutate({ visible: !(judgePanelVisibility.data?.visible ?? true) })} disabled={setJudgePanelVisibility.isPending} className={`rounded-lg border px-3 py-2 text-[9px] font-black uppercase tracking-widest ${judgePanelVisibility.data?.visible ?? true ? "border-green-400/30 text-green-200" : "border-amber-400/35 text-amber-200"}`}>{judgePanelVisibility.data?.visible ?? true ? "Hide judge panel" : "Show judge panel"}</button></div><div className="mt-3 flex items-center gap-2"><label className="text-[9px] font-black uppercase tracking-widest text-white/35">Playback</label><select value={playbackMode} onChange={(event) => setPlaybackMode.mutate({ playbackMode: event.target.value as "90sec" | "full" | "paid_only" })} className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white"><option value="90sec">90-second preview</option><option value="full">Full song</option><option value="paid_only">Paid submissions only</option></select></div></section>
+          <p className="text-center text-[9px] uppercase tracking-[0.18em] text-white/25">Close this window when you are done. The public feed remains open separately.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl overflow-hidden mb-5 border border-red-600/30 bg-gradient-to-b from-[#1a0000] to-[#0a0000] shadow-[0_0_30px_rgba(209,0,0,0.08)]">
@@ -1148,17 +1169,7 @@ function AdminPanel({
                   <ExternalLink className="w-3 h-3" />
                   YouTube — synced to viewers
                 </div>
-                {currentPlaying.youtubeUrl && (() => {
-                  const ytId = extractYouTubeId(currentPlaying.youtubeUrl!);
-                  return ytId ? (
-                    <SyncedYouTubePlayer
-                      videoId={ytId}
-                      submissionId={currentPlaying.id}
-                      isAdmin={true}
-                      className="border border-white/10 rounded-lg overflow-hidden"
-                    />
-                  ) : null;
-                })()}
+                <p className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-[10px] text-white/40">Playback is controlled from the public review feed. This board only manages the session.</p>
                 {isJudge ? (
                   <button
                     onClick={handleSkip}
@@ -1570,6 +1581,11 @@ export default function MusicReview() {
   const isJudge = user?.role === "judge";
   const isAdminPopout = typeof window !== "undefined" && window.location.pathname === "/admin-popout";
   const isBroadcastHub = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "broadcast";
+  const openAdminControls = () => {
+    const popup = window.open("/admin-popout", "murder-mitten-review-admin", "popup=yes,width=560,height=900,resizable=yes,scrollbars=yes");
+    if (!popup) toast.error("Your browser blocked the admin control window. Allow pop-ups and try again.");
+    else popup.focus();
+  };
   const panelSeat = trpc.review.getMyPanelSeat.useQuery(undefined, { enabled: isJudge, refetchInterval: isJudge ? 4_000 : false });
   const pendingPanelSeats = trpc.review.getPanelSeatRequests.useQuery(undefined, { enabled: isAdmin, refetchInterval: isAdmin ? 4_000 : false });
   const requestPanelSeat = trpc.review.requestPanelSeat.useMutation({
@@ -1723,7 +1739,6 @@ export default function MusicReview() {
   });
 
   const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(null);
-  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(true);
 
   // Tip artist state
   const [tipAmount, setTipAmount] = useState<string>("");
@@ -2344,6 +2359,7 @@ export default function MusicReview() {
             setSentimentBias={(value) => { setSentimentBias(value); emitChatControls({ sentimentBias: value }); }}
             viewerCountVisible={viewerCountVisible}
             setViewerCountVisible={(value) => { setViewerCountVisible(value); emitChatControls({ viewerCountVisible: value }); }}
+            compact
           />
         ) : (
           <div className="mx-auto max-w-md rounded-2xl border border-red-500/25 bg-red-500/[0.05] p-6 text-center">
@@ -2409,53 +2425,11 @@ export default function MusicReview() {
 
         {/* ── ADMIN SESSION CONTROLS (admin only) ───────────── */}
         {isAdmin && (
-          <section className="overflow-hidden rounded-2xl border border-red-500/30 bg-[#0b0b0b] shadow-xl shadow-black/20">
-            <button type="button" onClick={() => setIsAdminPanelOpen((open) => !open)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-red-500/[0.06] sm:px-5">
-              <span className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10"><Settings className="h-4 w-4 text-red-300" /></span><span><span className="block text-xs font-bold uppercase tracking-[0.16em] text-white">Producer controls</span><span className="mt-0.5 block text-[10px] text-white/35">{(pendingPanelSeats.data ?? []).filter((seat) => seat.status === "pending").length > 0 ? `${(pendingPanelSeats.data ?? []).filter((seat) => seat.status === "pending").length} judge seat request${(pendingPanelSeats.data ?? []).filter((seat) => seat.status === "pending").length === 1 ? "" : "s"} waiting` : "Private session controls"}</span></span></span>
-              {isAdminPanelOpen ? <ChevronUp className="h-4 w-4 text-red-300" /> : <ChevronDown className="h-4 w-4 text-red-300" />}
-            </button>
-            {isAdminPanelOpen && <div className="border-t border-white/10 p-3 sm:p-4">
-              <AdminPanel
-              data={data}
-              refetch={refetch}
-              audioRoom={audioRoom}
-              videoRoom={videoRoom}
-              broadcastReviewActive={broadcastReviewActive}
-              broadcastRadioPause={broadcastRadioPause}
-              broadcastRadioResume={broadcastRadioResume}
-              broadcastRadioSeek={broadcastRadioSeek}
-              broadcastReviewPlayback={broadcastReviewPlayback}
-              broadcastReviewQueueUpdated={broadcastReviewQueueUpdated}
-              broadcastLastSong={broadcastLastSong}
-              adminMicBroadcast={adminMicBroadcast}
-              playTrack={playTrack}
-              setSelectedYouTube={setSelectedYouTube}
-              reviewedTracks={reviewedTracks}
-              triggerReaction={(reaction, duration) => { triggerReaction(reaction, duration); emitTriggerReaction(reaction, duration ?? 3000); }}
-              botEnabled={botEnabled}
-              setBotEnabled={(v) => { setBotEnabled(v); emitChatControls({ botEnabled: v }); saveReviewBotSettings.mutate({ botEnabled: v, botFrequency }); }}
-              botFrequency={botFrequency}
-              setBotFrequency={(v) => { setBotFrequency(v); emitChatControls({ botEnabled, botFrequency: v }); saveReviewBotSettings.mutate({ botEnabled, botFrequency: v }); }}
-              commentIntervalMs={commentIntervalMs}
-              setCommentIntervalMs={(v) => { setCommentIntervalMs(v); emitChatControls({ commentIntervalMs: v }); }}
-              viewerMin={viewerMin}
-              setViewerMin={setViewerMin}
-              viewerMax={viewerMax}
-              setViewerMax={setViewerMax}
-              ghostFireCount={ghostFireCount}
-              setGhostFireCount={setGhostFireCount}
-              ghostTrashCount={ghostTrashCount}
-              setGhostTrashCount={setGhostTrashCount}
-              ghostFireIntervalSec={ghostFireIntervalSec}
-              setGhostFireIntervalSec={(v) => { setGhostFireIntervalSec(v); emitChatControls({ ghostFireIntervalSec: v }); }}
-              ghostTrashIntervalSec={ghostTrashIntervalSec}
-              setGhostTrashIntervalSec={(v) => { setGhostTrashIntervalSec(v); emitChatControls({ ghostTrashIntervalSec: v }); }}
-              sentimentBias={sentimentBias}
-              setSentimentBias={(v) => { setSentimentBias(v); emitChatControls({ sentimentBias: v }); }}
-              viewerCountVisible={viewerCountVisible}
-              setViewerCountVisible={(v) => { setViewerCountVisible(v); emitChatControls({ viewerCountVisible: v }); }}
-            />
-            </div>}
+          <section className="rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/30 via-[#0d0d0d] to-black p-4 shadow-xl shadow-black/20 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-500/40 bg-red-500/10"><Settings className="h-5 w-5 text-red-300" /></span><div><p className="text-xs font-black uppercase tracking-[0.18em] text-white">Admin controls are separate</p><p className="mt-1 max-w-xl text-xs leading-relaxed text-white/45">Open the focused control window to manage the live session, queue, judge panel, and playback mode. The review feed stays clean for viewers.</p></div></div>
+              <button type="button" onClick={openAdminControls} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-red-500"><ExternalLink className="h-3.5 w-3.5" /> Open admin controls</button>
+            </div>
           </section>
         )}
 
