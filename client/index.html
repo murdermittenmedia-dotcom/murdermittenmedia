@@ -3,6 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <script>
+      if (window.location.pathname === '/broadcast/overlay') {
+        document.documentElement.setAttribute('data-review-overlay', 'true');
+      }
+    </script>
+    <style>
+      html[data-review-overlay="true"], html[data-review-overlay="true"] body, html[data-review-overlay="true"] #root { background: transparent !important; }
+    </style>
     <!-- PWA / Home Screen -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#D10000" />
@@ -32,8 +40,15 @@
     <!-- IPStack Geolocation -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4123353595860586"
-     crossorigin="anonymous"></script>
+    <script>
+      if (window.location.pathname !== '/broadcast/overlay') {
+        const ads = document.createElement('script');
+        ads.async = true;
+        ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4123353595860586';
+        ads.crossOrigin = 'anonymous';
+        document.head.appendChild(ads);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

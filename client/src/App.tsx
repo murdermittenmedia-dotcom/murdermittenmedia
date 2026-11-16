@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
+import { useLayoutEffect } from "react";
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -17,6 +18,7 @@ import MurderMittenMic from "./pages/MurderMittenMic";
 import MeetingWithTheMitten from "./pages/MeetingWithTheMitten";
 import MusicReview from "./pages/MusicReview";
 import BroadcastReview from "./pages/BroadcastReview";
+import ReviewOverlay from "./pages/ReviewOverlay";
 import BroadcastRadio from "./pages/BroadcastRadio";
 import BroadcastRankings from "./pages/BroadcastRankings";
 import BroadcastWars from "./pages/BroadcastWars";
@@ -99,6 +101,7 @@ function Router() {
       <Route path={"/beats/:slug"} component={BeatDetail} />
       <Route path={"/mic"} component={MurderMittenMic} />
       <Route path={"/podcast"} component={MeetingWithTheMitten} />
+      <Route path={"/broadcast/overlay"} component={ReviewOverlay} />
       <Route path={"/broadcast/obs"} component={BroadcastReview} />
       <Route path={"/broadcast/review"} component={BroadcastReview} />
       <Route path={"/broadcast/radio"} component={BroadcastRadio} />
@@ -202,6 +205,18 @@ function PageTrackerMount() {
 function App() {
   const [location] = useLocation();
   const isBroadcastView = location.startsWith("/broadcast/") || location === "/admin-popout";
+  const isTransparentOverlay = location === "/broadcast/overlay";
+
+  useLayoutEffect(() => {
+    if (isTransparentOverlay) document.documentElement.setAttribute("data-review-overlay", "true");
+    else document.documentElement.removeAttribute("data-review-overlay");
+    return () => document.documentElement.removeAttribute("data-review-overlay");
+  }, [isTransparentOverlay]);
+
+  // A browser source must never subscribe to audio or render global site chrome.
+  if (isTransparentOverlay) {
+    return <ErrorBoundary fallback={<main className="review-overlay-canvas"><div className="review-overlay-panel">Review overlay unavailable. Refresh this browser source.</div></main>}><ReviewOverlay /></ErrorBoundary>;
+  }
 
   return (
     <ErrorBoundary>

@@ -27,6 +27,9 @@ export function useReviewQueue() {
     socket.on("review:queue_updated", refresh);
     socket.on("radio:playing", refresh);
     socket.on("radio:stopped", refresh);
+    socket.on("review:reactions_updated", (event: { submissionId: number }) => {
+      void utils.queue.getReactions.invalidate({ submissionId: event.submissionId });
+    });
     return () => { socket.disconnect(); };
   }, [utils]);
   return query;

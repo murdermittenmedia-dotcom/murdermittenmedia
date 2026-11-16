@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { ReviewPaymentApprovals } from "@/components/ReviewPaymentApprovals";
+import { ReviewOverlayLink } from "@/components/ReviewOverlayLink";
 import { hasApprovedFullSongAccess, isReviewSubmissionEligible } from "@shared/review-payment-access";
 import { useReviewQueue } from "@/hooks/useReviewQueue";
 import { toast } from "sonner";
@@ -430,6 +431,7 @@ function AdminPanel({
             <div><p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-400">Murder Mitten Media</p><h1 className="mt-1 font-['Anton'] text-3xl uppercase">Review controls</h1><p className="mt-1 text-xs text-white/40">This window is live-synced to the public review feed.</p></div>
             <span className={`shrink-0 rounded-full border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest ${isLive ? "border-red-500/40 bg-red-500/10 text-red-200" : "border-white/15 bg-white/[0.04] text-white/35"}`}>{isLive ? "On air" : "Offline"}</span>
           </header>
+          <ReviewOverlayLink />
           <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Now playing</p><p className="mt-1 truncate text-lg font-bold text-white">{currentPlaying?.songTitle ?? "No track loaded"}</p><p className="truncate text-xs text-white/40">{currentPlaying?.artistName ?? "Waiting for a submission"}</p></div><span className="text-[10px] font-bold uppercase tracking-widest text-white/30">{queue.length} in queue</span></div>
             <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={handleGoLive} disabled={setLive.isPending} className={`rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest ${streamIsActive ? "border border-red-500/40 bg-red-500/10 text-red-200" : "bg-red-600 text-white hover:bg-red-500"}`}>{streamIsActive ? "End live review" : "Go live"}</button><button type="button" onClick={handleSkip} disabled={!currentPlaying || completeAndAdvanceMutation.isPending} className="rounded-lg border border-white/15 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-400/40 hover:text-white disabled:opacity-40">Skip current</button></div>
