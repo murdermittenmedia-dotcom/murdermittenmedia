@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useSearch } from "wouter";
 import { Flame, Trash2, ListMusic, History, Radio } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useReviewQueue } from "@/hooks/useReviewQueue";
@@ -7,23 +8,29 @@ import "./review-overlay.css";
 
 const LOGO = "/manus-storage/mmm_logo_8689da6b.png";
 
+export type ReviewOverlayLayout = "horizontal" | "vertical";
+export function getReviewOverlayLayout(search: string): ReviewOverlayLayout {
+  return new URLSearchParams(search).get("layout") === "horizontal" ? "horizontal" : "vertical";
+}
+
 function ArtistName({ track }: { track: OverlayTrack }) {
   return track.userId ? <a href={`/profile/${track.userId}`} target="_blank" rel="noopener noreferrer" className="review-overlay-artist">{track.artistName}</a> : <span className="review-overlay-artist">{track.artistName}</span>;
 }
 
 /** Exported display has no playback or administrative actions, even for admins. */
-export function ReviewOverlayDisplay({ state, votes, loading = false, reconnecting = false }: {
+export function ReviewOverlayDisplay({ state, votes, loading = false, reconnecting = false, layout = "vertical" }: {
   state: ReviewOverlayState;
   votes?: { fire: number; trash: number };
   loading?: boolean;
   reconnecting?: boolean;
+  layout?: ReviewOverlayLayout;
 }) {
   const { current, next, previous, inLine, isLive } = state;
   const fire = current ? (votes?.fire ?? current.fireCount ?? 0) : 0;
   const trash = current ? (votes?.trash ?? current.trashCount ?? 0) : 0;
   const liveLabel = reconnecting ? "Reconnecting" : loading ? "Connecting" : isLive ? "Live review" : "Offline";
   return (
-    <main className="review-overlay-canvas" aria-label="Murder Mitten Media transparent review overlay">
+    <main className={`review-overlay-canvas review-overlay-layout-${layout}`} aria-label="Murder Mitten Media transparent review overlay">
       <div className="review-overlay-strip">
         <section className="review-overlay-panel review-overlay-now" aria-label="Current song and votes">
           <div className="review-overlay-brand">
@@ -65,6 +72,7 @@ export function ReviewOverlayDisplay({ state, votes, loading = false, reconnecti
 }
 
 export default function ReviewOverlay() {
+  const layout = getReviewOverlayLayout(useSearch());
   const utils = trpc.useUtils();
   const queue = useReviewQueue();
   const history = trpc.queue.getReviewed.useQuery(undefined, {
@@ -87,5 +95,5 @@ export default function ReviewOverlay() {
     if (state.current) void utils.queue.getReactions.invalidate({ submissionId: state.current.id });
   }, [state.current?.id, utils]);
 
-  return <ReviewOverlayDisplay state={state} votes={votes.data} loading={queue.isLoading} reconnecting={queue.isError || history.isError} />;
+  return <ReviewOverlayDisplay state={state} votes={votes.data} loading={queue.isLoading} reconnecting={queue.isError || history.isError} layout={layout} />;
 }

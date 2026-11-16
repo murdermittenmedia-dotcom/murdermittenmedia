@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { selectReviewOverlayState, type OverlayTrack } from "../shared/review-overlay";
-import { ReviewOverlayDisplay } from "../client/src/pages/ReviewOverlay";
+import { getReviewOverlayLayout, ReviewOverlayDisplay } from "../client/src/pages/ReviewOverlay";
 import { readFileSync } from "node:fs";
 
 const track = (id: number, overrides: Partial<OverlayTrack> = {}): OverlayTrack => ({
@@ -12,6 +12,16 @@ const track = (id: number, overrides: Partial<OverlayTrack> = {}): OverlayTrack 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("transparent live review overlay", () => {
+  it("provides explicit horizontal and vertical links while leaving the original link vertical", () => {
+    expect(getReviewOverlayLayout("?layout=horizontal")).toBe("horizontal");
+    expect(getReviewOverlayLayout("?layout=vertical")).toBe("vertical");
+    expect(getReviewOverlayLayout("")).toBe("vertical");
+    expect(getReviewOverlayLayout("?layout=unknown")).toBe("vertical");
+    vi.stubGlobal("React", React);
+    const html = renderToStaticMarkup(React.createElement(ReviewOverlayDisplay, { state: selectReviewOverlayState(undefined, []), layout: "horizontal" }));
+    expect(html).toContain("review-overlay-layout-horizontal");
+    expect(html).not.toMatch(/<(audio|video|iframe|button|input)\b/);
+  });
   it("shows only the next three eligible waiting tracks in the committed admin order", () => {
     const current = track(9, { status: "playing" });
     const state = selectReviewOverlayState({ state: { isLive: true }, currentPlaying: current, submissions: [
