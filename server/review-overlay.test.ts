@@ -50,6 +50,16 @@ describe("transparent live review overlay", () => {
     expect(html).toContain("Song 3");
     expect(html).not.toMatch(/<(audio|video|iframe|button|input)\b/);
   });
+  it("stacks Now Playing, Next Up and Previously Queued in one narrow column", () => {
+    vi.stubGlobal("React", React);
+    const html = renderToStaticMarkup(React.createElement(ReviewOverlayDisplay, { state: selectReviewOverlayState(undefined, []) }));
+    expect(html.indexOf("Now playing")).toBeLessThan(html.indexOf("Next up · 3 tracks"));
+    expect(html.indexOf("Next up · 3 tracks")).toBeLessThan(html.indexOf("Previously queued"));
+    const css = readFileSync("client/src/pages/review-overlay.css", "utf8");
+    const stack = css.match(/\.review-overlay-strip\s*\{([^}]+)\}/)?.[1];
+    expect(stack).toContain("grid-template-columns: minmax(0, 1fr)");
+    expect(stack).toContain("max-width: 440px");
+  });
   it("resets displayed votes when there is no current song", () => {
     vi.stubGlobal("React", React);
     const html = renderToStaticMarkup(React.createElement(ReviewOverlayDisplay, { state: selectReviewOverlayState(undefined, []), votes: { fire: 99, trash: 50 } }));

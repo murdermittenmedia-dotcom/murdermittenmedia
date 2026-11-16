@@ -15,19 +15,19 @@ html[data-review-overlay="true"] #root {
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: clamp(12px, 2.5vw, 48px);
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 24px;
   color: #fff;
   background: transparent;
   font-family: 'DM Sans', sans-serif;
 }
 .review-overlay-strip {
   width: 100%;
-  max-width: 1680px;
+  max-width: 440px;
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 0.8fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
 }
 .review-overlay-panel {
@@ -73,7 +73,7 @@ html[data-review-overlay="true"] #root {
   margin: 8px 0 0;
   font-family: 'Anton', sans-serif;
   font-weight: 400;
-  font-size: clamp(25px, 2.15vw, 42px);
+  font-size: 34px;
   line-height: 1.13;
   letter-spacing: 0.01em;
   display: -webkit-box;
@@ -102,7 +102,7 @@ a.review-overlay-artist:hover { color: #fff; text-decoration: underline; }
 .review-overlay-track-copy > p { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; font-weight: 700; line-height: 1.3; }
 .review-overlay-track-copy > .review-overlay-artist { display: block; margin-top: 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; line-height: 1.3; color: #aeb7c5; }
 .review-overlay-previous { display: flex; flex-direction: column; }
-.review-overlay-previous > h2 { margin: 20px 0 0; font-family: 'Anton', sans-serif; font-size: clamp(22px, 1.65vw, 30px); line-height: 1.2; font-weight: 400; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.review-overlay-previous > h2 { margin: 14px 0 0; font-family: 'Anton', sans-serif; font-size: 28px; line-height: 1.2; font-weight: 400; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
 .review-overlay-final-votes { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 16px; margin-top: auto; color: #aeb7c5; font-size: 11px; }
 .review-overlay-final-votes > span { display: inline-flex; align-items: center; gap: 5px; }
 .review-overlay-final-votes svg { width: 13px; height: 13px; }
@@ -120,7 +120,6 @@ a.review-overlay-artist:hover { color: #fff; text-decoration: underline; }
   .review-overlay-vote > svg { width: 18px; }
 }
 @media (max-width: 700px) {
-  .review-overlay-strip { grid-template-columns: minmax(0, 1fr); max-width: 520px; }
   .review-overlay-canvas { padding: 12px; }
   .review-overlay-title { font-size: 28px; }
   .review-overlay-previous > h2 { margin-top: 10px; }

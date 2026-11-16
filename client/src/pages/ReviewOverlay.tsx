@@ -41,7 +41,7 @@ export function ReviewOverlayDisplay({ state, votes, loading = false, reconnecti
         </section>
 
         <section className="review-overlay-panel review-overlay-queue" aria-label="Next three tracks">
-          <header className="review-overlay-section-header"><div className="review-overlay-label"><ListMusic aria-hidden="true" /> Up next · 3 tracks</div><span className="review-overlay-count">{inLine} in line</span></header>
+          <header className="review-overlay-section-header"><div className="review-overlay-label"><ListMusic aria-hidden="true" /> Next up · 3 tracks</div><span className="review-overlay-count">{inLine} in line</span></header>
           <ol className="review-overlay-track-list">
             {next.map((track, index) => <li key={track.id}>
               <span className="review-overlay-position">{String(index + 1).padStart(2, "0")}</span>
@@ -52,7 +52,7 @@ export function ReviewOverlayDisplay({ state, votes, loading = false, reconnecti
         </section>
 
         <section className="review-overlay-panel review-overlay-previous" aria-label="Previously played track">
-          <div className="review-overlay-label"><History aria-hidden="true" /> Previously played</div>
+          <div className="review-overlay-label"><History aria-hidden="true" /> Previously queued</div>
           {previous ? <>
             <h2 title={previous.songTitle}>{previous.songTitle}</h2>
             <p className="review-overlay-byline"><ArtistName track={previous} /></p>
