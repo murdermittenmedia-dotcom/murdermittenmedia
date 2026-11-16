@@ -8,12 +8,13 @@ export type ReviewPaymentRecord = {
   isPaidSubmission?: boolean; paidSubmissionConfirmed?: boolean;
   paidSubmissionType?: string | null; cashappPaymentReceiptUrl?: string | null;
   stripePaymentSessionId?: string | null;
+  fullSongRequested?: boolean;
 };
 
 export function ReviewPaymentApprovals({ submissions }: { submissions: ReviewPaymentRecord[] }) {
   const utils = trpc.useUtils();
   const approvals = submissions.filter((song) => ["pending", "playing"].includes(song.status) &&
-    ((song.skippedLine && !song.skipPaymentConfirmed) || (song.isPaidSubmission && !song.paidSubmissionConfirmed)));
+    ((song.skippedLine && !song.skipPaymentConfirmed) || (song.isPaidSubmission && !song.paidSubmissionConfirmed) || (song.fullSongRequested && !song.paidSubmissionConfirmed)));
   const approve = trpc.queue.approvePayment.useMutation({
     onSuccess: () => {
       void utils.queue.getAll.invalidate();
@@ -32,14 +33,17 @@ export function ReviewPaymentApprovals({ submissions }: { submissions: ReviewPay
       <div className="mt-3 space-y-2">
         {approvals.map((song) => {
           const paidPending = !!song.isPaidSubmission && !song.paidSubmissionConfirmed;
-          const label = paidPending ? (song.paidSubmissionType === "skip" ? "Paid entry + line skip" : "Paid entry / full-song review") : "Line skip";
+          const fullPending = !!song.fullSongRequested && !song.paidSubmissionConfirmed;
+          const skipPending = song.skippedLine && !song.skipPaymentConfirmed;
+          const kind = paidPending ? "paid_submission" : fullPending ? (skipPending ? "full_song_skip" : "full_song") : "skip";
+          const label = paidPending ? (song.paidSubmissionType === "skip" ? "Paid entry + line skip" : "Paid entry / full-song review") : fullPending ? (skipPending ? "Full song + line skip" : "Full-song playback") : "Line skip";
           const receipt = song.cashappPaymentReceiptUrl;
           const receiptIsSafe = !!receipt && /^https?:\/\//i.test(receipt);
           return (
             <div key={song.id} className="rounded-lg border border-amber-300/15 bg-black/20 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0"><p className="truncate text-xs font-semibold text-white">{song.songTitle}</p><p className="truncate text-[10px] text-white/40">{song.artistName}</p><p className="mt-1 text-[10px] font-bold text-amber-200">{label}</p></div>
-                <button type="button" disabled={approve.isPending} onClick={() => approve.mutate({ id: song.id, kind: paidPending ? "paid_submission" : "skip" })} className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-amber-300 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-black hover:bg-amber-200 disabled:opacity-40"><CheckCircle className="h-3 w-3" />{paidPending ? "Approve paid entry" : "Approve skip"}</button>
+                <button type="button" disabled={approve.isPending} onClick={() => approve.mutate({ id: song.id, kind })} className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-amber-300 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-black hover:bg-amber-200 disabled:opacity-40"><CheckCircle className="h-3 w-3" />{paidPending ? "Approve paid entry" : fullPending ? (skipPending ? "Approve both" : "Approve full song") : "Approve skip"}</button>
               </div>
               {receiptIsSafe ? <a href={receipt!} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-[10px] text-blue-300 underline">View payment receipt <ExternalLink className="h-3 w-3" /></a> : <p className="mt-2 text-[10px] text-white/35">{song.stripePaymentSessionId ? "Stripe checkout recorded. Verify the payment in Stripe." : "No receipt attached. Check the received payment manually."}</p>}
             </div>

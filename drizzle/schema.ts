@@ -63,6 +63,7 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   // Optional manual payment proof for paid/re-entry submissions (Cash App or other method).
   cashappPaymentReceiptUrl: varchar("cashappPaymentReceiptUrl", { length: 512 }),
   stripePaymentSessionId: varchar("stripePaymentSessionId", { length: 255 }),
+  fullSongRequested: boolean("fullSongRequested").default(false).notNull(),
   position: int("position").default(0).notNull(),
   notes: text("notes"),
   // Career reaction totals (incremented on each vote)
@@ -82,6 +83,29 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
 
 export type ReviewSubmission = typeof reviewSubmissions.$inferSelect;
 export type InsertReviewSubmission = typeof reviewSubmissions.$inferInsert;
+
+// Private abuse-prevention records. Never return identity hashes in public queue responses.
+export const reviewDailyQuotas = mysqlTable("review_daily_quotas", {
+  id: int("id").autoincrement().primaryKey(),
+  day: varchar("day", { length: 10 }).notNull(),
+  identityHash: varchar("identityHash", { length: 64 }).notNull(),
+  submissions: int("submissions").default(0).notNull(),
+}, (table) => [uniqueIndex("review_quota_day_identity").on(table.day, table.identityHash)]);
+
+export const reviewSubmissionOwners = mysqlTable("review_submission_owners", {
+  submissionId: int("submissionId").primaryKey(),
+  deviceHash: varchar("deviceHash", { length: 64 }).notNull(),
+});
+
+export const reviewAddOnPayments = mysqlTable("review_addon_payments", {
+  id: int("id").autoincrement().primaryKey(),
+  submissionId: int("submissionId").notNull(),
+  stripeSessionId: varchar("stripeSessionId", { length: 255 }).notNull().unique(),
+  kind: mysqlEnum("kind", ["skip", "full_song", "full_song_skip"]).notNull(),
+  amountCents: int("amountCents").notNull(),
+  appliedAt: timestamp("appliedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
 // Song Reactions — 🔥 or 🗑️ votes on review submissions (one per user per submission)
 export const songReactions = mysqlTable("song_reactions", {

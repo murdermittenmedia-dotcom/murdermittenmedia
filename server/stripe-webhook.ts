@@ -18,6 +18,7 @@ import express from "express";
 import Stripe from "stripe";
 import { REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS } from "../shared/review-plus-entitlement";
 import { getDb } from "./db";
+import { fulfillReviewAddOn } from "./review-addon-payment";
 import {
   goldenWheelOrders,
   wheelEligibility,
@@ -104,6 +105,10 @@ async function hasExistingEligibility(userId: number): Promise<boolean> {
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  if (session.metadata?.kind === "music_review_addon") {
+    if (session.payment_status === "paid") await fulfillReviewAddOn(session);
+    return;
+  }
   // Only process live-mode, payment-mode, paid sessions
   if (!session.livemode) {
     console.log(`[GoldenWheel] Skipping test-mode session: ${session.id}`);
@@ -124,6 +129,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 }
 
 async function handleAsyncPaymentSucceeded(session: Stripe.Checkout.Session) {
+  if (session.metadata?.kind === "music_review_addon") {
+    await fulfillReviewAddOn(session);
+    return;
+  }
   if (!session.livemode) {
     console.log(`[GoldenWheel] Skipping test-mode async payment: ${session.id}`);
     return;

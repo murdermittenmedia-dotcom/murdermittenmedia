@@ -427,7 +427,7 @@ export async function confirmSkipPayment(id: number, skipType: "skip" | "bundle3
 }
 
 /** Manual approval records a verified payment; it never charges the artist. */
-export async function approveReviewPayment(id: number, kind: "skip" | "paid_submission" | "full_song") {
+export async function approveReviewPayment(id: number, kind: "skip" | "paid_submission" | "full_song" | "full_song_skip") {
   if (kind === "skip") { await confirmSkipPayment(id); return; }
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -435,7 +435,7 @@ export async function approveReviewPayment(id: number, kind: "skip" | "paid_subm
   if (!song || !["pending", "playing"].includes(song.status)) throw new Error("That song is no longer in the queue.");
   if (kind === "paid_submission" && !song.isPaidSubmission) throw new Error("This song is not a paid submission.");
   await db.update(reviewSubmissions).set({ paidSubmissionConfirmed: true }).where(eq(reviewSubmissions.id, id));
-  if (kind === "paid_submission" && song.paidSubmissionType === "skip") await confirmSkipPayment(id);
+  if (kind === "full_song_skip" || (kind === "paid_submission" && song.paidSubmissionType === "skip")) await confirmSkipPayment(id);
 }
 
 export async function confirmPaidSubmission(id: number) {
