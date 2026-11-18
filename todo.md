@@ -5277,3 +5277,17 @@
 - [x] Add matching preview metadata for reusable /beats/pro-invite links.
 - [x] Create and upload a dedicated 1200×630 Murder Mitten Beat Marketplace share graphic.
 - [x] Validate live HTML metadata, 47 test files / 185 tests, TypeScript, production build, and diff integrity.
+
+## Coordinated Live Review Master Update — 2026-11-17
+- [x] Preserve approved overlay styling and legacy horizontal/vertical URLs; create five independent transparent visual sources with recommended sizes.
+- [x] Combine Now Playing and smaller FIRE/TRASH counters; show next three eligible songs/waiting total and one static Previously Played track.
+- [x] Add the permanent branded YLG TWON header with queued real vote/submission activity and optional five-second standalone submission alerts.
+- [x] Add compact collapsed Overlay Manager, optional live previews, and copy URLs in existing admin Streams tab and review pop-out.
+- [x] Add durable review-occurrence IDs and one shared live-event journal for starts, completions, queue changes, real votes/submissions, manual sounds, and genuine gift receipts.
+- [x] Enforce one active vote per platform account per occurrence; deduplicate repeats, replace switched choices, retain completed results, and recover reconnect gaps.
+- [x] Implement admin-only TikFinity local event forwarding, actual room/user/message checks, exact comment parsing, genuine gift/streak deduplication without cooldowns, and honest connection status. Unsupported native poll merging stays separate.
+- [x] Add nine uploadable licensed-audio sound slots, exactly two music/soundboard master controls, stop action, and one dedicated audio-only broadcast source with overlapping/queued effects and retry handling.
+- [x] Preserve pricing, paid priority, payment approvals, judge functions, daily device/IP caps, and playback timing; fix paid-only eligibility and directly encountered stream-history JSON rendering.
+- [x] Apply migration 0071 and validate TypeScript, production build, git diff check, 393 tests in 73 files, real source transparency/geometry, and admin-route rendering without altering live songs/payments.
+
+Operator setup: publish the saved checkpoint to activate production links; upload owned/licensed sound files; add the soundboard source only once and enable browser-source audio; connect TikFinity to the actual live account on the streaming computer, then connect its local event feed with the actual room ID in admin. Account-specific TikTok LIVE/OBS broadcast verification was unavailable and is not claimed complete. These are operator dependencies, not unfinished independent implementation.
