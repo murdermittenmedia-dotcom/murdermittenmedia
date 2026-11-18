@@ -1528,6 +1528,7 @@ export default function MusicReview() {
         setLimitReachedData(data as any);
         setSubmitting(false);
       } else if (data.success) {
+        setTab("submit");
         setSubmittedTrackId(data.submissionId);
         setSubmitted(true);
         setSubmissionPromptOpen(false);
@@ -1556,6 +1557,7 @@ export default function MusicReview() {
         setLimitReachedData(data as any);
         setSubmitting(false);
       } else if (data.success) {
+        setTab("submit");
         setSubmittedTrackId(data.submissionId);
         setSubmitted(true);
         setSubmissionPromptOpen(false);
@@ -1584,6 +1586,7 @@ export default function MusicReview() {
       confirmPaidSubmissionCheckoutMutation.mutate({ sessionId }, {
         onSuccess: (result) => {
           setPaidSubmitSuccess(result.alreadyCreated ? "already-created" : "stripe");
+          setTab("submit");
           setSubmittedTrackId(result.submissionId);
           setSubmitted(true);
           setSubmissionPromptOpen(false);
@@ -2320,6 +2323,12 @@ export default function MusicReview() {
                     </button>
                   </>
                 )}
+            <ReviewQueueTracker submissionId={submittedTrackId} className="review-v2-submission-tracking" showEmpty={submitted || !!paidSubmitSuccess} renderSubmissionAction={(item) => {
+              // Preserve V1 account Line Skip controls, separate from public
+              // position data. The existing server mutation remains unchanged.
+              const sub = data?.submissions.find((track) => track.id === item.submissionId);
+              return user && sub?.userId === user.id && sub.status === "pending" && !sub.skippedLine && (lineSkipCreditsData ?? 0) > 0 ? <button type="button" onClick={() => useLineSkipMutation.mutate({ submissionId: sub.id })} disabled={useLineSkipMutation.isPending} className="review-v2-button">Use Skip</button> : null;
+            }} />
               </div>
   );
 
@@ -2436,14 +2445,6 @@ export default function MusicReview() {
 
       {/* ── MAIN SINGLE-COLUMN CONTENT ──────────────────────── */}
       <div className="review-v2-main max-w-[1500px] mx-auto px-4 py-6 space-y-6">
-
-
-            <ReviewQueueTracker submissionId={submittedTrackId} className="review-v2-mine-placement" showEmpty={submitted || !!paidSubmitSuccess} renderSubmissionAction={(item) => {
-              // Preserve V1 account Line Skip controls, separate from public
-              // position data. The existing server mutation remains unchanged.
-              const sub = data?.submissions.find((track) => track.id === item.submissionId);
-              return user && sub?.userId === user.id && sub.status === "pending" && !sub.skippedLine && (lineSkipCreditsData ?? 0) > 0 ? <button type="button" onClick={() => useLineSkipMutation.mutate({ submissionId: sub.id })} disabled={useLineSkipMutation.isPending} className="review-v2-button">Use Skip</button> : null;
-            }} />
 
         {/* ── ADMIN SESSION CONTROLS (admin only) ───────────── */}
         {isAdmin && (

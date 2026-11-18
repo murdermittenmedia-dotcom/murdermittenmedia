@@ -5324,3 +5324,9 @@ Operator setup: publish the saved checkpoint to activate production links; uploa
 - [x] Preserve normal user/judge active-vote switching, same-choice guards and pending protection, guest login guard, bulk admin controls, live playback and synchronized OBS totals.
 - [x] Add rendered poll regressions for repeated/rapid admin taps, prior-vote/pending enablement, non-admin safeguards and the separate role-based mutation route.
 - [x] Pass TypeScript, git diff check, 81 files / 493 tests and production build. Inspect current review/admin pages without starting tracks or adding actual live votes. No schema change required.
+
+## Remove My Submissions from review-page top — 2026-11-17
+- [x] Remove the personal My Submissions panel from top-level review content, including Broadcast Hub mode; keep the live player, public queue and admin launcher unobstructed.
+- [x] Retain one personal tracker below the submission form in Submit Now/the existing popup; preserve ownership checks, payment approval status and saved skip actions.
+- [x] Select Submit Now on successful YouTube/file/paid Stripe submissions so tracking remains visible after the popup closes without reintroducing the top panel.
+- [x] Update placement/success-flow regressions and pass TypeScript, git diff check, 81 files / 493 tests and production build. Visually inspect real review pages read-only; no live tracks or votes changed.
