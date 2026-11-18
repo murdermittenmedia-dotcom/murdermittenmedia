@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { useReviewLiveEvents } from "@/hooks/useReviewLiveEvents";
 import { Activity, Eye, ExternalLink, Flame, Radio, SkipForward, ThumbsDown, Upload, Youtube } from "lucide-react";
 import { isReviewSubmissionEligible } from "@shared/review-payment-access";
 import { trpc } from "@/lib/trpc";
@@ -33,6 +35,9 @@ function getYouTubeId(url: string | null) {
 }
 
 export default function BroadcastReview() {
+  const studio = useReviewLiveEvents();
+  const { setVolume } = useAudioPlayer();
+  useEffect(() => { setVolume(studio.settings.musicVolume); }, [studio.settings.musicVolume, setVolume]);
   const isObsViewer = typeof window !== "undefined" && window.location.pathname === "/broadcast/obs";
   const { reviewIsLive } = useLiveStatus();
   const { data, isLoading } = useReviewQueue();
@@ -47,10 +52,10 @@ export default function BroadcastReview() {
   const isOnAir = data?.state?.isLive ?? reviewIsLive;
   const current = (isOnAir ? data?.currentPlaying : null) as BroadcastSubmission | null | undefined;
   const queue = ((data?.submissions ?? []) as BroadcastSubmission[])
-    .filter((submission) => submission.status === "pending" && isReviewSubmissionEligible(submission))
+    .filter((submission) => submission.status === "pending" && isReviewSubmissionEligible(submission, data?.state?.playbackMode))
     .slice(0, 5);
   const inLineCount = ((data?.submissions ?? []) as BroadcastSubmission[])
-    .filter((submission) => submission.status === "pending" && isReviewSubmissionEligible(submission)).length;
+    .filter((submission) => submission.status === "pending" && isReviewSubmissionEligible(submission, data?.state?.playbackMode)).length;
   const youtubeId = current?.submissionType === "youtube" ? getYouTubeId(current.youtubeUrl) : null;
   const { data: votes } = trpc.queue.getReactions.useQuery({ submissionId: current?.id ?? 0 }, {
     enabled: !!current, refetchInterval: 1000, refetchIntervalInBackground: true,

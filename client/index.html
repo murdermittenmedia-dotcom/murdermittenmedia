@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <script>
-      if (window.location.pathname === '/broadcast/overlay') {
+      if (window.location.pathname === '/broadcast/overlay' || window.location.pathname.startsWith('/broadcast/overlay/')) {
         document.documentElement.setAttribute('data-review-overlay', 'true');
       }
     </script>
@@ -41,7 +41,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <!-- Google AdSense -->
     <script>
-      if (window.location.pathname !== '/broadcast/overlay') {
+      if (window.location.pathname !== '/broadcast/overlay' && !window.location.pathname.startsWith('/broadcast/overlay/')) {
         const ads = document.createElement('script');
         ads.async = true;
         ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4123353595860586';

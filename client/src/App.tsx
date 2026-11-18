@@ -19,6 +19,8 @@ import MeetingWithTheMitten from "./pages/MeetingWithTheMitten";
 import MusicReview from "./pages/MusicReview";
 import BroadcastReview from "./pages/BroadcastReview";
 import ReviewOverlay from "./pages/ReviewOverlay";
+import ReviewSoundboardAudio from "./pages/ReviewSoundboardAudio";
+import { REVIEW_SOURCE_PATHS } from "@shared/review-studio";
 import BroadcastRadio from "./pages/BroadcastRadio";
 import BroadcastRankings from "./pages/BroadcastRankings";
 import BroadcastWars from "./pages/BroadcastWars";
@@ -205,7 +207,7 @@ function PageTrackerMount() {
 function App() {
   const [location] = useLocation();
   const isBroadcastView = location.startsWith("/broadcast/") || location === "/admin-popout";
-  const isTransparentOverlay = location === "/broadcast/overlay";
+  const isTransparentOverlay = location === "/broadcast/overlay" || location.startsWith("/broadcast/overlay/");
 
   useLayoutEffect(() => {
     if (isTransparentOverlay) document.documentElement.setAttribute("data-review-overlay", "true");
@@ -215,7 +217,7 @@ function App() {
 
   // A browser source must never subscribe to audio or render global site chrome.
   if (isTransparentOverlay) {
-    return <ErrorBoundary fallback={<main className="review-overlay-canvas"><div className="review-overlay-panel">Review overlay unavailable. Refresh this browser source.</div></main>}><ReviewOverlay /></ErrorBoundary>;
+    return <ErrorBoundary fallback={<main className="review-overlay-canvas"><div className="review-overlay-panel">Review overlay unavailable. Refresh this browser source.</div></main>}>{location === REVIEW_SOURCE_PATHS.soundboard ? <ReviewSoundboardAudio /> : <ReviewOverlay />}</ErrorBoundary>;
   }
 
   return (

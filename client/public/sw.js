@@ -5,7 +5,7 @@
    - Offline fallback to cached homepage
 */
 
-const CACHE_NAME = "mmm-v1";
+const CACHE_NAME = "mmm-v2-live-review";
 const OFFLINE_URL = "/";
 
 // Assets to pre-cache on install
@@ -40,6 +40,12 @@ self.addEventListener("fetch", (event) => {
 
   // Skip non-GET requests
   if (request.method !== "GET") return;
+
+  // Live sources and unversioned Vite modules must never use stale CSS or
+  // a cached homepage fallback. Production hashed assets keep cache-first.
+  if (url.pathname.startsWith("/broadcast/overlay") ||
+      url.pathname.startsWith("/src/") || url.pathname.startsWith("/@vite/") ||
+      url.pathname.startsWith("/@fs/") || url.pathname.startsWith("/node_modules/")) return;
 
   // Skip API calls, OAuth, socket.io — always network
   if (

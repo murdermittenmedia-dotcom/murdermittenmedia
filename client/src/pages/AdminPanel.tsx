@@ -1,3 +1,5 @@
+import { ReviewOverlayLink } from "@/components/ReviewOverlayLink";
+import ReviewStudioControls from "@/components/ReviewStudioControls";
 /* ============================================================
    MURDER MITTEN MEDIA — Admin Panel
    Tabs: Users | Promo Orders | Analytics | Site Settings
@@ -1825,7 +1827,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
 export default function AdminPanel() {
   const [, navigate] = useLocation();
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>(() => new URLSearchParams(window.location.search).get("tab") === "settings" ? "settings" : "overview");
+  const [activeTab, setActiveTab] = useState<Tab>(() => { const tab = new URLSearchParams(window.location.search).get("tab"); return TABS.some(item => item.id === tab) ? tab as Tab : "overview"; });
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (loading) {
@@ -1935,7 +1937,7 @@ export default function AdminPanel() {
             {activeTab === "cashouts" && <CashoutsAdminTab />}
             {activeTab === "economy" && <EconomyAdminTab />}
             {activeTab === "notifications" && <NotificationsAdminTab />}
-            {activeTab === "streams" && <StreamsAdminTab />}
+            {activeTab === "streams" && <div className="space-y-4"><div className="flex items-center justify-between gap-3"><h2 className="font-['Anton'] text-2xl text-white">Review Broadcast Studio</h2><a href="/admin-popout" target="_blank" rel="noopener noreferrer" className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white">Open review controls</a></div><ReviewOverlayLink /><details className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white"><summary className="cursor-pointer text-xs font-black uppercase tracking-wider">Audio & Soundboard</summary><div className="mt-4"><ReviewStudioControls /></div></details><StreamsAdminTab /></div>}
           </div>
         </main>
       </div>
@@ -2616,6 +2618,13 @@ function AdminBroadcastPanel() {
 }
 
 // ─── Streams Admin Tab ─────────────────────────────────────────
+function streamGifters(value: unknown): Array<{ name: string; coins: number }> {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item.name === "string" && typeof item.coins === "number") : [];
+  } catch { return []; }
+}
+
 function StreamsAdminTab() {
   const { data: summaries, isLoading } = trpc.stream.getHistory.useQuery({ limit: 20 });
 
@@ -2676,11 +2685,11 @@ function StreamsAdminTab() {
                   </div>
                 ))}
               </div>
-              {s.topGifters && s.topGifters.length > 0 && (
+              {streamGifters(s.topGifters).length > 0 && (
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <div className="text-white/40 text-xs uppercase tracking-widest mb-1.5">Top Gifters</div>
                   <div className="flex flex-wrap gap-2">
-                    {(s.topGifters as any[]).slice(0, 5).map((g: any, i: number) => (
+                    {streamGifters(s.topGifters).slice(0, 5).map((g, i) => (
                       <span key={i} className="text-xs bg-white/5 text-white/60 px-2 py-1 rounded">
                         #{i + 1} {g.name} — {g.coins} coins
                       </span>

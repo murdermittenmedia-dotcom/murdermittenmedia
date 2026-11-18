@@ -498,6 +498,13 @@
       "when": 1794803790578,
       "tag": "0070_narrow_trauma",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "5",
+      "when": 1794968574209,
+      "tag": "0071_glorious_tarot",
+      "breakpoints": true
     }
   ]
 }

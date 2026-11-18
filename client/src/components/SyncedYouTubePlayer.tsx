@@ -50,6 +50,7 @@ declare global {
 }
 
 interface YTPlayer {
+  setVolume?(volume: number): void;
   playVideo(): void;
   pauseVideo(): void;
   seekTo(seconds: number, allowSeekAhead: boolean): void;
@@ -94,6 +95,7 @@ interface SyncedYouTubePlayerProps {
   onEnded?: () => void;
   maxPlaybackSeconds?: number;
   autoPlayMuted?: boolean;
+  musicVolume?: number;
   className?: string;
 }
 
@@ -110,10 +112,13 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
   onEnded,
   maxPlaybackSeconds,
   autoPlayMuted = false,
+  musicVolume = 0.8,
   className = "",
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
+  const musicVolumeRef = useRef(musicVolume); musicVolumeRef.current = musicVolume;
+  useEffect(() => { playerRef.current?.setVolume?.(Math.round(musicVolume * 100)); }, [musicVolume]);
   const socketRef = useRef<Socket | null>(null);
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [unlocked, setUnlocked] = useState(isAdmin || autoPlayMuted || sessionStorage.getItem("review-listen-live") === "true");
@@ -215,6 +220,7 @@ export const SyncedYouTubePlayer = forwardRef<SyncedYouTubePlayerHandle, SyncedY
           onReady: (e) => {
             if (destroyed) return;
             playerRef.current = e.target;
+            e.target.setVolume?.(Math.round(musicVolumeRef.current * 100));
             setPlayerReady(true);
 
             if (isAdmin) {

@@ -4,7 +4,8 @@ export type ReviewPaymentAccess = {
 };
 
 /** Paid entries wait for verification. Free tracks do not need payment approval. */
-export function isReviewSubmissionEligible(song: ReviewPaymentAccess) {
+export function isReviewSubmissionEligible(song: ReviewPaymentAccess, mode?: "90sec" | "full" | "paid_only" | null) {
+  if (mode === "paid_only") return song.paidSubmissionConfirmed === true;
   return !song.isPaidSubmission || song.paidSubmissionConfirmed === true;
 }
 

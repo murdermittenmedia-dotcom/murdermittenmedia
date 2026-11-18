@@ -2,6 +2,8 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { reviewDailyQuotas, reviewSubmissionOwners, reviewSubmissions, queueState, users, notifications, type InsertReviewSubmission } from "../drizzle/schema";
 import { getDb, createActivityEvent } from "./db";
+import { appendReviewEvent, dispatchReviewJournal, publishQueueChanged } from "./review-studio-events";
+import { reviewActor } from "./review-occurrences";
 import type { ReviewIdentity } from "./review-submission-identity";
 import type { TrpcContext } from "./_core/context";
 
@@ -40,8 +42,12 @@ export async function createLimitedReviewSubmission(data: InsertReviewSubmission
     const [result] = await tx.insert(reviewSubmissions).values({ ...data, position: Number(tail?.maxPos ?? 0) + 1 });
     const id = Number(result.insertId);
     await tx.insert(reviewSubmissionOwners).values({ submissionId: id, deviceHash: identity.deviceHash });
+    const [artist] = data.userId ? await tx.select().from(users).where(eq(users.id, data.userId)).limit(1) : [];
+    await appendReviewEvent(tx, { id: `submission:${id}`, type: "submission_accepted", occurrenceId: null, submissionId: id, actor: artist ? reviewActor(artist) || data.artistName : data.artistName, songTitle: data.songTitle, artistName: data.artistName });
     return id;
   });
+  await dispatchReviewJournal();
+  await publishQueueChanged();
   void createActivityEvent("review", `${data.artistName} entered the review queue`, { detail: data.songTitle }).catch(() => {});
   try {
     const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));

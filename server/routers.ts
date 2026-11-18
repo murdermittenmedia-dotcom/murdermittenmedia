@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { reviewStudioRouter } from "./review-studio-router";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { buildNextWarEntries } from "../shared/next-war";
@@ -415,6 +416,7 @@ const studiosRouter = router({
 });
 
 export const appRouter = router({
+  reviewStudio: reviewStudioRouter,
   activity: router({
     getRecent: publicProcedure.input(z.object({ limit: z.number().int().min(1).max(12).default(8) }).optional()).query(async ({ input }) => getPublicActivityFeed(input?.limit ?? 8)),
   }),
@@ -1439,9 +1441,11 @@ export const appRouter = router({
       .input(z.object({
         submissionId: z.number(),
         reaction: z.enum(["fire", "trash"]),
+        occurrenceId: z.string().max(64).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        await castSongReaction(input.submissionId, ctx.user.id, input.reaction);
+        const vote = await castSongReaction(input.submissionId, ctx.user.id, input.reaction, input.occurrenceId);
+        if (!vote.changed) return { success: true, changed: false };
         // Award fan XP to voter
         awardXP(ctx.user.id, "vote_cast", { amount: 2 }).catch(() => {});
         // Award artist XP to submission owner when they receive a fire vote

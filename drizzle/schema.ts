@@ -64,6 +64,7 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   cashappPaymentReceiptUrl: varchar("cashappPaymentReceiptUrl", { length: 512 }),
   stripePaymentSessionId: varchar("stripePaymentSessionId", { length: 255 }),
   fullSongRequested: boolean("fullSongRequested").default(false).notNull(),
+  reviewOccurrenceId: varchar("reviewOccurrenceId", { length: 64 }),
   position: int("position").default(0).notNull(),
   notes: text("notes"),
   // Career reaction totals (incremented on each vote)
@@ -83,6 +84,42 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
 
 export type ReviewSubmission = typeof reviewSubmissions.$inferSelect;
 export type InsertReviewSubmission = typeof reviewSubmissions.$inferInsert;
+
+export const reviewOccurrences = mysqlTable("review_occurrences", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  submissionId: int("submissionId").notNull(),
+  startedAtMs: bigint("startedAtMs", { mode: "number" }).notNull(),
+  completedAtMs: bigint("completedAtMs", { mode: "number" }),
+  fire: int("fire").default(0).notNull(),
+  trash: int("trash").default(0).notNull(),
+});
+export const reviewOccurrenceVotes = mysqlTable("review_occurrence_votes", {
+  id: int("id").autoincrement().primaryKey(),
+  occurrenceId: varchar("occurrenceId", { length: 64 }).notNull(),
+  platform: mysqlEnum("platform", ["website", "tiktok"]).notNull(),
+  platformUserId: varchar("platformUserId", { length: 128 }).notNull(),
+  userId: int("userId"),
+  displayName: varchar("displayName", { length: 128 }).notNull(),
+  reaction: mysqlEnum("reaction", ["fire", "trash"]).notNull(),
+  revision: int("revision").default(1).notNull(),
+}, (table) => [uniqueIndex("review_occurrence_platform_user").on(table.occurrenceId, table.platform, table.platformUserId)]);
+export const reviewLiveEvents = mysqlTable("review_live_events", {
+  sequence: bigint("sequence", { mode: "number" }).autoincrement().primaryKey(),
+  eventId: varchar("eventId", { length: 128 }).notNull().unique(),
+  type: varchar("type", { length: 32 }).notNull(),
+  occurrenceId: varchar("occurrenceId", { length: 64 }),
+  submissionId: int("submissionId"),
+  timestampMs: bigint("timestampMs", { mode: "number" }).notNull(),
+  payload: text("payload").notNull(),
+});
+export const reviewTikTokDeliveries = mysqlTable("review_tiktok_deliveries", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  timestampMs: bigint("timestampMs", { mode: "number" }).notNull(),
+});
+export const reviewGiftStreaks = mysqlTable("review_gift_streaks", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  unitsSeen: int("unitsSeen").default(0).notNull(),
+});
 
 // Private abuse-prevention records. Never return identity hashes in public queue responses.
 export const reviewDailyQuotas = mysqlTable("review_daily_quotas", {

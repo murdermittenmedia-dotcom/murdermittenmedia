@@ -1,5 +1,6 @@
 import { isReviewSubmissionEligible } from "../shared/review-payment-access";
 import { randomBytes } from "node:crypto";
+import { beginReviewOccurrence, finishReviewOccurrence, recordWebsiteReviewVote, getOccurrenceReactionCounts, getOccurrenceUserReaction } from "./review-occurrences";
 import { eq, asc, desc, ne, and, or, sql, isNotNull, isNull, inArray, count, sum, gte, lte, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
@@ -353,9 +354,6 @@ export async function completeAndAdvanceReviewQueue(
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const counts = await getSongReactionCounts(completedId);
-  const verdict = calculateReviewVerdict({ crowdFire: counts.fire, crowdTrash: counts.trash,
-    judgeFire: counts.judgeFire, judgeTrash: counts.judgeTrash, skippedByVote: options.skippedByVote });
   return db.transaction(async (tx) => {
     const [state] = await tx.select().from(queueState).limit(1).for("update");
     if (!state) return { stale: true as const, next: null };
@@ -367,12 +365,16 @@ export async function completeAndAdvanceReviewQueue(
       (state.currentPlayingId !== null && state.currentPlayingId !== completedId)) {
       return { stale: true as const, next: null };
     }
+    const counts = await getSongReactionCounts(completedId, tx);
+    const verdict = calculateReviewVerdict({ crowdFire: counts.fire, crowdTrash: counts.trash,
+      judgeFire: counts.judgeFire, judgeTrash: counts.judgeTrash, skippedByVote: options.skippedByVote });
     await tx.update(reviewSubmissions).set({ status: "reviewed", verdict: verdict.verdict,
       crowdFirePct: verdict.crowdFirePct, crowdTrashPct: verdict.crowdTrashPct,
       judgeFireCount: counts.judgeFire, judgeTrashCount: counts.judgeTrash,
       totalVoteCount: verdict.totalVoteCount, skipVoteTriggered: options.skippedByVote ?? false,
       reviewedAt: new Date(), updatedAt: new Date(),
     }).where(eq(reviewSubmissions.id, completedId));
+    await finishReviewOccurrence(tx, current);
     // Normalize old multiple-playing rows while holding the queue lock.
     await tx.update(reviewSubmissions).set({ status: "pending" })
       .where(eq(reviewSubmissions.status, "playing"));
@@ -380,7 +382,7 @@ export async function completeAndAdvanceReviewQueue(
       .where(eq(reviewSubmissions.status, "pending"))
       .orderBy( asc(reviewSubmissions.position),
         asc(reviewSubmissions.createdAt), asc(reviewSubmissions.id)).for("update");
-    const next = waiting.find(isReviewSubmissionEligible) ?? null;
+    const next = waiting.find((song) => isReviewSubmissionEligible(song, state.playbackMode)) ?? null;
     let waitingPosition = 1;
     for (const queued of waiting) {
       await tx.update(reviewSubmissions).set({
@@ -392,8 +394,9 @@ export async function completeAndAdvanceReviewQueue(
       livePlaybackState: next ? "playing" : "stopped", livePlaybackStartedAt: next ? Date.now() : null,
       livePlaybackPositionMs: 0, livePlaybackRevision: state.livePlaybackRevision + 1,
     }).where(eq(queueState.id, state.id));
+    const occurrenceId = next ? await beginReviewOccurrence(tx, next) : null;
     // The commit is all-or-nothing: history and cursor cannot be half advanced.
-    return { stale: false as const, next: next ? { ...next, status: "playing" as const, position: 0 } : null };
+    return { stale: false as const, next: next ? { ...next, reviewOccurrenceId: occurrenceId, fireCount: 0, trashCount: 0, status: "playing" as const, position: 0 } : null };
   });
 }
 
@@ -490,7 +493,7 @@ export async function startReviewQueueTrack(submissionId: number) {
       [state] = await tx.select().from(queueState).limit(1).for("update");
     }
     const [song] = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, submissionId)).limit(1).for("update");
-    if (!song || !isReviewSubmissionEligible(song) || (song.status !== "pending" && song.status !== "playing")) {
+    if (!song || !isReviewSubmissionEligible(song, state.playbackMode) || (song.status !== "pending" && song.status !== "playing")) {
       throw new Error("That song is no longer in the active queue. Requeue it from Recently Played first.");
     }
     if (state.currentPlayingId === song.id && song.status === "playing" && state.livePlaybackState !== "stopped") return { ...song, status: "playing" as const };
@@ -507,6 +510,7 @@ export async function startReviewQueueTrack(submissionId: number) {
         verdict: verdict.verdict, crowdFirePct: verdict.crowdFirePct, crowdTrashPct: verdict.crowdTrashPct,
         judgeFireCount: judgeFire, judgeTrashCount: judgeTrash, totalVoteCount: verdict.totalVoteCount,
       }).where(eq(reviewSubmissions.id, old.id));
+      await finishReviewOccurrence(tx, old);
     }
     await tx.update(reviewSubmissions).set({ status: "playing", position: 0 }).where(eq(reviewSubmissions.id, song.id));
     const waiting = await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.status, "pending"))
@@ -518,7 +522,8 @@ export async function startReviewQueueTrack(submissionId: number) {
       livePlaybackStartedAt: Date.now(), livePlaybackPositionMs: 0,
       livePlaybackRevision: state.livePlaybackRevision + 1,
     }).where(eq(queueState.id, state.id));
-    return { ...song, status: "playing" as const, position: 0 };
+    const occurrenceId = await beginReviewOccurrence(tx, song);
+    return { ...song, reviewOccurrenceId: occurrenceId, fireCount: 0, trashCount: 0, status: "playing" as const, position: 0 };
   });
 }
 
@@ -1227,32 +1232,13 @@ export async function clearBattleVotes(battleId: number) {
 
 // -- Song Reactions (🔥 / 🗑️ for Music Review) ----------------
 
-export async function castSongReaction(submissionId: number, userId: number, reaction: "fire" | "trash") {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  // Check if user already voted on this submission
-  const existing = await db.select().from(songReactions)
-    .where(and(eq(songReactions.submissionId, submissionId), eq(songReactions.userId, userId)))
-    .limit(1);
-  if (existing.length > 0) {
-    throw new Error("Already voted on this submission");
-  }
-  // Insert reaction
-  await db.insert(songReactions).values({ submissionId, userId, reaction });
-  // Increment the career counter on the submission
-  if (reaction === "fire") {
-    await db.update(reviewSubmissions)
-      .set({ fireCount: sql`${reviewSubmissions.fireCount} + 1` })
-      .where(eq(reviewSubmissions.id, submissionId));
-  } else {
-    await db.update(reviewSubmissions)
-      .set({ trashCount: sql`${reviewSubmissions.trashCount} + 1` })
-      .where(eq(reviewSubmissions.id, submissionId));
-  }
-  return { success: true };
+export async function castSongReaction(submissionId: number, userId: number, reaction: "fire" | "trash", occurrenceId?: string) {
+  return recordWebsiteReviewVote(submissionId, userId, reaction, occurrenceId);
 }
 
 export async function getUserSongReaction(submissionId: number, userId: number) {
+  const current = await getOccurrenceUserReaction(submissionId, userId);
+  if (current !== undefined) return current;
   const db = await getDb();
   if (!db) return null;
   const rows = await db.select().from(songReactions)
@@ -1261,7 +1247,9 @@ export async function getUserSongReaction(submissionId: number, userId: number) 
   return rows[0] ?? null;
 }
 
-export async function getSongReactionCounts(submissionId: number) {
+export async function getSongReactionCounts(submissionId: number, reader?: any) {
+  const current = await getOccurrenceReactionCounts(submissionId, reader);
+  if (current) return { ...current, judgeVotes: current.judgeVotes.map(vote => ({ ...vote, avatarUrl: sanitizeChatAvatarUrl(vote.avatarUrl) })) };
   const db = await getDb();
   if (!db) return { fire: 0, trash: 0, judgeFire: 0, judgeTrash: 0, judgeVotes: [] };
   const rows = await db.select().from(reviewSubmissions)

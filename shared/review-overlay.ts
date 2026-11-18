@@ -24,13 +24,13 @@ function timestamp(value?: Date | string | null) {
 
 /** Display only: never creates its own queue, changes playback, or writes votes. */
 export function selectReviewOverlayState<T extends OverlayTrack>(
-  snapshot: { state: { isLive: boolean } | null; currentPlaying: T | null; submissions: T[] } | undefined,
+  snapshot: { state: { isLive: boolean; playbackMode?: "90sec" | "full" | "paid_only" } | null; currentPlaying: T | null; submissions: T[] } | undefined,
   history: T[] | undefined,
-) {
+): { isLive: boolean; current: T | null; next: T[]; inLine: number; previous: T | null } {
   const isLive = snapshot?.state?.isLive ?? false;
   const current = isLive && snapshot?.currentPlaying?.status === "playing" ? snapshot.currentPlaying : null;
   const waiting = (snapshot?.submissions ?? [])
-    .filter((track) => track.status === "pending" && isReviewSubmissionEligible(track) && track.id !== current?.id)
+    .filter((track) => track.status === "pending" && isReviewSubmissionEligible(track, snapshot?.state?.playbackMode) && track.id !== current?.id)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || timestamp(a.createdAt) - timestamp(b.createdAt) || a.id - b.id);
   const previous = (history ?? [])
     .filter((track) => track.status === "reviewed" && track.id !== snapshot?.currentPlaying?.id)

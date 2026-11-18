@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { setReviewLivePublisher, dispatchReviewJournal } from "../review-studio-events";
+import { ensureCurrentReviewOccurrence } from "../review-occurrences";
 import express from "express";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
@@ -57,6 +59,7 @@ const roomParticipants = new Map<string, RoomParticipant>();
 
 // ─── Radio State (server-side source of truth) ────────────────────────────────
 type RadioState = {
+  occurrenceId?: string | null;
   submissionId: number | null;
   userId?: number | null;
   artistName: string;
@@ -148,6 +151,7 @@ async function hydrateAuthoritativeRadioState() {
     : state.livePlaybackStartedAt;
   radioState = {
     submissionId: submission.id,
+    occurrenceId: submission.reviewOccurrenceId,
     userId: submission.userId,
     artistName: submission.artistName,
     songTitle: submission.songTitle,
@@ -244,6 +248,12 @@ async function startServer() {
   (app as any).io = io;
   setSiteAnnouncementBroadcaster((announcement) => io.emit("site:announcement", announcement));
   setActivityBroadcaster((event) => io.emit("activity:new_event", event));
+  await setReviewLivePublisher((event) => {
+    io.to("music_review").emit("review:live_event", event);
+    if ((event.type === "valid_vote_recorded" || event.type === "vote_changed") && event.submissionId) io.to("music_review").emit("review:reactions_updated", { submissionId: event.submissionId });
+  });
+  await ensureCurrentReviewOccurrence();
+  await dispatchReviewJournal();
 
   try {
     await hydrateAuthoritativeRadioState();
@@ -754,7 +764,8 @@ async function startServer() {
     });
 
     // Admin broadcasts playback state (play/pause/seek) — legacy compat
-    socket.on("review:playback", (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => {
+    socket.on("review:playback", async (data: { action: "play" | "pause" | "replay" | "skip" | "next"; currentTime?: number }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
       io.to("music_review").emit("review:playback", data);
     });
     // Admin broadcasts queue update (new submission, status change)
@@ -768,12 +779,13 @@ async function startServer() {
 
     // ── Review: Fake chat message relay (admin → all viewers) ──
     // Admin emits a fake chat message; server relays it to all OTHER viewers
-    socket.on("review:fake_chat_message", (data: {
+    socket.on("review:fake_chat_message", async (data: {
       username: string;
       text: string;
       userId?: number | null;
       timestamp: number;
     }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
       socket.to("music_review").emit("review:fake_chat_message", data);
     });
 
@@ -794,7 +806,8 @@ async function startServer() {
 
     // ── Review: Reaction trigger relay (admin → all viewers) ──
     // Admin triggers a reaction flood; relay to all viewers so their fake chat floods too
-    socket.on("review:trigger_reaction", (data: { reaction: string; duration: number }) => {
+    socket.on("review:trigger_reaction", async (data: { reaction: string; duration: number }) => {
+      if (!await isAuthoritativeReviewAdmin()) return;
       socket.to("music_review").emit("review:trigger_reaction", data);
     });
 

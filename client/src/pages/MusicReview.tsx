@@ -1,3 +1,5 @@
+import ReviewStudioControls from "@/components/ReviewStudioControls";
+import { useReviewLiveEvents } from "@/hooks/useReviewLiveEvents";
 /* ============================================================
    MURDER MITTEN MEDIA — Music Review (V2 Major Redesign)
    Premium "Studio Control Room" aesthetic
@@ -313,7 +315,7 @@ function AdminPanel({
   // submission itself is already marked playing. Resolve that row as a safe
   // fallback so the admin never has to press Load just to restore the session.
   const currentPlaying = data?.currentPlaying ?? null;
-  const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" && isReviewSubmissionEligible(s)) ?? [];
+  const queue: ReviewSubmission[] = data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" && isReviewSubmissionEligible(s, data?.state?.playbackMode)) ?? [];
   const queueKey = JSON.stringify(queue.map(s => s.id + ':' + s.status + ':' + s.position));
   // Drag-to-reorder state
   const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -433,6 +435,7 @@ function AdminPanel({
             <span className={`shrink-0 rounded-full border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest ${isLive ? "border-red-500/40 bg-red-500/10 text-red-200" : "border-white/15 bg-white/[0.04] text-white/35"}`}>{isLive ? "On air" : "Offline"}</span>
           </header>
           <ReviewOverlayLink />
+          <details className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><summary className="cursor-pointer text-xs font-black uppercase tracking-wider">Audio & Soundboard</summary><div className="mt-4"><ReviewStudioControls /></div></details>
           <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Now playing</p><p className="mt-1 truncate text-lg font-bold text-white">{currentPlaying?.songTitle ?? "No track loaded"}</p><p className="truncate text-xs text-white/40">{currentPlaying?.artistName ?? "Waiting for a submission"}</p></div><span className="text-[10px] font-bold uppercase tracking-widest text-white/30">{queue.length} in queue</span></div>
             <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={handleGoLive} disabled={setLive.isPending} className={`rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest ${streamIsActive ? "border border-red-500/40 bg-red-500/10 text-red-200" : "bg-red-600 text-white hover:bg-red-500"}`}>{streamIsActive ? "End live review" : "Go live"}</button><button type="button" onClick={handleSkip} disabled={!currentPlaying || completeAndAdvanceMutation.isPending} className="rounded-lg border border-white/15 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-400/40 hover:text-white disabled:opacity-40">Skip current</button></div>
@@ -1361,13 +1364,12 @@ function FireTrashPoll({
         <button
           onClick={() => {
             if (!user) { toast.error("Login to vote"); return; }
-            if (hasVoted) { toast.error("You already voted!"); return; }
+            if (myReaction === "fire") return;
             onVote("fire");
           }}
-          disabled={hasVoted || isPending}
+          disabled={myReaction === "fire" || isPending}
           className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
             myReaction === "fire" ? "bg-orange-500/20 cursor-default" :
-            hasVoted ? "opacity-40 cursor-not-allowed" :
             "hover:bg-orange-500/10 active:bg-orange-500/20 cursor-pointer"
           }`}
         >
@@ -1384,13 +1386,12 @@ function FireTrashPoll({
         <button
           onClick={() => {
             if (!user) { toast.error("Login to vote"); return; }
-            if (hasVoted) { toast.error("You already voted!"); return; }
+            if (myReaction === "trash") return;
             onVote("trash");
           }}
-          disabled={hasVoted || isPending}
+          disabled={myReaction === "trash" || isPending}
           className={`group flex flex-col items-center justify-center gap-2 py-8 transition-all duration-200 ${
             myReaction === "trash" ? "bg-blue-500/20 cursor-default" :
-            hasVoted ? "opacity-40 cursor-not-allowed" :
             "hover:bg-blue-500/10 active:bg-blue-500/20 cursor-pointer"
           }`}
         >
@@ -1534,6 +1535,8 @@ export default function MusicReview() {
     },
   });
   const audioPlayer = useAudioPlayer();
+  const studio = useReviewLiveEvents();
+  useEffect(() => { audioPlayer.setVolume(studio.settings.musicVolume); }, [studio.settings.musicVolume, audioPlayer.setVolume]);
   const { playTrack: resolveAndPlay } = usePlayTrack();
 
   const { data, refetch, isLoading } = useReviewQueue();
@@ -2150,7 +2153,7 @@ export default function MusicReview() {
     });
   };
 
-  const pendingQueue = data?.submissions?.filter(s => s.status === "pending" && isReviewSubmissionEligible(s)) ?? [];
+  const pendingQueue = data?.submissions?.filter(s => s.status === "pending" && isReviewSubmissionEligible(s, data?.state?.playbackMode)) ?? [];
   const currentPlaying = data?.currentPlaying ?? null;
   const isLive = data?.state?.isLive ?? false;
   const liveMessage = data?.state?.liveMessage;
@@ -2547,6 +2550,7 @@ export default function MusicReview() {
                 <SyncedYouTubePlayer
                   ref={syncedYouTubePlayerRef}
                   videoId={extractYouTubeId(activeTrack.youtubeUrl) ?? ""}
+                  musicVolume={studio.settings.musicVolume}
                   submissionId={activeTrack.submissionId}
                   initialCurrentTime={ytSyncState?.currentTime ?? null}
                   initialUpdatedAt={ytSyncState?.updatedAt ?? null}
@@ -2584,13 +2588,13 @@ export default function MusicReview() {
                     songTitle={activeTrack.songTitle}
                     artistName={activeTrack.artistName}
                     artistUserId={activeTrack.userId ?? null}
-                    fireCount={(reactionCounts?.fire ?? currentPlaying?.fireCount ?? 0) + ghostFireCount}
-                    trashCount={(reactionCounts?.trash ?? currentPlaying?.trashCount ?? 0) + ghostTrashCount}
+                    fireCount={reactionCounts?.fire ?? currentPlaying?.fireCount ?? 0}
+                    trashCount={reactionCounts?.trash ?? currentPlaying?.trashCount ?? 0}
                     myReaction={myReaction?.reaction ?? null}
                     onVote={(reaction) => {
                       if (!user) { toast.error("Login to vote"); return; }
                       if (pollId == null) return;
-                      reactMutation.mutate({ submissionId: pollId, reaction });
+                      reactMutation.mutate({ submissionId: pollId, reaction, occurrenceId: currentPlaying?.reviewOccurrenceId ?? undefined });
                     }}
                     isPending={reactMutation.isPending}
                     user={user}

@@ -7,6 +7,7 @@ import type { TrpcContext } from "./_core/context";
 const dbMocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   createActivityEvent: vi.fn(),
+  getQueueState: vi.fn(),
 }));
 vi.mock("./db", () => dbMocks);
 
@@ -38,6 +39,11 @@ let maximumActiveTransactions: number;
 function matches(row: Row, table: string, condition?: SQL): boolean {
   if (!condition) return true;
   const query = dialect.sqlToQuery(condition);
+  const greater = /^`([^`]+)`\.`([^`]+)` > \?$/.exec(query.sql);
+  if (greater) {
+    if (greater[1] !== table || query.params.length !== 1) throw new Error("Unsupported journal comparison");
+    return Number(row[greater[2]]) > Number(query.params[0]);
+  }
   let paramIndex = 0;
   const checks: boolean[] = [];
   const rest = query.sql.replace(
@@ -70,11 +76,12 @@ function makeAdapter(readState: () => State, transactional = false): any {
   };
   return {
     select(fields?: Record<string, Column | SQL>) {
-      let table = "", condition: SQL | undefined, maximum = Infinity;
+      let table = "", condition: SQL | undefined, maximum = Infinity, ordering: SQL[] = [];
       const builder = {
         from(value: any) { table = getTableName(value); return builder; },
         where(value: SQL) { condition = value; return builder; },
         limit(value: number) { maximum = value; return builder; },
+        orderBy(...value: SQL[]) { ordering = value; return builder; },
         for(value: string) {
           requireTransaction();
           if (value !== "update") throw new Error(`Unsupported lock: ${value}`);
@@ -83,6 +90,14 @@ function makeAdapter(readState: () => State, transactional = false): any {
         then(resolve: any, reject: any) {
           return Promise.resolve().then(() => {
             const rows = rowsFor(table).filter(row => matches(row, table, condition));
+            rows.sort((a, b) => {
+              for (const order of ordering) {
+                const sql = dialect.sqlToQuery(order).sql;
+                const column = sql.match(/`[^`]+`\.`([^`]+)`/)?.[1];
+                if (column && a[column] !== b[column]) return (a[column] > b[column] ? 1 : -1) * (/desc/i.test(sql) ? -1 : 1);
+              }
+              return 0;
+            });
             if (!fields) return structuredClone(rows.slice(0, maximum));
             const entries = Object.entries(fields);
             const aggregates = entries.filter(([, field]) => is(field, SQL));
@@ -108,19 +123,31 @@ function makeAdapter(readState: () => State, transactional = false): any {
     insert(value: any) {
       const table = getTableName(value);
       let values: Row | Row[], duplicateUpdate: Row | undefined, execution: Promise<unknown> | undefined;
+      let ignoreDuplicate = false;
       const builder = {
+        ignore() { ignoreDuplicate = true; return builder; },
         values(next: Row | Row[]) { values = next; return builder; },
         onDuplicateKeyUpdate(options: { set: Row }) { duplicateUpdate = options.set; return builder; },
         then(resolve: any, reject: any) {
           execution ??= Promise.resolve().then(() => {
             const rows = rowsFor(table);
-            if (table !== "notifications") requireTransaction();
+            if (!["notifications", "review_live_events"].includes(table)) requireTransaction();
             if (failNextInsert === table) {
               failNextInsert = undefined;
               throw new Error(`Injected ${table} insert failure`);
             }
             let insertId = 0;
             for (const next of Array.isArray(values) ? values : [values]) {
+              if (table === "review_live_events") {
+                if (rows.some(row => row.eventId === next.eventId)) {
+                  if (ignoreDuplicate) continue;
+                  throw new Error("Duplicate event receipt");
+                }
+                const sequence = readState().nextId[table]++;
+                rows.push({ ...next, sequence });
+                insertId = sequence;
+                continue;
+              }
               if (table === "review_daily_quotas") {
                 const existing = rows.find(row => row.day === next.day && row.identityHash === next.identityHash);
                 if (existing) {
@@ -223,14 +250,15 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-08-14T16:00:00Z"));
   state = {
-    tables: { review_daily_quotas: [], review_submissions: [], review_submission_owners: [], queue_state: [{ id: 1 }], users: [], notifications: [] },
-    nextId: { review_daily_quotas: 1, review_submissions: 1, notifications: 1 },
+    tables: { review_daily_quotas: [], review_submissions: [], review_submission_owners: [], queue_state: [{ id: 1 }], users: [], notifications: [], review_live_events: [] },
+    nextId: { review_daily_quotas: 1, review_submissions: 1, notifications: 1, review_live_events: 1 },
   };
   transactionQueue = Promise.resolve();
   failNextInsert = undefined;
   activeTransactions = 0;
   maximumActiveTransactions = 0;
   dbMocks.getDb.mockReset().mockResolvedValue(makeAdapter(() => state));
+  dbMocks.getQueueState.mockReset().mockImplementation(async () => state.tables.queue_state[0]);
   dbMocks.createActivityEvent.mockReset().mockResolvedValue(undefined);
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });

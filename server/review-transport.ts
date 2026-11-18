@@ -1,4 +1,5 @@
 import { completeAndAdvanceReviewQueue, startReviewQueueTrack, stopReviewQueuePlayback } from "./db";
+import { dispatchReviewJournal, publishQueueChanged } from "./review-studio-events";
 
 export type ReviewTransportCommand =
   | { action: "start"; submissionId: number }
@@ -37,6 +38,8 @@ export function executeReviewTransport(command: ReviewTransportCommand) {
     }
     // Even a stale duplicate refreshes all windows from the committed cursor.
     await publisher?.();
+    await dispatchReviewJournal();
+    await publishQueueChanged();
     return result;
   });
 }
@@ -46,6 +49,8 @@ export function mutateReviewQueue<T>(operation: () => Promise<T>) {
   return withReviewTransportLock(async () => {
     const result = await operation();
     await publisher?.();
+    await dispatchReviewJournal();
+    await publishQueueChanged();
     return result;
   });
 }
