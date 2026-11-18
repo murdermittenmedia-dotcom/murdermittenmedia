@@ -5317,3 +5317,10 @@ Operator setup: publish the saved checkpoint to activate production links; uploa
 - [x] Refresh admin, public review and OBS via realtime events/polling; clearly label admin-added activity without fabricated voters or per-vote audio bursts.
 - [x] Generate, review and apply migration 0074 with zero defaults and BIGINT counters; no existing votes reset.
 - [x] Pass TypeScript, git diff check, 80 files / 488 tests and production build. Inspect admin/OBS read-only; no live votes added during verification.
+
+## Repeated admin taps on regular Fire / Trash buttons — 2026-11-17
+- [x] Let admin accounts repeatedly tap the normal public review Fire/Trash buttons, including rapid taps while earlier requests are processing; each click adds one rather than replacing the last choice.
+- [x] Route each admin tap to the existing authorized occurrence-specific addition service with a fresh request UUID; automatic network retries reuse that UUID and cannot double-add.
+- [x] Preserve normal user/judge active-vote switching, same-choice guards and pending protection, guest login guard, bulk admin controls, live playback and synchronized OBS totals.
+- [x] Add rendered poll regressions for repeated/rapid admin taps, prior-vote/pending enablement, non-admin safeguards and the separate role-based mutation route.
+- [x] Pass TypeScript, git diff check, 81 files / 493 tests and production build. Inspect current review/admin pages without starting tracks or adding actual live votes. No schema change required.
