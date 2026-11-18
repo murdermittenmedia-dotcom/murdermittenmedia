@@ -17,6 +17,7 @@ import Promo from "./pages/Promo";
 import MurderMittenMic from "./pages/MurderMittenMic";
 import MeetingWithTheMitten from "./pages/MeetingWithTheMitten";
 import MusicReview from "./pages/MusicReview";
+import ReviewTracking from "./pages/ReviewTracking";
 import BroadcastReview from "./pages/BroadcastReview";
 import ReviewOverlay from "./pages/ReviewOverlay";
 import ReviewSoundboardAudio from "./pages/ReviewSoundboardAudio";
@@ -110,6 +111,7 @@ function Router() {
       <Route path={"/broadcast/rankings"} component={BroadcastRankings} />
       <Route path={"/broadcast/wars"} component={BroadcastWars} />
       <Route path={"/broadcast"} component={BroadcastHub} />
+      <Route path={"/review/track"} component={ReviewTracking} />
       <Route path={"/review"} component={MusicReview} />
       {/* Judges now join directly inside the live review stage; preserve old links as a compatibility redirect. */}
       <Route path={"/judge"}>
@@ -214,6 +216,8 @@ function App() {
     else document.documentElement.removeAttribute("data-review-overlay");
     return () => document.documentElement.removeAttribute("data-review-overlay");
   }, [isTransparentOverlay]);
+
+  if (location === "/review/track") return <ErrorBoundary><ThemeProvider defaultTheme="dark"><TooltipProvider><Toaster /><ReviewTracking /></TooltipProvider></ThemeProvider></ErrorBoundary>;
 
   // A browser source must never subscribe to audio or render global site chrome.
   if (isTransparentOverlay) {

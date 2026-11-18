@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { registerReviewBridgeHttp } from "../review-bridge-http";
 import { setReviewLivePublisher, dispatchReviewJournal } from "../review-studio-events";
 import { ensureCurrentReviewOccurrence } from "../review-occurrences";
 import express from "express";
@@ -1021,6 +1022,7 @@ async function startServer() {
     await transport.handleRequest(req, res, req.body);
     if (!transport.sessionId) await transport.close();
   });
+  registerReviewBridgeHttp(app); // Signed exact-byte outbound connector requests precede the global JSON parser.
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);

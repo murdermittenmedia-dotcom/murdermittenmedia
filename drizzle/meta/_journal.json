@@ -505,6 +505,13 @@
       "when": 1794968574209,
       "tag": "0071_glorious_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1794972084310,
+      "tag": "0072_windy_boomer",
+      "breakpoints": true
     }
   ]
 }

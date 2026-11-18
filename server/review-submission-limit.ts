@@ -37,7 +37,8 @@ export async function createLimitedReviewSubmission(data: InsertReviewSubmission
       await tx.update(reviewDailyQuotas).set({ submissions: quota.submissions + 1 }).where(eq(reviewDailyQuotas.id, quota.id));
     }
     // Share the queue cursor lock with admin transitions to assign a stable tail.
-    await tx.select().from(queueState).limit(1).for("update");
+    const [lockedState] = await tx.select().from(queueState).limit(1).for("update");
+    if (lockedState?.playbackMode === "paid_only" && !data.isPaidSubmission) throw new TRPCError({ code: "FORBIDDEN", message: "Music Review is paid only. Free submissions are blocked until the admin switches this mode off." });
     const [tail] = await tx.select({ maxPos: sql<number>`MAX(${reviewSubmissions.position})` }).from(reviewSubmissions).where(eq(reviewSubmissions.status, "pending"));
     const [result] = await tx.insert(reviewSubmissions).values({ ...data, position: Number(tail?.maxPos ?? 0) + 1 });
     const id = Number(result.insertId);

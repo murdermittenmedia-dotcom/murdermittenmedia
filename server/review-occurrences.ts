@@ -28,10 +28,10 @@ export async function beginReviewOccurrence(tx: any, song: { id: number; artistN
   await appendReviewEvent(tx, { id: `started:${id}`, type: "song_started", occurrenceId: id, submissionId: song.id, artistName: song.artistName, songTitle: song.songTitle });
   return id;
 }
-export async function finishReviewOccurrence(tx: any, song: { id: number; reviewOccurrenceId?: string | null; artistName: string; songTitle: string }) {
+export async function finishReviewOccurrence(tx: any, song: { id: number; reviewOccurrenceId?: string | null; artistName: string; songTitle: string }, completionReason: "completed" | "skipped" | "removed" = "completed") {
   if (!song.reviewOccurrenceId) return;
   const votes = await tx.select().from(reviewOccurrenceVotes).where(eq(reviewOccurrenceVotes.occurrenceId, song.reviewOccurrenceId));
-  await tx.update(reviewOccurrences).set({ completedAtMs: Date.now(), fire: votes.filter((vote: any) => vote.reaction === "fire").length, trash: votes.filter((vote: any) => vote.reaction === "trash").length }).where(eq(reviewOccurrences.id, song.reviewOccurrenceId));
+  await tx.update(reviewOccurrences).set({ completedAtMs: Date.now(), completionReason, fire: votes.filter((vote: any) => vote.reaction === "fire").length, trash: votes.filter((vote: any) => vote.reaction === "trash").length }).where(eq(reviewOccurrences.id, song.reviewOccurrenceId));
   await appendReviewEvent(tx, { id: `completed:${song.reviewOccurrenceId}`, type: "song_completed", occurrenceId: song.reviewOccurrenceId, submissionId: song.id, artistName: song.artistName, songTitle: song.songTitle });
 }
 /** Adopt an already-running pre-update review without restarting its audio. */

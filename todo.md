@@ -5291,3 +5291,12 @@
 - [x] Apply migration 0071 and validate TypeScript, production build, git diff check, 393 tests in 73 files, real source transparency/geometry, and admin-route rendering without altering live songs/payments.
 
 Operator setup: publish the saved checkpoint to activate production links; upload owned/licensed sound files; add the soundboard source only once and enable browser-source audio; connect TikFinity to the actual live account on the streaming computer, then connect its local event feed with the actual room ID in admin. Account-specific TikTok LIVE/OBS broadcast verification was unavailable and is not claimed complete. These are operator dependencies, not unfinished independent implementation.
+
+## Music Review V2 — November 17, 2026
+- [x] Public and browser/account/private-link queue tracking on the existing queue.
+- [x] Scoped mobile submit-first layout and desktop/phone visual checks.
+- [x] Signed outbound Windows TikFinity bridge, admin pairing/health, isolated simulation, command votes and audit-confirmed Galaxy priority.
+- [x] Additive migration 0072 generated/reviewed/applied; history preserved.
+- [x] Paid-only ON/OFF and quota regression coverage; 76 files / 436 tests and 12 standalone connector tests passed, typecheck/build clean.
+- [x] Credential-free Windows ZIP plus exact source manifest and operator guide delivered.
+- [ ] Operator: Publish V2 checkpoint, pair real streaming PC during LIVE, verify actual Galaxy payload/link/reward and Windows permissions, and record OBS single-audio-path check. Not claimed as completed or live-verified.

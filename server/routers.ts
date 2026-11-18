@@ -1,3 +1,5 @@
+import { reviewTrackingRouter } from "./review-tracking-router";
+import { reviewBridgeRouter } from "./review-bridge-router";
 import Stripe from "stripe";
 import { reviewStudioRouter } from "./review-studio-router";
 import { randomBytes } from "node:crypto";
@@ -1030,6 +1032,8 @@ export const appRouter = router({
 
   // -- Review Queue ---------------------------------------------
   reviewSubmission: reviewSubmissionRouter,
+  reviewTracking: reviewTrackingRouter,
+  reviewBridge: reviewBridgeRouter,
   queue: router({
     getTodayCount: publicProcedure.query(async () => getTodaySubmissionCount()),
     getReviewBotSettings: publicProcedure.query(async () => {
@@ -1060,7 +1064,15 @@ export const appRouter = router({
         ]);
         return { success: true as const, ...input };
       }),
-    getAll: publicProcedure.query(async () => getReviewQueueSnapshot()),
+    getAll: publicProcedure.query(async ({ ctx }) => {
+      const snapshot = await getReviewQueueSnapshot();
+      if (ctx.user?.role === "admin") return snapshot;
+      const safe = (song: (typeof snapshot.submissions)[number]) => ({ ...song,
+        contactInfo: null,
+        cashappPaymentReceiptUrl: null, stripePaymentSessionId: null, notes: null,
+      });
+      return { ...snapshot, submissions: snapshot.submissions.map(safe), currentPlaying: snapshot.currentPlaying ? safe(snapshot.currentPlaying) : null };
+    }),
 
     // Get a direct presigned S3 URL for a queue submission audio file
     getAudioUrl: publicProcedure
@@ -1101,7 +1113,7 @@ export const appRouter = router({
         const identity = getReviewIdentity(ctx);
         await assertReviewSubmissionAllowance(identity);
         const queueState = await getQueueState();
-        if (queueState?.playbackMode === "paid_only") {
+        if (queueState?.playbackMode === "paid_only" && !input.paidSubmissionType) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
         if (!ctx.user && input.paidSubmissionType) {
@@ -1163,9 +1175,9 @@ export const appRouter = router({
     // natural file endings. The guard prevents an old ended event from moving
     // the queue again after the next track is already live.
     completeAndAdvance: adminProcedure
-      .input(z.object({ submissionId: z.number().int().positive(), skippedByVote: z.boolean().optional() }))
+      .input(z.object({ submissionId: z.number().int().positive(), skippedByVote: z.boolean().optional(), completionReason: z.enum(["completed", "skipped", "removed"]).optional() }))
       .mutation(async ({ input }) => {
-        const result = await executeReviewTransport({ action: "complete", submissionId: input.submissionId, skippedByVote: input.skippedByVote });
+        const result = await executeReviewTransport({ action: "complete", submissionId: input.submissionId, skippedByVote: input.skippedByVote, completionReason: input.completionReason });
         return { success: !result.stale, ...result };
       }),
 
@@ -1181,7 +1193,7 @@ export const appRouter = router({
         } else if (snapshot.currentPlaying?.id === input.id) {
           if (input.status === "pending") await executeReviewTransport({ action: "stop" });
           else {
-            await executeReviewTransport({ action: "complete", submissionId: input.id });
+            await executeReviewTransport({ action: "complete", submissionId: input.id, completionReason: input.status === "removed" ? "removed" : "completed" });
             if (input.status === "removed") await updateSubmissionStatus(input.id, "removed");
           }
         } else if (input.status === "reviewed") await completeReviewSubmission(input.id);
@@ -1312,7 +1324,7 @@ export const appRouter = router({
         const identity = getReviewIdentity(ctx);
         await assertReviewSubmissionAllowance(identity);
         const queueState = await getQueueState();
-        if (queueState?.playbackMode === "paid_only") {
+        if (queueState?.playbackMode === "paid_only" && !input.paidSubmissionType) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
         if (!ctx.user && input.paidSubmissionType) {
@@ -1372,7 +1384,7 @@ export const appRouter = router({
         const identity = getReviewIdentity(ctx);
         await assertReviewSubmissionAllowance(identity);
         const queueState = await getQueueState();
-        if (queueState?.playbackMode === "paid_only") {
+        if (queueState?.playbackMode === "paid_only" && !input.paidSubmissionType) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
         if (!ctx.user && input.paidSubmissionType) {

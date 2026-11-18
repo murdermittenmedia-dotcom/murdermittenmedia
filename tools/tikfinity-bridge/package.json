@@ -1,0 +1,16 @@
+{
+  "name": "murdermittenmedia-tikfinity-review-bridge-v2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Same-PC TikFinity loopback reader with authenticated outbound HTTPS; no audio or local server",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "pair": "node bridge.mjs pair",
+    "start": "node bridge.mjs run",
+    "simulate": "node bridge.mjs --simulate",
+    "check-config": "node bridge.mjs --check-config",
+    "test": "node --test bridge.test.mjs"
+  },
+  "dependencies": { "ws": "^8.18.3" }
+}

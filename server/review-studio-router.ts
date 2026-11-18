@@ -60,10 +60,9 @@ export async function ingestTikTokReviewEvent(input: z.infer<typeof tiktokEventI
       } else if (input.repeatEnd !== true) return { accepted: false, reason: "Waiting for final streak receipt", event: null };
     }
     if (!units) return { accepted: false, reason: "No new gift units", event: null };
-    const mapping = settings.giftMappings.find((entry) => entry.giftId === input.giftId);
-    const sound = settings.sounds.find((entry) => entry.id === mapping?.soundId);
     const [current] = state?.currentPlayingId ? await tx.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, state.currentPlayingId)).limit(1) : [];
-    const event = await appendReviewEvent(tx, { id: `gift:${deliveryId}`, type: "gift_received", occurrenceId: current?.reviewOccurrenceId ?? null, submissionId: current?.id ?? null, actor, giftId: input.giftId, units, soundId: sound?.url ? sound.id : undefined, soundUrl: sound?.url ?? undefined });
+    const event = await appendReviewEvent(tx, { id: `gift:${deliveryId}`, type: "gift_received", occurrenceId: current?.reviewOccurrenceId ?? null, submissionId: current?.id ?? null, actor, giftId: input.giftId, units // TikFinity owns viewer-triggered audio; manual soundboard remains separate.
+     });
     return { accepted: true, units, event };
   }));
   broadcastReviewEvent(result.event);

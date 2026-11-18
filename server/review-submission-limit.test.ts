@@ -264,6 +264,21 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
 describe("real createLimitedReviewSubmission daily quota behavior", () => {
+  it("paid-only blocks free insertion atomically, accepts pending paid proof, and restores free flow when switched off", async () => {
+    const { identity } = newDevice();
+    state.tables.queue_state[0].playbackMode = "paid_only";
+    state.tables.queue_state[0].submitPriceCents = 0;
+    const before = structuredClone(state);
+    await expect(createLimitedReviewSubmission(song(), identity)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(state).toEqual(before);
+    await createLimitedReviewSubmission(song("youtube", { isPaidSubmission: true, paidSubmissionConfirmed: false, paidSubmissionType: "reentry5", cashappPaymentReceiptUrl: "https://cash.app/verified-proof" }), identity);
+    expect(submissions()[0]).toMatchObject({ status: "pending", isPaidSubmission: true, paidSubmissionConfirmed: false });
+    state.tables.queue_state[0].playbackMode = "90sec";
+    await createLimitedReviewSubmission(song("file"), identity);
+    expect(submissions()).toHaveLength(2);
+    expect(quotaRows().every(row => row.submissions === 2)).toBe(true);
+  });
+
   it("caps a shared IP at two even when every request uses a different signed device", async () => {
     const identities = [newDevice(), newDevice(), newDevice()].map(device => device.identity);
     expect(new Set(identities.map(identity => identity.deviceHash)).size).toBe(3);

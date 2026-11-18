@@ -844,11 +844,11 @@ describe("production TikTok gift receipt and streak deduplication", () => {
         units: 5,
         giftId: "5655",
         actor: "@realgifter",
-        soundId: "air-horn",
-        soundUrl: "https://example.test/owned-air-horn.mp3",
         submissionId: 1,
       },
     ]);
+    expect(giftEvents()[0].soundId).toBeUndefined();
+    expect(giftEvents()[0].soundUrl).toBeUndefined();
     expect(memory.tables.review_gift_streaks).toHaveLength(0);
   });
 

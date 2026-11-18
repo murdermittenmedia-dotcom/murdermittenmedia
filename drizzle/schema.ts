@@ -90,6 +90,7 @@ export const reviewOccurrences = mysqlTable("review_occurrences", {
   submissionId: int("submissionId").notNull(),
   startedAtMs: bigint("startedAtMs", { mode: "number" }).notNull(),
   completedAtMs: bigint("completedAtMs", { mode: "number" }),
+  completionReason: varchar("completionReason", { length: 16 }),
   fire: int("fire").default(0).notNull(),
   trash: int("trash").default(0).notNull(),
 });
@@ -1606,3 +1607,7 @@ export const linkAnalyticsEvents = mysqlTable("link_analytics_events", {
 });
 export type LinkAnalyticsEvent = typeof linkAnalyticsEvents.$inferSelect;
 export type InsertLinkAnalyticsEvent = typeof linkAnalyticsEvents.$inferInsert;
+
+// V2 private metadata extends existing review records without duplicating the queue.
+export * from "./review-tracking-schema";
+export * from "./review-bridge-schema";

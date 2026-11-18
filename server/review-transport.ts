@@ -3,7 +3,7 @@ import { dispatchReviewJournal, publishQueueChanged } from "./review-studio-even
 
 export type ReviewTransportCommand =
   | { action: "start"; submissionId: number }
-  | { action: "complete"; submissionId: number; skippedByVote?: boolean }
+  | { action: "complete"; submissionId: number; skippedByVote?: boolean; completionReason?: "completed" | "skipped" | "removed" }
   | { action: "stop" };
 
 type Publisher = () => Promise<void>;
@@ -28,7 +28,7 @@ export function executeReviewTransport(command: ReviewTransportCommand) {
   return withReviewTransportLock(async () => {
     let result: Awaited<ReturnType<typeof completeAndAdvanceReviewQueue>>;
     if (command.action === "complete") {
-      result = await completeAndAdvanceReviewQueue(command.submissionId, { skippedByVote: command.skippedByVote });
+      result = await completeAndAdvanceReviewQueue(command.submissionId, { skippedByVote: command.skippedByVote, completionReason: command.completionReason });
     } else if (command.action === "start") {
       const next = await startReviewQueueTrack(command.submissionId);
       result = { stale: false, next };

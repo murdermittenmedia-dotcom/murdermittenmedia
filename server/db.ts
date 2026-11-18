@@ -350,7 +350,7 @@ export async function completeReviewSubmission(id: number, options: { skippedByV
  */
 export async function completeAndAdvanceReviewQueue(
   completedId: number,
-  options: { skippedByVote?: boolean } = {},
+  options: { skippedByVote?: boolean; completionReason?: "completed" | "skipped" | "removed" } = {},
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -374,7 +374,7 @@ export async function completeAndAdvanceReviewQueue(
       totalVoteCount: verdict.totalVoteCount, skipVoteTriggered: options.skippedByVote ?? false,
       reviewedAt: new Date(), updatedAt: new Date(),
     }).where(eq(reviewSubmissions.id, completedId));
-    await finishReviewOccurrence(tx, current);
+    await finishReviewOccurrence(tx, current, options.completionReason ?? (options.skippedByVote ? "skipped" : "completed"));
     // Normalize old multiple-playing rows while holding the queue lock.
     await tx.update(reviewSubmissions).set({ status: "pending" })
       .where(eq(reviewSubmissions.status, "playing"));

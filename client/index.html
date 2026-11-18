@@ -3,7 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <script>
+      if (window.location.pathname === '/review/track') {
+        window.__reviewTrackingToken = window.location.hash.slice(1);
+        history.replaceState(null, '', window.location.pathname);
+        document.querySelector('meta[name="referrer"]').content = 'no-referrer';
+      }
       if (window.location.pathname === '/broadcast/overlay' || window.location.pathname.startsWith('/broadcast/overlay/')) {
         document.documentElement.setAttribute('data-review-overlay', 'true');
       }
@@ -38,10 +44,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <!-- IPStack Geolocation -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+      if (window.location.pathname !== '/review/track') {
+        const utility = document.createElement('script');
+        utility.src = 'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js';
+        document.head.appendChild(utility);
+      }
+    </script>
     <!-- Google AdSense -->
     <script>
-      if (window.location.pathname !== '/broadcast/overlay' && !window.location.pathname.startsWith('/broadcast/overlay/')) {
+      if (window.location.pathname !== '/review/track' && window.location.pathname !== '/broadcast/overlay' && !window.location.pathname.startsWith('/broadcast/overlay/')) {
         const ads = document.createElement('script');
         ads.async = true;
         ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4123353595860586';
@@ -53,10 +65,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <script>
+      if (window.location.pathname !== '/review/track') {
+        const analytics = document.createElement('script');
+        analytics.defer = true;
+        analytics.src = '%VITE_ANALYTICS_ENDPOINT%/umami';
+        analytics.setAttribute('data-website-id', '%VITE_ANALYTICS_WEBSITE_ID%');
+        document.head.appendChild(analytics);
+      }
+    </script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {

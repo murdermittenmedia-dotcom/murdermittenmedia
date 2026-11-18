@@ -33,6 +33,7 @@ import { registerSeekBroadcast, registerPauseBroadcast, registerResumeBroadcast 
 import { useFakeLiveChat } from "@/hooks/useFakeLiveChat";
 import { MUSIC_REVIEW_FREE_SUBMISSION_LIMIT } from "@shared/music-review-paywall";
 import { JUDGE_PANEL_LAYOUT } from "@/lib/musicReviewLayout";
+import { ReviewPublicQueue, ReviewQueueTracker } from "@/components/ReviewQueueTracker";
 
 // Types inferred from tRPC query
 type ReviewSubmission = { id: number; userId?: number | null; artistName: string; songTitle: string; submissionType: "youtube" | "file"; youtubeUrl: string | null; fileKey: string | null; fileUrl: string | null; contactInfo: string | null; status: "pending" | "playing" | "reviewed" | "removed"; skippedLine: boolean; skipPaymentConfirmed: boolean; position: number; notes: string | null; fireCount: number; trashCount: number; verdict?: string | null; crowdFirePct?: number | null; crowdTrashPct?: number | null; judgeFireCount: number; judgeTrashCount: number; totalVoteCount?: number; skipVoteTriggered?: boolean; reviewedAt?: Date | null; createdAt: Date; updatedAt: Date; cashappPaymentReceiptUrl?: string |
@@ -385,10 +386,10 @@ function AdminPanel({
 
   const completeAndAdvanceMutation = trpc.queue.completeAndAdvance.useMutation();
 
-  const completeAndAdvance = (submissionId: number) => {
+  const completeAndAdvance = (submissionId: number, completionReason: "completed" | "skipped" | "removed" = "completed") => {
     if (completionInFlightRef.current !== null || completeAndAdvanceMutation.isPending) return;
     completionInFlightRef.current = submissionId;
-    completeAndAdvanceMutation.mutate({ submissionId }, {
+    completeAndAdvanceMutation.mutate({ submissionId, completionReason }, {
       onSuccess: (result) => {
         void utils.queue.getAll.invalidate();
         void utils.queue.getReviewed.invalidate();
@@ -401,7 +402,7 @@ function AdminPanel({
   };
 
   const handleSkip = () => {
-    if (currentPlaying) completeAndAdvance(currentPlaying.id);
+    if (currentPlaying) completeAndAdvance(currentPlaying.id, "skipped");
   };
 
   const handleRemove = (id: number) => {
@@ -1425,7 +1426,12 @@ function FireTrashPoll({
 
 // ── Main page ─────────────────────────────────────────────────
 export default function MusicReview() {
-  const [tab, setTab] = useState<SubmitTab>(() => typeof window !== "undefined" && (window.location.hash === "#submit-track" || new URLSearchParams(window.location.search).get("tab") === "submit") ? "submit" : "queue");
+  const [tab, setTab] = useState<SubmitTab>(() => {
+    if (typeof window === "undefined") return "queue";
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.hash === "#submit-track" || params.get("tab") === "submit") return "submit";
+    return window.matchMedia("(max-width: 639px)").matches && params.get("mode") !== "broadcast" ? "submit" : "queue";
+  });
   const [submitType, setSubmitType] = useState<"youtube" | "file">("file");
   const [form, setForm] = useState({ artistName: "", songTitle: "", youtubeUrl: "", contactInfo: "", wantsSkip: false });
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -2309,14 +2315,14 @@ export default function MusicReview() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white">
+    <div className={`min-h-screen bg-[#080808] text-white ${!isBroadcastHub ? "review-v2-submit-first" : ""}`}>
       <SiteNav />
-      <LiveRadioBanner />
+      <div className="review-v2-radio-banner"><LiveRadioBanner /></div>
 
       {/* ── HERO HEADER ─────────────────────────────────────── */}
-      <div className="bg-gradient-to-b from-[#0d0d0d] to-[#080808] border-b border-white/5 pt-20 pb-4 px-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-4">
+      <div className="review-v2-hero bg-gradient-to-b from-[#0d0d0d] to-[#080808] border-b border-white/5 pt-20 pb-4 px-4">
+        <div className="review-v2-hero-inner max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-3">
+          <div className="review-v2-hero-title flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-600/40 flex items-center justify-center">
               <Music className="w-5 h-5 text-red-400" />
             </div>
@@ -2328,9 +2334,9 @@ export default function MusicReview() {
             </div>
           </div>
           {/* LIVE VIEWER COUNT — optional and only visible while the review is live */}
-          <div className="flex items-center gap-3">
+          <div className="review-v2-hero-actions flex items-center gap-3">
             {shouldShowViewerCount(isLive, viewerCountVisible) && (
-              <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/30 rounded-full px-5 py-2.5">
+              <div className="review-v2-mobile-clutter flex items-center gap-2 bg-red-600/10 border border-red-600/30 rounded-full px-5 py-2.5">
                 <Eye className="w-5 h-5 text-red-400" />
                 <span className="font-['Anton'] text-2xl text-white tabular-nums">{viewerCount.toLocaleString()}</span>
                 <span className="text-red-400 text-xs uppercase tracking-widest font-semibold">Watching</span>
@@ -2357,7 +2363,7 @@ export default function MusicReview() {
       </div>
 
       {/* ── MAIN SINGLE-COLUMN CONTENT ──────────────────────── */}
-      <div className="max-w-[1500px] mx-auto px-4 py-6 space-y-6">
+      <div className="review-v2-main max-w-[1500px] mx-auto px-4 py-6 space-y-6">
 
 
         {/* ── ADMIN SESSION CONTROLS (admin only) ───────────── */}
@@ -2390,18 +2396,19 @@ export default function MusicReview() {
           </div>
         </section>}
 
-        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+        <div className="review-v2-mobile-clutter mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <button type="button" onClick={handleShareReview} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Share Live Review</button>
           <button type="button" onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => toast.success("Review link copied"))} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:border-white/30 hover:text-white">Copy Link</button>
           <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-pink-400/25 bg-pink-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-pink-200 hover:bg-pink-400/10">Watch Instagram</a>
           <a href="/merch" className="rounded-lg border border-red-500/25 bg-red-500/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-200 hover:bg-red-500/10">Shop Merch</a>
           <a href="/promo" className="rounded-lg border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-200 hover:bg-yellow-400/10">Get Promoted</a>
           <button type="button" onClick={() => setTab("submit")} className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Submit a Track</button>
+          <button type="button" onClick={() => { setTab("queue"); document.getElementById("review-submission-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:text-white">View Live Queue</button>
         </div>
-        <div className="mb-3 border-l-2 border-red-500 px-3">
+        <div className="review-v2-mobile-clutter mb-3 border-l-2 border-red-500 px-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Live review stage · performance, panel, crowd</p>
         </div>
-        <div className="grid gap-5 lg:grid-cols-12">
+        <div className="review-v2-stage-grid grid gap-5 lg:grid-cols-12">
         {judgePanelVisible && !isBroadcastHub && <section className="order-1 min-w-0 lg:col-span-12">
           <JudgePanelStrip
             isReviewLive={isLive}
@@ -2775,10 +2782,10 @@ export default function MusicReview() {
         </section>
 
         {/* ── BOTTOM MENU TABS ────────────────────────────────── */}
-        <section className={`order-4 min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/25 ${isBroadcastHub ? "lg:col-span-12" : "lg:col-span-8"}`}>
+        <section id="review-submission-panel" className={`review-v2-submission-panel order-4 min-w-0 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/25 ${isBroadcastHub ? "lg:col-span-12" : "lg:col-span-8"}`}>
         <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden">
           {/* Tab navigation */}
-          <div className="flex overflow-x-auto scrollbar-none border-b border-white/10">
+          <div className="review-v2-tabs flex overflow-x-auto scrollbar-none border-b border-white/10" role="tablist" aria-label="Music review">
             {([
               { id: "submit", label: "Submit Now", icon: "🎵" },
               { id: "queue", label: "Queue", icon: "📋" },
@@ -2788,6 +2795,9 @@ export default function MusicReview() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
                 className={`flex items-center gap-2 px-5 py-4 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all border-b-2 ${tab === t.id ? "text-white border-red-600 bg-red-600/5" : "text-white/40 border-transparent hover:text-white/70 hover:bg-white/[0.02]"}`}
               >
                 <span>{t.icon}</span>
@@ -2797,12 +2807,12 @@ export default function MusicReview() {
           </div>
 
           {/* Tab content */}
-          <div className="p-5">
+          <div className="review-v2-tab-content p-5">
 
             {/* ── SUBMIT TAB ── */}
             {tab === "submit" && (
               <div id="submit-track" className="max-w-lg mx-auto space-y-4 scroll-mt-24">
-                <div className="text-center mb-6">
+                <div className="review-v2-submit-intro text-center mb-6">
                   <h2 className="font-['Anton'] text-3xl uppercase mb-1">Submit Your <span className="text-red-600">Track</span></h2>
                   <p className="text-white/40 text-sm">Get your music reviewed live on air</p>
                   <div className={`mt-3 rounded-lg border p-3 text-xs ${allowance.data?.remaining === 0 ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-white/10 bg-white/[0.025] text-white/55"}`}>
@@ -2814,11 +2824,11 @@ export default function MusicReview() {
                     <p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Add-ons for your queued tracks</p>
                     {deviceTracks.data.map((track) => <button key={track.id} type="button" onClick={() => { setSubmitted(true); setSubmittedTrackId(track.id); setUpgradeStatus(null); setReviewUpgrade({ kind: "skip", method: "Stripe", receiptUrl: "" }); }} className="flex w-full items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-xs text-white"><span className="truncate">{track.artistName} — {track.songTitle}</span><span className="shrink-0 text-amber-200">Add an upgrade</span></button>)}
                   </div>}
-                  <div className="mt-4 grid gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.045] p-4 text-left sm:grid-cols-3">
+                  <div className="review-v2-submit-extra mt-4 grid gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.045] p-4 text-left sm:grid-cols-3">
                     {["Choose Upload MP3 or YouTube Link", "Add your song title and track", "Submit and watch the queue"].map((step, index) => <div key={step} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white">{index + 1}</span><p className="text-[11px] leading-relaxed text-white/60">{step}</p></div>)}
                   </div>
-                  <p className="mt-3 text-[10px] leading-relaxed text-white/35">Use an MP3 for the cleanest broadcast playback, or paste a YouTube link. Keep this page open for your queue position and live review status.</p>
-                  <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-left">
+                  <p className="review-v2-submit-extra mt-3 text-[10px] leading-relaxed text-white/35">Use an MP3 for the cleanest broadcast playback, or paste a YouTube link. Keep this page open for your queue position and live review status.</p>
+                  <div className="review-v2-mobile-after-form mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-left">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Review+</p>
@@ -2962,34 +2972,7 @@ export default function MusicReview() {
 
             {/* ── QUEUE TAB ── */}
             {tab === "queue" && (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-['Anton'] text-xl uppercase">Queue</h3>
-                  <span className="text-white/30 text-xs">{(data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? []).length} tracks</span>
-                </div>
-                {(data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? []).length === 0 ? (
-                  <div className="text-center py-10 text-white/20 text-sm">Queue is empty</div>
-                ) : (
-                  <div className="space-y-2">
-                    {(data?.submissions?.filter((s: ReviewSubmission) => s.status === "pending" || s.status === "playing") ?? []).map((sub: ReviewSubmission, idx: number) => (
-                      <div key={sub.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${sub.status === "playing" ? "border-red-600/40 bg-red-600/5" : "border-white/10 bg-white/[0.02] hover:bg-white/[0.04]"}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${sub.status === "playing" ? "bg-red-600 text-white" : "bg-white/10 text-white/50"}`}>
-                          {sub.status === "playing" ? "▶" : idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm truncate">{sub.songTitle}</div>
-                          <div className="text-white/40 text-xs truncate">{sub.artistName}</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {sub.skippedLine && <span className="text-[10px] bg-yellow-600/20 text-yellow-400 border border-yellow-600/30 px-2 py-0.5 rounded-full">Skip</span>}
-                          {user && sub.userId === user.id && !sub.skippedLine && (lineSkipCreditsData ?? 0) > 0 && <button type="button" onClick={() => useLineSkipMutation.mutate({ submissionId: sub.id })} disabled={useLineSkipMutation.isPending} className="rounded-lg border border-amber-400/35 bg-amber-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200 hover:bg-amber-400/20">Use Skip</button>}
-                          <StatusBadge status={sub.status} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ReviewPublicQueue />
             )}
 
             {/* ── HISTORY TAB ── */}
@@ -3181,6 +3164,13 @@ export default function MusicReview() {
                 )}
               </div>
             )}
+
+            <ReviewQueueTracker submissionId={submittedTrackId} className="review-v2-mine-placement" showEmpty={tab === "queue" || submitted} renderSubmissionAction={(item) => {
+              // Preserve V1 account Line Skip controls, separate from public
+              // position data. The existing server mutation remains unchanged.
+              const sub = data?.submissions.find((track) => track.id === item.submissionId);
+              return user && sub?.userId === user.id && sub.status === "pending" && !sub.skippedLine && (lineSkipCreditsData ?? 0) > 0 ? <button type="button" onClick={() => useLineSkipMutation.mutate({ submissionId: sub.id })} disabled={useLineSkipMutation.isPending} className="review-v2-button">Use Skip</button> : null;
+            }} />
 
           </div>
         </div>
