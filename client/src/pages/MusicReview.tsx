@@ -1,3 +1,4 @@
+import { ReviewAdminVotes } from "@/components/ReviewAdminVotes";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { shouldOpenReviewSubmissionPrompt } from "@shared/review-submission-prompt";
 import ReviewStudioControls from "@/components/ReviewStudioControls";
@@ -449,6 +450,7 @@ function AdminPanel({
               <button type="button" disabled={updateStatus.isPending} onClick={() => handleRemove(currentPlaying.id)} className="rounded-lg border border-red-400/25 px-3 py-2 text-[9px] font-bold uppercase text-red-200">Remove current</button>
             </div>}
           </section>
+          <ReviewAdminVotes song={currentPlaying} isLive={isLive} />
           <section className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4">
             <div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Queue management</p><h2 className="mt-1 font-['Anton'] text-2xl uppercase">Waiting line</h2></div><span className="text-[10px] text-white/30">{queue.length} waiting</span></div>
             <p className="mt-2 text-[10px] text-white/40">Move tracks up/down, remove entries, or choose what plays next. Payment approvals are below.</p>

@@ -7,7 +7,7 @@ import { getDb, getSetting, setSetting } from "./db";
 import { storagePut } from "./storage";
 import { reviewOccurrences, reviewSubmissions, reviewTikTokDeliveries, reviewGiftStreaks, queueState } from "../drizzle/schema";
 import { getReviewEventFeed, getReviewStudioSettings, publishReviewEvent, appendReviewEvent, broadcastReviewEvent } from "./review-studio-events";
-import { recordReviewVoteInTransaction } from "./review-occurrences";
+import { addAdminReviewVotes, recordReviewVoteInTransaction } from "./review-occurrences";
 import { withReviewTransportLock } from "./review-transport";
 import { parseReviewCommentVote } from "../shared/review-studio";
 
@@ -28,6 +28,13 @@ export const tiktokEventInput = z.object({
   giftId: z.string().max(64).optional(), giftType: z.number().int().optional(),
   repeatCount: z.number().int().min(1).max(1000000).optional(), repeatEnd: z.boolean().optional(),
   streakId: z.string().max(128).optional(),
+});
+export const adminVotesInput = z.object({
+  submissionId: z.number().int().positive(),
+  occurrenceId: z.string().min(1).max(64).nullish(),
+  reaction: z.enum(["fire", "trash"]),
+  amount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  requestId: z.string().uuid(),
 });
 export async function ingestTikTokReviewEvent(input: z.infer<typeof tiktokEventInput>) {
   const settings = await getReviewStudioSettings();
@@ -74,6 +81,7 @@ export async function ingestTikTokReviewEvent(input: z.infer<typeof tiktokEventI
 export const reviewStudioRouter = router({
   settings: publicProcedure.query(getReviewStudioSettings),
   events: publicProcedure.input(z.object({ after: z.number().int().nonnegative().optional() })).query(({ input }) => getReviewEventFeed(input.after)),
+  addVotes: adminProcedure.input(adminVotesInput).mutation(({ ctx, input }) => addAdminReviewVotes(input, ctx.user.id)),
   previous: publicProcedure.query(async () => {
     const db = await getDb(); if (!db) return null;
     const [previous] = await db.select({ id: reviewSubmissions.id, songTitle: reviewSubmissions.songTitle, artistName: reviewSubmissions.artistName, userId: reviewSubmissions.userId, reviewedAt: reviewSubmissions.reviewedAt })

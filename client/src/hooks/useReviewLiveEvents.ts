@@ -27,6 +27,11 @@ export function useReviewLiveEvents(onEvent?: (event: ReviewLiveEvent) => void) 
     if (seen.current.size > 5000) seen.current.delete(seen.current.values().next().value!);
     setEvents((items) => [...items.slice(-199), event]);
     callback.current?.(event);
+    if (event.type === "admin_votes_added") {
+      void utils.queue.getAll.invalidate();
+      void utils.queue.getReviewed.invalidate();
+      if (event.submissionId) void utils.queue.getReactions.invalidate({ submissionId: event.submissionId });
+    }
     if (event.type === "studio_settings_changed") void utils.reviewStudio.settings.invalidate();
     if (["song_started", "song_completed", "queue_changed", "submission_accepted"].includes(event.type)) {
       void utils.queue.getAll.invalidate(); void utils.queue.getReviewed.invalidate();

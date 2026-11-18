@@ -69,14 +69,14 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   position: int("position").default(0).notNull(),
   notes: text("notes"),
   // Career reaction totals (incremented on each vote)
-  fireCount: int("fireCount").default(0).notNull(),
-  trashCount: int("trashCount").default(0).notNull(),
+  fireCount: bigint("fireCount", { mode: "number" }).default(0).notNull(),
+  trashCount: bigint("trashCount", { mode: "number" }).default(0).notNull(),
   verdict: varchar("verdict", { length: 64 }),
   crowdFirePct: int("crowdFirePct"),
   crowdTrashPct: int("crowdTrashPct"),
   judgeFireCount: int("judgeFireCount").default(0).notNull(),
   judgeTrashCount: int("judgeTrashCount").default(0).notNull(),
-  totalVoteCount: int("totalVoteCount").default(0).notNull(),
+  totalVoteCount: bigint("totalVoteCount", { mode: "number" }).default(0).notNull(),
   skipVoteTriggered: boolean("skipVoteTriggered").default(false).notNull(),
   reviewedAt: timestamp("reviewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -92,8 +92,11 @@ export const reviewOccurrences = mysqlTable("review_occurrences", {
   startedAtMs: bigint("startedAtMs", { mode: "number" }).notNull(),
   completedAtMs: bigint("completedAtMs", { mode: "number" }),
   completionReason: varchar("completionReason", { length: 16 }),
-  fire: int("fire").default(0).notNull(),
-  trash: int("trash").default(0).notNull(),
+  fire: bigint("fire", { mode: "number" }).default(0).notNull(),
+  trash: bigint("trash", { mode: "number" }).default(0).notNull(),
+  // Admin additions are not voter accounts and never contribute judge votes.
+  adminFire: bigint("adminFire", { mode: "number" }).default(0).notNull(),
+  adminTrash: bigint("adminTrash", { mode: "number" }).default(0).notNull(),
 });
 export const reviewOccurrenceVotes = mysqlTable("review_occurrence_votes", {
   id: int("id").autoincrement().primaryKey(),

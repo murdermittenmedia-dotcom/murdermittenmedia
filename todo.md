@@ -5308,3 +5308,12 @@ Operator setup: publish the saved checkpoint to activate production links; uploa
 - [x] Cash App and PayPal screenshot/receipt proof for paid entries and add-ons, guest ownership, admin-only proof/method display and manual approval; Stripe retained.
 - [x] PNG/JPEG/WebP proof validation and 5MB cap; music files remain MP3/WAV/M4A only; upload rate limits and public receipt redaction.
 - [x] Additive migration 0073 reviewed/applied; TypeScript, 78 files/461 tests and production build passed. Phone/desktop popup, guest PayPal proof input, single-form mount and admin panel checked read-only. No real payment or approval was performed.
+
+## Administrator Fire / Trash additions — 2026-11-17
+- [x] Add prominent admin-only controls beneath Now Playing in the review pop-out with a custom whole-number amount, 1/10/100/1000 shortcuts, and separate Add Fire / Add Trash buttons.
+- [x] Persist occurrence-specific administrator counters separately from real viewer/judge identities; support repeated arbitrary positive safe-integer amounts without a one-vote or small business cap.
+- [x] Enforce admin authorization, current-song/occurrence locks, durable duplicate request IDs, safe retries and overflow rollback.
+- [x] Include additions in live totals and final history; preserve viewer vote switching and judge counts; reset administrator additions for a newly requeued occurrence.
+- [x] Refresh admin, public review and OBS via realtime events/polling; clearly label admin-added activity without fabricated voters or per-vote audio bursts.
+- [x] Generate, review and apply migration 0074 with zero defaults and BIGINT counters; no existing votes reset.
+- [x] Pass TypeScript, git diff check, 80 files / 488 tests and production build. Inspect admin/OBS read-only; no live votes added during verification.

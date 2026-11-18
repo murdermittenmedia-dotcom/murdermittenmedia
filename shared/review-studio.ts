@@ -1,9 +1,19 @@
-export type ReviewLiveEventType = "song_started" | "song_completed" | "queue_changed" | "valid_vote_recorded" | "vote_changed" | "submission_accepted" | "manual_sound_triggered" | "gift_received" | "soundboard_stopped" | "studio_settings_changed";
+export type ReviewLiveEventType = "song_started" | "song_completed" | "queue_changed" | "valid_vote_recorded" | "vote_changed" | "admin_votes_added" | "submission_accepted" | "manual_sound_triggered" | "gift_received" | "soundboard_stopped" | "studio_settings_changed";
 export type ReviewLiveEvent = {
   id: string; sequence: number; type: ReviewLiveEventType; timestamp: number;
   occurrenceId: string | null; submissionId: number | null;
   actor?: string; songTitle?: string; artistName?: string; reaction?: "fire" | "trash";
   soundId?: string; soundUrl?: string; giftId?: string; units?: number;
+  amount?: number; adminUserId?: number; requestedOccurrenceId?: string | null;
+  fire?: number; trash?: number; adminFire?: number; adminTrash?: number;
+};
+export type ReviewAdminVotesInput = {
+  submissionId: number; occurrenceId?: string | null; reaction: "fire" | "trash";
+  amount: number; requestId: string;
+};
+export type ReviewAdminVotesResult = {
+  success: true; occurrenceId: string; fire: number; trash: number;
+  adminFire: number; adminTrash: number; added: number; duplicate: boolean;
 };
 export type ReviewSound = { id: string; label: string; url: string | null };
 export type ReviewStudioSettings = {
@@ -36,5 +46,6 @@ export function reviewActivityText(event: ReviewLiveEvent) {
   if (!actor) return null;
   if (event.type === "submission_accepted") return `🎵 ${actor} submitted a song!${event.songTitle ? ` ${event.songTitle}` : ""}`;
   if (event.type === "valid_vote_recorded" || event.type === "vote_changed") return event.reaction === "fire" ? `🔥 ${actor} voted FIRE!` : event.reaction === "trash" ? `🗑️ ${actor} voted TRASH!` : null;
+  if (event.type === "admin_votes_added" && event.amount && event.reaction) return `Review admin added ${event.amount.toLocaleString("en-US")} ${event.reaction.toUpperCase()} votes.`;
   return null;
 }

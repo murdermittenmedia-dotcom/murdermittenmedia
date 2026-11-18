@@ -519,6 +519,13 @@
       "when": 1794973354002,
       "tag": "0073_strange_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1794974745032,
+      "tag": "0074_fluffy_captain_america",
+      "breakpoints": true
     }
   ]
 }

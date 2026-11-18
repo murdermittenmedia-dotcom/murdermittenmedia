@@ -30,6 +30,11 @@ export function useReviewQueue() {
     socket.on("review:reactions_updated", (event: { submissionId: number }) => {
       void utils.queue.getReactions.invalidate({ submissionId: event.submissionId });
     });
+    socket.on("review:live_event", (event: { type: string; submissionId: number | null }) => {
+      if (event.type !== "admin_votes_added") return;
+      void refresh();
+      if (event.submissionId) void utils.queue.getReactions.invalidate({ submissionId: event.submissionId });
+    });
     return () => { socket.disconnect(); };
   }, [utils]);
   return query;
