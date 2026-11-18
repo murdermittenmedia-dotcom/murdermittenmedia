@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Copy, LockKeyhole, RefreshCw } from "lucide-react";
+import { LockKeyhole, RefreshCw } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
-import { ReviewQueueTracker, ReviewTrackingCard, ReviewTikTokLink, useTrackingFreshness } from "@/components/ReviewQueueTracker";
+import { ReviewQueueTracker, ReviewTrackingCard, useTrackingFreshness } from "@/components/ReviewQueueTracker";
 import { useReviewLiveEvents } from "@/hooks/useReviewLiveEvents";
 import { trpc } from "@/lib/trpc";
 import { REVIEW_TRACKING_POLL_MS, type ResolvedReviewTrackingSnapshot } from "@shared/review-tracking";
@@ -29,7 +29,6 @@ export default function ReviewTracking() {
   const [updatedAt, setUpdatedAt] = useState(0);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(Boolean(token));
-  const [copyMessage, setCopyMessage] = useState("");
   const inFlight = useRef(false);
   const mounted = useRef(true);
   const { fresh, online, liveFacts } = useTrackingFreshness(updatedAt, failed, snapshot);
@@ -58,10 +57,6 @@ export default function ReviewTracking() {
     return () => { mounted.current = false; window.clearInterval(timer); window.removeEventListener("online", reconnect); window.removeEventListener("focus", reconnect); };
   }, [refresh]);
   useReviewLiveEvents((event) => { if (["song_started", "song_completed", "queue_changed", "submission_accepted"].includes(event.type)) void refresh(); });
-  const copyPrivateLink = async () => {
-    try { await navigator.clipboard.writeText(`${window.location.origin}/review/track#${encodeURIComponent(token)}`); setCopyMessage("Private link copied. Keep it safe; anyone with the link can view this submission."); }
-    catch { setCopyMessage("Clipboard unavailable. Allow clipboard access and try again."); }
-  };
   return <div className="review-v2-private-page min-h-screen bg-[#080808] text-white">
     <SiteNav />
     <main className="review-v2-private-main">
@@ -69,18 +64,13 @@ export default function ReviewTracking() {
       <p className="review-v2-help">Your tracking credential is removed from the address bar and used only for secure tracking requests. Do not share your private link publicly.</p>
       {!token ? <>
         <ReviewQueueTracker />
-        <p className="review-v2-notice">Have a saved private link? Open the complete link on this device. It restores access without a new account or form.</p>
+        <p className="review-v2-notice">Your submissions also appear automatically on the main review page in this browser or when signed into your account.</p>
       </> : <section className="review-v2-panel">
         <div className="review-v2-update" role="status" aria-live="polite"><span className={`review-v2-dot ${fresh && snapshot?.isLive !== false ? "is-live" : ""}`} /><span>{loading ? "Opening your private submission…" : !online ? "Offline — positions hidden" : !fresh ? "Reconnecting — positions hidden" : snapshot?.isLive === false ? "Session offline — positions paused" : "Auto-updating"}</span>{!fresh && !loading && <button type="button" className="review-v2-icon-button" onClick={() => void refresh()} aria-label="Retry private tracking"><RefreshCw size={16} /></button>}</div>
-        {failed && <p className="review-v2-notice" role="alert">Unable to refresh this private submission. Check your connection and retry. If this link expired or was replaced, recover a new link from My Submissions in the original browser or account.</p>}
-        {snapshot && <ReviewTrackingCard item={snapshot.submission} stale={!fresh} liveFacts={liveFacts}>
-          <div className="review-v2-actions"><button type="button" className="review-v2-button" onClick={() => void copyPrivateLink()}><Copy size={15} />Copy private tracking link</button></div>
-          {copyMessage && <p className="review-v2-help" role="status">{copyMessage}</p>}
-          <ReviewTikTokLink submissionId={snapshot.submission.submissionId} token={token} disabled={!fresh} />
-        </ReviewTrackingCard>}
+        {failed && <p className="review-v2-notice" role="alert">Unable to refresh this private submission. Check your connection and retry. Return to the main review page in your original browser or account to see your submissions automatically.</p>}
+        {snapshot && <ReviewTrackingCard item={snapshot.submission} stale={!fresh} liveFacts={liveFacts} />}
         {!snapshot && !loading && !failed && <p className="review-v2-empty">Waiting for a secure tracking update.</p>}
       </section>}
-      <p className="review-v2-help">Galaxy is the only eligible gift-based priority request. Linking does not guarantee a queue move; the server confirms eligibility and gift receipt without interrupting the current review.</p>
     </main>
   </div>;
 }

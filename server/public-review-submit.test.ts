@@ -14,10 +14,12 @@ describe("public Music Review submissions", () => {
     expect(page).not.toContain('toast.error("Please login to submit your track")');
   });
 
-  it("keeps paid submissions gated and limits guest uploads to supported audio formats", () => {
+  it("keeps paid submissions proof-gated without forcing guest login and limits uploads to supported audio formats", () => {
     const router = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
     const page = readFileSync(resolve(process.cwd(), "client/src/pages/MusicReview.tsx"), "utf8");
-    expect(router).toContain("if (!ctx.user && input.paidSubmissionType)");
+    expect(router).toContain("hasManualPaymentProof(input.receiptUrl, input.paymentMethod)");
+    expect(router).toContain("if (!ctx.user && !input.artistName?.trim())");
+    expect(router).not.toContain("if (!ctx.user && input.paidSubmissionType)");
     expect(page).toContain("Upload an MP3, WAV, or M4A file");
     expect(page).toContain(".mp3,.wav,.m4a");
   });

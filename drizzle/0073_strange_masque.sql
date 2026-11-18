@@ -1,0 +1,1 @@
+ALTER TABLE `review_submissions` ADD `paymentMethod` varchar(64);

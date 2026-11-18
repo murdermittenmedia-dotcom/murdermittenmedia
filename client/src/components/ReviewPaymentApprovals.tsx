@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { CheckCircle, ExternalLink, Receipt } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { isReviewPaymentProofImage, isSafeReviewPaymentReceipt } from "@/components/ReviewPaymentProof";
 
 export type ReviewPaymentRecord = {
   id: number; artistName: string; songTitle: string; status: string;
@@ -9,9 +11,11 @@ export type ReviewPaymentRecord = {
   paidSubmissionType?: string | null; cashappPaymentReceiptUrl?: string | null;
   stripePaymentSessionId?: string | null;
   fullSongRequested?: boolean;
+  paymentMethod?: string | null;
 };
 
 export function ReviewPaymentApprovals({ submissions }: { submissions: ReviewPaymentRecord[] }) {
+  const [failedPreviews, setFailedPreviews] = useState<Set<string>>(() => new Set());
   const utils = trpc.useUtils();
   const approvals = submissions.filter((song) => ["pending", "playing"].includes(song.status) &&
     ((song.skippedLine && !song.skipPaymentConfirmed) || (song.isPaidSubmission && !song.paidSubmissionConfirmed) || (song.fullSongRequested && !song.paidSubmissionConfirmed)));
@@ -37,15 +41,21 @@ export function ReviewPaymentApprovals({ submissions }: { submissions: ReviewPay
           const skipPending = song.skippedLine && !song.skipPaymentConfirmed;
           const kind = paidPending ? "paid_submission" : fullPending ? (skipPending ? "full_song_skip" : "full_song") : "skip";
           const label = paidPending ? (song.paidSubmissionType === "skip" ? "Paid entry + line skip" : "Paid entry / full-song review") : fullPending ? (skipPending ? "Full song + line skip" : "Full-song playback") : "Line skip";
-          const receipt = song.cashappPaymentReceiptUrl;
-          const receiptIsSafe = !!receipt && /^https?:\/\//i.test(receipt);
+          const receipt = song.cashappPaymentReceiptUrl?.trim() ?? "";
+          const receiptIsSafe = isSafeReviewPaymentReceipt(receipt);
+          const receiptIsImage = isReviewPaymentProofImage(receipt);
+          const methodLabel = song.paymentMethod || (song.stripePaymentSessionId ? "Stripe" : receipt ? "Cash App (legacy receipt)" : "Not recorded");
           return (
             <div key={song.id} className="rounded-lg border border-amber-300/15 bg-black/20 p-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0"><p className="truncate text-xs font-semibold text-white">{song.songTitle}</p><p className="truncate text-[10px] text-white/40">{song.artistName}</p><p className="mt-1 text-[10px] font-bold text-amber-200">{label}</p></div>
+                <div className="min-w-0"><p className="truncate text-xs font-semibold text-white">{song.songTitle}</p><p className="truncate text-[10px] text-white/40">{song.artistName}</p><p className="mt-1 text-[10px] font-bold text-amber-200">{label}</p><p className="mt-1 text-[10px] text-white/50">Payment method: {methodLabel}</p></div>
                 <button type="button" disabled={approve.isPending} onClick={() => approve.mutate({ id: song.id, kind })} className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-amber-300 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-black hover:bg-amber-200 disabled:opacity-40"><CheckCircle className="h-3 w-3" />{paidPending ? "Approve paid entry" : fullPending ? (skipPending ? "Approve both" : "Approve full song") : "Approve skip"}</button>
               </div>
-              {receiptIsSafe ? <a href={receipt!} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-[10px] text-blue-300 underline">View payment receipt <ExternalLink className="h-3 w-3" /></a> : <p className="mt-2 text-[10px] text-white/35">{song.stripePaymentSessionId ? "Stripe checkout recorded. Verify the payment in Stripe." : "No receipt attached. Check the received payment manually."}</p>}
+              {receiptIsSafe ? <a href={receipt} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex flex-col items-start gap-2 text-[10px] text-blue-300 underline">
+                {receiptIsImage && !failedPreviews.has(receipt) && <img src={receipt} alt={`${methodLabel} payment screenshot for ${song.artistName} — ${song.songTitle}`} loading="lazy" onError={() => setFailedPreviews((previous) => new Set(previous).add(receipt))} className="max-h-40 max-w-full rounded-md border border-white/15 object-contain" />}
+                <span className="inline-flex items-center gap-1">{receiptIsImage ? "View payment screenshot" : "View payment receipt"} <ExternalLink className="h-3 w-3" aria-hidden="true" /></span>
+                {receiptIsImage && failedPreviews.has(receipt) && <span className="text-white/45 no-underline">Preview unavailable. Open the screenshot to verify payment.</span>}
+              </a> : <p className="mt-2 text-[10px] text-white/35">{song.stripePaymentSessionId ? "Stripe checkout recorded. Verify the payment in Stripe." : receipt ? "Receipt link unavailable. Check the received payment manually." : "No receipt attached. Check the received payment manually."}</p>}
             </div>
           );
         })}

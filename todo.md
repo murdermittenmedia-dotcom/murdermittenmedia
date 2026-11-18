@@ -5300,3 +5300,11 @@ Operator setup: publish the saved checkpoint to activate production links; uploa
 - [x] Paid-only ON/OFF and quota regression coverage; 76 files / 436 tests and 12 standalone connector tests passed, typecheck/build clean.
 - [x] Credential-free Windows ZIP plus exact source manifest and operator guide delivered.
 - [ ] Operator: Publish V2 checkpoint, pair real streaming PC during LIVE, verify actual Galaxy payload/link/reward and Windows permissions, and record OBS single-audio-path check. Not claimed as completed or live-verified.
+
+## Review submission popup and payment proof — 2026-11-17
+- [x] Automatic full submission popup on each public review-page mount; easy close, no duplicate mounted form, excluded admin/OBS, closes after successful submission.
+- [x] Remove redundant Skip Track tab; Submit Now, Queue and Recently Played remain. Add-ons stay in the unified submission form.
+- [x] Remove tracking-link and TikTok-link buttons. Automatically show owned tracks, queue position and songs ahead on each return; approval-pending entries are labeled honestly and old results are collapsed.
+- [x] Cash App and PayPal screenshot/receipt proof for paid entries and add-ons, guest ownership, admin-only proof/method display and manual approval; Stripe retained.
+- [x] PNG/JPEG/WebP proof validation and 5MB cap; music files remain MP3/WAV/M4A only; upload rate limits and public receipt redaction.
+- [x] Additive migration 0073 reviewed/applied; TypeScript, 78 files/461 tests and production build passed. Phone/desktop popup, guest PayPal proof input, single-form mount and admin panel checked read-only. No real payment or approval was performed.

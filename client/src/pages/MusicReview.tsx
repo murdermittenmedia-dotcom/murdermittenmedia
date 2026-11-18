@@ -1,3 +1,5 @@
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { shouldOpenReviewSubmissionPrompt } from "@shared/review-submission-prompt";
 import ReviewStudioControls from "@/components/ReviewStudioControls";
 import { useReviewLiveEvents } from "@/hooks/useReviewLiveEvents";
 /* ============================================================
@@ -9,6 +11,8 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { ReviewPaymentApprovals } from "@/components/ReviewPaymentApprovals";
 import { ReviewOverlayLink } from "@/components/ReviewOverlayLink";
+import { ReviewPaymentProof } from "@/components/ReviewPaymentProof";
+import { MUSIC_REVIEW_PAID_OPTIONS } from "@shared/music-review-paywall";
 import { ReviewSubmissionAddOns, type ReviewUpgradeChoice } from "@/components/ReviewSubmissionAddOns";
 import { hasApprovedFullSongAccess, isReviewSubmissionEligible } from "@shared/review-payment-access";
 import { useReviewQueue } from "@/hooks/useReviewQueue";
@@ -167,7 +171,7 @@ type JudgeBroadcastSession = { broadcastId: number; token: string; livekitUrl: s
 const PAYPAL = "MurderMittenPromo";
 const APPLEPAY = "313-420-9004";
 
-type SubmitTab = "queue" | "history" | "submit" | "skip-info";
+type SubmitTab = "queue" | "history" | "submit";
 
 // ── Helpers ───────────────────────────────────────────────────
 function extractYouTubeId(url: string): string | null {
@@ -1425,7 +1429,13 @@ function FireTrashPoll({
 }
 
 // ── Main page ─────────────────────────────────────────────────
+function reviewAudioMime(fileName: string): "audio/mpeg" | "audio/wav" | "audio/mp4" {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  return extension === "wav" ? "audio/wav" : extension === "m4a" ? "audio/mp4" : "audio/mpeg";
+}
+
 export default function MusicReview() {
+  const [submissionPromptOpen, setSubmissionPromptOpen] = useState(() => typeof window !== "undefined" && shouldOpenReviewSubmissionPrompt(window.location.pathname, window.location.search));
   const [tab, setTab] = useState<SubmitTab>(() => {
     if (typeof window === "undefined") return "queue";
     const params = new URLSearchParams(window.location.search);
@@ -1437,6 +1447,8 @@ export default function MusicReview() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const submissionGate = useRef(false);
+  useEffect(() => { if (!submitting) submissionGate.current = false; }, [submitting]);
   const [submittedTrackId, setSubmittedTrackId] = useState<number | null>(null);
   const [reviewUpgrade, setReviewUpgrade] = useState<ReviewUpgradeChoice>({ kind: "none", method: "Stripe", receiptUrl: "" });
   const [upgradeBusy, setUpgradeBusy] = useState(false);
@@ -1444,7 +1456,7 @@ export default function MusicReview() {
   const allowance = trpc.reviewSubmission.allowance.useQuery(undefined, { refetchOnWindowFocus: true, refetchInterval: 30_000 });
   const deviceTracks = trpc.reviewSubmission.myTracks.useQuery(undefined, { enabled: allowance.data?.remaining === 0, refetchOnWindowFocus: true });
   const createAddOnCheckout = trpc.reviewSubmission.createCheckout.useMutation();
-  const requestAddOnCashApp = trpc.reviewSubmission.requestCashApp.useMutation();
+  const requestManualPayment = trpc.reviewSubmission.requestManualPayment.useMutation();
   const confirmAddOnCheckout = trpc.reviewSubmission.confirmCheckout.useMutation();
 
   const [audioUnlocked, setAudioUnlocked] = useState(false);
@@ -1455,17 +1467,11 @@ export default function MusicReview() {
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Skip-the-line payment flow state
-  const [skipStep, setSkipStep] = useState<"select" | "pay" | "confirm" | "done">("select");
-  const [selectedSkipType, setSelectedSkipType] = useState<"skip" | "bundle3" | null>(null);
-  const [skipReceiptUrl, setSkipReceiptUrl] = useState("");
-  const [skipPaymentMethod, setSkipPaymentMethod] = useState("");
   const [paidReceiptUrl, setPaidReceiptUrl] = useState("");
+  const [paidPaymentMethod, setPaidPaymentMethod] = useState<"Stripe" | "Cash App" | "PayPal">("Cash App");
+  const [paymentProofUploading, setPaymentProofUploading] = useState(false);
   const [selectedPaidType, setSelectedPaidType] = useState<'reentry5' | 'reentry10' | 'skip' | null>(null);
-  const [skipSubmitting, setSkipSubmitting] = useState(false);
-  const createSkipStripeCheckout = trpc.stripe.createSkipCheckoutSession.useMutation();
   const confirmSkipStripeCheckout = trpc.stripe.confirmSkipCheckout.useMutation();
-  const requestSkipMutation = trpc.queue.requestSkip.useMutation();
 
   const { user } = useAuth();
   const { data: savedBotSettings } = trpc.queue.getReviewBotSettings.useQuery(undefined, { refetchInterval: 5000 });
@@ -1562,11 +1568,11 @@ export default function MusicReview() {
         const checkout = await createAddOnCheckout.mutateAsync({ submissionId, kind: reviewUpgrade.kind, origin: window.location.origin });
         window.location.assign(checkout.checkoutUrl);
       } else {
-        await requestAddOnCashApp.mutateAsync({ submissionId, kind: reviewUpgrade.kind, receiptUrl: reviewUpgrade.receiptUrl.trim() });
+        await requestManualPayment.mutateAsync({ submissionId, kind: reviewUpgrade.kind, paymentMethod: reviewUpgrade.method, receiptUrl: reviewUpgrade.receiptUrl.trim() });
         setUpgradeStatus("pending");
         setUpgradeBusy(false);
         void refetch();
-        toast.success("Cash App receipt submitted — awaiting admin approval");
+        toast.success(`${reviewUpgrade.method} payment proof submitted — awaiting admin approval`);
       }
     } catch (error: any) {
       setUpgradeBusy(false);
@@ -1628,7 +1634,10 @@ export default function MusicReview() {
         setLimitReachedData(data as any);
         setSubmitting(false);
       } else if (data.success) {
-        if ((data as any).isPaid) {
+        setSubmittedTrackId(data.submissionId);
+        setSubmitted(true);
+        setSubmissionPromptOpen(false);
+        if (data.isPaid) {
           setPaidSubmitSuccess('basic');
           setLimitReachedData(null);
           setPendingFormData(null);
@@ -1653,7 +1662,10 @@ export default function MusicReview() {
         setLimitReachedData(data as any);
         setSubmitting(false);
       } else if (data.success) {
-        if ((data as any).isPaid) {
+        setSubmittedTrackId(data.submissionId);
+        setSubmitted(true);
+        setSubmissionPromptOpen(false);
+        if (data.isPaid) {
           setPaidSubmitSuccess('basic');
           setLimitReachedData(null);
           setPendingFormData(null);
@@ -1678,13 +1690,16 @@ export default function MusicReview() {
       confirmPaidSubmissionCheckoutMutation.mutate({ sessionId }, {
         onSuccess: (result) => {
           setPaidSubmitSuccess(result.alreadyCreated ? "already-created" : "stripe");
+          setSubmittedTrackId(result.submissionId);
+          setSubmitted(true);
+          setSubmissionPromptOpen(false);
           setLimitReachedData(null);
           setPendingFormData(null);
           setSelectedPaidType(null);
           setPaidReceiptUrl("");
           setSubmitting(false);
           refetch();
-          toast.success("Payment verified — your paid track is pending admin approval.");
+          toast.success("Stripe payment verified — your position updates automatically below.");
         },
         onError: (error) => {
           setSubmitting(false);
@@ -1930,22 +1945,32 @@ export default function MusicReview() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting || upgradeBusy) return;
-    const currentAllowance = await allowance.refetch();
-    if (!currentAllowance.data || currentAllowance.data.remaining === 0) { toast.error("Daily limit: two submissions per device/IP. Resets at midnight Michigan time."); return; }
-    if (reviewUpgrade.kind !== "none" && reviewUpgrade.method === "Cash App") {
-      try { const receipt = new URL(reviewUpgrade.receiptUrl.trim()); if (!["http:", "https:"].includes(receipt.protocol)) throw new Error(); }
-      catch { toast.error("Paste your Cash App receipt link before submitting the add-on request."); return; }
-    }
+    if (submitting || upgradeBusy || paymentProofUploading || submissionGate.current) return;
+    const paidOnly = data?.state?.playbackMode === "paid_only";
+    const paidType = selectedPaidType ?? "reentry5";
+    const manualEntry = paidOnly && paidPaymentMethod !== "Stripe";
+    const hasProof = (value: string) => /^https?:\/\//i.test(value.trim()) || value.startsWith("/manus-storage/review-payment-proofs/");
+    if (manualEntry && !hasProof(paidReceiptUrl)) { toast.error("Upload your payment screenshot or paste a receipt link before submitting."); return; }
+    if (!paidOnly && reviewUpgrade.kind !== "none" && reviewUpgrade.method !== "Stripe" && !hasProof(reviewUpgrade.receiptUrl)) { toast.error("Upload your add-on payment screenshot or paste a receipt link."); return; }
+    if (paidOnly && paidPaymentMethod === "Stripe" && !user) { toast.error("Sign in for Stripe checkout, or choose Cash App or PayPal to submit as a guest."); return; }
     if (!user && !form.artistName.trim()) { toast.error("Enter your artist name to submit as a guest"); return; }
     if (!form.songTitle) { toast.error("Please fill in song title"); return; }
     if (submitType === "youtube" && !form.youtubeUrl) { toast.error("Please enter a YouTube link"); return; }
     if (submitType === "file" && !audioFile) { toast.error("Please select an audio file"); return; }
     if (submitType === "file" && audioFile && !/\.(mp3|wav|m4a)$/i.test(audioFile.name)) { toast.error("Upload an MP3, WAV, or M4A file"); return; }
-        setSubmitting(true);
-    const paidOnly = data?.state?.playbackMode === "paid_only";
-    const paidType = selectedPaidType ?? "reentry5";
-    if (paidOnly) {
+    submissionGate.current = true;
+    setSubmitting(true);
+    try {
+      const currentAllowance = await allowance.refetch();
+      if (!currentAllowance.data || currentAllowance.data.remaining === 0) {
+        submissionGate.current = false; setSubmitting(false);
+        toast.error("Daily limit: two submissions per device/IP. Resets at midnight Michigan time."); return;
+      }
+    } catch {
+      submissionGate.current = false; setSubmitting(false);
+      toast.error("Could not check your submission allowance. Please retry."); return;
+    }
+    if (paidOnly && paidPaymentMethod === "Stripe") {
       setSelectedPaidType(paidType);
       setPaidSubmitSuccess(null);
       try {
@@ -1957,9 +1982,9 @@ export default function MusicReview() {
               const prepared = await preparePaidSubmissionAudioMutation.mutateAsync({
                 fileBase64: base64,
                 fileName: audioFile.name,
-                mimeType: (audioFile.type || "audio/mpeg") as "audio/mpeg" | "audio/wav" | "audio/mp4" | "audio/x-m4a",
+                mimeType: reviewAudioMime(audioFile.name),
               });
-              setPendingFormData({ type: "file", artistName: form.artistName || undefined, songTitle: form.songTitle, contactInfo: form.contactInfo || undefined, wantsSkip: false, fileBase64: base64, fileName: audioFile.name, mimeType: audioFile.type || "audio/mpeg" });
+              setPendingFormData({ type: "file", artistName: form.artistName || undefined, songTitle: form.songTitle, contactInfo: form.contactInfo || undefined, wantsSkip: false, fileBase64: base64, fileName: audioFile.name, mimeType: reviewAudioMime(audioFile.name) });
               const checkout = await createPaidSubmissionCheckoutMutation.mutateAsync({
                 submissionType: "file", songTitle: form.songTitle, fileKey: prepared.fileKey, fileUrl: prepared.fileUrl,
                 contactInfo: form.contactInfo || undefined, paidSubmissionType: paidType, origin: window.location.origin,
@@ -1970,6 +1995,7 @@ export default function MusicReview() {
               toast.error(error?.message ?? "Unable to start paid checkout");
             }
           };
+          reader.onerror = () => { submissionGate.current = false; setSubmitting(false); toast.error("Could not read the audio file. Please choose it again."); };
           reader.readAsDataURL(audioFile);
         } else {
           setPendingFormData({ type: "youtube", artistName: form.artistName || undefined, songTitle: form.songTitle, youtubeUrl: form.youtubeUrl, contactInfo: form.contactInfo || undefined, wantsSkip: false });
@@ -1998,21 +2024,23 @@ export default function MusicReview() {
           wantsSkip: false,
           fileBase64: base64,
           fileName: audioFile.name,
-          mimeType: audioFile.type || "audio/mpeg",
+          mimeType: reviewAudioMime(audioFile.name),
         });
         uploadAudioMutation.mutate({
           artistName: form.artistName || undefined,
           songTitle: form.songTitle,
           fileName: audioFile.name,
           fileBase64: base64,
-          mimeType: audioFile.type || "audio/mpeg",
+          mimeType: reviewAudioMime(audioFile.name),
           contactInfo: form.contactInfo || undefined,
           wantsSkip: false,
-          receiptUrl: undefined,
-          paymentMethod: undefined,
+          paidSubmissionType: manualEntry ? paidType : undefined,
+          receiptUrl: manualEntry ? paidReceiptUrl.trim() : undefined,
+          paymentMethod: manualEntry ? paidPaymentMethod : undefined,
         });
       };
-      reader.readAsDataURL(audioFile);
+      reader.onerror = () => { submissionGate.current = false; setSubmitting(false); toast.error("Could not read the audio file. Please choose it again."); };
+          reader.readAsDataURL(audioFile);
     } else {
       setPendingFormData({
         type: 'youtube',
@@ -2028,8 +2056,9 @@ export default function MusicReview() {
         youtubeUrl: form.youtubeUrl,
         contactInfo: form.contactInfo || undefined,
         wantsSkip: false,
-        receiptUrl: undefined,
-        paymentMethod: undefined,
+        paidSubmissionType: manualEntry ? paidType : undefined,
+        receiptUrl: manualEntry ? paidReceiptUrl.trim() : undefined,
+        paymentMethod: manualEntry ? paidPaymentMethod : undefined,
       });
     }
   };
@@ -2038,25 +2067,27 @@ export default function MusicReview() {
     if (!pendingFormData) return;
     const receiptUrl = paidReceiptUrl.trim();
     if (receiptUrl.length < 4) {
-      toast.error("Send payment to $MittenMedia in Cash App, then paste the receipt URL.");
+      toast.error("Upload a payment screenshot or paste your Cash App / PayPal receipt.");
       return;
     }
     setPaidSubmitSuccess(null);
     setSubmitting(true);
     if (pendingFormData.type === 'file' && pendingFormData.fileBase64) {
       uploadAudioMutation.mutate({
+        artistName: pendingFormData.artistName,
         songTitle: pendingFormData.songTitle,
         fileName: pendingFormData.fileName!,
         fileBase64: pendingFormData.fileBase64,
-        mimeType: pendingFormData.mimeType || "audio/mpeg",
+        mimeType: reviewAudioMime(pendingFormData.fileName ?? ""),
         contactInfo: pendingFormData.contactInfo,
         wantsSkip: paidType === 'skip',
         paidSubmissionType: paidType,
         receiptUrl,
-        paymentMethod: "Cash App",
+        paymentMethod: paidPaymentMethod === "PayPal" ? "PayPal" : "Cash App",
       });
     } else {
       submitMutation.mutate({
+        artistName: pendingFormData.artistName,
         songTitle: pendingFormData.songTitle,
         submissionType: "youtube",
         youtubeUrl: pendingFormData.youtubeUrl,
@@ -2064,7 +2095,7 @@ export default function MusicReview() {
         wantsSkip: paidType === 'skip',
         paidSubmissionType: paidType,
         receiptUrl,
-        paymentMethod: "Cash App",
+        paymentMethod: paidPaymentMethod === "PayPal" ? "PayPal" : "Cash App",
       });
     }
   };
@@ -2102,62 +2133,20 @@ export default function MusicReview() {
     }
   };
 
-  // Standalone skip-the-line purchase (user already has a submission in queue)
-  const handleStripeSkipCheckout = async (requestedType: "skip" | "bundle3" | null = selectedSkipType) => {
-    if (!requestedType || !user) return;
-    const mySubmission = data?.submissions?.find(s => s.userId === user.id && (s.status === "pending" || s.status === "playing") && !s.skippedLine);
-    setSkipSubmitting(true);
-    try {
-      const result = await createSkipStripeCheckout.mutateAsync({
-        submissionId: mySubmission?.id,
-        skipType: requestedType,
-        origin: window.location.origin,
-      });
-      window.location.assign(result.checkoutUrl);
-    } catch (error: any) {
-      setSkipSubmitting(false);
-      toast.error(error?.message ?? "Unable to open Stripe checkout");
-    }
-  };
-
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("session_id");
     if (params.get("skip_paid") !== "true" || !sessionId || !user || confirmSkipStripeCheckout.isPending) return;
     void confirmSkipStripeCheckout.mutateAsync({ sessionId }).then(() => {
-      setSkipStep("done");
-      setSkipSubmitting(false);
       void refetch();
       void refetchLineSkipCredits();
       toast.success("Stripe payment verified. Your skip balance is updated.");
       window.history.replaceState({}, "", window.location.pathname);
     }).catch((error: any) => {
-      setSkipSubmitting(false);
       toast.error(error?.message ?? "Stripe payment could not be verified");
       window.history.replaceState({}, "", window.location.pathname);
     });
   }, [user, confirmSkipStripeCheckout, refetch]);
-
-  const handleSkipPurchase = () => {
-    if (!selectedSkipType || !user) return;
-    const mySubmission = data?.submissions?.find(s => s.userId === user.id && (s.status === "pending" || s.status === "playing"));
-    if (!mySubmission) {
-      toast.error("You need to have a track in the queue first to purchase a skip.");
-      return;
-    }
-    setSkipSubmitting(true);
-    requestSkipMutation.mutate({ submissionId: mySubmission.id, receiptUrl: skipReceiptUrl || undefined, paymentMethod: skipPaymentMethod || undefined }, {
-      onSuccess: () => {
-        setSkipSubmitting(false);
-        setSkipStep("done");
-        refetch();
-      },
-      onError: (err) => {
-        setSkipSubmitting(false);
-        toast.error("Skip purchase failed: " + err.message);
-      },
-    });
-  };
 
   const pendingQueue = data?.submissions?.filter(s => s.status === "pending" && isReviewSubmissionEligible(s, data?.state?.playbackMode)) ?? [];
   const currentPlaying = data?.currentPlaying ?? null;
@@ -2259,6 +2248,175 @@ export default function MusicReview() {
     return ta - tb;
   });
 
+  const renderSubmissionForm = () => (
+              <div id="submit-track" className="max-w-lg mx-auto space-y-4 scroll-mt-24">
+                <div className="review-v2-submit-intro text-center mb-6">
+                  <h2 className="font-['Anton'] text-3xl uppercase mb-1">Submit Your <span className="text-red-600">Track</span></h2>
+                  <p className="text-white/40 text-sm">Get your music reviewed live on air</p>
+                  <div className={`mt-3 rounded-lg border p-3 text-xs ${allowance.data?.remaining === 0 ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-white/10 bg-white/[0.025] text-white/55"}`}>
+                    <strong className="text-white">2 submissions per day per device/IP</strong>
+                    <p className="mt-1">{allowance.data ? `${allowance.data.remaining} of 2 left today` : "Checking daily allowance…"} · Resets at midnight Michigan time. Applies to all track formats and paid entries.</p>
+                    {allowance.data?.remaining === 0 && <p className="mt-1">No more new tracks today. You can still buy add-ons for a track already submitted.</p>}
+                  </div>
+                  {allowance.data?.remaining === 0 && !submitted && !!deviceTracks.data?.length && <div className="mt-3 space-y-2 rounded-lg border border-amber-300/20 p-3 text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Add-ons for your queued tracks</p>
+                    {deviceTracks.data.map((track) => <button key={track.id} type="button" onClick={() => { setSubmitted(true); setSubmittedTrackId(track.id); setUpgradeStatus(null); setReviewUpgrade({ kind: "skip", method: "Stripe", receiptUrl: "" }); }} className="flex w-full items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-xs text-white"><span className="truncate">{track.artistName} — {track.songTitle}</span><span className="shrink-0 text-amber-200">Add an upgrade</span></button>)}
+                  </div>}
+                  <div className="review-v2-submit-extra mt-4 grid gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.045] p-4 text-left sm:grid-cols-3">
+                    {["Choose Upload MP3 or YouTube Link", "Add your song title and track", "Submit and watch the queue"].map((step, index) => <div key={step} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white">{index + 1}</span><p className="text-[11px] leading-relaxed text-white/60">{step}</p></div>)}
+                  </div>
+                  <p className="review-v2-submit-extra mt-3 text-[10px] leading-relaxed text-white/35">Use an MP3 for the cleanest broadcast playback, or paste a YouTube link. Keep this page open for your queue position and live review status.</p>
+                  <div className="review-v2-mobile-after-form mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-left">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Review+</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/55">$25/month · unlimited Vote To Skip · five Line Skips every billing cycle.</p>
+                      </div>
+                      {reviewPlusStatus?.active ? (
+                        <div className="text-right">
+                          <span className="rounded-full border border-green-400/40 bg-green-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-green-300">Review+ Active</span>
+                          <p className="mt-2 text-[10px] text-white/45">Line Skips: {reviewPlusStatus.lineSkipCredits} / 5 · Vote To Skip: Unlimited</p>
+                          {reviewPlusStatus.membership?.currentPeriodEnd && <p className="mt-1 text-[10px] text-white/35">Next renewal: {new Date(reviewPlusStatus.membership.currentPeriodEnd).toLocaleDateString()}</p>}
+                          <div className="mt-3 grid grid-cols-3 gap-1.5 text-left">
+                            <select aria-label="Review+ chat accent" value={reviewPlusStatus.membership?.chatAccent ?? "gold"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: event.target.value as "gold" | "crimson" | "violet", chatIcon: reviewPlusStatus.membership?.chatIcon ?? "crown", chatStyle: reviewPlusStatus.membership?.chatStyle ?? "banner" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
+                              <option value="gold">Gold</option><option value="crimson">Crimson</option><option value="violet">Violet</option>
+                            </select>
+                            <select aria-label="Review+ chat icon" value={reviewPlusStatus.membership?.chatIcon ?? "crown"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: reviewPlusStatus.membership?.chatAccent ?? "gold", chatIcon: event.target.value as "crown" | "fire" | "star", chatStyle: reviewPlusStatus.membership?.chatStyle ?? "banner" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
+                              <option value="crown">Crown</option><option value="fire">Fire</option><option value="star">Star</option>
+                            </select>
+                            <select aria-label="Review+ chat banner style" value={reviewPlusStatus.membership?.chatStyle ?? "banner"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: reviewPlusStatus.membership?.chatAccent ?? "gold", chatIcon: reviewPlusStatus.membership?.chatIcon ?? "crown", chatStyle: event.target.value as "banner" | "outline" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
+                              <option value="banner">Banner</option><option value="outline">Outline</option>
+                            </select>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => createReviewPlusCheckout.mutate({ origin: window.location.origin })}
+                          disabled={createReviewPlusCheckout.isPending}
+                          className="rounded-lg bg-amber-400 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-amber-300 disabled:opacity-50"
+                        >
+                          {createReviewPlusCheckout.isPending ? "Opening…" : "Join Review+"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {paidSubmitSuccess ? (
+                  <div className="text-center py-10 border border-yellow-500/30 bg-yellow-500/5 rounded-2xl">
+                    <div className="text-4xl mb-3">🧾</div>
+                    <div className="font-['Anton'] text-2xl uppercase mb-2">Payment Submitted</div>
+                    <p className="text-white/50 text-sm">{paidSubmitSuccess === "stripe" || paidSubmitSuccess === "already-created" ? "Payment verified. Your position and songs ahead update automatically in My Submissions." : "Payment proof sent to the admin. Your track appears in My Submissions automatically; its live position appears once payment is approved."}</p>
+                    <button onClick={() => { setPaidSubmitSuccess(null); setSubmitted(false); setSubmittedTrackId(null); setPaidReceiptUrl(""); setSelectedPaidType(null); }} className="mt-4 text-red-400 text-xs hover:text-red-300 transition-colors">Submit another track</button>
+                  </div>
+                ) : submitted ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-6 text-center">
+                      <div className="font-['Anton'] text-2xl uppercase mb-2">Track submitted</div>
+                      <p className="text-white/50 text-sm">Your position and songs in front update automatically in My Submissions—no link needed.</p>
+                      {upgradeBusy && <p className="mt-2 text-xs text-amber-200">Preparing your add-on…</p>}
+                      {upgradeStatus && <p className="mt-2 text-xs text-amber-200">{upgradeStatus === "approved" ? "Stripe payment verified — add-on approved." : "Manual payment awaiting admin approval."}</p>}
+                    </div>
+                    {submittedTrackId && !upgradeStatus && <ReviewSubmissionAddOns choice={reviewUpgrade} onChange={setReviewUpgrade} mode={data?.state?.playbackMode ?? "90sec"} fullSongPriceCents={data?.state?.fullSongPriceCents ?? 500} busy={upgradeBusy || paymentProofUploading} onBusyChange={setPaymentProofUploading} submissionId={submittedTrackId} onPay={() => void payReviewUpgrade(submittedTrackId)} skipBalance={lineSkipCreditsData ?? 0} />}
+                    <button disabled={upgradeBusy || allowance.data?.remaining === 0} onClick={() => { setSubmitted(false); setSubmittedTrackId(null); setUpgradeStatus(null); setReviewUpgrade({ kind: "none", method: "Stripe", receiptUrl: "" }); setForm((form) => ({ ...form, songTitle: "", youtubeUrl: "", wantsSkip: false })); setAudioFile(null); }} className="w-full text-xs text-red-400 disabled:text-white/30">{allowance.data?.remaining === 0 ? "Daily cap reached — come back tomorrow" : "Submit another track"}</button>
+                  </div>
+                ) : limitReachedData ? (
+                  <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-5"><h3 className="font-['Anton'] text-xl">Daily cap reached</h3><p className="mt-2 text-xs text-white/55">Two tracks per device/IP per day. Resets at midnight Michigan time. Payments do not unlock extra submissions.</p></div>
+                ) : (
+                  <>
+                    {data?.state?.playbackMode === "paid_only" && (
+                      <div className="rounded-xl border border-red-500/40 bg-red-500/[0.08] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-400">Paid Only Mode</p>
+                        <p className="mt-1 text-sm leading-relaxed text-white/65">Choose Cash App, PayPal or Stripe below. Upload payment proof for manual payments; the admin verifies it before your track can play.</p>
+                      </div>
+                    )}
+                    {/* Submit type toggle */}
+                    <div className="flex rounded-xl overflow-hidden border border-white/10">
+                      <button onClick={() => setSubmitType("file")} className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all ${submitType === "file" ? "bg-red-600 text-white" : "text-white/40 hover:text-white/70"}`}>
+                        🎵 Upload MP3
+                      </button>
+                      <button onClick={() => setSubmitType("youtube")} className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all ${submitType === "youtube" ? "bg-red-600 text-white" : "text-white/40 hover:text-white/70"}`}>
+                        ▶️ YouTube Link
+                      </button>
+                    </div>
+
+                    {!user && (
+                      <div className="rounded-xl border border-red-500/25 bg-red-500/[0.05] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Guest submission</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/50">No login is required. Enter the artist name you want displayed with your track.</p>
+                        <input
+                          value={form.artistName}
+                          onChange={e => setForm(f => ({ ...f, artistName: e.target.value }))}
+                          placeholder="Artist Name *"
+                          className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 focus:border-red-600/40 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {/* Form fields */}
+                    <input
+                      value={form.songTitle}
+                      onChange={e => setForm(f => ({ ...f, songTitle: e.target.value }))}
+                      placeholder="Song Title *"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
+                    />
+
+                    {submitType === "youtube" ? (
+                      <input
+                        value={form.youtubeUrl}
+                        onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))}
+                        placeholder="YouTube URL *"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
+                      />
+                    ) : (
+                      <div>
+                        <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a" className="hidden" onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
+                        <button
+                          onClick={() => {
+                            if (user && !user.profileComplete) {
+                              setSubmissionPromptOpen(false);
+                              requestProfileCompletion({ required: true });
+                              return;
+                            }
+                            fileInputRef.current?.click();
+                          }}
+                          className="w-full bg-white/5 border border-dashed border-white/20 rounded-xl text-white/50 px-4 py-6 hover:border-white/40 hover:text-white/70 transition-all text-sm text-center"
+                        >
+                          {audioFile ? `✓ ${audioFile.name}` : "Click to upload MP3 / Audio file"}
+                        </button>
+                      </div>
+                    )}
+
+                    <input
+                      value={form.contactInfo}
+                      onChange={e => setForm(f => ({ ...f, contactInfo: e.target.value }))}
+                      placeholder="Contact Info (optional)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
+                    />
+
+                    {data?.state?.playbackMode === "paid_only" && <section className="space-y-3 rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-amber-200">Paid review options</p>
+                      <div role="radiogroup" aria-label="Paid review option" className="space-y-2">{MUSIC_REVIEW_PAID_OPTIONS.map(option => <label key={option.type} className={`flex gap-2 rounded-lg border p-3 text-xs ${option.type === (selectedPaidType ?? "reentry5") ? "border-amber-300/40 text-white" : "border-white/10 text-white/50"}`}><input type="radio" name="paid-review-option" checked={(selectedPaidType ?? "reentry5") === option.type} onChange={() => setSelectedPaidType(option.type)} disabled={submitting || paymentProofUploading} className="accent-red-600" /><span>{option.type === "skip" ? "Paid entry + line skip" : "Paid entry"} — ${option.price}</span></label>)}</div>
+                      <div className="grid grid-cols-3 gap-2" aria-label="Paid entry payment method">{(["Cash App", "PayPal", "Stripe"] as const).map(method => <button key={method} type="button" disabled={submitting || paymentProofUploading || method === "Stripe" && !user} aria-pressed={paidPaymentMethod === method} onClick={() => { setPaidPaymentMethod(method); setPaidReceiptUrl(""); }} className={`min-h-11 rounded-lg border p-2 text-xs font-bold disabled:opacity-40 ${paidPaymentMethod === method ? "border-red-500 bg-red-500/10 text-white" : "border-white/15 text-white/60"}`}>{method}</button>)}</div>
+                      {paidPaymentMethod === "Stripe" ? <p className="text-xs text-white/50">Stripe verifies payment automatically after secure checkout.</p> : <ReviewPaymentProof method={paidPaymentMethod} receiptUrl={paidReceiptUrl} onChange={setPaidReceiptUrl} amountCents={(MUSIC_REVIEW_PAID_OPTIONS.find(option => option.type === (selectedPaidType ?? "reentry5"))?.price ?? 5) * 100} busy={submitting} onBusyChange={setPaymentProofUploading} />}
+                      {!user && <p className="text-[10px] text-white/45">Cash App and PayPal work without an account. Sign in only if you want Stripe checkout.</p>}
+                    </section>}
+
+                    {data?.state?.playbackMode !== "paid_only" && (allowance.data?.remaining ?? 0) > 0 && <ReviewSubmissionAddOns choice={reviewUpgrade} onChange={setReviewUpgrade} mode={data?.state?.playbackMode ?? "90sec"} fullSongPriceCents={data?.state?.fullSongPriceCents ?? 500} busy={submitting || upgradeBusy} onBusyChange={setPaymentProofUploading} skipBalance={lineSkipCreditsData ?? 0} />}
+
+                    <button
+                      onClick={(e: any) => handleSubmit(e)}
+                      disabled={submitting || upgradeBusy || paymentProofUploading || !allowance.data || allowance.data.remaining === 0 || !form.songTitle.trim() || (submitType === "youtube" ? !form.youtubeUrl.trim() : !audioFile)}
+                      className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 text-white py-4 rounded-xl font-semibold uppercase tracking-widest transition-all"
+                    >
+                      {paymentProofUploading ? "Uploading payment screenshot…" : submitting ? "Submitting…" : data?.state?.playbackMode === "paid_only" ? paidPaymentMethod === "Stripe" ? "Continue to Stripe checkout →" : "Submit track & payment proof →" : reviewUpgrade.kind !== "none" ? reviewUpgrade.method === "Stripe" ? "Submit track & pay with Stripe →" : "Submit track & payment proof →" : "Submit Track →"}
+                    </button>
+                  </>
+                )}
+              </div>
+  );
+
   if (isAdminPopout) {
     return (
       <main className="min-h-screen bg-[#080808] p-4 text-white sm:p-6">
@@ -2316,6 +2474,14 @@ export default function MusicReview() {
 
   return (
     <div className={`min-h-screen bg-[#080808] text-white ${!isBroadcastHub ? "review-v2-submit-first" : ""}`}>
+      <Dialog open={submissionPromptOpen} onOpenChange={setSubmissionPromptOpen}>
+        <DialogContent overlayClassName="z-[11000] bg-black/80" className="review-submit-dialog z-[11001] max-h-[90dvh] overflow-y-auto border-red-500/30 bg-[#0d0d0d] p-4 text-white sm:max-w-xl sm:p-6" onOpenAutoFocus={(event) => event.preventDefault()}>
+          <DialogTitle className="pr-8 font-['Anton'] text-2xl uppercase">Get your music reviewed</DialogTitle>
+          <DialogDescription className="text-xs text-white/55">Submit your track here, choose any payment add-ons, then watch your position update automatically.</DialogDescription>
+          {renderSubmissionForm()}
+          <button type="button" onClick={() => setSubmissionPromptOpen(false)} className="min-h-11 text-xs text-white/60 underline">Not now — listen to the review</button>
+        </DialogContent>
+      </Dialog>
       <SiteNav />
       <div className="review-v2-radio-banner"><LiveRadioBanner /></div>
 
@@ -2366,6 +2532,13 @@ export default function MusicReview() {
       <div className="review-v2-main max-w-[1500px] mx-auto px-4 py-6 space-y-6">
 
 
+            <ReviewQueueTracker submissionId={submittedTrackId} className="review-v2-mine-placement" showEmpty={submitted || !!paidSubmitSuccess} renderSubmissionAction={(item) => {
+              // Preserve V1 account Line Skip controls, separate from public
+              // position data. The existing server mutation remains unchanged.
+              const sub = data?.submissions.find((track) => track.id === item.submissionId);
+              return user && sub?.userId === user.id && sub.status === "pending" && !sub.skippedLine && (lineSkipCreditsData ?? 0) > 0 ? <button type="button" onClick={() => useLineSkipMutation.mutate({ submissionId: sub.id })} disabled={useLineSkipMutation.isPending} className="review-v2-button">Use Skip</button> : null;
+            }} />
+
         {/* ── ADMIN SESSION CONTROLS (admin only) ───────────── */}
         {isAdmin && (
           <section className="rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/30 via-[#0d0d0d] to-black p-4 shadow-xl shadow-black/20 sm:p-5">
@@ -2402,7 +2575,7 @@ export default function MusicReview() {
           <a href="https://www.instagram.com/murdermittenmedia/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-pink-400/25 bg-pink-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-pink-200 hover:bg-pink-400/10">Watch Instagram</a>
           <a href="/merch" className="rounded-lg border border-red-500/25 bg-red-500/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-200 hover:bg-red-500/10">Shop Merch</a>
           <a href="/promo" className="rounded-lg border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-yellow-200 hover:bg-yellow-400/10">Get Promoted</a>
-          <button type="button" onClick={() => setTab("submit")} className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Submit a Track</button>
+          <button type="button" onClick={() => { setTab("submit"); setSubmissionPromptOpen(true); }} className="rounded-lg bg-red-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-500">Submit a Track</button>
           <button type="button" onClick={() => { setTab("queue"); document.getElementById("review-submission-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="rounded-lg border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/65 hover:text-white">View Live Queue</button>
         </div>
         <div className="review-v2-mobile-clutter mb-3 border-l-2 border-red-500 px-3">
@@ -2790,11 +2963,10 @@ export default function MusicReview() {
               { id: "submit", label: "Submit Now", icon: "🎵" },
               { id: "queue", label: "Queue", icon: "📋" },
               { id: "history", label: "Recently Played", icon: "📜" },
-              { id: "skip-info", label: "Skip Track", icon: "⏭️" },
             ] as const).map(t => (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => { setTab(t.id); if (t.id === "submit") setSubmissionPromptOpen(true); }}
                 type="button"
                 role="tab"
                 aria-selected={tab === t.id}
@@ -2810,165 +2982,7 @@ export default function MusicReview() {
           <div className="review-v2-tab-content p-5">
 
             {/* ── SUBMIT TAB ── */}
-            {tab === "submit" && (
-              <div id="submit-track" className="max-w-lg mx-auto space-y-4 scroll-mt-24">
-                <div className="review-v2-submit-intro text-center mb-6">
-                  <h2 className="font-['Anton'] text-3xl uppercase mb-1">Submit Your <span className="text-red-600">Track</span></h2>
-                  <p className="text-white/40 text-sm">Get your music reviewed live on air</p>
-                  <div className={`mt-3 rounded-lg border p-3 text-xs ${allowance.data?.remaining === 0 ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-white/10 bg-white/[0.025] text-white/55"}`}>
-                    <strong className="text-white">2 submissions per day per device/IP</strong>
-                    <p className="mt-1">{allowance.data ? `${allowance.data.remaining} of 2 left today` : "Checking daily allowance…"} · Resets at midnight Michigan time. Applies to all track formats and paid entries.</p>
-                    {allowance.data?.remaining === 0 && <p className="mt-1">No more new tracks today. You can still buy add-ons for a track already submitted.</p>}
-                  </div>
-                  {allowance.data?.remaining === 0 && !submitted && !!deviceTracks.data?.length && <div className="mt-3 space-y-2 rounded-lg border border-amber-300/20 p-3 text-left">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Add-ons for your queued tracks</p>
-                    {deviceTracks.data.map((track) => <button key={track.id} type="button" onClick={() => { setSubmitted(true); setSubmittedTrackId(track.id); setUpgradeStatus(null); setReviewUpgrade({ kind: "skip", method: "Stripe", receiptUrl: "" }); }} className="flex w-full items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-xs text-white"><span className="truncate">{track.artistName} — {track.songTitle}</span><span className="shrink-0 text-amber-200">Add an upgrade</span></button>)}
-                  </div>}
-                  <div className="review-v2-submit-extra mt-4 grid gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.045] p-4 text-left sm:grid-cols-3">
-                    {["Choose Upload MP3 or YouTube Link", "Add your song title and track", "Submit and watch the queue"].map((step, index) => <div key={step} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white">{index + 1}</span><p className="text-[11px] leading-relaxed text-white/60">{step}</p></div>)}
-                  </div>
-                  <p className="review-v2-submit-extra mt-3 text-[10px] leading-relaxed text-white/35">Use an MP3 for the cleanest broadcast playback, or paste a YouTube link. Keep this page open for your queue position and live review status.</p>
-                  <div className="review-v2-mobile-after-form mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4 text-left">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Review+</p>
-                        <p className="mt-1 text-xs leading-relaxed text-white/55">$25/month · unlimited Vote To Skip · five Line Skips every billing cycle.</p>
-                      </div>
-                      {reviewPlusStatus?.active ? (
-                        <div className="text-right">
-                          <span className="rounded-full border border-green-400/40 bg-green-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-green-300">Review+ Active</span>
-                          <p className="mt-2 text-[10px] text-white/45">Line Skips: {reviewPlusStatus.lineSkipCredits} / 5 · Vote To Skip: Unlimited</p>
-                          {reviewPlusStatus.membership?.currentPeriodEnd && <p className="mt-1 text-[10px] text-white/35">Next renewal: {new Date(reviewPlusStatus.membership.currentPeriodEnd).toLocaleDateString()}</p>}
-                          <div className="mt-3 grid grid-cols-3 gap-1.5 text-left">
-                            <select aria-label="Review+ chat accent" value={reviewPlusStatus.membership?.chatAccent ?? "gold"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: event.target.value as "gold" | "crimson" | "violet", chatIcon: reviewPlusStatus.membership?.chatIcon ?? "crown", chatStyle: reviewPlusStatus.membership?.chatStyle ?? "banner" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
-                              <option value="gold">Gold</option><option value="crimson">Crimson</option><option value="violet">Violet</option>
-                            </select>
-                            <select aria-label="Review+ chat icon" value={reviewPlusStatus.membership?.chatIcon ?? "crown"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: reviewPlusStatus.membership?.chatAccent ?? "gold", chatIcon: event.target.value as "crown" | "fire" | "star", chatStyle: reviewPlusStatus.membership?.chatStyle ?? "banner" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
-                              <option value="crown">Crown</option><option value="fire">Fire</option><option value="star">Star</option>
-                            </select>
-                            <select aria-label="Review+ chat banner style" value={reviewPlusStatus.membership?.chatStyle ?? "banner"} onChange={(event) => updateReviewPlusChatBanner.mutate({ chatAccent: reviewPlusStatus.membership?.chatAccent ?? "gold", chatIcon: reviewPlusStatus.membership?.chatIcon ?? "crown", chatStyle: event.target.value as "banner" | "outline" })} className="rounded border border-white/15 bg-black/30 px-1.5 py-1 text-[9px] text-white/75">
-                              <option value="banner">Banner</option><option value="outline">Outline</option>
-                            </select>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => createReviewPlusCheckout.mutate({ origin: window.location.origin })}
-                          disabled={createReviewPlusCheckout.isPending}
-                          className="rounded-lg bg-amber-400 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-amber-300 disabled:opacity-50"
-                        >
-                          {createReviewPlusCheckout.isPending ? "Opening…" : "Join Review+"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {paidSubmitSuccess ? (
-                  <div className="text-center py-10 border border-yellow-500/30 bg-yellow-500/5 rounded-2xl">
-                    <div className="text-4xl mb-3">🧾</div>
-                    <div className="font-['Anton'] text-2xl uppercase mb-2">Payment Submitted</div>
-                    <p className="text-white/50 text-sm">Your paid submission is pending admin approval. We’ll move it into the queue after the receipt is verified.</p>
-                    <button onClick={() => { setPaidSubmitSuccess(null); setPaidReceiptUrl(""); setSelectedPaidType(null); }} className="mt-4 text-red-400 text-xs hover:text-red-300 transition-colors">Submit another track</button>
-                  </div>
-                ) : submitted ? (
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-6 text-center">
-                      <div className="font-['Anton'] text-2xl uppercase mb-2">Track submitted</div>
-                      <p className="text-white/50 text-sm">Your track is in the queue. Stay tuned!</p>
-                      {upgradeBusy && <p className="mt-2 text-xs text-amber-200">Preparing your add-on…</p>}
-                      {upgradeStatus && <p className="mt-2 text-xs text-amber-200">{upgradeStatus === "approved" ? "Stripe payment verified — add-on approved." : "Cash App add-on awaiting admin payment approval."}</p>}
-                    </div>
-                    {submittedTrackId && !upgradeStatus && <ReviewSubmissionAddOns choice={reviewUpgrade} onChange={setReviewUpgrade} mode={data?.state?.playbackMode ?? "90sec"} fullSongPriceCents={data?.state?.fullSongPriceCents ?? 500} busy={upgradeBusy} submissionId={submittedTrackId} onPay={() => void payReviewUpgrade(submittedTrackId)} skipBalance={lineSkipCreditsData ?? 0} />}
-                    <button disabled={upgradeBusy || allowance.data?.remaining === 0} onClick={() => { setSubmitted(false); setSubmittedTrackId(null); setUpgradeStatus(null); setReviewUpgrade({ kind: "none", method: "Stripe", receiptUrl: "" }); setForm((form) => ({ ...form, songTitle: "", youtubeUrl: "", wantsSkip: false })); setAudioFile(null); }} className="w-full text-xs text-red-400 disabled:text-white/30">{allowance.data?.remaining === 0 ? "Daily cap reached — come back tomorrow" : "Submit another track"}</button>
-                  </div>
-                ) : limitReachedData ? (
-                  <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-5"><h3 className="font-['Anton'] text-xl">Daily cap reached</h3><p className="mt-2 text-xs text-white/55">Two tracks per device/IP per day. Resets at midnight Michigan time. Payments do not unlock extra submissions.</p></div>
-                ) : (
-                  <>
-                    {data?.state?.playbackMode === "paid_only" && (
-                      <div className="rounded-xl border border-red-500/40 bg-red-500/[0.08] p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-400">Paid Only Mode</p>
-                        <p className="mt-1 text-sm leading-relaxed text-white/65">Submissions are currently paid only. Your track will open secure Stripe checkout and will not enter the queue unless payment is verified.</p>
-                      </div>
-                    )}
-                    {/* Submit type toggle */}
-                    <div className="flex rounded-xl overflow-hidden border border-white/10">
-                      <button onClick={() => setSubmitType("file")} className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all ${submitType === "file" ? "bg-red-600 text-white" : "text-white/40 hover:text-white/70"}`}>
-                        🎵 Upload MP3
-                      </button>
-                      <button onClick={() => setSubmitType("youtube")} className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all ${submitType === "youtube" ? "bg-red-600 text-white" : "text-white/40 hover:text-white/70"}`}>
-                        ▶️ YouTube Link
-                      </button>
-                    </div>
-
-                    {!user && (
-                      <div className="rounded-xl border border-red-500/25 bg-red-500/[0.05] p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-300">Guest submission</p>
-                        <p className="mt-1 text-xs leading-relaxed text-white/50">No login is required. Enter the artist name you want displayed with your track.</p>
-                        <input
-                          value={form.artistName}
-                          onChange={e => setForm(f => ({ ...f, artistName: e.target.value }))}
-                          placeholder="Artist Name *"
-                          className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 focus:border-red-600/40 focus:outline-none"
-                        />
-                      </div>
-                    )}
-
-                    {/* Form fields */}
-                    <input
-                      value={form.songTitle}
-                      onChange={e => setForm(f => ({ ...f, songTitle: e.target.value }))}
-                      placeholder="Song Title *"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
-                    />
-
-                    {submitType === "youtube" ? (
-                      <input
-                        value={form.youtubeUrl}
-                        onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))}
-                        placeholder="YouTube URL *"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
-                      />
-                    ) : (
-                      <div>
-                        <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a" className="hidden" onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
-                        <button
-                          onClick={() => {
-                            if (user && !user.profileComplete) {
-                              requestProfileCompletion({ required: true });
-                              return;
-                            }
-                            fileInputRef.current?.click();
-                          }}
-                          className="w-full bg-white/5 border border-dashed border-white/20 rounded-xl text-white/50 px-4 py-6 hover:border-white/40 hover:text-white/70 transition-all text-sm text-center"
-                        >
-                          {audioFile ? `✓ ${audioFile.name}` : "Click to upload MP3 / Audio file"}
-                        </button>
-                      </div>
-                    )}
-
-                    <input
-                      value={form.contactInfo}
-                      onChange={e => setForm(f => ({ ...f, contactInfo: e.target.value }))}
-                      placeholder="Contact Info (optional)"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white px-4 py-3 focus:outline-none focus:border-red-600/40 placeholder-white/20 text-sm"
-                    />
-
-                    {data?.state?.playbackMode !== "paid_only" && (allowance.data?.remaining ?? 0) > 0 && <ReviewSubmissionAddOns choice={reviewUpgrade} onChange={setReviewUpgrade} mode={data?.state?.playbackMode ?? "90sec"} fullSongPriceCents={data?.state?.fullSongPriceCents ?? 500} busy={submitting || upgradeBusy} skipBalance={lineSkipCreditsData ?? 0} />}
-
-                    <button
-                      onClick={(e: any) => handleSubmit(e)}
-                      disabled={submitting || upgradeBusy || !allowance.data || allowance.data.remaining === 0 || !form.songTitle.trim() || (submitType === "youtube" ? !form.youtubeUrl.trim() : !audioFile)}
-                      className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 text-white py-4 rounded-xl font-semibold uppercase tracking-widest transition-all"
-                    >
-                      {submitting ? (data?.state?.playbackMode === "paid_only" ? "Opening secure checkout..." : "Submitting...") : (data?.state?.playbackMode === "paid_only" ? "Continue to secure checkout →" : (reviewUpgrade.kind !== "none" ? reviewUpgrade.method === "Stripe" ? "Submit track & pay with Stripe →" : "Submit track & receipt →" : "Submit Track →"))}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            {tab === "submit" && !submissionPromptOpen && renderSubmissionForm()}
 
             {/* ── QUEUE TAB ── */}
             {tab === "queue" && (
@@ -3005,172 +3019,6 @@ export default function MusicReview() {
               </div>
             )}
 
-            {/* ── SKIP TRACK TAB ── */}
-            {tab === "skip-info" && (
-              <div className="max-w-lg mx-auto">
-                {/* ── STEP 1: Select skip option ── */}
-                {skipStep === "select" && (
-                  <div>
-                    <div className="text-center mb-6">
-                      <div className="text-4xl mb-3">⏭️</div>
-                      <h2 className="font-['Anton'] text-3xl uppercase mb-2">Skip the <span className="text-red-600">Line</span></h2>
-                      <p className="text-white/40 text-sm">Jump ahead in the queue — all skips require admin approval after payment</p>
-                    </div>
-                    <div className="space-y-3">
-                      {([
-                        { label: "One Line Skip", price: "$10", type: "skip" as const, desc: "Use it on your next track or apply it to a track already in the queue" },
-                        { label: "3 Line Skips", price: "$20", type: "bundle3" as const, desc: "Adds three skips to your balance" },
-                      ] as const).map(opt => (
-                        <button
-                          key={opt.type}
-                          onClick={() => { setSelectedSkipType(opt.type); setSkipStep("pay"); }}
-                          className={`w-full flex items-center justify-between p-5 rounded-xl border transition-all text-left ${
-                            selectedSkipType === opt.type
-                              ? "border-red-500 bg-red-500/10"
-                              : "border-white/10 bg-white/[0.02] hover:border-white/20"
-                          }`}
-                        >
-                          <div>
-                            <div className="font-semibold text-sm">{opt.label}</div>
-                            <div className="text-white/40 text-xs mt-0.5">{opt.desc}</div>
-                          </div>
-                          <div className="font-['Anton'] text-2xl text-red-500">{opt.price}</div>
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-white/20 text-xs text-center mt-4">You must already have a track in the queue to purchase a skip.</p>
-                  </div>
-                )}
-
-                {/* ── STEP 2: Choose payment method & pay ── */}
-                {skipStep === "pay" && selectedSkipType && (
-                  <div>
-                    <button onClick={() => setSkipStep("select")} className="flex items-center gap-1 text-white/40 hover:text-white text-xs mb-4 transition-colors">
-                      ← Back
-                    </button>
-                    <div className="text-center mb-5">
-                      <div className="text-2xl font-['Anton'] text-red-500 mb-1">
-                        {selectedSkipType === "bundle3" ? "$20 — 3 Line Skips" : "$10 — One Line Skip"}
-                      </div>
-                      <p className="text-white/40 text-xs">Choose a payment method and send the exact amount</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 mb-5">
-                      {[
-                        { name: "Cash App", handle: "$MittenMedia", link: "https://cash.app/$MittenMedia", icon: "💸", color: "border-[#00D632]/40 bg-[#00D632]/5", textColor: "text-[#00D632]" },
-                        { name: "PayPal", handle: "@MurderMittenPromo", link: "https://paypal.me/MurderMittenPromo", icon: "🈿️", color: "border-[#009cde]/40 bg-[#003087]/5", textColor: "text-[#009cde]" },
-                        { name: "Apple Pay", handle: "(313) 420-9004", link: "tel:3134209004", icon: "🍎", color: "border-white/20 bg-white/5", textColor: "text-white" },
-                        { name: "Chime", handle: "DM on Instagram", link: "https://www.instagram.com/murdermittenmedia/", icon: "🏦", color: "border-[#00D632]/20 bg-[#00D632]/5", textColor: "text-[#00D632]" },
-                      ].map(pm => (
-                        <a
-                          key={pm.name}
-                          href={pm.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => setSkipPaymentMethod(pm.name)}
-                          className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all hover:scale-105 ${
-                            skipPaymentMethod === pm.name ? "ring-2 ring-red-500 " + pm.color : pm.color
-                          }`}
-                        >
-                          <span className="text-2xl">{pm.icon}</span>
-                          <span className={`text-xs font-bold ${pm.textColor}`}>{pm.name}</span>
-                          <span className="text-white/40 text-[10px] text-center">{pm.handle}</span>
-                        </a>
-                      ))}
-                    </div>
-                    <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => { void handleStripeSkipCheckout(); }}
-                        disabled={skipSubmitting}
-                        className="w-full flex items-center justify-center gap-2 bg-[#635bff] hover:bg-[#5148e8] disabled:opacity-50 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors"
-                      >
-                        {skipSubmitting ? "Opening Stripe…" : "Pay securely with Stripe"}
-                      </button>
-                      <div className="text-center text-white/30 text-[10px] uppercase tracking-widest">or pay manually with Cash App above</div>
-                      <div>
-                        <label className="text-white/60 text-xs uppercase tracking-wider block mb-1">Cash App receipt / confirmation URL <span className="text-white/30">(optional but speeds up approval)</span></label>
-                        <input
-                          type="url"
-                          value={skipReceiptUrl}
-                          onChange={e => setSkipReceiptUrl(e.target.value)}
-                          placeholder="https://cash.app/receipt/..."
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-red-500/50"
-                        />
-                      </div>
-                      <button
-                        onClick={() => setSkipStep("confirm")}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors"
-                      >
-                        I’ve Sent Payment — Submit Request
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── STEP 3: Confirm submission ── */}
-                {skipStep === "confirm" && (
-                  <div className="text-center">
-                    <button onClick={() => setSkipStep("pay")} className="flex items-center gap-1 text-white/40 hover:text-white text-xs mb-4 transition-colors">
-                      ← Back
-                    </button>
-                    <div className="text-4xl mb-4">✅</div>
-                    <h3 className="font-['Anton'] text-2xl uppercase mb-2">Confirm Your Skip</h3>
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-5 text-left space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-white/40">Skip Type</span>
-                        <span className="text-white font-semibold">{selectedSkipType === "bundle3" ? "3 Line Skips" : "One Line Skip"}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-white/40">Amount</span>
-                        <span className="text-red-400 font-bold">{selectedSkipType === "bundle3" ? "$20" : "$10"}</span>
-                      </div>
-                      {skipPaymentMethod && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white/40">Paid via</span>
-                          <span className="text-white">{skipPaymentMethod}</span>
-                        </div>
-                      )}
-                      {skipReceiptUrl && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-white/40">Receipt</span>
-                          <a href={skipReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline text-xs truncate max-w-[180px]">View</a>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-white/30 text-xs mb-5">Your skip request will be pending until the admin verifies your payment. You’ll move up in the queue once confirmed.</p>
-                    <button
-                      onClick={handleSkipPurchase}
-                      disabled={skipSubmitting}
-                      className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors"
-                    >
-                      {skipSubmitting ? "Submitting..." : "Submit Skip Request"}
-                    </button>
-                  </div>
-                )}
-
-                {/* ── STEP 4: Done ── */}
-                {skipStep === "done" && (
-                  <div className="text-center py-8">
-                    <div className="text-5xl mb-4">🚀</div>
-                    <h3 className="font-['Anton'] text-2xl uppercase mb-2">Request Submitted!</h3>
-                    <p className="text-white/40 text-sm mb-6">Your skip request is pending admin approval. Once confirmed, you’ll move up in the queue automatically.</p>
-                    <button
-                      onClick={() => { setSkipStep("select"); setSelectedSkipType(null); setSkipReceiptUrl(""); setSkipPaymentMethod(""); }}
-                      className="text-red-500 hover:text-red-400 text-sm underline transition-colors"
-                    >
-                      Submit Another Skip
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <ReviewQueueTracker submissionId={submittedTrackId} className="review-v2-mine-placement" showEmpty={tab === "queue" || submitted} renderSubmissionAction={(item) => {
-              // Preserve V1 account Line Skip controls, separate from public
-              // position data. The existing server mutation remains unchanged.
-              const sub = data?.submissions.find((track) => track.id === item.submissionId);
-              return user && sub?.userId === user.id && sub.status === "pending" && !sub.skippedLine && (lineSkipCreditsData ?? 0) > 0 ? <button type="button" onClick={() => useLineSkipMutation.mutate({ submissionId: sub.id })} disabled={useLineSkipMutation.isPending} className="review-v2-button">Use Skip</button> : null;
-            }} />
 
           </div>
         </div>
@@ -3187,7 +3035,7 @@ export default function MusicReview() {
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200">Murder Mitten Promo Services</p>
             <p className="mt-2 font-['Anton'] text-xl uppercase text-white">Get Promoted <span className="text-amber-300 transition-transform group-hover:translate-x-1 inline-block">→</span></p>
           </a>
-          <button type="button" onClick={() => setTab("submit")} className="group rounded-xl border border-white/15 bg-white/[0.03] p-4 text-left transition-colors hover:bg-white/[0.08]">
+          <button type="button" onClick={() => { setTab("submit"); setSubmissionPromptOpen(true); }} className="group rounded-xl border border-white/15 bg-white/[0.03] p-4 text-left transition-colors hover:bg-white/[0.08]">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Submit Your Music</p>
             <p className="mt-2 font-['Anton'] text-xl uppercase text-white">Submit Now <span className="text-white/70 transition-transform group-hover:translate-x-1 inline-block">→</span></p>
           </button>

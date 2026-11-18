@@ -62,6 +62,7 @@ export const reviewSubmissions = mysqlTable("review_submissions", {
   paidSubmissionConfirmed: boolean("paidSubmissionConfirmed").default(false).notNull(),
   // Optional manual payment proof for paid/re-entry submissions (Cash App or other method).
   cashappPaymentReceiptUrl: varchar("cashappPaymentReceiptUrl", { length: 512 }),
+  paymentMethod: varchar("paymentMethod", { length: 64 }),
   stripePaymentSessionId: varchar("stripePaymentSessionId", { length: 255 }),
   fullSongRequested: boolean("fullSongRequested").default(false).notNull(),
   reviewOccurrenceId: varchar("reviewOccurrenceId", { length: 64 }),

@@ -24,7 +24,8 @@ import { getMusicLinkMetadata } from "./music-link-metadata";
 import { geocodeStudioAddress } from "./studio-geocode";
 import { getSkipLinePriceCents, getSkipLineLabel } from "./skip-payments";
 import { getPromoPackagePriceCents, getPromoPackageLabel } from "./promo-payments";
-import { getMusicReviewSessionLimitMessage, MUSIC_REVIEW_PAID_OPTIONS, hasCashAppPaymentProof } from "../shared/music-review-paywall";
+import { getMusicReviewSessionLimitMessage, MUSIC_REVIEW_PAID_OPTIONS, hasManualPaymentProof } from "../shared/music-review-paywall";
+import { reviewAudioMimeSchema, sanitizePublicReviewSubmission, validateReviewAudioReference, validateReviewAudioUpload } from "./review-payment-proof";
 import { STANDARD_DAILY_SKIP_VOTE_LIMIT, getDailySkipVotesRemaining, getUtcCalendarDayWindow, hasUnlimitedReviewSkipAccess } from "../shared/review-skip-entitlement";
 import { REVIEW_PLUS_BILLING_CYCLE_LINE_SKIPS, REVIEW_PLUS_MONTHLY_PRICE_CENTS } from "../shared/review-plus-entitlement";
 import { normalizeStudioInput } from "./studio-input";
@@ -1067,10 +1068,7 @@ export const appRouter = router({
     getAll: publicProcedure.query(async ({ ctx }) => {
       const snapshot = await getReviewQueueSnapshot();
       if (ctx.user?.role === "admin") return snapshot;
-      const safe = (song: (typeof snapshot.submissions)[number]) => ({ ...song,
-        contactInfo: null,
-        cashappPaymentReceiptUrl: null, stripePaymentSessionId: null, notes: null,
-      });
+      const safe = (song: (typeof snapshot.submissions)[number]) => sanitizePublicReviewSubmission(song);
       return { ...snapshot, submissions: snapshot.submissions.map(safe), currentPlaying: snapshot.currentPlaying ? safe(snapshot.currentPlaying) : null };
     }),
 
@@ -1116,15 +1114,15 @@ export const appRouter = router({
         if (queueState?.playbackMode === "paid_only" && !input.paidSubmissionType) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
-        if (!ctx.user && input.paidSubmissionType) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Create an account or log in before submitting a paid track." });
+        if (!ctx.user && !input.artistName?.trim()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Enter an artist name for your guest submission." });
         }
         // Auto-resolve artist name from the user's registered profile
         const profile = ctx.user ? await getArtistProfile(ctx.user.id) : null;
         const artistName = input.artistName?.trim() || profile?.artistName || ctx.user?.artistName || ctx.user?.name || "Guest Artist";
         const isPaid = !!input.paidSubmissionType;
-        if (isPaid && !hasCashAppPaymentProof(input.receiptUrl, input.paymentMethod)) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Paid submissions require a Cash App receipt URL and payment method. Send payment to $MittenMedia, then submit the receipt for admin approval." });
+        if ((isPaid || input.receiptUrl || input.paymentMethod) && !hasManualPaymentProof(input.receiptUrl, input.paymentMethod)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Provide Cash App or PayPal payment proof (receipt link or uploaded screenshot) for admin approval." });
         }
         // Get the active session to link this submission to it
         const session = await getOrCreateActiveMusicReviewSession();
@@ -1141,7 +1139,8 @@ export const appRouter = router({
           isPaidSubmission: isPaid,
           paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
           paidSubmissionConfirmed: false,
-          cashappPaymentReceiptUrl: input.receiptUrl ?? null,
+          cashappPaymentReceiptUrl: input.receiptUrl?.trim() ?? null,
+          paymentMethod: input.paymentMethod ?? null,
           // Paid submissions are held as 'pending' until admin confirms payment
           status: "pending",
           position: 0,
@@ -1211,7 +1210,15 @@ export const appRouter = router({
     approvePayment: adminProcedure
       .input(z.object({ id: z.number().int().positive(), kind: z.enum(["skip", "paid_submission", "full_song", "full_song_skip"]) }))
       .mutation(async ({ input }) => {
-        await mutateReviewQueue(() => approveReviewPayment(input.id, input.kind));
+        await mutateReviewQueue(async () => {
+          if (input.kind === "full_song" || input.kind === "full_song_skip") {
+            const db = await getDb();
+            if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+            const [song] = await db.select().from(reviewSubmissions).where(eq(reviewSubmissions.id, input.id)).limit(1);
+            if (song?.isPaidSubmission && !song.paidSubmissionConfirmed) throw new TRPCError({ code: "BAD_REQUEST", message: "Approve the paid entry before approving a full-song add-on." });
+          }
+          await approveReviewPayment(input.id, input.kind);
+        });
         return { success: true as const };
       }),
 
@@ -1223,7 +1230,8 @@ export const appRouter = router({
         const [submission] = await db.select().from(reviewSubmissions).where(and(eq(reviewSubmissions.id, input.submissionId), eq(reviewSubmissions.userId, ctx.user.id))).limit(1);
         if (!submission || submission.status === "removed" || submission.status === "reviewed") throw new TRPCError({ code: "BAD_REQUEST", message: "That track is no longer eligible for a skip." });
         if (submission.skippedLine) throw new TRPCError({ code: "BAD_REQUEST", message: "That track already has a skip request." });
-        await db.update(reviewSubmissions).set({ skippedLine: true, skipPaymentConfirmed: false, paidSubmissionType: "skip", cashappPaymentReceiptUrl: input.receiptUrl ?? null }).where(eq(reviewSubmissions.id, input.submissionId));
+        if ((input.receiptUrl || input.paymentMethod) && !hasManualPaymentProof(input.receiptUrl, input.paymentMethod)) throw new TRPCError({ code: "BAD_REQUEST", message: "Provide valid Cash App or PayPal payment proof." });
+        await mutateReviewQueue(() => db.update(reviewSubmissions).set({ skippedLine: true, skipPaymentConfirmed: false, paidSubmissionType: "skip", ...(input.receiptUrl ? { cashappPaymentReceiptUrl: input.receiptUrl.trim(), paymentMethod: input.paymentMethod } : {}) }).where(eq(reviewSubmissions.id, input.submissionId)));
         return { success: true as const };
       }),
 
@@ -1303,8 +1311,8 @@ export const appRouter = router({
       .input(z.object({
         artistName: z.string().min(1).max(128),
         songTitle: z.string().min(1).max(128),
-        fileKey: z.string(),
-        fileUrl: z.string(),
+        fileKey: z.string().min(1).max(512),
+        fileUrl: z.string().min(1).max(512),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
         paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
@@ -1321,18 +1329,19 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
+        validateReviewAudioReference(input.fileKey, input.fileUrl);
         const identity = getReviewIdentity(ctx);
         await assertReviewSubmissionAllowance(identity);
         const queueState = await getQueueState();
         if (queueState?.playbackMode === "paid_only" && !input.paidSubmissionType) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
-        if (!ctx.user && input.paidSubmissionType) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Create an account or log in before submitting a paid track." });
+        if (!ctx.user && !input.artistName?.trim()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Enter an artist name for your guest submission." });
         }
         const isPaid = !!input.paidSubmissionType;
-        if (isPaid && !hasCashAppPaymentProof(input.receiptUrl, input.paymentMethod)) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Paid submissions require a Cash App receipt URL and payment method. Send payment to $MittenMedia, then submit the receipt for admin approval." });
+        if ((isPaid || input.receiptUrl || input.paymentMethod) && !hasManualPaymentProof(input.receiptUrl, input.paymentMethod)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Provide Cash App or PayPal payment proof (receipt link or uploaded screenshot) for admin approval." });
         }
         const session = await getOrCreateActiveMusicReviewSession();
         const submissionId = await createLimitedReviewSubmission({
@@ -1349,7 +1358,8 @@ export const appRouter = router({
           isPaidSubmission: isPaid,
           paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
           paidSubmissionConfirmed: false,
-          cashappPaymentReceiptUrl: input.receiptUrl ?? null,
+          cashappPaymentReceiptUrl: input.receiptUrl?.trim() ?? null,
+          paymentMethod: input.paymentMethod ?? null,
           status: "pending",
           position: 0,
         }, identity);
@@ -1362,9 +1372,9 @@ export const appRouter = router({
       .input(z.object({
         artistName: z.string().trim().max(128).optional(),
         songTitle: z.string().min(1).max(128),
-        fileName: z.string(),
-        fileBase64: z.string(),
-        mimeType: z.string().default("audio/mpeg"),
+        fileName: z.string().min(1).max(256),
+        fileBase64: z.string().min(1).max(27962028),
+        mimeType: reviewAudioMimeSchema.default("audio/mpeg"),
         contactInfo: z.string().max(256).optional(),
         wantsSkip: z.boolean().default(false),
         paidSubmissionType: z.enum(["reentry5", "reentry10", "skip"]).optional(),
@@ -1381,38 +1391,34 @@ export const appRouter = router({
         }),
       ]))
       .mutation(async ({ ctx, input }) => {
+        const { bytes: buffer, ext } = validateReviewAudioUpload(input);
         const identity = getReviewIdentity(ctx);
         await assertReviewSubmissionAllowance(identity);
         const queueState = await getQueueState();
         if (queueState?.playbackMode === "paid_only" && !input.paidSubmissionType) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Music Review submissions are currently PAID ONLY. Complete the verified checkout before submitting." });
         }
-        if (!ctx.user && input.paidSubmissionType) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Create an account or log in before submitting a paid track." });
+        if (!ctx.user && !input.artistName?.trim()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Enter an artist name for your guest submission." });
         }
         const isPaid = !!input.paidSubmissionType;
-        if (isPaid && !hasCashAppPaymentProof(input.receiptUrl, input.paymentMethod)) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Paid submissions require a Cash App receipt URL and payment method. Send payment to $MittenMedia, then submit the receipt for admin approval." });
+        if ((isPaid || input.receiptUrl || input.paymentMethod) && !hasManualPaymentProof(input.receiptUrl, input.paymentMethod)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Provide Cash App or PayPal payment proof (receipt link or uploaded screenshot) for admin approval." });
         }
         // Get the active session to link this submission to it
         const session = await getOrCreateActiveMusicReviewSession();
         // Auto-resolve artist name from the user's registered profile
         const profile = ctx.user ? await getArtistProfile(ctx.user.id) : null;
         const artistName = input.artistName?.trim() || profile?.artistName || ctx.user?.artistName || ctx.user?.name || "Guest Artist";
-        const buffer = Buffer.from(input.fileBase64, "base64");
-        if (buffer.length > 20 * 1024 * 1024) {
-          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 20MB" });
-        }
-        const ext = input.fileName.split(".").pop() || "mp3";
         const key = `queue-submissions/${Date.now()}-${artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
-        const { url } = await storagePut(key, buffer, input.mimeType);
+        const { key: storedKey, url } = await storagePut(key, buffer, input.mimeType);
         const submissionId = await createLimitedReviewSubmission({
           userId: ctx.user?.id ?? null,
           musicReviewSessionId: session.id,
           artistName,
           songTitle: input.songTitle,
           submissionType: "file",
-          fileKey: key,
+          fileKey: storedKey,
           fileUrl: url,
           contactInfo: input.contactInfo ?? null,
           skippedLine: input.wantsSkip || input.paidSubmissionType === "skip",
@@ -1420,7 +1426,8 @@ export const appRouter = router({
           isPaidSubmission: isPaid,
           paidSubmissionType: isPaid ? (input.paidSubmissionType ?? null) : null,
           paidSubmissionConfirmed: false,
-          cashappPaymentReceiptUrl: input.receiptUrl ?? null,
+          cashappPaymentReceiptUrl: input.receiptUrl?.trim() ?? null,
+          paymentMethod: input.paymentMethod ?? null,
           status: "pending",
           position: 0,
         }, identity);
@@ -1431,7 +1438,7 @@ export const appRouter = router({
             userId: ctx.user.id,
             title: input.songTitle,
             artistName,
-            fileKey: key,
+            fileKey: storedKey,
             fileUrl: url,
             isPublic: true,
           });
@@ -1444,8 +1451,9 @@ export const appRouter = router({
       }),
 
     // Get past reviewed submissions (history)
-    getReviewed: publicProcedure.query(async () => {
-      return getReviewedSubmissions(50);
+    getReviewed: publicProcedure.query(async ({ ctx }) => {
+      const songs = await getReviewedSubmissions(50);
+      return ctx.user?.role === "admin" ? songs : songs.map(song => sanitizePublicReviewSubmission(song));
     }),
 
     // 🔥 / 🗑️ reaction on a submission (one per user per submission)
@@ -5654,20 +5662,17 @@ export const appRouter = router({
 
     preparePaidSubmissionAudio: protectedProcedure
       .input(z.object({
-        fileBase64: z.string().min(1),
+        fileBase64: z.string().min(1).max(27962028),
         fileName: z.string().min(1).max(256),
-        mimeType: z.enum(["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"]).default("audio/mpeg"),
+        mimeType: reviewAudioMimeSchema.default("audio/mpeg"),
       }))
       .mutation(async ({ ctx, input }) => {
-        const buffer = Buffer.from(input.fileBase64, "base64");
-        if (buffer.length > 20 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File must be under 20MB" });
+        const { bytes: buffer, ext } = validateReviewAudioUpload(input);
         const profile = await getArtistProfile(ctx.user.id);
         const artistName = profile?.artistName ?? ctx.user.artistName ?? ctx.user.name ?? "Unknown Artist";
-        const ext = input.fileName.split(".").pop()?.toLowerCase() || "mp3";
-        if (!["mp3", "wav", "m4a"].includes(ext)) throw new TRPCError({ code: "BAD_REQUEST", message: "Only MP3, WAV, and M4A files are accepted." });
         const key = `queue-submissions/${Date.now()}-${artistName.replace(/[^a-z0-9]/gi, "_")}.${ext}`;
-        const { url } = await storagePut(key, buffer, input.mimeType);
-        return { fileKey: key, fileUrl: url };
+        const { key: storedKey, url } = await storagePut(key, buffer, input.mimeType);
+        return { fileKey: storedKey, fileUrl: url };
       }),
 
     createPaidSubmissionCheckout: protectedProcedure
@@ -5688,6 +5693,7 @@ export const appRouter = router({
         if (input.submissionType === "file" && (!input.fileKey || !input.fileUrl)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "The uploaded audio file is not ready for payment." });
         }
+        if (input.submissionType === "file") validateReviewAudioReference(input.fileKey!, input.fileUrl!);
         const identity = getReviewIdentity(ctx);
         await assertReviewSubmissionAllowance(identity);
         const queueState = await getQueueState();

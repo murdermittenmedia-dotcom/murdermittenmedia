@@ -3,6 +3,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { publicProcedure, router } from "./_core/trpc";
+import type { TrpcContext } from "./_core/context";
 import { getReviewIdentity } from "./review-submission-identity";
 import { getReviewSubmissionAllowance, getDeviceReviewSubmissions, getOwnedReviewSubmission } from "./review-submission-limit";
 import { getDb, getQueueState } from "./db";
@@ -10,38 +11,51 @@ import { fulfillReviewAddOn } from "./review-addon-payment";
 import { reviewAddOnPayments, reviewSubmissions } from "../drizzle/schema";
 import { mutateReviewQueue } from "./review-transport";
 import { getSkipLinePriceCents } from "./skip-payments";
+import { isManualPaymentReceiptUrl, type MusicReviewManualPaymentMethod } from "../shared/music-review-paywall";
+import { paymentProofUploadSchema, uploadReviewPaymentProof } from "./review-payment-proof";
 
 const kindSchema = z.enum(["skip", "full_song", "full_song_skip"]);
+const receiptSchema = z.string().trim().max(512).refine(isManualPaymentReceiptUrl, "Provide an HTTP(S) receipt link or an uploaded payment screenshot.");
+const manualRequestSchema = z.object({ submissionId: z.number().int().positive(), kind: kindSchema, paymentMethod: z.enum(["Cash App", "PayPal"]), receiptUrl: receiptSchema });
 export type ReviewAddOnKind = z.infer<typeof kindSchema>;
 export function getReviewAddOnPrice(kind: ReviewAddOnKind, fullSongPriceCents: number) {
   return (kind !== "full_song" ? getSkipLinePriceCents("skip") : 0) + (kind !== "skip" ? Math.max(0, Math.round(fullSongPriceCents)) : 0);
 }
-function assertAvailable(song: { status: string; skipPaymentConfirmed: boolean; paidSubmissionConfirmed: boolean }, kind: ReviewAddOnKind) {
+function assertAvailable(song: { status: string; skipPaymentConfirmed: boolean; paidSubmissionConfirmed: boolean; isPaidSubmission?: boolean }, kind: ReviewAddOnKind) {
   if (!["pending", "playing"].includes(song.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "That track is no longer in the live queue." });
   if (kind !== "full_song" && song.skipPaymentConfirmed) throw new TRPCError({ code: "BAD_REQUEST", message: "A line skip is already approved for that track." });
+  if (kind !== "skip" && song.isPaidSubmission && !song.paidSubmissionConfirmed) throw new TRPCError({ code: "BAD_REQUEST", message: "The paid entry must be approved before requesting a full-song add-on." });
   if (kind !== "skip" && song.paidSubmissionConfirmed) throw new TRPCError({ code: "BAD_REQUEST", message: "Full-song playback is already approved for that track." });
+}
+async function requestManualPayment(ctx: TrpcContext, input: { submissionId: number; kind: ReviewAddOnKind; paymentMethod: MusicReviewManualPaymentMethod; receiptUrl: string }) {
+  let amountCents = 0;
+  await mutateReviewQueue(async () => {
+    const song = await getOwnedReviewSubmission(ctx, getReviewIdentity(ctx), input.submissionId);
+    assertAvailable(song, input.kind);
+    const state = await getQueueState();
+    if (input.kind !== "skip" && state?.playbackMode !== "90sec") throw new TRPCError({ code: "BAD_REQUEST", message: "Full-song add-ons are offered in 90-second mode only." });
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    await db.update(reviewSubmissions).set({
+      ...(input.kind !== "full_song" ? { skippedLine: true, skipPaymentConfirmed: false } : {}),
+      ...(input.kind !== "skip" ? { fullSongRequested: true, paidSubmissionConfirmed: false } : {}),
+      cashappPaymentReceiptUrl: input.receiptUrl,
+      paymentMethod: input.paymentMethod,
+    }).where(eq(reviewSubmissions.id, song.id));
+    amountCents = getReviewAddOnPrice(input.kind, state?.fullSongPriceCents ?? 500);
+  });
+  return { success: true as const, status: "pending_admin_approval" as const, amountCents };
 }
 
 export const reviewSubmissionRouter = router({
   allowance: publicProcedure.query(async ({ ctx }) => getReviewSubmissionAllowance(getReviewIdentity(ctx))),
   myTracks: publicProcedure.query(async ({ ctx }) => getDeviceReviewSubmissions(getReviewIdentity(ctx))),
-  requestCashApp: publicProcedure.input(z.object({ submissionId: z.number().int().positive(), kind: kindSchema, receiptUrl: z.string().url().max(512) }))
-    .mutation(async ({ ctx, input }) => {
-      if (!/^https?:\/\//i.test(input.receiptUrl)) throw new TRPCError({ code: "BAD_REQUEST", message: "Enter an HTTP(S) Cash App receipt link." });
-      const song = await getOwnedReviewSubmission(ctx, getReviewIdentity(ctx), input.submissionId);
-      assertAvailable(song, input.kind);
-      const state = await getQueueState();
-      if (input.kind !== "skip" && state?.playbackMode !== "90sec") throw new TRPCError({ code: "BAD_REQUEST", message: "Full-song add-ons are offered in 90-second mode only." });
-      const db = (await getDb())!;
-      await mutateReviewQueue(async () => {
-        await db.update(reviewSubmissions).set({
-          ...(input.kind !== "full_song" ? { skippedLine: true, skipPaymentConfirmed: false } : {}),
-          ...(input.kind !== "skip" ? { fullSongRequested: true } : {}),
-          cashappPaymentReceiptUrl: input.receiptUrl,
-        }).where(eq(reviewSubmissions.id, song.id));
-      });
-      return { success: true as const, status: "pending_admin_approval" as const, amountCents: getReviewAddOnPrice(input.kind, state?.fullSongPriceCents ?? 500) };
-    }),
+  uploadPaymentProof: publicProcedure.input(paymentProofUploadSchema)
+    .mutation(({ ctx, input }) => uploadReviewPaymentProof(input, getReviewIdentity(ctx))),
+  requestManualPayment: publicProcedure.input(manualRequestSchema)
+    .mutation(({ ctx, input }) => requestManualPayment(ctx, input)),
+  requestCashApp: publicProcedure.input(z.object({ submissionId: z.number().int().positive(), kind: kindSchema, receiptUrl: receiptSchema }))
+    .mutation(({ ctx, input }) => requestManualPayment(ctx, { ...input, paymentMethod: "Cash App" })),
   createCheckout: publicProcedure.input(z.object({ submissionId: z.number().int().positive(), kind: kindSchema, origin: z.string().url() }))
     .mutation(async ({ ctx, input }) => {
       const song = await getOwnedReviewSubmission(ctx, getReviewIdentity(ctx), input.submissionId);
